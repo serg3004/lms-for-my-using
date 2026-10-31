@@ -3,6 +3,7 @@ const baseConfig = require('./jest.config.cjs');
 module.exports = {
   ...baseConfig,
   testMatch: [
+    '<rootDir>/src/integration/longread-exercises.database.spec.ts',
     '<rootDir>/src/integration/assessment-question-types.database.spec.ts',
     '<rootDir>/src/integration/api.database-smoke.spec.ts',
     '<rootDir>/src/integration/checklist-snapshot.database.spec.ts',

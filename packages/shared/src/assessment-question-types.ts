@@ -60,3 +60,19 @@ export type PublicQuestionDefinition =
   | { type: 'ordering'; items: { id: string; text: string }[] }
   | { type: 'fill_blank'; blanks: { id: string }[]; caseSensitive: boolean; whitespace: 'exact' | 'trim' | 'collapse' }
   | { type: 'short_answer'; caseSensitive: boolean; whitespace: 'exact' | 'trim' | 'collapse' };
+
+export const assessmentAnswerSchema = z.object({
+  questionId: z.string().uuid(),
+  selectedOptionId: z.string().uuid().optional(),
+  selectedOptionIds: z.array(z.string().uuid()).min(1).optional(),
+  response: questionResponseSchema.optional(),
+}).strict().refine((value) => [value.selectedOptionId, value.selectedOptionIds, value.response].filter((field) => field !== undefined).length === 1, { message: 'Answer requires exactly one format' });
+export type AssessmentAnswer = z.infer<typeof assessmentAnswerSchema>;
+
+export const publicQuestionDefinitionSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('true_false') }).strict(),
+  z.object({ type: z.literal('matching'), left: z.array(item), right: z.array(item) }).strict(),
+  z.object({ type: z.literal('ordering'), items: z.array(item) }).strict(),
+  z.object({ type: z.literal('fill_blank'), blanks: z.array(z.object({ id }).strict()), ...textPolicy }).strict(),
+  z.object({ type: z.literal('short_answer'), ...textPolicy }).strict(),
+]);

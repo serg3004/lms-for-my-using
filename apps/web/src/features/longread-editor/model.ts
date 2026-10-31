@@ -1,4 +1,5 @@
 import { isImageContent, isAttachmentsContent } from '../longread-files/model.js';
+import { exerciseContentSchema } from '@lms/shared/longread-exercises';
 import { audioContentSchema, videoContentSchema, embedContentSchema } from '@lms/shared/longread-media';
 import type { LongreadDraft, SaveLongread } from '../../shared/api/longreads.js';
 import { containerDepth, countNested, emptyTable, MAX_CONTAINER_DEPTH, MAX_ITEMS, MAX_NESTED_BLOCKS, MAX_SLOT_BLOCKS, slotsOf, tableValid, type NestedBlock, type TableContent } from './composite.js';
@@ -6,10 +7,10 @@ import { containerDepth, countNested, emptyTable, MAX_CONTAINER_DEPTH, MAX_ITEMS
 export type Run = { text: string; bold?: boolean; italic?: boolean; underline?: boolean; code?: boolean; href?: string };
 export type TextBlockType = 'paragraph' | 'heading' | 'list' | 'quote' | 'note' | 'divider' | 'code';
 export type CompositeBlockType = 'table' | 'columns' | 'tabs' | 'accordion';
-export type AddableBlockType = TextBlockType | CompositeBlockType | 'image' | 'attachments' | 'audio' | 'video' | 'embed';
+export type AddableBlockType = TextBlockType | CompositeBlockType | 'image' | 'attachments' | 'audio' | 'video' | 'embed' | 'exercise';
 export const textBlockTypes: TextBlockType[] = ['paragraph', 'heading', 'list', 'quote', 'note', 'divider', 'code'];
 export const compositeTypes: string[] = ['table', 'columns', 'tabs', 'accordion'];
-export const blockTypes: AddableBlockType[] = [...textBlockTypes, 'image', 'attachments', 'audio', 'video', 'embed', 'table', 'columns', 'tabs', 'accordion'];
+export const blockTypes: AddableBlockType[] = [...textBlockTypes, 'image', 'attachments', 'audio', 'video', 'embed', 'exercise', 'table', 'columns', 'tabs', 'accordion'];
 export type EditorBlock = { key: string; type: string; schemaVersion: number; title: string | null; hidden: boolean; content: Record<string, unknown> };
 export type EditorChapter = { cover?: LongreadDraft['settings']['cover']; key: string; title: string; hidden: boolean; blocks: EditorBlock[] };
 export type EditorDocument = { chapters: EditorChapter[]; settings?: LongreadDraft['settings'] };
@@ -44,6 +45,7 @@ export function toSave(document: EditorDocument, revision: number, settings: Lon
 }
 export function newBlock(type: AddableBlockType, itemTitle: (number: number) => string = String): EditorBlock {
   const content: Record<AddableBlockType, Record<string, unknown>> = {
+    exercise: exerciseContentSchema.parse({}),
     paragraph: { runs: [] }, heading: { level: 2, runs: [] }, quote: { runs: [], caption: '' },
     note: { runs: [], tone: 'info' }, divider: {}, code: { language: 'javascript', code: '' }, list: { ordered: false, items: [{ level: 1, runs: [] }] },
     image: { fileId: null, alt: '', caption: '', width: 100, align: 'center' }, attachments: { files: [] },
@@ -86,6 +88,7 @@ function contentValid(block: EditorBlock): boolean {
   if (!editableBlock(block)) return true;
   if (compositeTypes.includes(block.type)) return compositeValid(block);
   const runsValid = (runs: unknown) => Array.isArray(runs) && runs.length <= 500 && runs.every((run: Run) => typeof run.text === 'string' && run.text.length <= 20_000 && (!run.href || safeHref(run.href)));
+  if (block.type === 'exercise') return exerciseContentSchema.safeParse(block.content).success;
   if (block.type === 'image') return isImageContent(block.content);
   if (block.type === 'attachments') return isAttachmentsContent(block.content);
   if (block.type === 'audio') return audioContentSchema.safeParse(block.content).success;

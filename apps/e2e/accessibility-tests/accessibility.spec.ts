@@ -1,3 +1,4 @@
+import { exerciseReaderServer, exerciseEditorServer } from '../fixtures/longread-exercises.js';
 import { longreadFileServer } from '../fixtures/longread-files.js';
 import { openTypedAssessment } from '../fixtures/assessment-typed-compat.js';
 import { longreadPlaybackServer } from '../fixtures/longread-playback.js';
@@ -417,4 +418,14 @@ test.describe('keyboard and focus baseline', () => {
     await page.keyboard.press('Escape');
     await expect(openButton).toBeFocused();
   });
+});
+
+for (const width of [375, 1440]) test(`longread exercise reader accessibility at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 }); await exerciseReaderServer().attach(page);
+  await auditAccessibility(page, testInfo, 'longread-exercise-reader');
+});
+for (const role of ['admin', 'instructor'] as const) for (const width of [375, 1440]) test(`${role} longread exercise authoring accessibility at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 }); await exerciseEditorServer(3).attach(page, { role });
+  await page.getByRole('button', { name: 'Изменить вопрос', exact: true }).click();
+  await auditAccessibility(page, testInfo, 'longread-exercise-editor');
 });

@@ -287,3 +287,12 @@ provider input without fetching remote content or writing learning records. New 
 use the same upload/status/preview/download guards as PR 386, with strict media-kind ownership checks and the same
 published/pinned projection for signing. Public direct HTTPS video references and approved external provider
 frames are outside private-storage authorization; private files are never represented by stored public URLs.
+
+### Longread exercise scope (PR 389)
+
+Question-bank read/write and exercise preview use `lessonsCreate` (admin or instructor), plus the existing instructor
+course scope; the bank intentionally contains keys and is never learner-readable. Exercise state uses `lessonsRead`;
+submit and finish use `assessmentAttemptsCreate`. Every learner operation rechecks lesson visibility, published/pinned
+version, organization flag and current course entitlement before taking the user's progress lock. No new role or
+permission is introduced. Component attempts are excluded from generic results and certificate eligibility; final
+attempts retain existing own-result, instructor/course and manager/team access rules.

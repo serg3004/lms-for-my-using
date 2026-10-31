@@ -1,6 +1,7 @@
 module.exports = {
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
+    '^@lms/shared/longread-exercises$': '<rootDir>/../../packages/shared/src/longread-exercises.ts',
     '^@lms/shared/assessment-question-types$': '<rootDir>/../../packages/shared/src/assessment-question-types.ts',
     '^@lms/shared/longread-media$': '<rootDir>/../../packages/shared/src/longread-media.ts',
     '^@lms/shared$': '<rootDir>/../../packages/shared/src/index.ts',
@@ -8,6 +9,7 @@ module.exports = {
   },
   roots: ['<rootDir>/src'],
   testPathIgnorePatterns: [
+    '/src/integration/longread-exercises\\.database\\.spec\\.ts$',
     '/src/integration/assessment-question-types\\.database\\.spec\\.ts$',
     '/src/integration/api\\.database-smoke\\.spec\\.ts$',
     '/src/integration/checklist-snapshot\\.database\\.spec\\.ts$',

@@ -1,3 +1,5 @@
+import { frozenAnswerQuestionSchema, longreadResultMetadataSchema } from '../../common/assessment-frozen.js';
+import { publicQuestionDefinition } from '../../common/assessment-question-definition.js';
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 
@@ -9,6 +11,7 @@ import type { TeamScopeActor } from '../manager-team-scope/public.js';
 const privilegedResultRoles: UserRole[] = ['admin', 'manager', 'instructor'];
 
 const attemptResultSummarySelect = {
+  longreadMetadata: true,
   id: true,
   organizationId: true,
   assessmentId: true,
@@ -53,6 +56,7 @@ const attemptResultDetailSelect = {
       questionId: true,
       selectedOptionId: true,
       selectedOptionIds: true,
+      frozenQuestion: true,
       response: true,
       isCorrect: true,
       score: true,
@@ -85,6 +89,7 @@ const attemptResultDetailSelect = {
 
 type AttemptResultInput = {
   id: string;
+  longreadMetadata?: unknown;
   organizationId: string;
   assessmentId: string;
   userId: string;
@@ -118,6 +123,7 @@ type AttemptResultInput = {
     selectedOptionId: string | null;
     selectedOptionIds: unknown;
     response?: unknown;
+    frozenQuestion?: unknown;
     isCorrect: boolean;
     score: number;
     createdAt: Date;
@@ -152,6 +158,7 @@ export class AssessmentResultsService {
       where: {
         assessmentId,
         organizationId,
+        countsTowardResults: true,
         ...this.teamScope.userOwnedResource(actor),
         deletedAt: null,
       },
@@ -171,6 +178,7 @@ export class AssessmentResultsService {
       where: {
         id: attemptId,
         organizationId,
+        countsTowardResults: true,
         ...this.teamScope.userOwnedResource(actor),
         deletedAt: null,
       },
@@ -194,6 +202,7 @@ export class AssessmentResultsService {
       where: {
         assessmentId,
         organizationId,
+        countsTowardResults: true,
         ...this.teamScope.userOwnedResource(actor),
         deletedAt: null,
       },
@@ -204,9 +213,17 @@ export class AssessmentResultsService {
         percentage: true,
         passed: true,
         completedAt: true,
+        longreadMetadata: true,
       },
     });
 
+    const versionGroups = new Map<string, { lessonId: string; version: number; attemptsCount: number; passedCount: number; percentages: number[] }>();
+    for (const attempt of attempts) {
+      const parsed = longreadResultMetadataSchema.safeParse(attempt.longreadMetadata);
+      if (!parsed.success) continue;
+      const key = `${parsed.data.lessonId}:${parsed.data.version}`, group = versionGroups.get(key) ?? { lessonId: parsed.data.lessonId, version: parsed.data.version, attemptsCount: 0, passedCount: 0, percentages: [] };
+      group.attemptsCount++; group.passedCount += Number(attempt.passed); group.percentages.push(attempt.percentage); versionGroups.set(key, group);
+    }
     const attemptsCount = attempts.length;
     const passedCount = attempts.filter((attempt) => attempt.passed).length;
     const failedCount = attemptsCount - passedCount;
@@ -226,6 +243,7 @@ export class AssessmentResultsService {
       averagePercentage,
       highestPercentage,
       lowestPercentage,
+      ...(versionGroups.size ? { versions: [...versionGroups.values()].map(({ percentages, ...group }) => ({ ...group, averagePercentage: Math.round(percentages.reduce((sum, value) => sum + value, 0) / percentages.length) })) } : {}),
     };
   }
 
@@ -271,6 +289,7 @@ export class AssessmentResultsService {
   }
 
   private toAttemptResult(attempt: AttemptResultInput) {
+    const context = longreadResultMetadataSchema.safeParse(attempt.longreadMetadata);
     return {
       id: attempt.id,
       organizationId: attempt.organizationId,
@@ -285,32 +304,27 @@ export class AssessmentResultsService {
       completedAt: attempt.completedAt,
       createdAt: attempt.createdAt,
       updatedAt: attempt.updatedAt,
-      assessment: attempt.assessment,
+      assessment: context.success ? { ...attempt.assessment, title: context.data.title, passingScore: context.data.passingScore } : attempt.assessment,
+      ...(context.success ? { longread: { lessonId: context.data.lessonId, version: context.data.version } } : {}),
       user: attempt.user,
       answers:
-        attempt.answers?.map((answer) => ({
-          id: answer.id,
-          questionId: answer.questionId,
-          selectedOptionId: answer.selectedOptionId,
-          selectedOptionIds: answer.selectedOptionIds,
-          ...(answer.response ? { response: answer.response } : {}),
-          isCorrect: answer.isCorrect,
-          score: answer.score,
-          createdAt: answer.createdAt,
-          updatedAt: answer.updatedAt,
-          question: {
-            id: answer.question.id,
-            title: answer.question.title,
-            type: answer.question.type,
-            points: answer.question.points,
-            order: answer.question.order,
-          },
-          selectedOption: answer.selectedOption,
-          // Only exposed when the assessment author opted in — otherwise a learner could infer
-          // the correct answer from the API response even with the UI hiding it.
-          ...(attempt.status === 'completed' && attempt.assessment.showCorrectAnswers && answer.question.definition ? { correctDefinition: answer.question.definition } : {}),
-          correctOptions: attempt.status === 'completed' && attempt.assessment.showCorrectAnswers ? answer.question.options : undefined,
-        })) ?? [],
+        attempt.answers?.map((answer) => {
+          const frozen = frozenAnswerQuestionSchema.safeParse(answer.frozenQuestion);
+          const question = frozen.success ? frozen.data.question : answer.question;
+          const reveal = attempt.status === 'completed' && (context.success ? frozen.success && frozen.data.revealAnswers : attempt.assessment.showCorrectAnswers);
+          const correctOptions = frozen.success ? frozen.data.question.options.filter((option) => option.isCorrect).map(({ id, text, imageUrl }) => ({ id, text, imageUrl })) : answer.question.options;
+          const selected = frozen.success ? frozen.data.question.options.find((option) => option.id === answer.selectedOptionId) : null;
+          return {
+            id: answer.id, questionId: answer.questionId, selectedOptionId: answer.selectedOptionId, selectedOptionIds: answer.selectedOptionIds,
+            ...(answer.response ? { response: answer.response } : {}), isCorrect: answer.isCorrect, score: answer.score, createdAt: answer.createdAt, updatedAt: answer.updatedAt,
+            question: { id: question.id, title: question.title, type: question.type, points: question.points, order: question.order,
+              ...(frozen.success ? { options: frozen.data.question.options.map(({ id, text, imageUrl }) => ({ id, text, imageUrl })),
+                ...(frozen.data.question.definition ? { definition: publicQuestionDefinition(frozen.data.question.definition, `result:${answer.id}`) } : {}) } : {}) },
+            selectedOption: frozen.success ? selected ? { id: selected.id, text: selected.text, imageUrl: selected.imageUrl } : null : answer.selectedOption,
+            ...(reveal && question.definition ? { correctDefinition: question.definition } : {}),
+            correctOptions: reveal ? correctOptions : undefined,
+          };
+        }) ?? [],
     };
   }
 }

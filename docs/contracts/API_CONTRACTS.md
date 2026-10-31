@@ -1723,7 +1723,7 @@ is completed **and** `showCorrectAnswers` is enabled. In-progress results never 
 PR 388 supplies API and grading. The existing option-only taking/editor/preview forms display an
 explicit unsupported-question state rather than interpreting a new type as a radio question or
 starting a timed attempt. Their existing three option-based types continue unchanged. The seven-type
-longread editor/reader integration and immutable question snapshots belong to PR 389; PR 388 grades
+longread editor/reader integration and immutable question snapshots are described in PR 389 below; PR 388 grades
 against the server's current persisted question, as existing standalone assessments do.
 
 ## Longread audio, video and approved embeds (PR 387)
@@ -1775,3 +1775,53 @@ data chunks (PCM/IEEE float); MP4 box bounds, video track handler, mdat and moov
 These checks reject signature-only probes and wrong containers and apply to buffered/multipart equally. They do
 not decode/transcode files or certify every codec; browser playback errors remain visible. All existing scanner
 failure cases stay fail-closed. No migration, new storage provider, upload size increase or permission role is added.
+
+## Longread exercises and versioned final results (PR 389)
+
+The top-level `exercise` block references a question of an existing `Assessment` belonging to this lesson and organization.
+Authors can select that question or create/edit all seven types in the longread editor. If the lesson has no assessment,
+the question writer creates a draft one using the existing assessment model. Image-option questions can be linked;
+their options are edited in the existing test editor. Exercises are not allowed inside composite containers.
+
+Content is strict: `questionId` (UUID, null allowed only as an unpublished placeholder), `mode` (`practice` default or
+`graded`), `required` (true), `weight` (1–1,000,000 points, default 1), `hint` (≤2,000 characters), `maxAttempts` (1–100,
+default 3), `passingScore` (0–100, default 70), `feedback` (`result` default or `answers`). Publication captures block IDs,
+question texts/options/keys, scoring rules and parent test limits/thresholds into the immutable revision. The question/options/parent capture uses one PostgreSQL MVCC statement, including when the ordinary test API edits them concurrently. Missing,
+deleted, invalid or foreign references produce `question_unavailable`; unpersistable total weights are refused.
+Changing a bank question requires republishing, even if the document revision itself did not change. Restoring a version
+clones its frozen assessments/questions/options into independent draft records; historical keys and attempts stay intact.
+
+All routes retain the organization flag, authentication, role and existing course/instructor scope guards:
+
+| Route under `/lessons/:id/longread` | Input / behavior |
+| --- | --- |
+| `GET /questions` | Author-only lesson assessment/question bank, including keys and optimistic question `updatedAt`. |
+| `POST /questions` | Author-only `{ revision, question }`; typed definition/options, optional existing question/assessment IDs and `updatedAt`, parent `assessmentPassingScore` and nullable `assessmentMaxAttempts`. Locks the document and question, validates ownership and keys, increments draft revision. Stale data: 409. |
+| `GET /exercises?version=N` | Learner's counters and last checked responses/results for unlocked blocks, plus final-test state. No keys before a check. |
+| `POST /exercises/:blockId/attempts` | `{ version, requestId: UUID, expectedAttempt: 1..100, answer }`. Uses the shared assessment answer/grading contract and frozen version, never client scores or live draft keys. Returns current state, `acceptedAttemptId` and the original `acceptedResult` (including on replay). |
+| `POST /exercises/:blockId/preview` | Author-only `{ revision, answer }`. Pure grading; no pin, progress, attempt, notification or certificate write. |
+| `POST /exercises/finish` | `{ version, assessmentId }`; records the eligible final attempt and returns `{ attemptId, state }`. |
+
+Submission locks the user's existing progress row. The namespace includes organization, learner, revision and block.
+Same request ID/ordinal/answer replays the original accepted attempt; a different request ID for the same ordinal and
+answer also replays it. A changed answer for an occupied ordinal or a reused request ID is 409. A stale/future version
+is 409; foreign/hidden/locked blocks, missing entitlement or disabled features are 404. Exhausted block or parent test
+budgets are 422. Counters and responses survive reload. The client serializes double clicks and preserves the request
+key/answer across network retry; two tabs are serialized on the server. `feedback=result` returns score/pass information
+and the learner's own response only; `answers` additionally releases the captured key after checking.
+
+Every component response uses the existing `AssessmentAttempt`/answer records with `countsTowardResults=false`, including
+practice. These rows never appear through generic attempts/results, managerial progress aggregates or certificate
+eligibility. To finish a test, all visible required **graded** blocks of that assessment must have an answer; at least one
+graded answer is necessary. The summary sums each block's best score, with unattempted optional blocks scoring zero.
+Passing requires both the captured parent threshold and the per-block thresholds of all required graded blocks.
+Practice does not contribute. A fingerprint of the selected best attempts makes repeated/concurrent finishes idempotent;
+an improved set of best attempts can create another final result within the captured parent limit. Identical finishes
+consume no slot. Practice remains available independently of the parent budget.
+
+The final attempt uses the normal result/notification/certificate recording path; its notification links directly to the recorded result. Answer rows keep frozen question data;
+results show the captured labels, option text, weights and keys (only per-block feedback opt-in), plus `longread:
+{ lessonId, version }`. Assessment reports add `versions` with per-version counts and averages. Republish never recomputes
+existing grades; a started learner stays pinned. The review page displays all seven response formats and links back to
+the lesson. The editor's publish action requires a saved draft. Chapter/lesson completion gates remain PR 390: submitting
+or finishing a test does not synthesize chapter completion or rewrite reading position.

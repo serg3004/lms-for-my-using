@@ -681,3 +681,20 @@ Migration `20261031120000_checklist_folders` is additive and backward-compatible
 - adds one nullable column `checklists.folder_id UUID` (no `DEFAULT`) with FK `ON DELETE SET NULL` and an index on `(organization_id, folder_id)`; existing sheets keep `NULL` (the root), so no backfill is needed;
 - an older application version neither reads nor writes the new table or column, so a rolling deploy is safe;
 - rollback: drop the FK, the column and the table; sheets stay where they were because folders never owned them.
+
+### Longread exercise attempts (PR 389)
+
+`20261031150000_longread_exercise_attempts` is additive: existing attempts default to `counts_toward_results=true`;
+nullable revision/block/sequence/request/hash/fingerprint/context columns and answer `frozen_question` preserve existing
+records. A restrictive revision FK retains immutable snapshots used by grades. Three unique indexes and a context CHECK
+protect component ordinals, request keys and final fingerprints. No old result, course progress or certificate backfill
+is performed. Deploy the migration before the API, then the web application. The real PostgreSQL suite verifies fresh
+migration, legacy grading, concurrency, persisted counters, frozen results and restore after source deletion.
+
+Functional rollback disables `Organization.longreadEnabled` and retains the new schema/data. Do not drop revisions,
+answer snapshots or attempts. An older API that lacks `countsTowardResults` filters would incorrectly include component
+practice/graded responses in ordinary reports and certificate eligibility even with the flag off. Therefore an application
+rollback must retain/backport these filters (attempts/results, manager/progress aggregates and certificate checks), or keep
+the new API with the feature disabled. New component rows are learning records, not disposable rollback data. As with
+other production migrations, take and verify the required live backup before deployment; local test success does not
+constitute production backup/restore evidence.

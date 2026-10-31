@@ -1,4 +1,4 @@
-import type { QuestionDefinition, QuestionResponse } from '@lms/shared/assessment-question-types';
+import type { QuestionDefinition, QuestionResponse, PublicQuestionDefinition } from '@lms/shared/assessment-question-types';
 import type { UserRole } from '@lms/shared/types/api';
 
 export type { ApiErrorDetail, ApiErrorResponse, PaginatedResponse, UserRole } from '@lms/shared/types/api';
@@ -248,7 +248,7 @@ export type AttemptAnswerResult = {
   selectedOptionIds: unknown;
   isCorrect: boolean;
   score: number;
-  question: { id: string; title: string; type: string; points: number; order: number };
+  question: { id: string; title: string; type: string; points: number; order: number; definition?: PublicQuestionDefinition; options?: { id: string; text: string | null; imageUrl: string | null }[] };
   selectedOption: { id: string; text: string | null; imageUrl: string | null } | null;
   /** Only present when the assessment author enabled showCorrectAnswers. */
   correctOptions?: { id: string; text: string | null; imageUrl: string | null }[];
@@ -284,6 +284,7 @@ export type AssessmentAttemptSummary = {
 };
 
 export type AssessmentAttemptResult = {
+  longread?: { lessonId: string; version: number };
   id: string;
   organizationId: string;
   assessmentId: string;

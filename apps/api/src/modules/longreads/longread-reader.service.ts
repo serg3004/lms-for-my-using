@@ -1,3 +1,4 @@
+import { captureExerciseQuestions, publicExerciseQuestion } from './longread-exercise-snapshot.js';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { isLearnerOnly, type CurrentUser } from '../auth/public.js';
 import { LearningTargetResolverService } from '../learning-targets/public.js';
@@ -62,7 +63,9 @@ export class LongreadReaderService {
     const chapters = draft.chapters.filter((chapter) => !chapter.hidden);
     const selected = chapterId ? chapters.find((chapter) => chapter.id === chapterId) : chapters[0];
     if (!selected) throw new NotFoundException('Longread chapter not found');
-    const snapshot: ReaderSnapshot = { ...draft, version: draft.revision, chapters: visibleReaderChapters(chapters) };
+    const captured = await captureExerciseQuestions(this.prisma, lessonId, organizationId, chapters);
+    const projected = captured.chapters.map((chapter) => ({ ...chapter, blocks: chapter.blocks.map(({ question, ...block }) => ({ ...block, ...(question ? { question: publicExerciseQuestion(question, `preview:${block.id}`) } : {}) })) }));
+    const snapshot = { ...draft, version: draft.revision, chapters: visibleReaderChapters(projected as unknown as ReaderSnapshot['chapters']) };
     return { ...readerView(snapshot, { version: draft.revision, chapter: selected.anchor, headingIndex: null, maxReached: chapters.length - 1 }, undefined, true), draftRevision: draft.revision };
   }
 }
