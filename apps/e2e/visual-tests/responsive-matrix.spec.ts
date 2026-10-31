@@ -1,4 +1,5 @@
 import { longreadFileServer } from '../fixtures/longread-files.js';
+import { longreadPlaybackServer } from '../fixtures/longread-playback.js';
 import { openLongreadEntrypoints } from '../fixtures/longread-entrypoints.js';
 import { longreadCourseId } from '../fixtures/longread-editor.js';
 import { openPreviewBuilder, openSheetPreview } from '../fixtures/checklist-preview.js';
@@ -13,6 +14,26 @@ import { expect, test, type Page } from '@playwright/test';
 
 const widths = [320, 375, 768, 1024, 1280, 1440] as const;
 const height = 900;
+
+for (const width of [375, 768, 1440]) test(`longread audio/video reader is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await longreadPlaybackServer().reader(page, { direction: width === 768 ? 'rtl' : 'ltr' });
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `longread-playback-reader-${width}`, false, { maxDiffPixels: 3000 });
+});
+for (const role of ['admin', 'instructor'] as const) for (const width of [375, 1440]) test(`${role} longread audio/video editor is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await longreadPlaybackServer().editor(page, { role });
+  await expectNoPageOverflow(page);
+  if (role === 'admin' && width === 1440) {
+    // The desktop admin shell scrolls inside main; a page screenshot alone captures only the header.
+    const blocks = page.locator('.lr-block');
+    await blocks.nth(0).scrollIntoViewIfNeeded();
+    await expectVisualMatch(page, `${role}-longread-playback-editor-${width}`, false, { fullPage: false, maxDiffPixels: 3000 });
+    for (const [index, name] of [[1, 'video'], [2, 'embed']] as const) {
+      await blocks.nth(index).scrollIntoViewIfNeeded();
+      await expectVisualMatch(page, `${role}-longread-playback-editor-${name}-${width}`, false, { fullPage: false, maxDiffPixels: 3000 });
+    }
+  } else await expectVisualMatch(page, `${role}-longread-playback-editor-${width}`, false, { maxDiffPixels: 3000 });
+});
 
 for (const width of [375, 1440]) for (const [screen, path] of [
   ['courses', '/admin/courses'], ['course', `/admin/courses/${longreadCourseId}`], ['lessons', '/admin/lessons'],

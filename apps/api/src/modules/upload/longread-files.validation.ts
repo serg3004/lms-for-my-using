@@ -1,14 +1,19 @@
 import { BadRequestException } from '@nestjs/common';
 import { MAX_ZIP_COMPRESSION_RATIO, MAX_ZIP_ENTRY_COUNT, MAX_ZIP_UNCOMPRESSED_BYTES, validateUploadFile, validateUploadMetadata } from './upload.validation.js';
+import { inspectLongreadMedia } from './longread-media.validation.js';
 
 export const LONGREAD_FILE_TYPES: Record<string, string[]> = {
   'image/jpeg': ['jpg', 'jpeg'], 'image/png': ['png'], 'image/gif': ['gif'], 'image/webp': ['webp'],
+  'audio/mpeg': ['mp3'], 'audio/wav': ['wav'], 'video/mp4': ['mp4'], 'video/webm': ['webm'],
   'application/pdf': ['pdf'], 'application/msword': ['doc'], 'application/vnd.ms-powerpoint': ['ppt'], 'application/vnd.ms-excel': ['xls'],
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['docx'],
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['pptx'],
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['xlsx'],
 };
 export const isLongreadImage = (mimeType: string) => mimeType.startsWith('image/') && Object.hasOwn(LONGREAD_FILE_TYPES, mimeType);
+export const isLongreadAudio = (mimeType: string) => ['audio/mpeg', 'audio/wav'].includes(mimeType);
+export const isLongreadVideo = (mimeType: string) => ['video/mp4', 'video/webm'].includes(mimeType);
+export const isLongreadAttachment = (mimeType: string) => Object.hasOwn(LONGREAD_FILE_TYPES, mimeType) && !isLongreadImage(mimeType) && !isLongreadAudio(mimeType) && !isLongreadVideo(mimeType);
 export function validateLongreadFileMetadata(fileName: string, mimeType: string, sizeBytes: number) {
   validateUploadMetadata(fileName, mimeType, sizeBytes);
   const extension = fileName.split('.').at(-1)?.toLowerCase();
@@ -31,6 +36,7 @@ export async function validateLongreadObject(file: { fileName: string; mimeType:
   validateLongreadFileMetadata(file.fileName, file.mimeType, file.sizeBytes);
   const head = await range(0, Math.min(file.sizeBytes, 8192) - 1);
   validateUploadFile({ originalname: file.fileName, mimetype: file.mimeType, size: file.sizeBytes, buffer: head } as Express.Multer.File);
+  if (isLongreadAudio(file.mimeType) || isLongreadVideo(file.mimeType)) await inspectLongreadMedia(file.mimeType, file.sizeBytes, head, range);
   const extension = file.fileName.split('.').at(-1)!.toLowerCase();
   if (['docx', 'pptx', 'xlsx'].includes(extension)) await inspectZip(extension, file.sizeBytes, range);
   if (['doc', 'ppt', 'xls'].includes(extension)) await inspectCompound(extension, head, file.sizeBytes, range);

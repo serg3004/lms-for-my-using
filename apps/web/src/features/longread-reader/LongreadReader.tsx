@@ -1,4 +1,5 @@
 import { LongreadMediaContext, MediaImage } from '../longread-files/Media.js';
+import { MediaPlaybackProvider } from '../longread-media/MediaPlayback.js';
 import { safeImage } from './model.js';
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -59,7 +60,7 @@ export function LongreadReader({ data, busy = false, onNavigate, onBookmark }: {
       {entry.children.length > 0 && toc(entry.children)}
     </li>)}</ul>;
   }
-  return <LongreadMediaContext.Provider value={{ lessonId: data.lessonId, version: data.version }}><section className="longread-reader" dir={data.settings.direction} style={{ minWidth: 0, width: '100%' }} aria-label={t('longreadReader.reader')}>
+  return <MediaPlaybackProvider key={data.lessonId}><LongreadMediaContext.Provider value={{ lessonId: data.lessonId, version: data.version }}><section className="longread-reader" dir={data.settings.direction} style={{ minWidth: 0, width: '100%' }} aria-label={t('longreadReader.reader')}>
     {safeImage(data.settings.cover) && <MediaImage image={data.settings.cover} />}
     {data.preview && <p role="note">{t('longreadReader.previewNotice')}</p>}
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBlock: 16 }}>
@@ -88,5 +89,5 @@ export function LongreadReader({ data, busy = false, onNavigate, onBookmark }: {
         </nav>
       </article>
     </div>
-  </section></LongreadMediaContext.Provider>;
+  </section></LongreadMediaContext.Provider></MediaPlaybackProvider>;
 }

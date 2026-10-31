@@ -15,9 +15,10 @@ import { LongreadVersionsService } from '../modules/longreads/longread-versions.
 import { LongreadReaderService } from '../modules/longreads/longread-reader.service.js';
 import { LongreadFilesService } from '../modules/longreads/longread-files.service.js';
 import { LongreadFilesController } from '../modules/longreads/longread-files.controller.js';
+import { LongreadsController } from '../modules/longreads/longreads.controller.js';
 import { LongreadFileCleanupService } from '../modules/longreads/longread-file-cleanup.service.js';
 import { assertSafeTestDatabase } from './database-test-safety.js';
-import { officeZip } from './longread-files.fixtures.js';
+import { officeZip, mediaContainer } from './longread-files.fixtures.js';
 
 const png = Buffer.from('89504e470d0a1a0a0000000049454e44', 'hex'), pdf = Buffer.from('%PDF-1.7\nsynthetic content\n%%EOF');
 const image = (fileId: string) => ({ fileId, alt: 'Safety equipment', caption: 'Caption', width: 75, align: 'center' as const });
@@ -33,9 +34,9 @@ describe('longread files, scan pipeline, immutable references and live download 
     const person = await prisma.user.create({ data: { organizationId, email: `${randomUUID()}@example.invalid`, passwordHash: 'unused', firstName: 'Media', lastName: 'Synthetic' } });
     await prisma.membership.createMany({ data: roles.map((role) => ({ organizationId, userId: person.id, role })) }); return { ...person, roles };
   }
-  async function request(actor: CurrentUser, handler: (...args: never[]) => unknown) {
+  async function request(actor: CurrentUser, handler: (...args: never[]) => unknown, controllerClass: unknown = LongreadFilesController) {
     const req = { currentUser: actor, params: { id: lessonId } } as unknown as AuthenticatedRequest;
-    const context = { getHandler: () => handler, getClass: () => LongreadFilesController, switchToHttp: () => ({ getRequest: () => req }) } as unknown as ExecutionContext;
+    const context = { getHandler: () => handler, getClass: () => controllerClass, switchToHttp: () => ({ getRequest: () => req }) } as unknown as ExecutionContext;
     await new RolesGuard(prisma, new Reflector()).canActivate(context); await new CourseAccessGuard(new Reflector(), new CourseAccessPolicy(prisma)).canActivate(context); return req;
   }
   async function create(name = 'picture.png', mimeType = 'image/png', bytes = png) { return (await files.create(lessonId, org, { files: [{ fileName: name, mimeType, sizeBytes: bytes.length }] }))[0]!; }
@@ -223,5 +224,76 @@ describe('longread files, scan pipeline, immutable references and live download 
     expect(await prisma.courseMaterial.count({ where: { longreadDocumentId: docId } })).toBe(2);
     await expect(files.url(lessonId, attachment, learner, false, 1)).resolves.toMatchObject({ mimeType: 'application/pdf' });
     await expect(files.url(lessonId, cover, learner, false, 1)).resolves.toHaveProperty('url');
+  });
+
+  it.each([['mp3', 'audio/mpeg'], ['wav', 'audio/wav'], ['mp4', 'video/mp4'], ['webm', 'video/webm']] as const)('scans %s and serves it inline only to an authorized reader', async (kind, mime) => {
+    const bytes = mediaContainer(kind), id = await clean(`media.${kind}`, mime, bytes);
+    expect((await files.get(lessonId, id, org)).scanStatus).toBe('available');
+    const draft = await save([{ type: mime.startsWith('audio/') ? 'audio' : 'video', content: mime.startsWith('audio/') ? { fileId: id, caption: 'Audio' } : { source: 'file', fileId: id, caption: 'Video', width: 100, poster: null } }]);
+    await versions.publish(lessonId, org, draft.revision, admin.id);
+    expect((await files.url(lessonId, id, learner, false, 1)).url).toContain('inline=1');
+    await expect(files.url(lessonId, id, foreign, false, 1)).rejects.toThrow(NotFoundException);
+    await prisma.assignment.updateMany({ where: { courseId, userId: learner.id }, data: { status: 'cancelled' } });
+    await expect(files.url(lessonId, id, learner, false, 1)).rejects.toThrow(NotFoundException);
+  });
+  it('preserves audio/video/poster references in pinned versions and restores canonical embeds', async () => {
+    const audio = await clean('voice.mp3', 'audio/mpeg', mediaContainer('mp3'));
+    const video = await clean('clip.mp4', 'video/mp4', mediaContainer('mp4')), poster = await clean();
+    const original = await save([
+      { type: 'audio', content: { fileId: audio, caption: 'Voice' } },
+      { type: 'video', content: { source: 'file', fileId: video, poster: { fileId: poster }, caption: 'Clip', width: 75 } },
+      { type: 'embed', content: { source: { provider: 'youtube', videoId: 'abcdefghijk' }, caption: 'External', width: 100 } },
+    ]);
+    await versions.publish(lessonId, org, original.revision, admin.id); await reader.read(lessonId, learner);
+    const next = await save([{ type: 'paragraph', content: { runs: [{ text: 'Replaced media' }] } }]); await versions.publish(lessonId, org, next.revision, admin.id);
+    for (const id of [audio, video, poster]) {
+      await expect(files.url(lessonId, id, learner, false, 1)).resolves.toHaveProperty('url');
+      await expect(files.url(lessonId, id, newLearner, false, 2)).rejects.toThrow(NotFoundException);
+    }
+    await prisma.courseMaterial.updateMany({ where: { longreadDocumentId: docId }, data: { updatedAt: new Date('2020-01-01') } });
+    expect((await new LongreadFileCleanupService(prisma).cleanup(false)).deleted).toEqual([]);
+    const restored = await versions.restoreVersion(lessonId, org, 1, next.revision, admin.id);
+    const serialized = JSON.stringify(restored); for (const id of [audio, video, poster]) expect(serialized).toContain(id);
+    expect(serialized).toContain('abcdefghijk'); expect(serialized).not.toContain('<iframe');
+  });
+  it('validates large video through multipart ranges and rejects infected or forged media', async () => {
+    const bytes = Buffer.alloc(9 * 1024 * 1024), probe = mediaContainer('mp4'); probe.copy(bytes);
+    const payloadBox = probe.indexOf('mdat') - 4; bytes.writeUInt32BE(bytes.length - payloadBox, payloadBox);
+    const created = await create('large.mp4', 'video/mp4', bytes), session = await files.initiate(lessonId, created.id, org);
+    const upload = await prisma.multipartUpload.findUniqueOrThrow({ where: { uploadId: session.uploadId } }); objects.set(upload.objectKey, bytes);
+    await files.complete(lessonId, created.id, org, session.uploadId, { parts: [{ partNumber: 1, etag: 'first' }, { partNumber: 2, etag: 'second' }] });
+    await scanner.applyVerdict(created.id, 'clean'); expect((await files.get(lessonId, created.id, org)).scanStatus).toBe('available');
+    expect(Math.max(...inspected)).toBeLessThanOrEqual(1024 * 1024); expect(inspected.reduce((sum, n) => sum + n, 0)).toBeLessThan(20000);
+    const forgedBytes = Buffer.alloc(128); forgedBytes.write('ftyp', 4);
+    const forged = await create('forged.mp4', 'video/mp4', forgedBytes); await files.upload(lessonId, forged.id, org, { originalname: 'forged.mp4', mimetype: 'video/mp4', size: forgedBytes.length, buffer: forgedBytes } as Express.Multer.File);
+    await scanner.applyVerdict(forged.id, 'clean'); expect((await files.get(lessonId, forged.id, org)).scanStatus).toBe('rejected');
+    const infectedBytes = mediaContainer('mp3'), infected = await create('infected.mp3', 'audio/mpeg', infectedBytes);
+    await files.upload(lessonId, infected.id, org, { originalname: 'infected.mp3', mimetype: 'audio/mpeg', size: infectedBytes.length, buffer: infectedBytes } as Express.Multer.File);
+    await scanner.applyVerdict(infected.id, 'infected'); await expect(files.url(lessonId, infected.id, admin, true)).rejects.toThrow(NotFoundException);
+  });
+  it('rejects wrong-type references and unavailable media or poster at publication', async () => {
+    const audio = await clean('voice.mp3', 'audio/mpeg', mediaContainer('mp3')), picture = await clean();
+    for (const block of [
+      { type: 'audio', content: { fileId: picture } }, { type: 'video', content: { source: 'file', fileId: audio } },
+      { type: 'video', content: { source: 'url', url: 'https://media.example.com/clip.mp4', poster: { fileId: audio } } },
+      { type: 'attachments', content: { files: [{ fileId: audio.toUpperCase() }] } },
+    ]) await expect(save([block])).rejects.toThrow(BadRequestException);
+    const pending = (await create('pending.wav', 'audio/wav', mediaContainer('wav'))).id;
+    await save([{ type: 'video', content: { source: 'url', url: 'https://media.example.com/clip.mp4', poster: { fileId: picture } } }, { type: 'audio', content: { fileId: pending } }]);
+    expect((await versions.publishCheck(lessonId, org)).ok).toBe(false);
+    const current = await save([{ type: 'embed', content: { source: null } }]);
+    await expect(versions.publish(lessonId, org, current.revision, admin.id)).rejects.toThrow(UnprocessableEntityException);
+  });
+  it('resolves embeds with real author guards, organization feature and no learning writes', async () => {
+    const endpoint = new LongreadsController(drafts, versions, reader);
+    for (const actor of [admin, instructor]) expect(await endpoint.resolveEmbed(lessonId, { input: 'https://youtu.be/abcdefghijk?t=9' }, await request(actor, endpoint.resolveEmbed, LongreadsController))).toEqual({ provider: 'youtube', videoId: 'abcdefghijk' });
+    await expect(request(learner, endpoint.resolveEmbed, LongreadsController)).rejects.toThrow(ForbiddenException);
+    await expect(request(outsiderInstructor, endpoint.resolveEmbed, LongreadsController)).rejects.toThrow(NotFoundException);
+    await expect(endpoint.resolveEmbed(lessonId, { input: 'https://vimeo.com/12345' }, await request(foreign, endpoint.resolveEmbed, LongreadsController))).rejects.toThrow(NotFoundException);
+    expect(await prisma.progress.count({ where: { organizationId: org } })).toBe(0);
+    expect(await prisma.assessmentAttempt.count({ where: { organizationId: org } })).toBe(0);
+    expect(await prisma.certificate.count({ where: { organizationId: org } })).toBe(0);
+    await prisma.organization.update({ where: { id: org }, data: { longreadEnabled: false } });
+    await expect(endpoint.resolveEmbed(lessonId, { input: 'https://vimeo.com/12345' }, await request(admin, endpoint.resolveEmbed, LongreadsController))).rejects.toThrow(NotFoundException);
   });
 });

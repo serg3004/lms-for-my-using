@@ -1,4 +1,5 @@
 import { isImageContent as safeImage, isAttachmentsContent } from '../longread-files/model.js';
+import { audioContentSchema, videoContentSchema, embedContentSchema, type LongreadAudio, type LongreadVideo, type LongreadEmbed } from '@lms/shared/longread-media';
 import type { LongreadImage, ReaderBlock, ReaderChapter } from '../../shared/api/longreads.js';
 import { safeHref, type Run } from '../longread-editor/model.js';
 
@@ -6,7 +7,7 @@ export type TextContent = { runs: Run[]; level?: 1 | 2 | 3; excludeFromToc?: boo
 export type ListContent = { ordered: boolean; items: { level: number; runs: Run[] }[] };
 export type CodeContent = { code: string; language: string };
 export { safeImage };
-export type SafeBlock = { type: 'image'; content: LongreadImage } | { type: 'attachments'; content: { files: { fileId: string; label?: string }[] } } | { type: 'paragraph' | 'heading' | 'quote' | 'note'; content: TextContent } | { type: 'list'; content: ListContent } | { type: 'code'; content: CodeContent } | { type: 'divider'; content: Record<string, never> };
+export type SafeBlock = { type: 'audio'; content: LongreadAudio } | { type: 'video'; content: LongreadVideo } | { type: 'embed'; content: LongreadEmbed } | { type: 'image'; content: LongreadImage } | { type: 'attachments'; content: { files: { fileId: string; label?: string }[] } } | { type: 'paragraph' | 'heading' | 'quote' | 'note'; content: TextContent } | { type: 'list'; content: ListContent } | { type: 'code'; content: CodeContent } | { type: 'divider'; content: Record<string, never> };
 function runsValid(raw: unknown): raw is Run[] {
   return Array.isArray(raw) && raw.length <= 500 && raw.every((run) => run && typeof run === 'object' && typeof run.text === 'string' && run.text.length <= 20_000
     && ['bold', 'italic', 'underline', 'code'].every((mark) => run[mark] === undefined || typeof run[mark] === 'boolean')
@@ -16,6 +17,9 @@ function runsValid(raw: unknown): raw is Run[] {
 export function safeBlock(block: ReaderBlock): SafeBlock | null {
   if (block.hidden || block.schemaVersion !== 1 || !block.content || typeof block.content !== 'object' || Array.isArray(block.content)) return null;
   const content = block.content as Record<string, unknown>;
+  if (block.type === 'audio') { const parsed = audioContentSchema.safeParse(content); return parsed.success ? { type: 'audio', content: parsed.data } : null; }
+  if (block.type === 'video') { const parsed = videoContentSchema.safeParse(content); return parsed.success ? { type: 'video', content: parsed.data } : null; }
+  if (block.type === 'embed') { const parsed = embedContentSchema.safeParse(content); return parsed.success ? { type: 'embed', content: parsed.data } : null; }
   if (block.type === 'image') return safeImage(content) ? { type: 'image', content } : null;
   if (block.type === 'attachments') return isAttachmentsContent(content) ? { type: 'attachments', content } : null;
   if (block.type === 'divider') return { type: 'divider', content: {} };
