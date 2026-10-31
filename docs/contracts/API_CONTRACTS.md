@@ -382,6 +382,9 @@ sessions.
 backs the wizard's checklist picker -- filters out `draft`/`archived` checklists client-side would
 otherwise have to do manually. Omitting `status` preserves the prior unfiltered behavior.
 
+PR 393: each row of `GET /checklists` also carries `creator: {id, firstName, lastName} | null` (null when the
+author account was deleted) next to `createdAt`; the admin list shows both as "Created by" / "Created".
+
 `GET /checklist-sessions` and `GET /checklist-sessions/:id` now return a joined projection instead
 of the bare `ChecklistSession` row: `checklist: {id, title}`, `learner: {id, firstName, lastName,
 email}`, `observer: {id, firstName, lastName, email}`, and `result: {instanceStatus, percentage,

@@ -425,6 +425,8 @@ export type ChecklistSummary = {
   coverUpdatedAt?: string | null;
   itemGroups?: ChecklistItemGroup[];
   createdBy: string | null;
+  // PR 393 -- only `GET /checklists` carries the author's name (null: author deleted); optional elsewhere.
+  creator?: { id: string; firstName: string; lastName: string } | null;
   createdAt: string;
   updatedAt: string;
   items: ChecklistItemSummary[];

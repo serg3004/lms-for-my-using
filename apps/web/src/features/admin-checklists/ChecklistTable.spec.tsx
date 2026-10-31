@@ -5,7 +5,7 @@ import type { TFunction } from 'i18next';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ChecklistStatus, ChecklistSummary } from '../../shared/api/types.js';
-import { ChecklistTable } from './ChecklistTable.js';
+import { ChecklistTable, creatorName } from './ChecklistTable.js';
 import { checklistStatusAction } from './domain.js';
 
 const t = ((key: string, fallback?: string) => fallback ?? key) as unknown as TFunction;
@@ -57,5 +57,27 @@ describe('ChecklistTable (PR 327)', () => {
     // Menu items are only rendered once the menu is open, so Delete must not be a visible button.
     expect(html).not.toContain('>Delete<');
     expect(html).toContain('aria-haspopup');
+  });
+});
+
+describe('ChecklistTable author and date (PR 393)', () => {
+  it('shows the creator name and creation time, and a dash when the author is gone', () => {
+    const rows = [
+      { id: 'c1', title: 'A', status: 'draft', scoringMode: 'sum_points', items: [], createdAt: '2026-10-01T16:47:00.000Z', creator: { id: 'u1', firstName: 'Анна', lastName: 'Орлова' } },
+      { id: 'c2', title: 'B', status: 'draft', scoringMode: 'sum_points', items: [], createdAt: '2026-10-02T10:00:00.000Z', creator: null },
+    ] as unknown as ChecklistSummary[];
+    const html = renderToStaticMarkup(
+      <ChecklistTable onCopy={vi.fn()} onDelete={vi.fn()} onEdit={vi.fn()} onStatusChange={vi.fn()} rows={rows} scoringModeLabels={scoringModeLabels} statusLabels={statusLabels} t={t} />,
+    );
+    expect(html).toContain('>Created by<');
+    expect(html).toContain('>Created<');
+    expect(html).toContain('Анна Орлова');
+    expect(html).toContain('>—<');
+  });
+
+  it('creatorName falls back to a dash for a missing or blank author', () => {
+    expect(creatorName({ creator: undefined })).toBe('—');
+    expect(creatorName({ creator: { id: 'u', firstName: '', lastName: '' } })).toBe('—');
+    expect(creatorName({ creator: { id: 'u', firstName: 'Анна', lastName: '' } })).toBe('Анна');
   });
 });

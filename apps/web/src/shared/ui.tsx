@@ -790,10 +790,28 @@ export function Menu({ label, children, align = 'start', className, buttonClassN
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
+  // PR 393: the panel is placed with `position: fixed` from the trigger's rectangle, so a table wrapper with
+  // `overflow-x: auto` (which clips vertically too) can no longer cut off the menu of a bottom row.
+  const [placement, setPlacement] = useState<CSSProperties | undefined>(undefined);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) { setPlacement(undefined); return; }
     const root = rootRef.current;
+    const button = buttonRef.current;
+    function place() {
+      if (!button) return;
+      const rect = button.getBoundingClientRect();
+      const panelHeight = root?.querySelector<HTMLElement>('.ds-menu__content')?.offsetHeight ?? 0;
+      const opensUp = panelHeight > 0 && rect.bottom + 6 + panelHeight > window.innerHeight && rect.top - 6 - panelHeight >= 0;
+      setPlacement({
+        position: 'fixed',
+        ...(opensUp ? { bottom: window.innerHeight - rect.top + 6, top: 'auto' } : { top: rect.bottom + 6 }),
+        ...(align === 'end' ? { right: document.documentElement.clientWidth - rect.right, left: 'auto' } : { left: rect.left }),
+      });
+    }
+    place();
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
     const items = () => Array.from(root?.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([aria-disabled="true"]):not(:disabled)') ?? []);
     items()[0]?.focus();
     function close(returnFocus = true) { setOpen(false); if (returnFocus) requestAnimationFrame(() => buttonRef.current?.focus()); }
@@ -812,12 +830,12 @@ export function Menu({ label, children, align = 'start', className, buttonClassN
     }
     document.addEventListener('pointerdown', pointerDown);
     document.addEventListener('keydown', keyDown);
-    return () => { document.removeEventListener('pointerdown', pointerDown); document.removeEventListener('keydown', keyDown); };
-  }, [open]);
+    return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true); document.removeEventListener('pointerdown', pointerDown); document.removeEventListener('keydown', keyDown); };
+  }, [open, align]);
 
   return <div className={['ds-menu', className].filter(Boolean).join(' ')} ref={rootRef}>
     <button aria-controls={menuId} aria-expanded={open} aria-haspopup="menu" className={buttonClassName ?? 'ds-button ds-button--secondary ds-button--md'} onClick={() => setOpen((value) => !value)} ref={buttonRef} type="button">{label}</button>
-    {open ? <div className={`ds-menu__content ds-menu__content--${align}`} id={menuId} onClick={() => { setOpen(false); requestAnimationFrame(() => buttonRef.current?.focus()); }} role="menu">{children}</div> : null}
+    {open ? <div className={`ds-menu__content ds-menu__content--${align}`} id={menuId} style={placement} onClick={() => { setOpen(false); requestAnimationFrame(() => buttonRef.current?.focus()); }} role="menu">{children}</div> : null}
   </div>;
 }
 

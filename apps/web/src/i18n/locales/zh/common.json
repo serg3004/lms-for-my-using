@@ -988,6 +988,8 @@
         "title": "标题",
         "items": "项目",
         "scoring": "评分方式",
+        "createdBy": "创建人",
+        "createdAt": "创建时间",
         "status": "状态",
         "access": "访问方式"
       },
