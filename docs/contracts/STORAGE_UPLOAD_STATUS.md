@@ -334,3 +334,22 @@ uploads исключены, включая истёкшие сессии до о
 они не являются evidence production scanner/provider/CORS. Live rollout остаётся предметом существующего runbook.
 Контракты API и миграции: [`API_CONTRACTS.md`](./API_CONTRACTS.md),
 [`MIGRATION_BACKUP_POLICY.md`](../runbooks/MIGRATION_BACKUP_POLICY.md).
+
+### Аудио и видео лонгрида (PR 387)
+
+Та же цепочка принимает MP3/WAV и MP4/WebM с прежним лимитом 50 MiB; MIME WAV добавлен и в общий upload registry.
+После clean verdict, до promotion, лонгрид проверяет MPEG Layer III frames/ID3, WAV format/data chunks,
+MP4 box/track bounds и WebM doctype ограниченными range-запросами. Большой multipart-объект не буферизуется целиком;
+MP4 moov ограничен 1 MiB. Это проверка контейнера, а не декодирование/транскодирование или гарантия кодека браузера.
+Для WAV поддержаны PCM/IEEE float. Неподходящий контейнер и заражённый файл не получают доступного URL.
+
+Медиа выдаётся inline с MIME и коротким presigned GET; S3 должен поддерживать Range/206 для перемотки. Плеер
+обновляет истёкший URL при запуске/ошибке и восстанавливает позицию; источник не заменяется таймером во время
+воспроизведения. Постер — ссылка на image того же документа. Разделение прав, pinning и удержание файлов всеми
+версиями сохраняются. Прямой внешний HTTPS MP4/WebM URL и одобренный YouTube/Vimeo embed не загружаются в S3
+и не проходят scanner: сервер нормализует их данные, не делает удалённых fetch; доступность проверяет браузер.
+
+Production web CSP разрешает HTTPS images/media и HTTPS storage connect (в т.ч. presigned multipart PUT),
+iframe — только youtube-nocookie.com/player.vimeo.com в их точных канонических origin. Script/object/frame-ancestor
+ограничения сохранены. Provider CORS должен по-прежнему разрешать origin web, PUT и чтение ETag для multipart;
+сами application headers не настраивают provider. Live scanner/CORS/провайдеры требуют отдельной проверки.

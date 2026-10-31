@@ -280,3 +280,10 @@ never grants access; hidden/locked chapter references are excluded. The organiza
 course/lesson are checked for all file calls. Ordinary material APIs reject version-owned files, preventing broader
 material roles/scopes from bypassing this path or mutating immutable published assets. Preview does not write
 learning records. No new role or permission policy is introduced.
+
+Longread media (PR 387): `POST /lessons/:id/longread/embed/resolve` uses `lessonsCreate` (admin/assigned instructor),
+method-level `CourseScope('param', 'id', 'lesson')`, the document and organization feature checks. It normalizes
+provider input without fetching remote content or writing learning records. New audio/video/poster file references
+use the same upload/status/preview/download guards as PR 386, with strict media-kind ownership checks and the same
+published/pinned projection for signing. Public direct HTTPS video references and approved external provider
+frames are outside private-storage authorization; private files are never represented by stored public URLs.

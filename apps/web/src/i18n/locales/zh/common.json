@@ -2956,7 +2956,10 @@
       "tabs": "标签页",
       "accordion": "折叠面板",
       "image": "图片",
-      "attachments": "附件"
+      "attachments": "附件",
+      "audio": "音频",
+      "video": "视频",
+      "embed": "嵌入视频"
     },
     "tones": {
       "info": "信息",
@@ -3082,5 +3085,40 @@
     "saveError": "无法保存设置。请检查其状态后重试。",
     "loading": "正在加载长文阅读设置…",
     "addLesson": "添加长文阅读"
+  },
+  "longreadMedia": {
+    "upload": {
+      "audio": "上传或替换音频",
+      "video": "上传或替换视频"
+    },
+    "formats": "音频：MP3/WAV。视频：MP4/WebM。每次一个文件，最大50 MB。",
+    "noSource": "请添加媒体文件或来源。",
+    "audioControls": "音频控制",
+    "play": "播放",
+    "pause": "暂停",
+    "back15": "后退15秒",
+    "forward15": "前进15秒",
+    "mute": "静音",
+    "unmute": "取消静音",
+    "position": "播放位置",
+    "volume": "音量",
+    "speed": "速度（长文阅读音频共用）",
+    "unavailable": "媒体不可用，或浏览器不支持该格式/编解码器。请重试。",
+    "openSource": "在新标签页打开来源",
+    "embeddedVideo": "嵌入视频",
+    "loadEmbed": "加载{{provider}}视频",
+    "embedUnavailable": "外部播放器不可用。请重试或打开来源。",
+    "source": "视频来源",
+    "fileSource": "上传文件",
+    "urlSource": "视频文件HTTPS链接",
+    "videoUrl": "MP4/WebM视频地址",
+    "urlHelp": "请使用公开的MP4/WebM HTTPS地址。YouTube/Vimeo链接请通过“嵌入视频”块添加。",
+    "poster": "视频封面",
+    "removePoster": "删除视频封面",
+    "remove": "删除来源",
+    "embedInput": "YouTube/Vimeo链接或iframe代码",
+    "embedHelp": "仅支持YouTube和Vimeo。只保存经过验证的来源，不保存嵌入HTML。",
+    "applyEmbed": "应用来源",
+    "embedInvalid": "来源被拒绝。请使用YouTube/Vimeo HTTPS链接或来自这些提供商的安全iframe。"
   }
 }

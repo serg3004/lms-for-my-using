@@ -1,4 +1,5 @@
 import { apiRequest } from '../apiClient.js';
+import type { EmbedSource } from '@lms/shared/longread-media';
 
 export type LongreadBlock = {
   id: string; type: string; schemaVersion: number; known: boolean;
@@ -16,6 +17,7 @@ export type SaveLongread = {
   chapters: { id?: string; title: string; hidden: boolean; cover?: LongreadImage | null; blocks: { id?: string; type: string; schemaVersion: number; title: string | null; hidden: boolean; content: Record<string, unknown> }[] }[];
 };
 const path = (id: string) => `/lessons/${encodeURIComponent(id)}/longread`;
+export const resolveLongreadEmbed = (id: string, input: string) => apiRequest<EmbedSource>(`${path(id)}/embed/resolve`, { method: 'POST', body: JSON.stringify({ input }) });
 export const getLongreadDraft = (id: string) => apiRequest<LongreadDraft>(path(id));
 export const saveLongreadDraft = (id: string, input: SaveLongread) => apiRequest<LongreadDraft>(path(id), { method: 'PUT', body: JSON.stringify(input) });
 

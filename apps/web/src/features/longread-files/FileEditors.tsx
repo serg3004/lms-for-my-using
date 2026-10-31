@@ -2,18 +2,20 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createLongreadFiles, getLongreadFile, type LongreadFile, type LongreadImage } from '../../shared/api/longreads.js';
 import { uploadMaterialFileWithProgress } from '../../shared/apiClient.js';
-import { acceptFiles, prepareFiles, isAttachmentsContent } from './model.js';
+import { acceptFiles, prepareFiles, isAttachmentsContent, type FileCategory } from './model.js';
 import { LongreadMediaContext, MediaImage } from './Media.js';
 
 export const emptyImage = (): LongreadImage => ({ fileId: null, alt: '', caption: '', width: 100, align: 'center' });
-function UploadPicker({ lessonId, image, onCreated }: { lessonId: string; image: boolean; onCreated: (files: LongreadFile[]) => void }) {
+export function UploadPicker({ lessonId, image = false, category, onCreated }: { lessonId: string; image?: boolean; category?: FileCategory; onCreated: (files: LongreadFile[]) => void }) {
+  const kind = category ?? (image ? 'image' : 'attachments');
+  const media = kind === 'audio' || kind === 'video';
   const createdCallback = useRef(onCreated); createdCallback.current = onCreated;
   const { t } = useTranslation(); const id = useId(); const [busy, setBusy] = useState(false), [status, setStatus] = useState(''), [error, setError] = useState('');
   return <div style={{ marginBlock: 12, minWidth: 0 }}>
-    <label htmlFor={id} style={{ display: 'block' }}>{t(image ? 'longreadFiles.uploadImage' : 'longreadFiles.uploadFiles')}</label>
-    <input id={id} type="file" accept={acceptFiles(image)} multiple={!image} disabled={busy} style={{ width: '100%', maxWidth: '100%', minHeight: 44 }} onChange={(event) => {
+    <label htmlFor={id} style={{ display: 'block' }}>{t(media ? `longreadMedia.upload.${kind}` : kind === 'image' ? 'longreadFiles.uploadImage' : 'longreadFiles.uploadFiles')}</label>
+    <input id={id} type="file" accept={acceptFiles(kind)} multiple={kind === 'attachments'} disabled={busy} style={{ width: '100%', maxWidth: '100%', minHeight: 44 }} onChange={(event) => {
       const selected = [...event.currentTarget.files ?? []]; event.currentTarget.value = ''; if (!selected.length) return;
-      let files: File[]; try { files = prepareFiles(selected, image); } catch (cause) { setError(t(`longreadFiles.errors.${cause instanceof Error ? cause.message : 'type'}`)); return; }
+      let files: File[]; try { files = prepareFiles(selected, kind); } catch (cause) { setError(t(media ? 'longreadMedia.formats' : `longreadFiles.errors.${cause instanceof Error ? cause.message : 'type'}`)); return; }
       setBusy(true); setError(''); setStatus(t('longreadFiles.uploading', { percent: 0 }));
       void (async () => {
         const created = await createLongreadFiles(lessonId, files.map((file) => ({ fileName: file.name, mimeType: file.type, sizeBytes: file.size })));
@@ -26,7 +28,7 @@ function UploadPicker({ lessonId, image, onCreated }: { lessonId: string; image:
         setStatus(t('longreadFiles.uploaded'));
       })().catch(() => { setStatus(''); setError(t('longreadFiles.errors.upload')); }).finally(() => setBusy(false));
     }} />
-    <small>{t('longreadFiles.limits')}</small>
+    <small>{t(media ? 'longreadMedia.formats' : 'longreadFiles.limits')}</small>
     {status && <p role="status">{status}</p>}{error && <p role="alert">{error}</p>}
   </div>;
 }

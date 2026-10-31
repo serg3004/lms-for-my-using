@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && pnpm check:css-bundle",
+    "build": "pnpm --filter @lms/shared build && tsc -b && vite build && pnpm check:css-bundle",
     "check:css-bundle": "node scripts/check-css-bundle.mjs",
     "lint": "pnpm lint:code && pnpm lint:css",
     "lint:code": "eslint \"src/**/*.{ts,tsx}\"",

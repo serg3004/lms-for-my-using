@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { audioContentSchema, videoContentSchema, embedContentSchema } from '@lms/shared/longread-media';
 
 /**
  * PR 381: the registry of longread block types. Every known type has a strict payload schema that is
@@ -214,6 +215,7 @@ export const imageContentSchema = z.object({
 const attachmentsSchema = z.object({ files: z.array(z.object({ fileId: z.string().uuid(), label: z.string().max(255).optional() }).strict()) }).strict();
 
 const KNOWN_BLOCKS = {
+  audio: audioContentSchema, video: videoContentSchema, embed: embedContentSchema,
   image: imageContentSchema, attachments: attachmentsSchema,
   paragraph: paragraphSchema,
   heading: headingSchema,

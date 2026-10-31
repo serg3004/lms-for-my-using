@@ -1,4 +1,5 @@
 import { longreadFileServer } from '../fixtures/longread-files.js';
+import { longreadPlaybackServer } from '../fixtures/longread-playback.js';
 import { openLongreadEntrypoints } from '../fixtures/longread-entrypoints.js';
 import { longreadCourseId } from '../fixtures/longread-editor.js';
 import { openSummaryReport } from '../fixtures/session-summary-export.js';
@@ -66,6 +67,16 @@ async function auditAccessibility(page: Page, testInfo: TestInfo, name = 'axe-fi
 }
 
 test.describe('WCAG AA browser baseline', () => {
+  for (const width of [375, 768, 1440]) test(`longread audio/video reader is accessible at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 }); await longreadPlaybackServer().reader(page, { direction: width === 768 ? 'rtl' : 'ltr' });
+    await auditAccessibility(page, testInfo, 'longread-playback-reader');
+    await page.getByRole('button', { name: 'Загрузить видео YouTube', exact: true }).click();
+    await auditAccessibility(page, testInfo, 'longread-playback-embed');
+  });
+  for (const role of ['admin', 'instructor'] as const) for (const width of [375, 1440]) test(`${role} longread audio/video editor is accessible at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 }); await longreadPlaybackServer().editor(page, { role });
+    await auditAccessibility(page, testInfo, 'longread-playback-editor');
+  });
   for (const width of [375, 1440]) for (const [screen, path] of [
     ['courses', '/admin/courses'], ['course', `/admin/courses/${longreadCourseId}`], ['lessons', '/admin/lessons'],
   ] as const) {

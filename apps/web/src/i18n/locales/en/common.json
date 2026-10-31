@@ -2956,7 +2956,10 @@
       "tabs": "Tabs",
       "accordion": "Accordion",
       "image": "Image",
-      "attachments": "Attachments"
+      "attachments": "Attachments",
+      "audio": "Audio",
+      "video": "Video",
+      "embed": "Embedded video"
     },
     "tones": {
       "info": "Information",
@@ -3082,5 +3085,40 @@
     "saveError": "Unable to save the setting. Check its state and try again.",
     "loading": "Loading the longread setting…",
     "addLesson": "Add longread"
+  },
+  "longreadMedia": {
+    "upload": {
+      "audio": "Upload or replace audio",
+      "video": "Upload or replace video"
+    },
+    "formats": "Audio: MP3/WAV. Video: MP4/WebM. One file up to 50 MB.",
+    "noSource": "Add a media file or source.",
+    "audioControls": "Audio controls",
+    "play": "Play",
+    "pause": "Pause",
+    "back15": "Back 15 seconds",
+    "forward15": "Forward 15 seconds",
+    "mute": "Mute",
+    "unmute": "Unmute",
+    "position": "Playback position",
+    "volume": "Volume",
+    "speed": "Speed (shared by longread audio)",
+    "unavailable": "Media is unavailable or its format/codec is unsupported by this browser. Try again.",
+    "openSource": "Open source in a new tab",
+    "embeddedVideo": "Embedded video",
+    "loadEmbed": "Load {{provider}} video",
+    "embedUnavailable": "The external player is unavailable. Try again or open the source.",
+    "source": "Video source",
+    "fileSource": "Upload a file",
+    "urlSource": "HTTPS video file URL",
+    "videoUrl": "MP4/WebM video URL",
+    "urlHelp": "Use a public HTTPS MP4/WebM URL. Add YouTube/Vimeo links with an Embedded video block.",
+    "poster": "Video poster",
+    "removePoster": "Remove poster",
+    "remove": "Remove source",
+    "embedInput": "YouTube/Vimeo URL or iframe code",
+    "embedHelp": "Only YouTube and Vimeo are supported. The validated source is saved; iframe HTML is discarded.",
+    "applyEmbed": "Apply source",
+    "embedInvalid": "Source rejected. Use an HTTPS YouTube/Vimeo URL or a safe iframe from these providers."
   }
 }

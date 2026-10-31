@@ -11,6 +11,8 @@ import { getLesson } from '../shared/api/lessons.js';
 import { getLongreadDraft, type LongreadDraft } from '../shared/api/longreads.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { useLongreadEditor } from '../features/longread-editor/useLongreadEditor.js';
+import { AudioEditor, VideoEditor, EmbedEditor } from '../features/longread-media/MediaEditors.js';
+import { MediaPlaybackProvider } from '../features/longread-media/MediaPlayback.js';
 import { blockTypes, compositeTypes, copyBlock, editableBlock, moveItem, newBlock, type AddableBlockType, type EditorBlock, type EditorChapter } from '../features/longread-editor/model.js';
 import { RichTextEditor } from '../features/longread-editor/RichTextEditor.js';
 import { ListPreview, TextPreview } from '../features/longread-editor/BlockPreview.js';
@@ -69,7 +71,7 @@ function Editor({ initial, title, back, reload }: { initial: LongreadDraft; titl
   const action = (label: string, click: () => void, disabled = false) => <button className="admin-btn admin-btn--secondary" type="button" disabled={disabled} onClick={click}>{label}</button>;
   const label = (block: EditorBlock) => block.title || (editableBlock(block) ? t(`longread.types.${block.type}`) : t('longread.unknown'));
   const chapterIndex = chapters.findIndex((item) => item.key === chapter.key);
-  return <div className="lr-editor" onKeyDownCapture={(event) => {
+  return <MediaPlaybackProvider><div className="lr-editor" onKeyDownCapture={(event) => {
     if (event.target instanceof Element && event.target.closest('dialog[open]')) return;
     if ((event.ctrlKey || event.metaKey) && !event.altKey && (event.key.toLowerCase() === 'z' || event.key.toLowerCase() === 'y')) {
       event.preventDefault(); if (event.shiftKey || event.key.toLowerCase() === 'y') editor.redo(); else editor.undo();
@@ -142,6 +144,9 @@ function Editor({ initial, title, back, reload }: { initial: LongreadDraft; titl
             {action(t('longread.up'), () => moveBlock(block.key, -1), index === 0)}{action(t('longread.down'), () => moveBlock(block.key, 1), index === chapter.blocks.length - 1)}
           </div>
           {!editableBlock(block) ? <p>{t('longread.unknownMessage')}</p>
+            : block.type === 'audio' ? <AudioEditor lessonId={initial.lessonId} content={block.content} onChange={(content) => updateBlock(block.key, (item) => ({ ...item, content }))} />
+            : block.type === 'video' ? <VideoEditor lessonId={initial.lessonId} content={block.content} onChange={(content) => updateBlock(block.key, (item) => ({ ...item, content }))} />
+            : block.type === 'embed' ? <EmbedEditor lessonId={initial.lessonId} content={block.content} onChange={(content) => updateBlock(block.key, (item) => ({ ...item, content }))} />
             : block.type === 'image' ? <ImageFields lessonId={initial.lessonId} image={block.content as unknown as LongreadImage} onChange={(patch) => updateBlock(block.key, (item) => ({ ...item, content: { ...item.content, ...patch } }))} />
             : block.type === 'attachments' ? <AttachmentEditor lessonId={initial.lessonId} files={block.content.files as { fileId: string; label?: string }[]} onChange={(update) => updateBlock(block.key, (item) => ({ ...item, content: { files: update(item.content.files as { fileId: string; label?: string }[]) } }))} />
             : block.type === 'divider' ? <hr />
@@ -199,5 +204,5 @@ function Editor({ initial, title, back, reload }: { initial: LongreadDraft; titl
       {copied && <p role="status">{t('longread.copied')}</p>}
       {action(t('longread.close'), () => setRecovery(null))}
     </Dialog>
-  </div>;
+  </div></MediaPlaybackProvider>;
 }
