@@ -855,8 +855,11 @@ model CourseMaterial {
   deletedAt        DateTime?            @map("deleted_at") @db.Timestamptz
   course           Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lesson           Lesson?              @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  longreadDocumentId String? @map("longread_document_id") @db.Uuid
+  longreadDocument LongreadDocument? @relation(fields: [longreadDocumentId], references: [id], onDelete: Cascade)
   multipartUploads MultipartUpload[]
 
+  @@index([longreadDocumentId])
   @@unique([courseId, slug])
   @@index([organizationId, courseId, status])
   @@index([lessonId])
@@ -1707,6 +1710,7 @@ model LongreadDocument {
   lastRevisionNumber  Int                @default(0) @map("last_revision_number")
   /// The version learners open; null while the longread is unpublished.
   publishedRevisionId String?            @unique @map("published_revision_id") @db.Uuid
+  files               CourseMaterial[]
   chapters            LongreadChapter[]
   revisions           LongreadRevision[] @relation("RevisionDocument")
   publishedRevision   LongreadRevision?  @relation("PublishedRevision", fields: [publishedRevisionId], references: [id], onDelete: SetNull)
@@ -1724,6 +1728,7 @@ model LongreadChapter {
   /// Stable link target; survives renaming the chapter.
   anchor         String
   hidden         Boolean          @default(false)
+  cover          Json?
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz
   organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)

@@ -27,7 +27,7 @@ function document(draft: LongreadDraft, chapter: string, headingIndex: number | 
   const visible = draft.chapters.filter((item) => !item.hidden);
   const index = visible.findIndex((item) => item.anchor === chapter);
   return { lessonId: draft.lessonId, version: preview ? null : 1, preview, schemaVersion: 1, settings: draft.settings,
-    chapters: visible.map((item, position) => ({ title: item.title, anchor: item.anchor, blocks: !preview && draft.settings.readingOrder === 'sequential' && position > maxReached ? [] : item.blocks.filter((block) => !block.hidden) })),
+    chapters: visible.map((item, position) => ({ title: item.title, anchor: item.anchor, ...(item.cover ? { cover: item.cover } : {}), blocks: !preview && draft.settings.readingOrder === 'sequential' && position > maxReached ? [] : item.blocks.filter((block) => !block.hidden) })),
     navigation: { chapter, headingIndex, previousAnchor: visible[index - 1]?.anchor ?? null, nextAnchor: visible[index + 1]?.anchor ?? null,
       allowedAnchors: visible.slice(0, preview || draft.settings.readingOrder === 'free' ? visible.length : maxReached + 2).map((item) => item.anchor) } };
 }
@@ -38,7 +38,7 @@ export function longreadReaderServer(settings: Partial<LongreadDraft['settings']
   let cursor = { chapter: 'intro', headingIndex: null as number | null, maxReached: 0 };
   let fail = 0;
   const writes: { path: string; body: Record<string, unknown> }[] = [], reads: string[] = [];
-  async function attach(page: Page, options: { locale?: 'ru' | 'en' | 'kk' | 'zh'; hash?: string; denied?: number } = {}) {
+  async function attach(page: Page, options: { locale?: 'ru' | 'en' | 'kk' | 'zh'; hash?: string; denied?: number; beforeNavigate?: () => Promise<void> } = {}) {
     await page.route('**/api/v1/**', async (route) => {
       const url = new URL(route.request().url()), path = url.pathname.replace('/api/v1', ''), method = route.request().method();
       if (method === 'GET') reads.push(path);
@@ -69,6 +69,7 @@ export function longreadReaderServer(settings: Partial<LongreadDraft['settings']
       }
       return route.fulfill({ status: 404, json: { message: 'Unknown synthetic reader route' } });
     });
+    await options.beforeNavigate?.();
     await page.goto(`/learn/lessons/${longreadLessonId}${options.hash ?? ''}`);
     if (!options.denied && !options.hash?.includes('hidden') && !(settings.readingOrder === 'sequential' && options.hash?.includes('finish'))) {
       await expect(page.locator('.longread-reader')).toBeVisible();

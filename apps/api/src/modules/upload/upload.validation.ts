@@ -19,7 +19,9 @@ const MP3_MIME_TYPE = 'audio/mpeg';
 const DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const XLSX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-const ZIP_BASED_MIME_TYPES = new Set([DOCX_MIME_TYPE, XLSX_MIME_TYPE]);
+const PPTX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+const LEGACY_OFFICE_TYPES = new Set(['application/msword', 'application/vnd.ms-excel', 'application/vnd.ms-powerpoint']);
+const ZIP_BASED_MIME_TYPES = new Set([DOCX_MIME_TYPE, XLSX_MIME_TYPE, PPTX_MIME_TYPE]);
 
 const ALLOWED_MIME_TYPES = new Set([
   PDF_MIME_TYPE,
@@ -32,6 +34,8 @@ const ALLOWED_MIME_TYPES = new Set([
   MP3_MIME_TYPE,
   DOCX_MIME_TYPE,
   XLSX_MIME_TYPE,
+  PPTX_MIME_TYPE,
+  ...LEGACY_OFFICE_TYPES,
 ]);
 
 export function validateUploadMetadata(fileName: string, mimeType: string, sizeBytes: number): void {
@@ -155,6 +159,8 @@ function matchesDeclaredMimeType(buffer: Buffer, mimeType: string): boolean {
     return buffer.subarray(0, 3).toString('ascii') === 'ID3'
       || (buffer.length >= 2 && buffer[0] === 0xff && (buffer[1]! & 0xe0) === 0xe0);
   }
+
+  if (LEGACY_OFFICE_TYPES.has(mimeType)) return startsWithBytes(buffer, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]);
 
   if (ZIP_BASED_MIME_TYPES.has(mimeType)) {
     return startsWithBytes(buffer, [0x50, 0x4b, 0x03, 0x04]);

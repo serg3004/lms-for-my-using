@@ -1,3 +1,5 @@
+import { LongreadMediaContext, MediaImage } from '../longread-files/Media.js';
+import { safeImage } from './model.js';
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { LongreadReaderDocument } from '../../shared/api/longreads.js';
@@ -57,7 +59,8 @@ export function LongreadReader({ data, busy = false, onNavigate, onBookmark }: {
       {entry.children.length > 0 && toc(entry.children)}
     </li>)}</ul>;
   }
-  return <section className="longread-reader" dir={data.settings.direction} style={{ minWidth: 0, width: '100%' }} aria-label={t('longreadReader.reader')}>
+  return <LongreadMediaContext.Provider value={{ lessonId: data.lessonId, version: data.version }}><section className="longread-reader" dir={data.settings.direction} style={{ minWidth: 0, width: '100%' }} aria-label={t('longreadReader.reader')}>
+    {safeImage(data.settings.cover) && <MediaImage image={data.settings.cover} />}
     {data.preview && <p role="note">{t('longreadReader.previewNotice')}</p>}
     <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12, marginBlock: 16 }}>
       <label htmlFor={`${tocId}-chapters`}>{t('longread.chapters')}</label>
@@ -76,6 +79,7 @@ export function LongreadReader({ data, busy = false, onNavigate, onBookmark }: {
       </aside>}
       <article ref={article} style={{ ...card, flex: '4 1 480px', overflowWrap: 'anywhere' }}>
         <h2 data-chapter-title tabIndex={-1} style={{ marginTop: 0, scrollMarginTop: 100 }}>{chapter.title}</h2>
+        {safeImage(chapter.cover) && <MediaImage image={chapter.cover} />}
         <LongreadContent blocks={chapter.blocks} chapter={chapter.anchor} allowCopy={data.settings.allowCopy} navigate={(anchor) => void navigate(anchor)} t={t} />
         {!chapter.blocks.length && <p>{t('longreadReader.emptyChapter')}</p>}
         <nav aria-label={t('longreadReader.navigation')} style={{ marginTop: 24, justifyContent: 'space-between' }}>
@@ -84,5 +88,5 @@ export function LongreadReader({ data, busy = false, onNavigate, onBookmark }: {
         </nav>
       </article>
     </div>
-  </section>;
+  </section></LongreadMediaContext.Provider>;
 }

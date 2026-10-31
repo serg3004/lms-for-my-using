@@ -171,4 +171,20 @@ describe('UploadService', () => {
     expect(signed.searchParams.get('uploadId')).toBe('upload-id');
     expect(signed.searchParams.get('X-Amz-Expires')).toBe('900');
   });
+  it('requests an exact bounded S3 range and refuses oversized, truncated or missing responses', async () => {
+    const bytes = Buffer.from('0123'), send = jest.fn(async () => ({ ContentLength: 4, Body: { transformToByteArray: async () => bytes } }));
+    const ranged = Object.create(UploadService.prototype) as UploadService;
+    Object.assign(ranged, { s3: { send }, bucket: 'test-bucket' });
+    await expect(ranged.getObjectRange('key', 10, 13)).resolves.toEqual(bytes);
+    expect((send.mock.calls[0] as unknown as [{ input: unknown }])[0].input).toMatchObject({ Key: 'key', Range: 'bytes=10-13' });
+    await expect(ranged.getObjectRange('key', 0, 1024 * 1024)).rejects.toThrow('Invalid inspection range');
+    await expect(ranged.getObjectRange('key', 5, 4)).rejects.toThrow('Invalid inspection range');
+    await expect(ranged.getObjectRange('key', 0, 1)).rejects.toThrow('Invalid inspection response');
+    send.mockResolvedValueOnce({ ContentLength: 4, Body: { transformToByteArray: async () => Buffer.from('0') } });
+    await expect(ranged.getObjectRange('key', 0, 3)).rejects.toThrow('Truncated inspection response');
+    send.mockResolvedValueOnce({ ContentLength: undefined, Body: undefined } as never);
+    await expect(ranged.getObjectRange('key', 0, 3)).rejects.toThrow('Invalid inspection response');
+    await expect(service.getObjectRange('key', 0, 3)).rejects.toThrow(ServiceUnavailableException);
+  });
+
 });

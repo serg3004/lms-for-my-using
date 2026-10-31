@@ -1439,8 +1439,8 @@ this longread is `400`.
 `quote`, `note`, `divider`, `code`) with strict zod schemas: unknown keys are rejected, a link must be `http(s)://`, `mailto:`
 or an in-document `#anchor` (no `javascript:`/`data:`), a block is at most 100 KB, a chapter at most 1000 blocks, a document at
 most 200 chapters and 5000 blocks. A block of an unknown type is stored and returned unchanged (only "JSON object up to 100 KB"
-is checked), so an older server never destroys content written by a newer one. Registry growth (composite blocks, media,
-questions) is the job of PR 384-388.
+is checked), so an older server never destroys content written by a newer one. Composite types and image/attachment schemas are specified in the PR 384/386 sections below;
+audio/video and question types remain PR 387-389.
 
 **Audit.** `longread.updated` (target: the lesson) is written at most once per lesson per 5 minutes per API process, because
 autosave is frequent; `organization.features_updated` for the flag.
@@ -1494,7 +1494,7 @@ editing or restoring the draft never changes one. Everything is behind the `long
 when the draft has: no visible chapter with content (`empty_document`), a block type this server does not know
 (`unknown_block`), a block that fails its schema (`invalid_block`), an internal `#anchor` link to a missing chapter
 (`broken_link`), or more required chapters than visible ones (`required_chapters_exceed_visible`). Media and question blocks
-(PR 386-389) add their own reasons (empty required task, file that failed scanning) to the same list.
+(PR 386) add `file_unavailable`; audio/video and question types (PR 387-389) extend the same refusal list.
 
 **Publish rules.** The first publish after changes creates the next number and makes it current, sets the lesson `published`;
 publishing again after more changes is a republish (a new number). If the draft has not changed since the latest version,
@@ -1567,3 +1567,50 @@ visited chapter index). Chapter/heading links and browser history restore readin
 chapter completion: neither status, score nor completion time is changed by position writes, and the reader offers
 no generic complete-lesson action. Required chapters are configured/displayed here; assessment/time conditions and
 server chapter-completion rules belong to PR 390. Preview uses local navigation and never calls the position API.
+
+
+## Longread images, covers and attachments (PR 386)
+
+Files reuse `CourseMaterial`, the existing quarantine/scanner and `MaterialMultipartUploadService`. A nullable
+`longreadDocumentId` marks version-owned files; ordinary material lists omit them and every generic material ID
+route rejects them (404), including download, replacement and deletion. New file APIs use the lesson's editing
+scope (`lessonsCreate`, admin/assigned instructor) and the organization flag.
+
+- `POST /lessons/:id/longread/files` accepts strict `{ files: [{ fileName, mimeType, sizeBytes }] }`, 1–20 files,
+  atomically creates metadata and returns descriptors (`id`, name/type/size, scan status/reason). There is no file
+  count limit across the document; existing structured-document size limits still apply. Each file is at most
+  50 MiB. Images: JPEG/PNG/GIF/WebP; attachments: PDF/DOC/DOCX/PPT/PPTX/XLS/XLSX. Extension and MIME must agree.
+- `GET .../files/:fileId` returns author-visible metadata/scan status, never storage keys or a quarantine URL.
+- `POST .../files/:fileId/content` uploads multipart field `file` through the existing 8 MiB buffered path.
+  `POST .../files/:fileId/multipart` starts the existing 8 MiB-part direct upload from registered metadata;
+  `POST .../multipart/:uploadId/complete` accepts ordered `{ parts: [{ partNumber, etag }] }` (at most seven),
+  and `DELETE .../multipart/:uploadId` aborts and marks an unattached reservation rejected. The existing size verification and expired-upload cleanup apply.
+  A file ID can be uploaded once: a reservation prevents concurrent sessions/replacement. Replacing an image or
+  attachment creates a new ID, preserving published bytes. Failed uploads can be removed/replaced in the editor.
+- `GET .../files/:fileId/preview` is author-only and requires an available, scanned file of this document.
+  `GET .../files/:fileId/download?version=N` uses `lessonsRead` plus existing course scope and the learner reader's
+  fresh entitlement check. The requested version must match the learner's pinned version; the file must occur in
+  its accessible projection (including covers). Hidden/locked chapter bodies/covers confer no download access.
+  Deleted parents, another organization/document, revoked access, unpublished lessons, unavailable scans or the
+  disabled flag are 404. Author file preview never pins a version or creates progress/attempts/certificates.
+
+Both URL endpoints return `{ url, expiresIn, fileName, mimeType, sizeBytes }` (existing `S3_PRESIGNED_TTL_SECONDS`, default/max 300 seconds). Images receive inline signed GETs;
+attachments force attachment disposition/octet-stream. The browser obtains a fresh URL for each download and
+refreshes image URLs before expiry. Signed links remain bearer links until their maximum five-minute expiry.
+They are not stored in document JSON or snapshots.
+
+Content is verified before a clean scan verdict can promote a longread file: magic bytes, OOXML central-directory
+members and archive safety limits, or the expected OLE document stream for legacy Office. Inspection uses bounded
+S3 ranges (at most 1 MiB each), including for multipart files; invalid content is rejected and quarantine removed.
+Scanner errors, timeout, infection and missing configuration remain fail-closed. The shared upload registry now
+also recognizes legacy Office and PPTX; longread policy additionally checks the filename extension.
+
+`image` content is `{ fileId: uuid|null, alt, caption, width: 10..100, align: start|center|end }`; null is a draft
+placeholder. `attachments` contains `files: [{ fileId, label? }]`. Document cover is optional nullable `settings.cover`
+with the image shape; chapter cover is optional nullable `cover`. Omission preserves an existing chapter cover;
+explicit null removes it. Save validates owned file references and touches their retention timestamp under the draft
+transaction. Publish-check/publish refuse missing, wrong-type, pending or rejected files with `file_unavailable`.
+Copies remap block identifiers while retaining file IDs. Publication and restore retain cover/file references in
+immutable settings/chapter snapshots, so removing/replacing a draft file does not affect a published/pinned version.
+The existing editor supplies alt/caption/size/alignment, covers and batches of attachments; text is safely rendered
+and decorative images may use empty alt text. RU/EN/KK/ZH and existing role shells are retained.

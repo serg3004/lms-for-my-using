@@ -63,7 +63,7 @@ Current storage architecture — S3-compatible и provider-neutral.
 | `listObjects` | `implemented` | Постранично перечисляет objects под заданным prefix для lifecycle cleanup. |
 | `deleteObject` | `implemented` | Удаляет object через `DeleteObject`. |
 
-**Итог:** `implemented: 19`, `stub: 0`, `missing: 0` для публичных методов current `UploadService`. Отдельного upload controller нет намеренно: storage используется из domain controllers (materials, checklists, organization branding), где применяются auth/scope/role guards и validation.
+Таблица фиксирует перечисленные операции; полный актуальный состав методов определяется `UploadService`, без ручного счётчика. Отдельного upload controller нет намеренно: storage используется из domain controllers (materials, checklists, organization branding), где применяются auth/scope/role guards и validation.
 
 ### Аудит upload orchestration
 
@@ -307,3 +307,30 @@ Repository implementation закрывает code contract, но не автом
 - `docs/runbooks/MIGRATION_BACKUP_POLICY.md`
 - `docs/quality/READINESS_AND_SECURITY_GATES.md`
 - `.env.production.example`
+
+## Лонгриды: файлы с неизменяемыми ссылками (PR 386)
+
+Изображения, обложки и вложения лонгрида используют существующие material upload, multipart и quarantine/scanner
+operations. `course_materials.longread_document_id` отделяет такие файлы от обычных материалов: общие material
+routes не выдают, не заменяют и не удаляют их. Загрузка в один file ID допускается один раз; замена создаёт новый ID.
+Форматы: JPEG/PNG/GIF/WebP и PDF/DOC/DOCX/PPT/PPTX/XLS/XLSX, совпадение расширения и MIME, прежние 50 MiB на файл,
+не более 20 новых файлов в одном запросе (без общего лимита числа файлов документа). Общий registry дополнен
+legacy Office и PPTX. Для longread file чистый scanner verdict дополнительно проверяется по magic bytes и структуре
+Office-контейнера до promotion; `getObjectRange` ограничивает каждый запрос чтения 1 MiB и проверяет длину ответа,
+поэтому multipart inspection не буферизует весь файл в API.
+
+Скачивание проверяет текущий доступ к курсу и принадлежность файла доступной части закреплённой версии; обложки
+закрытых/скрытых глав не дают доступа. Авторский preview не создаёт учебных записей. Изображения получают inline
+URL, вложения — attachment; TTL использует существующую настройку и не превышает 300 секунд. Signed URL не входит
+в сохранённый JSON или публикацию. Браузер обновляет URL картинки и повторно запрашивает ссылку при скачивании.
+
+Перед существующей очисткой объектов `storage:cleanup` освобождает старые metadata rows только после проверки
+черновика и **всех** immutable revisions под блокировкой документа. Ссылки публикаций/начатых прохождений удерживают
+файлы после удаления из черновика. Сохранение черновика обновляет retention timestamp его файлов; pending multipart
+uploads исключены, включая истёкшие сессии до отмены их storage parts существующей multipart cleanup. Dry-run остаётся режимом по умолчанию. Откат через выключение `longreadEnabled` сохраняет данные
+и ownership guard; guard/list exclusion должны оставаться и при откате приложения, пока есть version-owned файлы.
+
+Локальные PostgreSQL и browser проверки используют синтетическое хранилище/вердикты для воспроизводимых сценариев;
+они не являются evidence production scanner/provider/CORS. Live rollout остаётся предметом существующего runbook.
+Контракты API и миграции: [`API_CONTRACTS.md`](./API_CONTRACTS.md),
+[`MIGRATION_BACKUP_POLICY.md`](../runbooks/MIGRATION_BACKUP_POLICY.md).

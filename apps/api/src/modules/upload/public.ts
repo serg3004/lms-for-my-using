@@ -5,3 +5,4 @@ export {
   validateUploadFile,
   validateUploadMetadata,
 } from './upload.validation.js';
+export { normalizeFileId, collectFileIds, isLongreadImage, LONGREAD_FILE_TYPES, validateLongreadFileMetadata, validateLongreadObject } from './longread-files.validation.js';

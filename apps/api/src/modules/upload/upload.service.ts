@@ -214,6 +214,17 @@ export class UploadService {
     return bytes.length > maxBytes ? null : Buffer.from(bytes);
   }
 
+  /** Bounded content inspection after scanning; never buffers the entire multipart object. */
+  async getObjectRange(key: string, start: number, end: number): Promise<Buffer> {
+    if (end < start || end - start + 1 > 1024 * 1024) throw new Error('Invalid inspection range');
+    const { s3, bucket } = this.requireStorage();
+    const object = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key, Range: `bytes=${start}-${end}` }));
+    if (!object.Body || (object.ContentLength ?? 0) > end - start + 1) throw new Error('Invalid inspection response');
+    const bytes = await object.Body.transformToByteArray();
+    if (bytes.length !== end - start + 1) throw new Error('Truncated inspection response');
+    return Buffer.from(bytes);
+  }
+
   createQuarantineObjectKey(organizationId: string, materialId: string): string {
     return `quarantine/organizations/${organizationId}/materials/${materialId}/${randomUUID()}`;
   }

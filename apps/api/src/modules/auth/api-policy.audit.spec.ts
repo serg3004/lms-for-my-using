@@ -23,6 +23,7 @@ import { GroupsController } from '../groups/groups.controller.js';
 import { HealthController } from '../health/health.controller.js';
 import { LearnerDashboardController } from '../learner-dashboard/learner-dashboard.controller.js';
 import { LessonsController } from '../lessons/lessons.controller.js';
+import { LongreadFilesController } from '../longreads/longread-files.controller.js';
 import { LongreadsController } from '../longreads/longreads.controller.js';
 import { ManagerController } from '../manager/manager.controller.js';
 import { MembershipsController } from '../memberships/memberships.controller.js';
@@ -64,6 +65,7 @@ const controllerEntries: ControllerEntry[] = [
   { file: 'health/health.controller.ts', Controller: HealthController },
   { file: 'learner-dashboard/learner-dashboard.controller.ts', Controller: LearnerDashboardController },
   { file: 'lessons/lessons.controller.ts', Controller: LessonsController },
+  { file: 'longreads/longread-files.controller.ts', Controller: LongreadFilesController },
   { file: 'longreads/longreads.controller.ts', Controller: LongreadsController },
   { file: 'manager/manager.controller.ts', Controller: ManagerController },
   { file: 'memberships/memberships.controller.ts', Controller: MembershipsController },

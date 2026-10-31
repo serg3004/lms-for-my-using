@@ -1,3 +1,4 @@
+import { MediaImage, MediaAttachment } from '../longread-files/Media.js';
 import { useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import type { ReaderBlock } from '../../shared/api/longreads.js';
@@ -49,6 +50,8 @@ export function LongreadContent({ blocks, chapter, allowCopy, navigate, t }: { b
     if (block.hidden) return null;
     const value = safeBlock(block);
     if (!value) return <p key={index} role="note">{t('longreadReader.unsupported')}</p>;
+    if (value.type === 'image') return <MediaImage key={index} image={value.content} />;
+    if (value.type === 'attachments') return <div key={index}>{value.content.files.map((file) => <MediaAttachment key={file.fileId} {...file} />)}</div>;
     if (value.type === 'divider') return <hr key={index} />;
     if (value.type === 'code') return <Code key={index} {...value.content} allowCopy={allowCopy} t={t} />;
     if (value.type === 'list') return <div key={index} style={textStyle}><List content={value.content} navigate={navigate} /></div>;

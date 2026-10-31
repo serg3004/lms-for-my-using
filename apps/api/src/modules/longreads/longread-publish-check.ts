@@ -1,8 +1,10 @@
+import type { z } from 'zod';
+import type { imageContentSchema } from './longread-blocks.js';
 import { isKnownBlockType, validateBlockContent } from './longread-blocks.js';
 
 export type SnapshotBlock = { type: string; schemaVersion: number; content: unknown; title?: string | null; hidden?: boolean };
-export type SnapshotChapter = { title: string; anchor: string; hidden: boolean; blocks: SnapshotBlock[] };
-export type PublishRefusalCode = 'empty_document' | 'unknown_block' | 'invalid_block' | 'broken_link' | 'required_chapters_exceed_visible';
+export type SnapshotChapter = { title: string; anchor: string; hidden: boolean; cover?: z.infer<typeof imageContentSchema>; blocks: SnapshotBlock[] };
+export type PublishRefusalCode = 'empty_document' | 'unknown_block' | 'invalid_block' | 'broken_link' | 'required_chapters_exceed_visible' | 'file_unavailable';
 export type PublishRefusal = { code: PublishRefusalCode; message: string; chapter?: string; blockIndex?: number };
 
 /** All `href` values of a block, wherever they sit in its content (runs, table cells, nested blocks). */

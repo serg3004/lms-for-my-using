@@ -1,3 +1,4 @@
+import { StandaloneMaterialGuard } from './standalone-material.guard.js';
 import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module.js';
@@ -13,7 +14,7 @@ import { MaterialMultipartUploadService } from './material-multipart-upload.serv
 @Module({
   imports: [AuthModule, CourseAccessModule, UploadModule],
   controllers: [CourseMaterialsController, MaterialMalwareScanController],
-  providers: [CourseMaterialsService, MaterialMalwareScanService, MaterialStorageLifecycleService, MaterialMultipartUploadService],
-  exports: [MaterialMultipartUploadService],
+  providers: [StandaloneMaterialGuard, CourseMaterialsService, MaterialMalwareScanService, MaterialStorageLifecycleService, MaterialMultipartUploadService],
+  exports: [CourseMaterialsService, MaterialMalwareScanService, MaterialMultipartUploadService],
 })
 export class CourseMaterialsModule {}

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { blockTypeSchema, LONGREAD_SCHEMA_VERSION } from './longread-blocks.js';
+import { blockTypeSchema, imageContentSchema, LONGREAD_SCHEMA_VERSION } from './longread-blocks.js';
 
 export const MAX_CHAPTERS = 200;
 export const MAX_BLOCKS_PER_CHAPTER = 1000;
@@ -15,6 +15,7 @@ export const longreadSettingsSchema = z.object({
   tableOfContents: z.enum(['expanded', 'collapsed', 'off']).default('expanded'),
   direction: z.enum(['ltr', 'rtl']).default('ltr'),
   allowCopy: z.boolean().default(true),
+  cover: imageContentSchema.nullable().optional(),
 }).strict();
 export type LongreadSettings = z.infer<typeof longreadSettingsSchema>;
 
@@ -40,6 +41,7 @@ export const saveChapterSchema = z.object({
   id: uuid.optional(),
   title: z.string().trim().min(1).max(200),
   hidden: z.boolean().default(false),
+  cover: imageContentSchema.nullable().optional(),
   blocks: z.array(saveBlockSchema).max(MAX_BLOCKS_PER_CHAPTER),
 }).strict();
 

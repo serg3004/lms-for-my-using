@@ -32,12 +32,13 @@ import {
 import { CourseMaterialsService } from './course-materials.service.js';
 import { UploadService } from '../upload/public.js';
 import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, validateUploadFile } from '../upload/public.js';
+import { StandaloneMaterialGuard } from './standalone-material.guard.js';
 import { MaterialMalwareScanService } from './material-malware-scan.service.js';
 import { MaterialMultipartUploadService } from './material-multipart-upload.service.js';
 import { completeMultipartUploadSchema, initiateMultipartUploadSchema } from './multipart-upload.schemas.js';
 
 @Controller()
-@UseGuards(AuthGuard, RolesGuard, CourseAccessGuard)
+@UseGuards(AuthGuard, RolesGuard, CourseAccessGuard, StandaloneMaterialGuard)
 export class CourseMaterialsController {
   constructor(
     private readonly courseMaterialsService: CourseMaterialsService,
