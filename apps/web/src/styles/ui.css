@@ -1904,7 +1904,7 @@
 .ds-data-table__batch-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   min-height: 48px;
   padding: 8px 12px;

@@ -372,6 +372,7 @@ export function AdminDepartmentUsersPage() {
             // Bulk transfer moves each selected user's PRIMARY department, same reasoning as the
             // single-row Transfer action above -- only primary rows are selectable.
             isRowSelectable: (row) => row.isPrimary,
+            selectedLabel: (count) => t('common.selectedCount', { count }),
             selectAllLabel: t('admin.departmentUsers.selectAll', 'Select all rows'),
             rowLabel: (row) => t('admin.departmentUsers.selectRow', 'Select {{name}}', { name: formatMembershipUserName(row.user) }),
           }}
