@@ -10,11 +10,11 @@ export const compositeTypes: string[] = ['table', 'columns', 'tabs', 'accordion'
 export const blockTypes: AddableBlockType[] = [...textBlockTypes, 'table', 'columns', 'tabs', 'accordion'];
 export type EditorBlock = { key: string; type: string; schemaVersion: number; title: string | null; hidden: boolean; content: Record<string, unknown> };
 export type EditorChapter = { key: string; title: string; hidden: boolean; blocks: EditorBlock[] };
-export type EditorDocument = { chapters: EditorChapter[] };
+export type EditorDocument = { chapters: EditorChapter[]; settings?: LongreadDraft['settings'] };
 export const safeHref = (value: string) => /^(?:https?:\/\/[^\s]+|mailto:[^\s]+|#[A-Za-z0-9_-]+)$/i.test(value) && value.length <= 2048;
 export const editableBlock = (block: EditorBlock) => block.schemaVersion === 1 && blockTypes.includes(block.type as AddableBlockType);
 export function fromDraft(draft: LongreadDraft): EditorDocument {
-  return { chapters: draft.chapters.map((chapter) => ({ key: chapter.id, title: chapter.title, hidden: chapter.hidden,
+  return { settings: structuredClone(draft.settings), chapters: draft.chapters.map((chapter) => ({ key: chapter.id, title: chapter.title, hidden: chapter.hidden,
     blocks: chapter.blocks.map((block) => ({ key: block.id, type: block.type, schemaVersion: block.schemaVersion, title: block.title ?? null, hidden: block.hidden ?? false, content: structuredClone(block.content) })) })) };
 }
 export function initialIds(draft: LongreadDraft): Map<string, string> {
@@ -35,7 +35,7 @@ export function savedIds(sent: EditorDocument, saved: LongreadDraft): Map<string
   return ids;
 }
 export function toSave(document: EditorDocument, revision: number, settings: LongreadDraft['settings'], ids: Map<string, string>): SaveLongread {
-  return { revision, settings, chapters: document.chapters.map((chapter) => ({
+  return { revision, settings: document.settings ?? settings, chapters: document.chapters.map((chapter) => ({
     ...(ids.has(chapter.key) ? { id: ids.get(chapter.key) } : {}), title: chapter.title, hidden: chapter.hidden,
     blocks: chapter.blocks.map(({ key, ...block }) => ({ ...(ids.has(key) ? { id: ids.get(key) } : {}), ...block })),
   })) };
@@ -70,6 +70,8 @@ export function moveItem<T>(items: T[], index: number, delta: number): T[] {
   const next = [...items]; const [item] = next.splice(index, 1); next.splice(index + delta, 0, item!); return next;
 }
 export function documentValid(document: EditorDocument): boolean {
+  const count = document.settings?.requiredChapters;
+  if (count !== undefined && (!Number.isInteger(count) || count < 0 || count > 200)) return false;
   return document.chapters.length > 0 && document.chapters.length <= 200 && document.chapters.every((chapter) =>
     chapter.title.trim().length > 0 && chapter.title.length <= 200 && chapter.blocks.length <= 1000 && chapter.blocks.every((block) =>
       (block.title?.length ?? 0) <= 200 && new TextEncoder().encode(JSON.stringify(block.content)).length <= 100_000 && contentValid(block)))

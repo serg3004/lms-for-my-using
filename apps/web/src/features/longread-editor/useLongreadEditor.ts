@@ -19,7 +19,7 @@ export function useLongreadEditor(initial: LongreadDraft) {
   const dirty = JSON.stringify(history.present) !== metadata.current.saved;
   function change(update: (document: EditorDocument) => EditorDocument) {
     setHistory((previous) => {
-      const next = update(previous.present);
+      const next = { ...previous.present, ...update(previous.present) };
       if (JSON.stringify(next) === JSON.stringify(previous.present)) return previous;
       return { past: [...previous.past.slice(-79), previous.present], present: next, future: [] };
     });
@@ -51,6 +51,7 @@ export function useLongreadEditor(initial: LongreadDraft) {
     return () => window.clearTimeout(timer);
   }, [history.present, initial.lessonId, initial.settings, retry, status]);
   return { document: history.present, change, undo, redo, canUndo: history.past.length > 0, canRedo: history.future.length > 0,
+    serverId: (key: string) => metadata.current.ids.get(key),
     status, dirty, retry: () => { state.current = 'changed'; setRetry((n) => n + 1); },
     recovery: () => JSON.stringify({ lessonId: initial.lessonId, schemaVersion: initial.schemaVersion, ...toSave(present.current, metadata.current.revision, initial.settings, metadata.current.ids) }, null, 2) };
 }

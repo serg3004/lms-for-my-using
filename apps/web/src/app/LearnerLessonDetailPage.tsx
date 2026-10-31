@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -16,6 +16,8 @@ import type { CourseSummary } from '../shared/api/types.js';
 import { getLessonHref, getCourseHref } from '../shared/learnerRoutes.js';
 import { ProgressBar, PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
+
+const LongreadLessonReader = lazy(() => import('../features/longread-reader/LongreadLessonReader.js'));
 
 type LearnerLessonDetailData = {
   lesson: LessonSummary;
@@ -41,8 +43,8 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
       const [course, allLessons, allMaterials, { items: progressRecords }] = await Promise.all([
         getCourse(lesson.courseId) as Promise<CourseSummary>,
         listLessons(lesson.courseId),
-        listCourseMaterials(lesson.courseId),
-        listProgress({ pageSize: 200 }),
+        lesson.type === 'longread' ? Promise.resolve([]) : listCourseMaterials(lesson.courseId),
+        lesson.type === 'longread' ? Promise.resolve({ items: [] }) : listProgress({ pageSize: 200 }),
       ]);
       const materials = allMaterials.filter((m) => m.lessonId === lesson.id && m.status === 'active');
       const completedIds = new Set(
@@ -105,6 +107,9 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
   }
 
   const { lesson, course, allLessons, completedIds } = loadState.data;
+  if (lesson.type === 'longread') return <Suspense fallback={<PageState variant="loading" message={t('lessonDetail.loading')} />}>
+    <LongreadLessonReader key={lesson.id} lessonId={lesson.id} title={lesson.title} courseId={course.id} courseTitle={course.title} />
+  </Suspense>;
   const sortedLessons = [...allLessons].sort((a, b) => a.order - b.order);
   const currentIndex = sortedLessons.findIndex((l) => l.id === lesson.id);
   const lessonNumber = currentIndex + 1;

@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, ParseIntPipe, ParseUUIDPipe, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { LongreadReaderService } from './longread-reader.service.js';
+import { Body, Controller, Get, Param, ParseIntPipe, ParseUUIDPipe, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 
 import { AuthGuard } from '../auth/public.js';
@@ -6,7 +7,7 @@ import type { AuthenticatedRequest } from '../auth/public.js';
 import { Roles, rolePolicies } from '../auth/public.js';
 import { RolesGuard } from '../auth/public.js';
 import { CourseAccessGuard, CourseScope } from '../course-access/public.js';
-import { saveLongreadSchema } from './longreads.schemas.js';
+import { longreadPositionSchema, longreadPreviewQuerySchema, longreadReaderQuerySchema, saveLongreadSchema } from './longreads.schemas.js';
 import { LongreadVersionsService } from './longread-versions.service.js';
 import { LongreadsService } from './longreads.service.js';
 
@@ -21,6 +22,7 @@ export class LongreadsController {
   constructor(
     private readonly longreadsService: LongreadsService,
     private readonly versions: LongreadVersionsService,
+    private readonly reader: LongreadReaderService,
   ) {}
 
   @Get('lessons/:id/longread')
@@ -97,7 +99,21 @@ export class LongreadsController {
   @Get('lessons/:id/longread/published')
   @Roles(...rolePolicies.lessonsRead)
   @CourseScope('param', 'id', 'lesson')
-  readPublished(@Param('id', ParseUUIDPipe) lessonId: string, @Req() request: AuthenticatedRequest) {
-    return this.versions.readPublished(lessonId, request.currentUser!.organizationId, request.currentUser!.id);
+  readPublished(@Param('id', ParseUUIDPipe) lessonId: string, @Query() query: unknown, @Req() request: AuthenticatedRequest) {
+    return this.reader.read(lessonId, request.currentUser!, longreadReaderQuerySchema.parse(query).chapter);
   }
+  @Put('lessons/:id/longread/position')
+  @Roles(...rolePolicies.lessonsRead)
+  @CourseScope('param', 'id', 'lesson')
+  saveReadingPosition(@Param('id', ParseUUIDPipe) lessonId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.reader.position(lessonId, request.currentUser!, longreadPositionSchema.parse(body));
+  }
+
+  @Get('lessons/:id/longread/preview')
+  @Roles(...rolePolicies.lessonsCreate)
+  @CourseScope('param', 'id', 'lesson')
+  preview(@Param('id', ParseUUIDPipe) lessonId: string, @Query() query: unknown, @Req() request: AuthenticatedRequest) {
+    return this.reader.preview(lessonId, request.currentUser!.organizationId, longreadPreviewQuerySchema.parse(query).chapterId);
+  }
+
 }

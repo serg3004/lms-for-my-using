@@ -939,6 +939,8 @@ model Progress {
   lesson             Lesson?           @relation(fields: [lessonId], references: [id], onDelete: SetNull)
   user               User              @relation(fields: [userId], references: [id], onDelete: Restrict)
   /// PR 382: the longread version this learner started; new learners get the latest published one.
+  /// PR 385: version-scoped reading cursor/unlocked navigation, never learning completion.
+  longreadReadingState Json @default("{}") @map("longread_reading_state")
   longreadRevisionId String?           @map("longread_revision_id") @db.Uuid
   longreadRevision   LongreadRevision? @relation(fields: [longreadRevisionId], references: [id], onDelete: SetNull)
 

@@ -1,3 +1,4 @@
+import { LongreadReaderService } from './longread-reader.service.js';
 import { Module } from '@nestjs/common';
 
 import { AuthModule } from '../auth/auth.module.js';
@@ -8,7 +9,7 @@ import { LongreadsService } from './longreads.service.js';
 @Module({
   imports: [AuthModule],
   controllers: [LongreadsController],
-  providers: [LongreadsService, LongreadVersionsService],
+  providers: [LongreadsService, LongreadVersionsService, LongreadReaderService],
   exports: [LongreadsService],
 })
 export class LongreadsModule {}

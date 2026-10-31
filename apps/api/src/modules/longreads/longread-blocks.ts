@@ -26,7 +26,7 @@ export const runSchema = z.object({
 const runsSchema = z.array(runSchema).max(500);
 
 const paragraphSchema = z.object({ runs: runsSchema }).strict();
-const headingSchema = z.object({ level: z.union([z.literal(1), z.literal(2), z.literal(3)]), runs: runsSchema }).strict();
+const headingSchema = z.object({ excludeFromToc: z.boolean().optional(), level: z.union([z.literal(1), z.literal(2), z.literal(3)]), runs: runsSchema }).strict();
 const quoteSchema = z.object({ runs: runsSchema, caption: z.string().max(500).optional() }).strict();
 const noteSchema = z.object({ runs: runsSchema, tone: z.enum(['info', 'success', 'warning', 'danger']).default('info') }).strict();
 const dividerSchema = z.object({}).strict();
