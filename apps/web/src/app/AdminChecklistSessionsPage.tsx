@@ -450,6 +450,7 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
           selectedKeys,
           onChange: setSelectedKeys,
           isRowSelectable: canExportSummary,
+          selectedLabel: (count) => t('common.selectedCount', { count }),
           selectAllLabel: t('admin.checklists.sessions.summarySelectAll', 'Select all completed sessions'),
           rowLabel: (row) => t('admin.checklists.sessions.summarySelectRow', 'Select for summary: {{title}}, {{employee}}', { title: row.checklist.title, employee: formatParticipantName(row.learner) }),
         }}

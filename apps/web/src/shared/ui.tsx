@@ -397,6 +397,8 @@ export type DataTableSelection<T> = {
   isRowSelectable?: (row: T) => boolean;
   selectAllLabel?: string;
   rowLabel?: (row: T) => string;
+  /** Text of the batch-actions bar, e.g. "Selected: 3"; defaults to English. */
+  selectedLabel?: (count: number) => string;
 };
 
 export type DataTableExpansion<T> = {
@@ -507,8 +509,8 @@ export function DataTable<T>({
   return (
     <div className={`ds-data-table ds-data-table--${density}`}>
       {selection && batchActions && selectedRows.length > 0 ? (
-        <div className="ds-data-table__batch-actions" role="region" aria-label={`${selectedRows.length} selected`}>
-          <span aria-live="polite">{selectedRows.length} selected</span>
+        <div className="ds-data-table__batch-actions" role="region" aria-label={selection.selectedLabel?.(selectedRows.length) ?? `${selectedRows.length} selected`}>
+          <span aria-live="polite">{selection.selectedLabel?.(selectedRows.length) ?? `${selectedRows.length} selected`}</span>
           {typeof batchActions === 'function' ? batchActions(selectedRows) : batchActions}
         </div>
       ) : null}
