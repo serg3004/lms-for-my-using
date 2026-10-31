@@ -20,6 +20,7 @@ export function bulkResultSummary(result: ChecklistBulkResult, titles: ReadonlyM
     not_found: t('admin.checklists.bulk.reason.not_found', 'not found'),
     forbidden: t('admin.checklists.bulk.reason.forbidden', 'only the author or an administrator can change it'),
     already_in_status: t('admin.checklists.bulk.reason.already_in_status', 'already has this status'),
+    already_in_folder: t('admin.checklists.bulk.reason.already_in_folder', 'already in this folder'),
     has_active_assignments: t('admin.checklists.bulk.reason.has_active_assignments', 'has assignments in progress'),
     cannot_publish: t('admin.checklists.bulk.reason.cannot_publish', 'cannot be published: it has no criteria or uses an archived scale'),
     moved_to_draft: t('admin.checklists.bulk.reason.moved_to_draft', 'not deleted, moved to drafts: it has assignments in progress'),

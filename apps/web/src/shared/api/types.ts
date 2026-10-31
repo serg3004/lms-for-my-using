@@ -394,8 +394,8 @@ export type FreeChecklistSummary = {
   activeInstanceStatus: ChecklistInstanceStatus | null;
 };
 
-export type ChecklistBulkAction = 'archive' | 'draft' | 'publish' | 'delete';
-export type ChecklistBulkSkipReason = 'not_found' | 'forbidden' | 'already_in_status' | 'has_active_assignments' | 'cannot_publish' | 'moved_to_draft';
+export type ChecklistBulkAction = 'archive' | 'draft' | 'publish' | 'delete' | 'move';
+export type ChecklistBulkSkipReason = 'not_found' | 'forbidden' | 'already_in_status' | 'already_in_folder' | 'has_active_assignments' | 'cannot_publish' | 'moved_to_draft';
 export type ChecklistBulkOutcome =
   | { id: string; result: 'done' }
   | { id: string; result: 'skipped'; reason: ChecklistBulkSkipReason; message?: string };
@@ -434,6 +434,8 @@ export type ChecklistSummary = {
   createdBy: string | null;
   // PR 393 -- only `GET /checklists` carries the author's name (null: author deleted); optional elsewhere.
   creator?: { id: string; firstName: string; lastName: string } | null;
+  // PR 395 -- the folder the sheet lives in (null/absent: the root).
+  folderId?: string | null;
   createdAt: string;
   updatedAt: string;
   items: ChecklistItemSummary[];

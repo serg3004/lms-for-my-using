@@ -103,7 +103,7 @@ export class ChecklistsController {
   @Roles(...rolePolicies.checklistsRead)
   listChecklists(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
     const { status } = checklistListQuerySchema.parse(rawQuery);
-    return this.checklistsService.listChecklists(request.currentUser!.organizationId, status);
+    return this.checklistsService.listChecklists(request.currentUser!.organizationId, status, request.currentUser!);
   }
 
   @Get('checklists/analytics')
@@ -246,15 +246,17 @@ export class ChecklistsController {
     await this.checklistsService.assertCanEdit({ checklistId }, request.currentUser!.organizationId, request.currentUser!);
     const input = updateChecklistSchema.parse(body);
     if (input.accessMode !== undefined) await this.assertMayChangeAccessMode(checklistId, input.accessMode, request.currentUser!);
+    if (input.folderId !== undefined) await this.checklistsService.assertCanPlaceInFolder(input.folderId, request.currentUser!.organizationId, request.currentUser!);
     if (input.allowEditByAll !== undefined) await this.checklistsService.assertCanChangeEditAccess(checklistId, request.currentUser!.organizationId, request.currentUser!);
     return this.checklistsService.updateChecklist(checklistId, request.currentUser!.organizationId, input, request.currentUser!.id);
   }
   // PR 394: declared before any `checklists/:id` route that could swallow "bulk" as an id.
   @Post('checklists/bulk')
   @Roles(...rolePolicies.checklistsCreate)
-  bulkChecklistAction(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+  async bulkChecklistAction(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = bulkChecklistActionSchema.parse(body);
-    return this.checklistsService.bulkAction(input.action, input.ids, request.currentUser!.organizationId, request.currentUser!);
+    if (input.action === 'move') await this.checklistsService.assertCanPlaceInFolder(input.folderId ?? null, request.currentUser!.organizationId, request.currentUser!);
+    return this.checklistsService.bulkAction(input.action, input.ids, request.currentUser!.organizationId, request.currentUser!, input.folderId ?? null);
   }
   @Post('checklists/:id/copy')
   @Roles(...rolePolicies.checklistsCreate)

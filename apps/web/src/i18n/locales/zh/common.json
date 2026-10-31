@@ -614,6 +614,9 @@
         "checklist.deleted": "删除了检查清单",
         "checklist.copied": "复制了检查清单",
         "checklist.bulk": "批量操作检查清单",
+        "checklist.folder_created": "已创建检查清单文件夹",
+        "checklist.folder_updated": "已修改检查清单文件夹",
+        "checklist.folder_deleted": "已删除检查清单文件夹",
         "checklist_instance.assigned": "分配了检查清单",
         "checklist_item_result.reviewed": "审核了检查清单项",
         "certificate.issued": "颁发了证书"
@@ -997,6 +1000,7 @@
           "not_found": "未找到",
           "forbidden": "只有作者或管理员可以修改",
           "already_in_status": "已处于该状态",
+          "already_in_folder": "已在该文件夹中",
           "has_active_assignments": "有进行中的分配",
           "cannot_publish": "无法发布：没有评分项或使用了已归档的量表",
           "moved_to_draft": "未删除，已转为草稿：有进行中的分配"

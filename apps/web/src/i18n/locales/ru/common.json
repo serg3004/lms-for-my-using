@@ -614,6 +614,9 @@
         "checklist.deleted": "Чек-лист удалён",
         "checklist.copied": "Чек-лист скопирован",
         "checklist.bulk": "Групповое действие над чек-листами",
+        "checklist.folder_created": "Создана папка чек-листов",
+        "checklist.folder_updated": "Изменена папка чек-листов",
+        "checklist.folder_deleted": "Удалена папка чек-листов",
         "checklist_instance.assigned": "Чек-лист назначен",
         "checklist_item_result.reviewed": "Пункт чек-листа проверен",
         "certificate.issued": "Сертификат выдан"
@@ -997,6 +1000,7 @@
           "not_found": "не найден",
           "forbidden": "изменить может только автор или администратор",
           "already_in_status": "уже в этом статусе",
+          "already_in_folder": "уже в этой папке",
           "has_active_assignments": "есть назначения в работе",
           "cannot_publish": "нельзя опубликовать: нет критериев или используется шкала из архива",
           "moved_to_draft": "не удалён, переведён в черновик: есть назначения в работе"

@@ -393,6 +393,23 @@ organization's sheet), `forbidden` (the single-sheet edit rule: author, admin, o
 because of active assignments turns the sheet into a draft instead). One audit record per changed sheet plus one
 `checklist.bulk` summary record. A skipped sheet never fails the request.
 
+PR 395: checklist folders (organization-wide tree, up to 5 levels, the root folder is level 1; `checklistsRead` roles read,
+`checklistsCreate` roles write, and a learner never has access). `GET /checklist-folders` returns
+`{ folders[], checklistCount }`; each folder is `{ id, parentId, name, visibleToStaff, createdBy, createdAt, canManage,
+checklistCount, totalChecklistCount }` (direct sheets and sheets of the whole subtree; `checklistCount` of the response is the
+number of sheets the caller can see). `POST /checklist-folders` `{ name, parentId?, visibleToStaff? }` and `PATCH
+/checklist-folders/:id` `{ name?, parentId?, visibleToStaff? }` (rename, move, open to staff) answer 400 for a depth over 5 or a
+move into itself or a descendant, 409 for a name already used by a sibling (compared case-insensitively), 404 for a missing,
+other-organization or invisible folder and 403 when the folder is visible but not the caller's to change. Only the administrator and the
+creator change a folder. A folder is visible to the administrator, to its creator and, when `visibleToStaff` is on, to every
+role except the learner; a subfolder is visible only when its whole chain of parents is. `GET
+/checklist-folders/:id/delete-impact` and `DELETE /checklist-folders/:id` answer `{ folders, checklists, movedToDraft[{id, title}] }`:
+the deletion soft-deletes the folder, every subfolder and every sheet inside; a sheet with an active assignment is kept, turned
+into a draft and moved to the root (`movedToDraft`). One audit record per operation. `GET /checklists` leaves out sheets of folders the
+caller cannot see and carries `folderId` on every sheet; `PATCH /checklists/:id` accepts `folderId` (uuid, or `null` for the root) and
+`POST /checklists/bulk` accepts the action `move` with `folderId` (required key, `null` = root; skip reason `already_in_folder`). The
+target folder must be visible to the caller; moving a sheet needs the right to edit that sheet. A copy stays in the folder of the original.
+
 `GET /checklist-sessions` and `GET /checklist-sessions/:id` now return a joined projection instead
 of the bare `ChecklistSession` row: `checklist: {id, title}`, `learner: {id, firstName, lastName,
 email}`, `observer: {id, firstName, lastName, email}`, and `result: {instanceStatus, percentage,

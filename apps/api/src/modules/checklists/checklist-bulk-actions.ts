@@ -6,16 +6,17 @@ import type { AuditLogService } from '../audit-log/public.js';
 /** PR 394: most sheets one bulk request may touch. */
 export const MAX_BULK_CHECKLISTS = 100;
 
-export type ChecklistBulkAction = 'archive' | 'draft' | 'publish' | 'delete';
+export type ChecklistBulkAction = 'archive' | 'draft' | 'publish' | 'delete' | 'move';
 export type ChecklistBulkOutcome =
   | { id: string; result: 'done' }
   // `moved_to_draft`: a delete that was refused because of active assignments; the sheet became a draft instead.
-  | { id: string; result: 'skipped'; reason: 'not_found' | 'forbidden' | 'already_in_status' | 'has_active_assignments' | 'cannot_publish' | 'moved_to_draft'; message?: string };
+  | { id: string; result: 'skipped'; reason: 'not_found' | 'forbidden' | 'already_in_status' | 'already_in_folder' | 'has_active_assignments' | 'cannot_publish' | 'moved_to_draft'; message?: string };
 
 type Actor = { id: string; roles: readonly string[] };
 type Operations = {
   setStatus(id: string, organizationId: string, status: 'draft' | 'published' | 'archived', actorId: string): Promise<unknown>;
   remove(id: string, organizationId: string, actorId: string): Promise<void>;
+  setFolder(id: string, organizationId: string, folderId: string | null, actorId: string): Promise<unknown>;
 };
 
 const TARGET_STATUS = { archive: 'archived', draft: 'draft', publish: 'published' } as const;
@@ -33,10 +34,10 @@ export class ChecklistBulkActions {
     private readonly operations: Operations,
   ) {}
 
-  async run(action: ChecklistBulkAction, ids: readonly string[], organizationId: string, actor: Actor) {
+  async run(action: ChecklistBulkAction, ids: readonly string[], organizationId: string, actor: Actor, folderId: string | null = null) {
     const uniqueIds = [...new Set(ids)];
     const outcomes: ChecklistBulkOutcome[] = [];
-    for (const id of uniqueIds) outcomes.push(await this.runOne(action, id, organizationId, actor));
+    for (const id of uniqueIds) outcomes.push(await this.runOne(action, id, organizationId, actor, folderId));
     const done = outcomes.filter((outcome) => outcome.result === 'done').length;
     await this.auditLog.record({
       organizationId,
@@ -45,15 +46,15 @@ export class ChecklistBulkActions {
       targetType: 'checklist',
       targetId: null,
       summary: `Bulk ${action}: ${done} done, ${outcomes.length - done} skipped`,
-      metadata: { action, requested: uniqueIds.length, done },
+      metadata: { action, requested: uniqueIds.length, done, ...(action === 'move' ? { folderId } : {}) },
     });
     return { action, done, skipped: outcomes.length - done, results: outcomes };
   }
 
-  private async runOne(action: ChecklistBulkAction, id: string, organizationId: string, actor: Actor): Promise<ChecklistBulkOutcome> {
+  private async runOne(action: ChecklistBulkAction, id: string, organizationId: string, actor: Actor, folderId: string | null): Promise<ChecklistBulkOutcome> {
     const checklist = await this.prisma.checklist.findFirst({
       where: { id, organizationId, deletedAt: null },
-      select: { status: true, createdBy: true, allowEditByAll: true },
+      select: { status: true, createdBy: true, allowEditByAll: true, folderId: true },
     });
     if (!checklist) return { id, result: 'skipped', reason: 'not_found' };
     if (!(checklist.allowEditByAll || checklist.createdBy === actor.id || actor.roles.includes('admin'))) {
@@ -61,6 +62,11 @@ export class ChecklistBulkActions {
     }
     try {
       if (action === 'delete') return await this.deleteOne(id, organizationId, actor.id);
+      if (action === 'move') {
+        if (checklist.folderId === folderId) return { id, result: 'skipped', reason: 'already_in_folder' };
+        await this.operations.setFolder(id, organizationId, folderId, actor.id);
+        return { id, result: 'done' };
+      }
       const status = TARGET_STATUS[action];
       if (checklist.status === status) return { id, result: 'skipped', reason: 'already_in_status' };
       await this.operations.setStatus(id, organizationId, status, actor.id);
