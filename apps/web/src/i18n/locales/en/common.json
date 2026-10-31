@@ -613,6 +613,10 @@
         "checklist.updated": "Checklist updated",
         "checklist.deleted": "Checklist deleted",
         "checklist.copied": "Checklist copied",
+        "checklist.bulk": "Checklists changed in bulk",
+        "checklist.folder_created": "Checklist folder created",
+        "checklist.folder_updated": "Checklist folder changed",
+        "checklist.folder_deleted": "Checklist folder deleted",
         "checklist_instance.assigned": "Checklist assigned",
         "checklist_item_result.reviewed": "Checklist item reviewed",
         "certificate.issued": "Certificate issued"
@@ -984,6 +988,24 @@
       "close": "Close",
       "searchPlaceholder": "Find checklist",
       "allStatuses": "All statuses",
+      "bulk": {
+        "selectAll": "Select all checklists",
+        "selectRow": "Select checklist: {{title}}",
+        "deleteTitle": "Delete selected checklists",
+        "deleteConfirm": "Delete {{count}} checklist(s): {{titles}}? They disappear from the list and can no longer be assigned; completed results are kept. A checklist with assignments in progress is not deleted but moved to drafts. This cannot be undone.",
+        "andMore": "and {{count}} more",
+        "result": "Done: {{done}}, skipped: {{skipped}}",
+        "error": "Unable to apply the action to the selected checklists.",
+        "reason": {
+          "not_found": "not found",
+          "forbidden": "only the author or an administrator can change it",
+          "already_in_status": "already has this status",
+          "already_in_folder": "already in this folder",
+          "has_active_assignments": "has assignments in progress",
+          "cannot_publish": "cannot be published: it has no criteria or uses an archived scale",
+          "moved_to_draft": "not deleted, moved to drafts: it has assignments in progress"
+        }
+      },
       "col": {
         "title": "Title",
         "items": "Items",

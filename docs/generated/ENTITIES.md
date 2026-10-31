@@ -17,6 +17,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `AuditLog` |
 | `Certificate` |
 | `Checklist` |
+| `ChecklistFolder` |
 | `ChecklistIdempotencyKey` |
 | `ChecklistInstance` |
 | `ChecklistInstanceEvent` |

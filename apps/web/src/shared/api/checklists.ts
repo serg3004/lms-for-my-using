@@ -2,6 +2,8 @@ import { apiRequest, uploadChecklistItemPhotoWithProgress } from '../apiClient.j
 
 import type {
   ChecklistAnalytics,
+  ChecklistBulkAction,
+  ChecklistBulkResult,
   ChecklistAnalyticsQuery,
   ChecklistInstanceEvent,
   ChecklistInstanceSummary,
@@ -111,6 +113,11 @@ export function listDeletedChecklistResults() {
 
 export function deleteChecklist(checklistId: string) {
   return apiRequest<void>(`/checklists/${encodeURIComponent(checklistId)}`, { method: 'DELETE' });
+}
+
+/** PR 394: one action over many sheets; the response lists what happened to each id. */
+export function bulkChecklistAction(action: ChecklistBulkAction, ids: string[]) {
+  return apiRequest<ChecklistBulkResult>('/checklists/bulk', { method: 'POST', body: JSON.stringify({ action, ids }) });
 }
 
 export function createChecklistItem(
