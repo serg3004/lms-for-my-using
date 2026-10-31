@@ -6,6 +6,18 @@
 >
 > **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
 
+## Checklist settings overrides migration (PR 397)
+
+`20261031140000_checklist_settings_overrides` is additive and backward-compatible:
+
+- adds nullable `*_override` columns (thresholds, result colours, feedback visibility, observer eligibility) and two array columns
+  with an empty default (`observer_roles_override`, `observer_user_ids_override`) to `checklists`, and a nullable JSONB
+  `report_settings` to `checklist_instances`;
+- performs no backfill, deletion, rename or constraint change: every existing checklist keeps all overrides empty ("as in the
+  organization") and every existing instance keeps `report_settings` NULL, which reads as the current effective settings;
+- an older API build ignores the new columns, so the forward migration may run before the API deploy and can be left in place on rollback;
+- no special backup beyond the general policy is needed. No new environment variable.
+
 ## Assessment question types migration (PR 388)
 
 `20261031130000_add_assessment_question_types` extends the existing assessment system:
