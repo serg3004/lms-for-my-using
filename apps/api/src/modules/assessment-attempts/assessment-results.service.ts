@@ -53,6 +53,7 @@ const attemptResultDetailSelect = {
       questionId: true,
       selectedOptionId: true,
       selectedOptionIds: true,
+      response: true,
       isCorrect: true,
       score: true,
       createdAt: true,
@@ -62,6 +63,7 @@ const attemptResultDetailSelect = {
           id: true,
           title: true,
           type: true,
+          definition: true,
           points: true,
           order: true,
           options: {
@@ -115,6 +117,7 @@ type AttemptResultInput = {
     questionId: string;
     selectedOptionId: string | null;
     selectedOptionIds: unknown;
+    response?: unknown;
     isCorrect: boolean;
     score: number;
     createdAt: Date;
@@ -123,6 +126,7 @@ type AttemptResultInput = {
       id: string;
       title: string;
       type: string;
+      definition?: unknown;
       points: number;
       order: number;
       options: { id: string; text: string | null; imageUrl: string | null }[];
@@ -289,6 +293,7 @@ export class AssessmentResultsService {
           questionId: answer.questionId,
           selectedOptionId: answer.selectedOptionId,
           selectedOptionIds: answer.selectedOptionIds,
+          ...(answer.response ? { response: answer.response } : {}),
           isCorrect: answer.isCorrect,
           score: answer.score,
           createdAt: answer.createdAt,
@@ -303,7 +308,8 @@ export class AssessmentResultsService {
           selectedOption: answer.selectedOption,
           // Only exposed when the assessment author opted in — otherwise a learner could infer
           // the correct answer from the API response even with the UI hiding it.
-          correctOptions: attempt.assessment.showCorrectAnswers ? answer.question.options : undefined,
+          ...(attempt.status === 'completed' && attempt.assessment.showCorrectAnswers && answer.question.definition ? { correctDefinition: answer.question.definition } : {}),
+          correctOptions: attempt.status === 'completed' && attempt.assessment.showCorrectAnswers ? answer.question.options : undefined,
         })) ?? [],
     };
   }

@@ -1,4 +1,5 @@
 import { longreadFileServer } from '../fixtures/longread-files.js';
+import { openTypedAssessment } from '../fixtures/assessment-typed-compat.js';
 import { longreadPlaybackServer } from '../fixtures/longread-playback.js';
 import { openLongreadEntrypoints } from '../fixtures/longread-entrypoints.js';
 import { longreadCourseId } from '../fixtures/longread-editor.js';
@@ -14,6 +15,12 @@ import { expect, test, type Page } from '@playwright/test';
 
 const widths = [320, 375, 768, 1024, 1280, 1440] as const;
 const height = 900;
+
+for (const width of [375, 1440]) test(`typed assessment compatibility state is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await openTypedAssessment(page);
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `typed-assessment-compat-${width}`, false, { maxDiffPixels: 3000 });
+});
 
 for (const width of [375, 768, 1440]) test(`longread audio/video reader is responsive at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height }); await longreadPlaybackServer().reader(page, { direction: width === 768 ? 'rtl' : 'ltr' });

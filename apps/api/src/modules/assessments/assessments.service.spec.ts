@@ -191,8 +191,8 @@ describe('AssessmentsService.updateAssessmentStatus publish guard', () => {
       assessment: { findFirst: async () => ({ id: assessmentId }), update },
       assessmentQuestion: {
         findMany: async () => [
-          { title: 'Q1', options: [{ id: 'opt-1' }] },
-          { title: 'Q2 (no correct option)', options: [] },
+          { type: 'single_choice', definition: null, title: 'Q1', options: [{ id: 'opt-1' }] },
+          { type: 'single_choice', definition: null, title: 'Q2 (no correct option)', options: [] },
         ],
       },
     } as unknown as PrismaService;
@@ -210,8 +210,8 @@ describe('AssessmentsService.updateAssessmentStatus publish guard', () => {
       assessment: { findFirst: async () => ({ id: assessmentId }), update: async () => updatedAssessment },
       assessmentQuestion: {
         findMany: async () => [
-          { title: 'Q1', options: [{ id: 'opt-1' }] },
-          { title: 'Q2', options: [{ id: 'opt-2' }] },
+          { type: 'single_choice', definition: null, title: 'Q1', options: [{ id: 'opt-1' }] },
+          { type: 'single_choice', definition: null, title: 'Q2', options: [{ id: 'opt-2' }] },
         ],
       },
     } as unknown as PrismaService;

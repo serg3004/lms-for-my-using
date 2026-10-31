@@ -127,6 +127,22 @@ describe('AssessmentResultsService', () => {
     ]);
   });
 
+  it('never exposes either legacy or typed answer keys before completion, even with showCorrectAnswers enabled', async () => {
+    const base = createAttempt(userId, true);
+    const attempt = {
+      ...base, status: 'in_progress',
+      answers: base.answers.map((answer) => ({ ...answer, response: { type: 'short_answer', text: 'learner text' }, question: { ...answer.question, definition: { type: 'short_answer', acceptedAnswers: ['secret key'], caseSensitive: true, whitespace: 'exact' } } })),
+    };
+    const prisma = { assessmentAttempt: { findFirst: async () => attempt } } as unknown as PrismaService;
+    const service = new AssessmentResultsService(prisma);
+    const pending = await service.getAttemptResult(attemptId, userId, organizationId);
+    expect(pending.answers[0]?.correctOptions).toBeUndefined();
+    expect(pending.answers[0]?.correctDefinition).toBeUndefined();
+    expect(JSON.stringify(pending)).not.toContain('secret key');
+    attempt.status = 'completed';
+    expect((await service.getAttemptResult(attemptId, userId, organizationId)).answers[0]?.correctDefinition).toMatchObject({ acceptedAnswers: ['secret key'] });
+  });
+
   it('rejects another learner attempt result without privileged membership', async () => {
     const prisma = {
       assessmentAttempt: {

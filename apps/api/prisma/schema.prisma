@@ -124,6 +124,10 @@ enum AssessmentQuestionType {
   single_choice
   multiple_choice
   true_false
+  matching
+  ordering
+  fill_blank
+  short_answer
 }
 
 enum AssessmentQuestionScoringMode {
@@ -1004,6 +1008,7 @@ model AssessmentQuestion {
   imageUrl       String?                       @map("image_url")
   points         Int                           @default(1)
   order          Int                           @default(0)
+  definition     Json?
   scoringMode    AssessmentQuestionScoringMode @default(all_or_nothing) @map("scoring_mode")
   createdAt      DateTime                      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime                      @updatedAt @map("updated_at") @db.Timestamptz
@@ -1072,6 +1077,8 @@ model AssessmentAttemptAnswer {
   attemptId         String                  @map("attempt_id") @db.Uuid
   questionId        String                  @map("question_id") @db.Uuid
   selectedOptionId  String?                 @map("selected_option_id") @db.Uuid
+  /// Exactly one response format is enforced by the selection CHECK in migration SQL.
+  response          Json?
   selectedOptionIds Json?                   @map("selected_option_ids")
   isCorrect         Boolean                 @default(false) @map("is_correct")
   score             Int                     @default(0)

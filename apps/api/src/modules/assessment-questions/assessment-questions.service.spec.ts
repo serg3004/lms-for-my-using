@@ -146,6 +146,7 @@ describe('AssessmentQuestionsService learner quiz', () => {
           return [
             {
               id: '33333333-3333-3333-3333-333333333333',
+              type: 'single_choice',
               options: [
                 {
                   id: '44444444-4444-4444-4444-444444444444',
@@ -181,9 +182,9 @@ describe('AssessmentQuestionsService learner quiz', () => {
 
   it('returns questions in stored order when randomizeOrder is off', async () => {
     const questions = [
-      { id: 'q1', options: [{ id: 'q1-a' }, { id: 'q1-b' }] },
-      { id: 'q2', options: [{ id: 'q2-a' }, { id: 'q2-b' }] },
-      { id: 'q3', options: [{ id: 'q3-a' }, { id: 'q3-b' }] },
+      { id: 'q1', type: 'single_choice', options: [{ id: 'q1-a' }, { id: 'q1-b' }] },
+      { id: 'q2', type: 'single_choice', options: [{ id: 'q2-a' }, { id: 'q2-b' }] },
+      { id: 'q3', type: 'single_choice', options: [{ id: 'q3-a' }, { id: 'q3-b' }] },
     ];
     const prisma = {
       assessment: { findFirst: async () => ({ id: 'assessment-1', randomizeOrder: false }) },
@@ -198,10 +199,10 @@ describe('AssessmentQuestionsService learner quiz', () => {
 
   it('shuffles question and option order deterministically per user when randomizeOrder is on', async () => {
     const questions = [
-      { id: 'q1', options: [{ id: 'q1-a' }, { id: 'q1-b' }, { id: 'q1-c' }, { id: 'q1-d' }] },
-      { id: 'q2', options: [{ id: 'q2-a' }, { id: 'q2-b' }, { id: 'q2-c' }, { id: 'q2-d' }] },
-      { id: 'q3', options: [{ id: 'q3-a' }, { id: 'q3-b' }, { id: 'q3-c' }, { id: 'q3-d' }] },
-      { id: 'q4', options: [{ id: 'q4-a' }, { id: 'q4-b' }, { id: 'q4-c' }, { id: 'q4-d' }] },
+      { id: 'q1', type: 'single_choice', options: [{ id: 'q1-a' }, { id: 'q1-b' }, { id: 'q1-c' }, { id: 'q1-d' }] },
+      { id: 'q2', type: 'single_choice', options: [{ id: 'q2-a' }, { id: 'q2-b' }, { id: 'q2-c' }, { id: 'q2-d' }] },
+      { id: 'q3', type: 'single_choice', options: [{ id: 'q3-a' }, { id: 'q3-b' }, { id: 'q3-c' }, { id: 'q3-d' }] },
+      { id: 'q4', type: 'single_choice', options: [{ id: 'q4-a' }, { id: 'q4-b' }, { id: 'q4-c' }, { id: 'q4-d' }] },
     ];
     const prisma = {
       assessment: { findFirst: async () => ({ id: 'assessment-1', randomizeOrder: true }) },

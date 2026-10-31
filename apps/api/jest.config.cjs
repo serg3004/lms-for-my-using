@@ -1,12 +1,14 @@
 module.exports = {
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
+    '^@lms/shared/assessment-question-types$': '<rootDir>/../../packages/shared/src/assessment-question-types.ts',
     '^@lms/shared/longread-media$': '<rootDir>/../../packages/shared/src/longread-media.ts',
     '^@lms/shared$': '<rootDir>/../../packages/shared/src/index.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   roots: ['<rootDir>/src'],
   testPathIgnorePatterns: [
+    '/src/integration/assessment-question-types\\.database\\.spec\\.ts$',
     '/src/integration/api\\.database-smoke\\.spec\\.ts$',
     '/src/integration/checklist-snapshot\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-domain\\.database\\.spec\\.ts$',
