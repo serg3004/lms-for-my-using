@@ -2093,6 +2093,7 @@
     "attemptsLeft": "Attempts remaining"
   },
   "assessments": {
+    "typedQuestionUnavailable": "This form does not support the questions in this test yet. Contact your training organizer.",
     "navLink": "Assessments",
     "title": "Assessments",
     "detailTitle": "Assessment details",

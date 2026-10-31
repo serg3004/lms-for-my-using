@@ -23,6 +23,11 @@
     "./constants/roles": {
       "types": "./src/constants/roles.ts",
       "import": "./dist/constants/roles.js"
+    },
+    "./assessment-question-types": {
+      "types": "./src/assessment-question-types.ts",
+      "development": "./src/assessment-question-types.ts",
+      "import": "./dist/assessment-question-types.js"
     }
   },
   "scripts": {

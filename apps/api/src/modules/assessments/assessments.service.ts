@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { validateQuestionDefinition } from '../../common/assessment-question-definition.js';
 
 import { releaseSlugOnDelete } from '../../common/soft-delete-slug.js';
 import { PrismaService } from '../../database/prisma.service.js';
@@ -112,6 +113,7 @@ export class AssessmentsService {
       throw new NotFoundException('Assessment not found');
     }
 
+    if (input.status === 'published') await this.ensureQuestionsHaveCorrectOption(assessmentId, organizationId);
     return this.prisma.assessment.update({
       where: { id: assessmentId, organizationId },
       data: input,
@@ -198,6 +200,8 @@ export class AssessmentsService {
       where: { assessmentId, organizationId, deletedAt: null },
       select: {
         title: true,
+        type: true,
+        definition: true,
         options: { where: { deletedAt: null, isCorrect: true }, select: { id: true }, take: 1 },
       },
     });
@@ -206,7 +210,10 @@ export class AssessmentsService {
       throw new BadRequestException('Cannot publish assessment: it has no questions');
     }
 
-    const missing = questions.filter((question) => question.options.length === 0);
+    const missing = questions.filter((question) => {
+      const definition = validateQuestionDefinition(question.type, question.definition);
+      return !definition && question.options.length === 0;
+    });
 
     if (missing.length > 0) {
       throw new BadRequestException(

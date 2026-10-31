@@ -2093,6 +2093,7 @@
     "attemptsLeft": "剩余尝试次数"
   },
   "assessments": {
+    "typedQuestionUnavailable": "此表单暂不支持本测试中的题目。请联系培训组织者。",
     "navLink": "测验",
     "title": "测验",
     "detailTitle": "测验详情",

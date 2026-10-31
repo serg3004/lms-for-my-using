@@ -1,3 +1,4 @@
+import type { QuestionDefinition, QuestionResponse } from '@lms/shared/assessment-question-types';
 import type { UserRole } from '@lms/shared/types/api';
 
 export type { ApiErrorDetail, ApiErrorResponse, PaginatedResponse, UserRole } from '@lms/shared/types/api';
@@ -233,12 +234,15 @@ export type CreateLessonCompletionInput = {
 
 export type CreateAttemptAnswerInput = {
   questionId: string;
+  response?: QuestionResponse;
   selectedOptionId?: string;
   selectedOptionIds?: string[];
 };
 
 export type AttemptAnswerResult = {
   id: string;
+  response?: QuestionResponse;
+  correctDefinition?: QuestionDefinition;
   questionId: string;
   selectedOptionId: string | null;
   selectedOptionIds: unknown;
@@ -252,6 +256,7 @@ export type AttemptAnswerResult = {
 
 export type AssessmentQuestionSummary = {
   id: string;
+  definition?: QuestionDefinition | null;
   organizationId: string;
   assessmentId: string;
   type: string;

@@ -1,4 +1,5 @@
 import { longreadFileServer } from '../fixtures/longread-files.js';
+import { openTypedAssessment } from '../fixtures/assessment-typed-compat.js';
 import { longreadPlaybackServer } from '../fixtures/longread-playback.js';
 import { openLongreadEntrypoints } from '../fixtures/longread-entrypoints.js';
 import { longreadCourseId } from '../fixtures/longread-editor.js';
@@ -67,6 +68,10 @@ async function auditAccessibility(page: Page, testInfo: TestInfo, name = 'axe-fi
 }
 
 test.describe('WCAG AA browser baseline', () => {
+  for (const width of [375, 1440]) test(`typed assessment compatibility state is accessible at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 900 }); await openTypedAssessment(page);
+    await auditAccessibility(page, testInfo, 'typed-assessment-compat');
+  });
   for (const width of [375, 768, 1440]) test(`longread audio/video reader is accessible at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 }); await longreadPlaybackServer().reader(page, { direction: width === 768 ? 'rtl' : 'ltr' });
     await auditAccessibility(page, testInfo, 'longread-playback-reader');

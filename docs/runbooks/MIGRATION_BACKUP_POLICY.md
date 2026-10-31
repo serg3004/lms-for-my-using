@@ -6,6 +6,33 @@
 >
 > **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
 
+## Assessment question types migration (PR 388)
+
+`20261031130000_add_assessment_question_types` extends the existing assessment system:
+
+- adds `matching`, `ordering`, `fill_blank`, `short_answer` to `AssessmentQuestionType`;
+- adds nullable JSONB `assessment_questions.definition` and `assessment_attempt_answers.response`;
+- atomically replaces the existing selection CHECK with its three-format extension: exactly one
+  of single option ID, selected-option JSON, typed-response JSON. A typed response must be an object
+  with a supported `type`; complete question/answer validation remains in the API. This CHECK is
+  maintained in migration SQL because Prisma's schema DSL cannot express it;
+- performs no backfill, score recomputation, result/certificate change, deletion or enum rename.
+  Legacy option rows remain valid; their new columns stay SQL NULL. No new environment variable.
+
+Apply forward migrations before running the updated API (`prisma migrate deploy`, as in the
+existing deployment procedure). Added columns/enum members do not require a separate data migration.
+PostgreSQL takes table locks while adding columns/replacing the CHECK and validates existing rows;
+use the existing backup/maintenance policy for the target database. Local disposable-PostgreSQL
+tests apply the actual SQL to copies of legacy tables and compare rows, old enum values, reports
+and certificates. This is repository test evidence, not confirmation of a production backup/restore.
+
+Rollback: stop authoring/submitting the newly defined question types, then roll back application
+code only after checking whether new enum values/typed responses have been stored. Old application
+versions do not understand these new values, so a fully transparent downgrade is not guaranteed
+once new questions exist. Keep the migration and all existing definitions/attempts; do not remove
+enum members/columns or rewrite historical grades. Restoring a database requires the separate
+approved backup/restore procedure; `longreadEnabled` alone does not disable standalone assessments.
+
 ## 1. Migration source of truth
 
 **Статус:** `IMPLEMENTED`

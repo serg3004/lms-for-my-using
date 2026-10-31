@@ -1,3 +1,4 @@
+import { supportsOptionQuestion } from '../assessment-taking/model.js';
 import { type FormEvent, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { apiRequest } from '../../shared/apiClient.js';
@@ -106,12 +107,13 @@ export function QuestionsEditor({ assessment, courses, loading, questions, setQu
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
           <div><span style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginRight: '8px' }}>{index + 1}. [{question.type}] {question.points}pt</span><strong style={{ fontSize: '14px' }}>{question.title}</strong></div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => { setOptionFor(toggleOptionFormTarget(optionFor, question.id)); setOptionText(''); setCorrect(false); setOptionError(null); }}>+ {t('admin.assessmentBuilder.addOption', 'Add option')}</button>
-            <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => startEditQuestion(question)}>{t('admin.assessmentBuilder.edit', 'Edit')}</button>
+            <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" disabled={!supportsOptionQuestion(question)} onClick={() => { setOptionFor(toggleOptionFormTarget(optionFor, question.id)); setOptionText(''); setCorrect(false); setOptionError(null); }}>+ {t('admin.assessmentBuilder.addOption', 'Add option')}</button>
+            <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" disabled={!supportsOptionQuestion(question)} onClick={() => startEditQuestion(question)}>{t('admin.assessmentBuilder.edit', 'Edit')}</button>
             <button className="admin-btn admin-btn--sm admin-btn--danger" type="button" onClick={() => setDeleteQuestionTarget(question)}>{t('admin.assessmentBuilder.delete', 'Delete')}</button>
           </div>
         </div>
       )}
+      {!supportsOptionQuestion(question) && <p role="status">{t('assessments.typedQuestionUnavailable')}</p>}
       {(options[question.id] ?? []).length ? <ul style={{ margin: '8px 0 0', padding: '0 0 0 16px', fontSize: '13px', display: 'grid', gap: '6px' }}>{options[question.id].map((option) => (
         <li key={option.id}>
           {editingOption?.questionId === question.id && editingOption.optionId === option.id ? (

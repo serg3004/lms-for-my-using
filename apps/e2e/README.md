@@ -1,5 +1,13 @@
 # Browser E2E
 
+PR 388 adds `assessment-typed-compat.spec.ts`: mocked API transport verifies that legacy
+option-only learner/author forms reject typed questions without starting a timed attempt,
+submitting an incompatible answer or overwriting the definition (RU/EN/KK/ZH). The unavailable
+learner state is covered by axe and visual snapshots at 375/1440 px. Grading, answer-key projection,
+tenant/author scope, actual SQL migration and legacy result/certificate compatibility are covered
+separately against PostgreSQL in `assessment-question-types.database.spec.ts`; browser mocks
+are not evidence of backend authorization or seven-type longread UI support (PR 389).
+
 Run the Chromium suite from the repository root:
 
 ```bash

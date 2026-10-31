@@ -6,7 +6,7 @@ import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { Button, DataTable, EmptyState, PageState, SearchInput, Toolbar, type Column } from '../shared/ui.js';
 import type { AssessmentAttemptSummary } from '../shared/api/types.js';
-import { buildAssessmentAnswers, countAnsweredQuestions, getAnswerOutcome, getAssessmentOptionLabel, selectedIds, type SelectedAnswers } from './assessment-taking/model.js';
+import { buildAssessmentAnswers, countAnsweredQuestions, getAnswerOutcome, getAssessmentOptionLabel, selectedIds, supportsOptionQuestion, type SelectedAnswers } from './assessment-taking/model.js';
 import { AssessmentSettingsForm } from './assessment-builder/AssessmentSettingsForm.js';
 import { QuestionsEditor } from './assessment-builder/QuestionsEditor.js';
 import { ASSESSMENT_STATUSES, assessmentFormReducer, assessmentToForm, buildPreviewQuestionsWithOptions, describePreviewAnswerSelection, emptyAssessmentForm, filterAssessments, mapAssessmentForm, type AnswerOption, type Assessment, type AssessmentPreviewResult, type AssessmentStatus, type Question, type SaveState } from './assessment-builder/model.js';
@@ -149,7 +149,7 @@ export function AdminAssessmentBuilderPage() {
     setPreviewSubmit({ status: 'idle' });
   }
   async function submitPreview() {
-    if (!previewAssessment) return;
+    if (!previewAssessment || previewQuestions.some((question) => !supportsOptionQuestion(question))) return;
     const questionsWithOptions = buildPreviewQuestionsWithOptions(previewQuestions, previewOptions);
     if (countAnsweredQuestions(questionsWithOptions, previewSelected) < questionsWithOptions.length) {
       setPreviewSubmit({ status: 'error', message: t('assessments.errorAnswerAll') });
@@ -288,6 +288,8 @@ export function AdminAssessmentBuilderPage() {
       </header>
       {previewLoading ? (
         <PageState message={t('admin.assessmentBuilder.previewLoading', 'Loading preview...')} variant="loading"/>
+      ) : previewQuestions.some((question) => !supportsOptionQuestion(question)) ? (
+        <PageState message={t('assessments.typedQuestionUnavailable')} variant="error" />
       ) : previewQuestions.length === 0 ? (
         <EmptyState message={t('admin.assessmentBuilder.previewEmpty', 'This assessment has no questions yet.')}/>
       ) : previewSubmit.status === 'done' ? (

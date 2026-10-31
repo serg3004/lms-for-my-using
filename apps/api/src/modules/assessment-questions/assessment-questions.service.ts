@@ -1,4 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { validateQuestionDefinition, publicQuestionDefinition } from '../../common/assessment-question-definition.js';
 
 import { seededShuffle } from '../../common/seeded-shuffle.js';
 import { PrismaService } from '../../database/prisma.service.js';
@@ -21,6 +23,7 @@ const assessmentQuestionSelect = {
   points: true,
   order: true,
   scoringMode: true,
+  definition: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -60,6 +63,7 @@ const learnerAssessmentQuestionSelect = {
   points: true,
   order: true,
   scoringMode: true,
+  definition: true,
   options: learnerQuizOptionsSelect,
 } as const;
 
@@ -102,11 +106,15 @@ export class AssessmentQuestionsService {
       select: learnerAssessmentQuestionSelect,
     });
 
+    const publicQuestions = questions.map(({ definition, ...question }) => {
+      const parsed = validateQuestionDefinition(question.type, definition);
+      return { ...question, options: parsed ? [] : question.options, ...(parsed ? { definition: publicQuestionDefinition(parsed, `${assessmentId}:${userId}:${question.id}`) } : {}) };
+    });
     if (!assessment.randomizeOrder) {
-      return questions;
+      return publicQuestions;
     }
 
-    return seededShuffle(questions, `${assessmentId}:${userId}`).map((question) => ({
+    return seededShuffle(publicQuestions, `${assessmentId}:${userId}`).map((question) => ({
       ...question,
       options: seededShuffle(question.options, `${assessmentId}:${userId}:${question.id}`),
     }));
@@ -132,9 +140,11 @@ export class AssessmentQuestionsService {
   async createQuestion(assessmentId: string, input: CreateAssessmentQuestionInput) {
     await this.ensureAssessmentExists(assessmentId, input.organizationId);
 
+    const definition = validateQuestionDefinition(input.type, input.definition);
     return this.prisma.assessmentQuestion.create({
       data: {
         ...input,
+        definition: definition ?? undefined,
         assessmentId,
       },
       select: assessmentQuestionSelect,
@@ -142,11 +152,13 @@ export class AssessmentQuestionsService {
   }
 
   async updateQuestion(questionId: string, organizationId: string, input: UpdateAssessmentQuestionInput) {
-    await this.ensureQuestionExists(questionId, organizationId);
-
+    const current = await this.ensureQuestionExists(questionId, organizationId);
+    const definitionChanged = input.type !== undefined || input.definition !== undefined;
+    const type = input.type ?? current.type;
+    const definition = definitionChanged ? validateQuestionDefinition(type, input.definition !== undefined ? input.definition : current.definition) : null;
     return this.prisma.assessmentQuestion.update({
       where: { id: questionId, organizationId },
-      data: input,
+      data: { ...input, definition: definitionChanged ? definition ?? Prisma.DbNull : undefined, ...(definitionChanged ? { type } : {}) },
       select: assessmentQuestionSelect,
     });
   }
@@ -162,8 +174,8 @@ export class AssessmentQuestionsService {
   }
 
   async listAnswerOptions(questionId: string, organizationId: string) {
-    await this.ensureQuestionExists(questionId, organizationId);
-
+    const question = await this.ensureQuestionExists(questionId, organizationId);
+    if (question.definition || ['matching', 'ordering', 'fill_blank', 'short_answer'].includes(question.type)) return [];
     return this.prisma.assessmentAnswerOption.findMany({
       where: {
         questionId,
@@ -177,7 +189,8 @@ export class AssessmentQuestionsService {
   }
 
   async createAnswerOption(questionId: string, input: CreateAssessmentAnswerOptionInput) {
-    await this.ensureQuestionExists(questionId, input.organizationId);
+    const question = await this.ensureQuestionExists(questionId, input.organizationId);
+    if (question.definition || ['matching', 'ordering', 'fill_blank', 'short_answer'].includes(question.type)) throw new BadRequestException('Defined questions do not use answer options');
 
     return this.prisma.assessmentAnswerOption.create({
       data: {
@@ -191,13 +204,14 @@ export class AssessmentQuestionsService {
   async updateAnswerOption(optionId: string, organizationId: string, input: UpdateAssessmentAnswerOptionInput) {
     const option = await this.prisma.assessmentAnswerOption.findFirst({
       where: { id: optionId, organizationId, deletedAt: null },
-      select: { id: true, text: true, imageUrl: true },
+      select: { id: true, text: true, imageUrl: true, question: { select: { type: true, definition: true } } },
     });
 
     if (!option) {
       throw new NotFoundException('Assessment answer option not found');
     }
 
+    if (option.question && (option.question.definition || ['matching', 'ordering', 'fill_blank', 'short_answer'].includes(option.question.type))) throw new BadRequestException('Defined questions do not use answer options');
     const nextText = input.text !== undefined ? input.text : option.text;
     const nextImageUrl = input.imageUrl !== undefined ? input.imageUrl : option.imageUrl;
 
@@ -215,13 +229,14 @@ export class AssessmentQuestionsService {
   async deleteAnswerOption(optionId: string, organizationId: string) {
     const option = await this.prisma.assessmentAnswerOption.findFirst({
       where: { id: optionId, organizationId, deletedAt: null },
-      select: { id: true },
+      select: { id: true, question: { select: { type: true, definition: true } } },
     });
 
     if (!option) {
       throw new NotFoundException('Assessment answer option not found');
     }
 
+    if (option.question && (option.question.definition || ['matching', 'ordering', 'fill_blank', 'short_answer'].includes(option.question.type))) throw new BadRequestException('Defined questions do not use answer options');
     await this.prisma.assessmentAnswerOption.update({
       where: { id: optionId, organizationId },
       data: { deletedAt: new Date() },
@@ -251,12 +266,13 @@ export class AssessmentQuestionsService {
         organizationId,
         deletedAt: null,
       },
-      select: { id: true },
+      select: { id: true, type: true, definition: true },
     });
 
     if (!question) {
       throw new NotFoundException('Assessment question not found');
     }
+    return question;
   }
 
   private async ensurePublishedAssessmentExists(assessmentId: string, organizationId: string) {

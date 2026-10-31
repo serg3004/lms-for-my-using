@@ -2093,6 +2093,7 @@
     "attemptsLeft": "Осталось попыток"
   },
   "assessments": {
+    "typedQuestionUnavailable": "Вопросы этого теста пока недоступны в этой форме. Обратитесь к организатору обучения.",
     "navLink": "Оценивания",
     "title": "Assessments",
     "detailTitle": "Assessment details",
