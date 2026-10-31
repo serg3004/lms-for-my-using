@@ -387,11 +387,12 @@ describe('design system — DataTable', () => {
           selectedKeys: new Set(['1']),
           onChange: vi.fn(),
           rowLabel: (row) => `Select ${row.name}`,
+          selectedLabel: (count) => `Выбрано: ${count}`,
         }}
       />,
     );
 
-    expect(html).toContain('aria-label="1 selected"');
+    expect(html).toContain('aria-label="Выбрано: 1"');
     expect(html).toContain('Archive 1');
     expect(html).toContain('aria-label="Select Alice"');
     expect(html).toContain('aria-expanded="true"');
