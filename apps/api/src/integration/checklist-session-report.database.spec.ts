@@ -220,9 +220,10 @@ describe('checklist session report (PR 370) — database', () => {
   });
 
   it('colours the total by the configured ranges and shows the primary departments', async () => {
+    // PR 397: the ranges and colours are frozen when the session completes, so they are configured first.
+    await prisma.checklistWorkplaceSettings.create({ data: { organizationId, highPerformanceThreshold: 90, lowThreshold: 80, resultColorLow: '#112233' } });
     const { session } = await completedSession();
     await complete(session);
-    await prisma.checklistWorkplaceSettings.create({ data: { organizationId, highPerformanceThreshold: 90, lowThreshold: 80, resultColorLow: '#112233' } });
     const department = await prisma.department.create({ data: { organizationId, name: 'Sales' } });
     await prisma.departmentMembership.create({ data: { organizationId, userId: learnerId, departmentId: department.id, isPrimary: true } });
 

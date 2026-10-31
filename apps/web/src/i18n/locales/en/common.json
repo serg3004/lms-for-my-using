@@ -1365,7 +1365,8 @@
           },
           "removeUnavailable": "Remove unavailable users",
           "readOnly": "Only an administrator can change who may be an observer."
-        }
+        },
+        "moduleSettingsOrgHint": "Default values; an individual checklist can override them."
       },
       "color": {
         "palette": "{{label}}: palette ({{color}})",
@@ -1617,7 +1618,23 @@
       "feedbackEnabledHint": "The observer leaves strengths, development areas and a comment at the end of the session.",
       "feedbackRequiredHint": "A session cannot be completed until strengths and development areas are filled in. Applies to sessions assigned after you save.",
       "feedbackSectionTitle": "Feedback",
-      "feedbackSectionHint": "Feedback is left at the end of the observation."
+      "feedbackSectionHint": "Feedback is left at the end of the observation.",
+      "moduleSettings": {
+        "title": "Module settings for this checklist",
+        "intro": "By default the checklist uses the organization settings. Switch a group off “As in the organization” to set it for this checklist only.",
+        "orgNow": "In the organization now",
+        "thresholds": "Result thresholds: as in the organization",
+        "colors": "Result colours: as in the organization",
+        "geolocation": "Geolocation",
+        "geolocationHint": "Set with “Record location” above.",
+        "asOrg": "As in the organization",
+        "resetOne": "As in the organization",
+        "feedback": "Feedback visibility: as in the organization",
+        "observers": "Who may observe: as in the organization",
+        "observersAdminOnly": "Only an administrator can change who may observe this checklist.",
+        "resetAll": "Reset all: as in the organization",
+        "badge": "Own module settings"
+      }
     },
     "orgTools": {
       "cardTitle": "Organization structure import",

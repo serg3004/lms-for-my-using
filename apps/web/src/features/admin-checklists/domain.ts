@@ -6,6 +6,7 @@ import { HIGHLIGHT_COLOR_PATTERN } from '../../shared/HighlightColorField.js';
 import { checklistItemLevels, isChecklistRequirementSatisfied } from '../../app/checklistCompletion.js';
 import type {
   ChecklistAccessMode,
+  ChecklistModuleSettings,
   ChecklistGeolocationPolicy,
   ChecklistInstanceSummary,
   ChecklistItemGroup,
@@ -78,6 +79,8 @@ export function buildChecklistSettingsPayload(form: {
   pinned: boolean;
   /** Left out for people who may not change it (only the creator and admins can). */
   allowEditByAll?: boolean;
+  /** PR 397 -- the four override groups kept in the editor (geolocation is `defaultLocationCapturePolicy`). */
+  moduleSettings?: ChecklistModuleSettings;
 }) {
   return {
     title: form.title,
@@ -98,6 +101,7 @@ export function buildChecklistSettingsPayload(form: {
     // Only a free checklist can be pinned; switching the mode back clears the pin in the same save.
     pinned: form.accessMode === 'free' && form.pinned,
     ...(form.allowEditByAll === undefined ? {} : { allowEditByAll: form.allowEditByAll }),
+    ...(form.moduleSettings === undefined ? {} : { moduleSettings: form.moduleSettings }),
   };
 }
 

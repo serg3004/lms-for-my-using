@@ -110,6 +110,24 @@ export const updateChecklistOrgTemplateSchema = z
   .refine((input) => Object.keys(input).length > 0, { message: 'Nothing to update' });
 export const createChecklistFromOrgTemplateSchema = z.object({ templateId: z.string().uuid() });
 
+// PR 397: per-sheet overrides of the organization module settings. `null` returns a group to "as in the
+// organization"; the geolocation group is the sheet's own `defaultLocationCapturePolicy` (null = inherit).
+const feedbackVisibilityValues = z.enum(['after_completion', 'live']);
+export const checklistModuleSettingsSchema = z
+  .object({
+    thresholds: z.object({ high: z.number().int().min(0).max(100), low: z.number().int().min(0).max(100) }).strict().nullable(),
+    resultColors: z.object({ low: highlightColorSchema, mid: highlightColorSchema, high: highlightColorSchema }).strict().nullable(),
+    feedbackVisibility: feedbackVisibilityValues.nullable(),
+    observers: z.object({
+      eligibility: z.enum(['any_user', 'selected_roles', 'selected_users']),
+      roles: z.array(z.nativeEnum(UserRole)).max(5).refine((roles) => new Set(roles).size === roles.length, 'Duplicate observer roles'),
+      userIds: z.array(z.string().uuid()).max(500).refine((ids) => new Set(ids).size === ids.length, 'Duplicate observer users'),
+    }).strict().nullable(),
+  })
+  .partial()
+  .strict();
+export type ChecklistModuleSettingsInput = z.infer<typeof checklistModuleSettingsSchema>;
+
 export const updateChecklistSchema = z
   .object({
     title: z.string().trim().min(1).max(200),
@@ -132,6 +150,7 @@ export const updateChecklistSchema = z
     allowEditByAll: z.boolean(),
     // PR 395: move the sheet into a folder; null = back to the root.
     folderId: z.string().uuid().nullable(),
+    moduleSettings: checklistModuleSettingsSchema,
   })
   .partial();
 export type UpdateChecklistInput = z.infer<typeof updateChecklistSchema>;
@@ -515,6 +534,8 @@ export type ImportChecklistSessionsInput = z.infer<typeof importChecklistSession
 export const checklistSessionParticipantRoleSchema = z.enum(['learner', 'observer']);
 export const checklistSessionParticipantsQuerySchema = z.object({
   role: checklistSessionParticipantRoleSchema,
+  // PR 397: with it the observer list follows that sheet's observer override.
+  checklistId: z.string().uuid().optional(),
   search: z.string().trim().min(1).max(120).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(25),

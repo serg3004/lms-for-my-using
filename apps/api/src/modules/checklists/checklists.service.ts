@@ -9,6 +9,7 @@ import { ChecklistScaleService } from './checklist-scale.service.js';
 import { performanceBand, type ManagerPerformanceBand } from './checklist-performance-band.js';
 import { managerExportRows, employeeExportRows, exportLocale, MAX_EXPORT_ROWS, serializeReportCsv, viewEmployees } from './checklist-report-csv.js';
 import { ChecklistOrgTemplates } from './checklist-org-templates.js';
+import { assertObserversBelongToOrganization, freezeReportSettings, loadEffectiveSettings, overridesToColumns, presentOverrides, presentStaffChecklist, SHEET_OVERRIDES_SELECT } from './checklist-settings-overrides.js';
 import { ChecklistBulkActions, type ChecklistBulkAction } from './checklist-bulk-actions.js';
 import { visibleFolderIds, type FolderActor } from './checklist-folder-tree.js';
 import { ChecklistResultDeletion } from './checklist-result-deletion.js';
@@ -20,6 +21,7 @@ import {
   ChecklistAnalyticsQuery,
   ChecklistManagerAnalyticsExportQuery,
   ChecklistManagerAnalyticsQuery,
+  ChecklistModuleSettingsInput,
   ChecklistListQuery,
   ChecklistQueueQuery,
   ContextField,
@@ -59,7 +61,7 @@ type AnalyticsRow = {
   status: string;
   scheduledAt: Date | null;
   self: boolean;
-  instance: { userId: string; status: string; percentage: number; passed: boolean; scored: boolean };
+  instance: { userId: string; checklistId: string; status: string; percentage: number; passed: boolean; scored: boolean };
 };
 
 export type ManagerAnalyticsEmployeeRow = {
@@ -154,6 +156,9 @@ const checklistWithItemsSelect = {
     },
   },
 } as const;
+
+/** PR 397: staff-facing reads also carry the sheet's module-settings overrides; the learner-facing instance select does not. */
+const staffChecklistSelect = { ...checklistWithItemsSelect, ...SHEET_OVERRIDES_SELECT } as const;
 
 const instanceSelect = {
   id: true,
@@ -336,7 +341,7 @@ export class ChecklistsService {
   deleteOrgTemplate(templateId: string, organizationId: string, actorId: string) { return this.orgTemplates.remove(templateId, organizationId, actorId); }
   async createFromOrgTemplate(templateId: string, organizationId: string, actorId: string) {
     const checklistId = await this.orgTemplates.createChecklist(templateId, organizationId, actorId);
-    return this.prisma.checklist.findFirstOrThrow({ where: { id: checklistId, organizationId }, select: checklistWithItemsSelect });
+    return presentStaffChecklist(await this.prisma.checklist.findFirstOrThrow({ where: { id: checklistId, organizationId }, select: staffChecklistSelect }));
   }
 
   // ---- Templates ----
@@ -344,7 +349,7 @@ export class ChecklistsService {
   async listChecklists(organizationId: string, status?: ChecklistListQuery['status'], actor?: FolderActor) {
     // PR 395: sheets of a folder the actor may not see are left out of the list (assignments, sessions and reports are not affected).
     const hiddenFolderIds = actor && !actor.roles.includes('admin') ? await this.hiddenFolderIds(organizationId, actor) : [];
-    return this.prisma.checklist.findMany({
+    const rows = await this.prisma.checklist.findMany({
       where: {
         organizationId,
         deletedAt: null,
@@ -353,8 +358,9 @@ export class ChecklistsService {
       },
       orderBy: { createdAt: 'desc' },
       // PR 393: the list shows who created the sheet; a deleted author reads as null (creator relation is SetNull).
-      select: { ...checklistWithItemsSelect, creator: { select: { id: true, firstName: true, lastName: true } } },
+      select: { ...staffChecklistSelect, creator: { select: { id: true, firstName: true, lastName: true } } },
     });
+    return rows.map((row) => presentStaffChecklist(row));
   }
 
   /** PR 395: the target folder of a move (null = root) must exist in the organization and be visible to the actor. */
@@ -372,17 +378,40 @@ export class ChecklistsService {
     return folders.filter((folder) => !visible.has(folder.id)).map((folder) => folder.id);
   }
 
+  /**
+   * PR 397: who may observe a sheet is an access setting (as for the organization, PR 365): only an administrator
+   * changes it. Resending the stored value is not a change, so a form of a non-admin editor may carry it along.
+   */
+  async changesSheetObservers(checklistId: string, organizationId: string, observers: ChecklistModuleSettingsInput['observers']): Promise<boolean> {
+    if (observers === undefined) return false;
+    const sheet = await this.prisma.checklist.findFirst({ where: { id: checklistId, organizationId, deletedAt: null }, select: SHEET_OVERRIDES_SELECT });
+    if (!sheet) throw new NotFoundException('Checklist not found');
+    const current = presentOverrides(sheet).observers;
+    if (observers === null || current === null) return observers !== current;
+    const same = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((value) => b.includes(value));
+    return observers.eligibility !== current.eligibility || !same(observers.roles, current.roles) || !same(observers.userIds, current.userIds);
+  }
+
+  /** PR 397: the sheets that override the organization's feedback visibility (checklist id -> value). */
+  async feedbackVisibilityOverrides(organizationId: string) {
+    const rows = await this.prisma.checklist.findMany({
+      where: { organizationId, feedbackVisibilityOverride: { not: null } },
+      select: { id: true, feedbackVisibilityOverride: true },
+    });
+    return new Map(rows.map((row) => [row.id, row.feedbackVisibilityOverride!] as const));
+  }
+
   async getChecklist(checklistId: string, organizationId: string) {
     const checklist = await this.prisma.checklist.findFirst({
       where: { id: checklistId, organizationId, deletedAt: null },
-      select: checklistWithItemsSelect,
+      select: staffChecklistSelect,
     });
 
     if (!checklist) {
       throw new NotFoundException('Checklist not found');
     }
 
-    return checklist;
+    return presentStaffChecklist(checklist);
   }
 
   /**
@@ -559,11 +588,13 @@ export class ChecklistsService {
       );
     }
 
-    const { scaleLevels, contextFields, ...rest } = input;
+    const { scaleLevels, contextFields, moduleSettings, ...rest } = input;
     delete rest.pinned;
+    if (moduleSettings?.observers) await assertObserversBelongToOrganization(this.prisma, organizationId, moduleSettings.observers.userIds);
 
     const updated = await this.updateWithPinLimit(checklistId, organizationId, pinned, {
       ...rest,
+      ...(moduleSettings ? overridesToColumns(moduleSettings) : {}),
       ...(pinned !== undefined ? { pinned } : {}),
       ...(scaleLevels !== undefined
         ? { scaleLevels: scaleLevels === null ? Prisma.JsonNull : scaleLevels }
@@ -583,7 +614,7 @@ export class ChecklistsService {
       metadata: { fields: Object.keys(input) },
     });
 
-    return updated;
+    return presentStaffChecklist(updated);
   }
 
   /**
@@ -607,7 +638,7 @@ export class ChecklistsService {
   /** Pinning takes a per-organization lock so two parallel requests cannot both pass the limit check. */
   private async updateWithPinLimit(checklistId: string, organizationId: string, pinned: boolean | undefined, data: Prisma.ChecklistUpdateInput) {
     if (pinned !== true) {
-      return this.prisma.checklist.update({ where: { id: checklistId, organizationId }, data, select: checklistWithItemsSelect });
+      return this.prisma.checklist.update({ where: { id: checklistId, organizationId }, data, select: staffChecklistSelect });
     }
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('checklist-pin'), hashtext(${organizationId}))`;
@@ -615,7 +646,7 @@ export class ChecklistsService {
         where: { organizationId, deletedAt: null, status: 'published', accessMode: 'free', pinned: true, id: { not: checklistId } },
       });
       if (others >= MAX_PINNED_CHECKLISTS) throw new ConflictException(PINNED_LIMIT_MESSAGE);
-      return tx.checklist.update({ where: { id: checklistId, organizationId }, data, select: checklistWithItemsSelect });
+      return tx.checklist.update({ where: { id: checklistId, organizationId }, data, select: staffChecklistSelect });
     });
   }
 
@@ -661,6 +692,16 @@ export class ChecklistsService {
           allowEditByAll: source.allowEditByAll,
           // PR 395: a copy stays in the folder of the original.
           folderId: source.folderId,
+          // PR 397: the copy keeps the module-settings overrides of the original.
+          highThresholdOverride: source.highThresholdOverride,
+          lowThresholdOverride: source.lowThresholdOverride,
+          resultColorLowOverride: source.resultColorLowOverride,
+          resultColorMidOverride: source.resultColorMidOverride,
+          resultColorHighOverride: source.resultColorHighOverride,
+          feedbackVisibilityOverride: source.feedbackVisibilityOverride,
+          observerEligibilityOverride: source.observerEligibilityOverride,
+          observerRolesOverride: source.observerRolesOverride,
+          observerUserIdsOverride: source.observerUserIdsOverride,
           createdBy: actorId,
         },
         select: { id: true },
@@ -719,7 +760,7 @@ export class ChecklistsService {
       metadata: { sourceChecklistId: checklistId },
     });
 
-    return this.prisma.checklist.findFirstOrThrow({ where: { id: copyId, organizationId }, select: checklistWithItemsSelect });
+    return presentStaffChecklist(await this.prisma.checklist.findFirstOrThrow({ where: { id: copyId, organizationId }, select: staffChecklistSelect }));
   }
 
   /**
@@ -1387,8 +1428,15 @@ export class ChecklistsService {
     organizationId: string,
     query: ChecklistManagerAnalyticsQuery,
     userScope: Prisma.UserWhereInput,
-    thresholds: { high: number; low: number | null },
+    orgThresholds: { high: number; low: number | null },
   ) {
+    // PR 397: sheets with their own thresholds colour their results by those; a view of a single sheet uses them throughout.
+    // Averages across several sheets are compared by percentage and banded by the organization's thresholds.
+    const sheetThresholds = new Map((await this.prisma.checklist.findMany({
+      where: { organizationId, highThresholdOverride: { not: null }, lowThresholdOverride: { not: null } },
+      select: { id: true, highThresholdOverride: true, lowThresholdOverride: true },
+    })).map((row) => [row.id, { high: row.highThresholdOverride!, low: row.lowThresholdOverride! }] as const));
+    const thresholds = (query.checklistId ? sheetThresholds.get(query.checklistId) : undefined) ?? orgThresholds;
     const from = new Date(query.from);
     const to = new Date(query.to);
     const previousFrom = new Date(from.getTime() - (to.getTime() - from.getTime()));
@@ -1446,7 +1494,7 @@ export class ChecklistsService {
     };
     if (scopedIds.length === 0) return emptyResult;
 
-    const instanceSelect = { userId: true, status: true, percentage: true, passed: true, scored: true } as const;
+    const instanceSelect = { userId: true, checklistId: true, status: true, percentage: true, passed: true, scored: true } as const;
     const sessionSelect = { status: true, scheduledAt: true, instance: { select: instanceSelect } } as const;
     const sessionWhere = (range: { gte: Date; lte: Date }): Prisma.ChecklistSessionWhereInput => ({
       organizationId,
@@ -1480,15 +1528,16 @@ export class ChecklistsService {
     const previousSessions = allPreviousSessions.filter((session) => visibleIds.has(session.instance.userId));
     if (employees.length === 0) return { ...emptyResult, departments: this.departmentBreakdown(managerEmployees, allCurrentSessions) };
 
-    const bucketOf = (percentage: number, passed: boolean): 'low' | 'mid' | 'high' => {
-      if (thresholds.low === null && percentage < thresholds.high) return passed ? 'mid' : 'low';
-      return performanceBand(percentage, thresholds);
+    const bucketOf = (percentage: number, passed: boolean, checklistId: string): 'low' | 'mid' | 'high' => {
+      const own = sheetThresholds.get(checklistId) ?? thresholds;
+      if (own.low === null && percentage < own.high) return passed ? 'mid' : 'low';
+      return performanceBand(percentage, own);
     };
     const average = (values: number[]) => (values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : null);
 
     const scoredCompleted = currentSessions.filter((session) => session.instance.status === 'completed' && session.instance.scored);
     const distributionCounts = { low: 0, mid: 0, high: 0 };
-    for (const session of scoredCompleted) distributionCounts[bucketOf(session.instance.percentage, session.instance.passed)] += 1;
+    for (const session of scoredCompleted) distributionCounts[bucketOf(session.instance.percentage, session.instance.passed, session.instance.checklistId)] += 1;
 
     const byDay = new Map<string, { total: number; count: number }>();
     for (const session of scoredCompleted) {
@@ -2594,6 +2643,7 @@ export class ChecklistsService {
         dueAt: true,
         templateSnapshot: true,
         snapshotVersion: true,
+        reportSettings: true,
       },
     });
 
@@ -2710,11 +2760,18 @@ export class ChecklistsService {
     const percentage = scored ? Math.round((totalScore / maxScore) * 100) : 0;
     const passed = scored && status === 'completed' && percentage >= checklist.passThreshold;
 
+    // PR 397: the thresholds and colours the report paints from are frozen at the first completion, so a later
+    // edit of the organization or sheet settings never repaints a finished report.
+    const reportSettings = completedAt && instance.reportSettings == null
+      ? freezeReportSettings(await loadEffectiveSettings(this.prisma, organizationId, instance.checklistId))
+      : undefined;
+
     try {
       const updated = await this.prisma.checklistInstance.update({
         where: { id: instanceId, organizationId, status: { not: 'expired' } },
         data: {
           status,
+          ...(reportSettings ? { reportSettings: reportSettings as unknown as Prisma.InputJsonValue } : {}),
           totalScore,
           maxScore,
           percentage,

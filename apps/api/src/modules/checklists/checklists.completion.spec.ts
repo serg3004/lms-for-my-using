@@ -146,7 +146,9 @@ function createHarness({
     },
     checklist: {
       findFirstOrThrow: jest.fn(async () => ({ ...checklist })),
+      findFirst: jest.fn(async () => null),
     },
+    checklistWorkplaceSettings: { findUnique: jest.fn(async () => null) },
     checklistItem: {
       findFirst: jest.fn(async ({ where }: { where: { id: string } }) => items.find((candidate) => candidate.id === where.id) ?? null),
       findMany: jest.fn(async () => items),

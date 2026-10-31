@@ -837,36 +837,36 @@ model Lesson {
 }
 
 model CourseMaterial {
-  id               String               @id @default(uuid()) @db.Uuid
-  organizationId   String               @map("organization_id") @db.Uuid
-  courseId         String               @map("course_id") @db.Uuid
-  lessonId         String?              @map("lesson_id") @db.Uuid
-  title            String
-  slug             String
-  description      String?
-  kind             CourseMaterialKind   @default(file)
-  fileName         String?              @map("file_name")
-  fileUrl          String?              @map("file_url")
-  objectKey        String?              @unique(map: "course_materials_object_key_key") @map("object_key")
-  quarantineKey    String?              @unique(map: "course_materials_quarantine_key_key") @map("quarantine_key")
-  mimeType         String?              @map("mime_type")
-  sizeBytes        Int?                 @map("size_bytes")
-  scanStatus       MalwareScanStatus?   @map("scan_status")
-  scanReason       String?              @map("scan_reason")
-  scanExpiresAt    DateTime?            @map("scan_expires_at") @db.Timestamptz
-  scannedAt        DateTime?            @map("scanned_at") @db.Timestamptz
-  status           CourseMaterialStatus @default(active)
-  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt        DateTime             @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt        DateTime?            @map("deleted_at") @db.Timestamptz
-  course           Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  lesson           Lesson?              @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  longreadDocumentId String? @map("longread_document_id") @db.Uuid
-  longreadDocument LongreadDocument? @relation(fields: [longreadDocumentId], references: [id], onDelete: Cascade)
-  multipartUploads MultipartUpload[]
+  id                 String               @id @default(uuid()) @db.Uuid
+  organizationId     String               @map("organization_id") @db.Uuid
+  courseId           String               @map("course_id") @db.Uuid
+  lessonId           String?              @map("lesson_id") @db.Uuid
+  title              String
+  slug               String
+  description        String?
+  kind               CourseMaterialKind   @default(file)
+  fileName           String?              @map("file_name")
+  fileUrl            String?              @map("file_url")
+  objectKey          String?              @unique(map: "course_materials_object_key_key") @map("object_key")
+  quarantineKey      String?              @unique(map: "course_materials_quarantine_key_key") @map("quarantine_key")
+  mimeType           String?              @map("mime_type")
+  sizeBytes          Int?                 @map("size_bytes")
+  scanStatus         MalwareScanStatus?   @map("scan_status")
+  scanReason         String?              @map("scan_reason")
+  scanExpiresAt      DateTime?            @map("scan_expires_at") @db.Timestamptz
+  scannedAt          DateTime?            @map("scanned_at") @db.Timestamptz
+  status             CourseMaterialStatus @default(active)
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt          DateTime?            @map("deleted_at") @db.Timestamptz
+  course             Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson             Lesson?              @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  longreadDocumentId String?              @map("longread_document_id") @db.Uuid
+  longreadDocument   LongreadDocument?    @relation(fields: [longreadDocumentId], references: [id], onDelete: Cascade)
+  multipartUploads   MultipartUpload[]
 
-  @@index([longreadDocumentId])
   @@unique([courseId, slug])
+  @@index([longreadDocumentId])
   @@index([organizationId, courseId, status])
   @@index([lessonId])
   @@map("course_materials")
@@ -932,26 +932,26 @@ model Assignment {
 }
 
 model Progress {
-  id                 String            @id @default(uuid()) @db.Uuid
-  organizationId     String            @map("organization_id") @db.Uuid
-  courseId           String            @map("course_id") @db.Uuid
-  lessonId           String?           @map("lesson_id") @db.Uuid
-  userId             String            @map("user_id") @db.Uuid
-  status             ProgressStatus    @default(in_progress)
-  score              Int?
-  completedAt        DateTime?         @map("completed_at") @db.Timestamptz
-  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt          DateTime          @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt          DateTime?         @map("deleted_at") @db.Timestamptz
-  organization       Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  course             Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  lesson             Lesson?           @relation(fields: [lessonId], references: [id], onDelete: SetNull)
-  user               User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  id                   String            @id @default(uuid()) @db.Uuid
+  organizationId       String            @map("organization_id") @db.Uuid
+  courseId             String            @map("course_id") @db.Uuid
+  lessonId             String?           @map("lesson_id") @db.Uuid
+  userId               String            @map("user_id") @db.Uuid
+  status               ProgressStatus    @default(in_progress)
+  score                Int?
+  completedAt          DateTime?         @map("completed_at") @db.Timestamptz
+  createdAt            DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt            DateTime?         @map("deleted_at") @db.Timestamptz
+  organization         Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  course               Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson               Lesson?           @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  user                 User              @relation(fields: [userId], references: [id], onDelete: Restrict)
   /// PR 382: the longread version this learner started; new learners get the latest published one.
   /// PR 385: version-scoped reading cursor/unlocked navigation, never learning completion.
-  longreadReadingState Json @default("{}") @map("longread_reading_state")
-  longreadRevisionId String?           @map("longread_revision_id") @db.Uuid
-  longreadRevision   LongreadRevision? @relation(fields: [longreadRevisionId], references: [id], onDelete: SetNull)
+  longreadReadingState Json              @default("{}") @map("longread_reading_state")
+  longreadRevisionId   String?           @map("longread_revision_id") @db.Uuid
+  longreadRevision     LongreadRevision? @relation(fields: [longreadRevisionId], references: [id], onDelete: SetNull)
 
   @@unique([courseId, lessonId, userId])
   @@index([organizationId, status])
@@ -1167,6 +1167,17 @@ model Checklist {
   // PR 362в: when false only the creator and an admin may edit the sheet. The column default keeps every
   // checklist created before this change editable by all; the create schema defaults new ones to false.
   allowEditByAll               Boolean                       @default(true) @map("allow_edit_by_all")
+  // PR 397: per-sheet overrides of the organization module settings. Null (or, for the observer lists, an
+  // absent eligibility override) = "as in the organization". Thresholds and result colours are set as a group.
+  highThresholdOverride        Int?                          @map("high_threshold_override")
+  lowThresholdOverride         Int?                          @map("low_threshold_override")
+  resultColorLowOverride       String?                       @map("result_color_low_override")
+  resultColorMidOverride       String?                       @map("result_color_mid_override")
+  resultColorHighOverride      String?                       @map("result_color_high_override")
+  feedbackVisibilityOverride   ChecklistFeedbackVisibility?  @map("feedback_visibility_override")
+  observerEligibilityOverride  ChecklistObserverEligibility? @map("observer_eligibility_override")
+  observerRolesOverride        UserRole[]                    @default([]) @map("observer_roles_override")
+  observerUserIdsOverride      String[]                      @default([]) @map("observer_user_ids_override") @db.Uuid
   // PR 395: the folder the sheet lives in; null = the root "all checklists" level.
   folderId                     String?                       @map("folder_id") @db.Uuid
   createdBy                    String?                       @map("created_by") @db.Uuid
@@ -1290,6 +1301,8 @@ model ChecklistInstance {
   // instance that has no skip capability in play, matching pre-PR-290 behavior unchanged.
   scored             Boolean                  @default(true)
   templateSnapshot   Json?                    @map("template_snapshot")
+  // PR 397: thresholds and result colours frozen when the instance completes, so a later settings edit never repaints the report.
+  reportSettings     Json?                    @map("report_settings")
   snapshotVersion    Int?                     @default(1) @map("snapshot_version")
   dueAt              DateTime?                @map("due_at") @db.Timestamptz
   submittedAt        DateTime?                @map("submitted_at") @db.Timestamptz
