@@ -988,6 +988,8 @@
         "title": "Название",
         "items": "Пункты",
         "scoring": "Оценка",
+        "createdBy": "Создал",
+        "createdAt": "Создан",
         "status": "Статус",
         "access": "Доступ"
       },

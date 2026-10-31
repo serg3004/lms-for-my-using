@@ -988,6 +988,8 @@
         "title": "Title",
         "items": "Items",
         "scoring": "Scoring",
+        "createdBy": "Created by",
+        "createdAt": "Created",
         "status": "Status",
         "access": "Access"
       },

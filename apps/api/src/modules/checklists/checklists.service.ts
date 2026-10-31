@@ -331,7 +331,8 @@ export class ChecklistsService {
     return this.prisma.checklist.findMany({
       where: { organizationId, deletedAt: null, ...(status ? { status } : {}) },
       orderBy: { createdAt: 'desc' },
-      select: checklistWithItemsSelect,
+      // PR 393: the list shows who created the sheet; a deleted author reads as null (creator relation is SetNull).
+      select: { ...checklistWithItemsSelect, creator: { select: { id: true, firstName: true, lastName: true } } },
     });
   }
 

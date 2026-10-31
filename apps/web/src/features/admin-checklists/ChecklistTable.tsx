@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next';
 import { Badge, Button, DataTable, Menu, type BadgeVariant, type Column } from '../../shared/ui.js';
 import type { ChecklistScoringMode, ChecklistStatus, ChecklistSummary } from '../../shared/api/types.js';
+import { formatDate } from '../../shared/formatDate.js';
 import { ChecklistAccessBadge } from '../../shared/checklistAccess.js';
 import { checklistStatusAction } from './domain.js';
 
@@ -9,6 +10,12 @@ const STATUS_BADGE_VARIANT: Record<ChecklistStatus, BadgeVariant> = {
   published: 'published',
   archived: 'neutral',
 };
+
+/** PR 393: author's full name; a deleted or unnamed author reads as an em dash. */
+export function creatorName(checklist: Pick<ChecklistSummary, 'creator'>): string {
+  const name = [checklist.creator?.firstName, checklist.creator?.lastName].filter(Boolean).join(' ').trim();
+  return name || '—';
+}
 
 export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatusChange, onEdit, onCopy, onDelete, t }: {
   rows: ChecklistSummary[];
@@ -32,6 +39,8 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
     { key: 'items', label: t('admin.checklists.col.items', 'Items'), priority: 'secondary', render: (checklist) => checklist.items.length },
     { key: 'access', label: t('admin.checklists.col.access', 'Access'), priority: 'secondary', render: (checklist) => <ChecklistAccessBadge checklist={checklist} t={t} /> },
     { key: 'scoring', label: t('admin.checklists.col.scoring', 'Scoring'), priority: 'secondary', render: (checklist) => <Badge variant="neutral">{scoringModeLabels[checklist.scoringMode]}</Badge> },
+    { key: 'createdBy', label: t('admin.checklists.col.createdBy', 'Created by'), priority: 'secondary', render: (checklist) => creatorName(checklist) },
+    { key: 'createdAt', label: t('admin.checklists.col.createdAt', 'Created'), priority: 'secondary', render: (checklist) => formatDate(checklist.createdAt, undefined, { dateStyle: 'medium', timeStyle: 'short' }) },
     {
       key: 'status',
       label: t('admin.checklists.col.status', 'Status'),
