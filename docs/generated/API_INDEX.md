@@ -43,6 +43,11 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/certificates` | `Certificates` | `bearer` |
 | `GET` | `/api/v1/certificates/{id}` | `Certificates` | `bearer` |
 | `GET` | `/api/v1/certificates/{id}/pdf` | `Certificates` | `bearer` |
+| `GET` | `/api/v1/checklist-folders` | `ChecklistFolders` | `bearer` |
+| `POST` | `/api/v1/checklist-folders` | `ChecklistFolders` | `bearer` |
+| `PATCH` | `/api/v1/checklist-folders/{id}` | `ChecklistFolders` | `bearer` |
+| `DELETE` | `/api/v1/checklist-folders/{id}` | `ChecklistFolders` | `bearer` |
+| `GET` | `/api/v1/checklist-folders/{id}/delete-impact` | `ChecklistFolders` | `bearer` |
 | `GET` | `/api/v1/checklist-instances/deleted-results` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-instances/mine` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-instances/pending-review` | `Checklists` | `bearer` |
@@ -106,6 +111,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/checklists` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklists` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklists/analytics` | `Checklists` | `bearer` |
+| `POST` | `/api/v1/checklists/bulk` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklists/free` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklists/from-org-template` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklists/from-template` | `Checklists` | `bearer` |

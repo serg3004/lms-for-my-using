@@ -353,6 +353,7 @@ model Organization {
   auditLogs                  AuditLog[]
   notifications              Notification[]
   checklists                 Checklist[]
+  checklistFolders           ChecklistFolder[]
   checklistTemplates         ChecklistTemplate[]
   checklistItems             ChecklistItem[]
   checklistItemGroups        ChecklistItemGroup[]
@@ -426,6 +427,7 @@ model User {
   reportingLinesAsManager    ReportingLine[]            @relation("ReportingLineManager")
   notifications              Notification[]
   checklistsCreated          Checklist[]                @relation("ChecklistCreatedBy")
+  checklistFoldersCreated    ChecklistFolder[]          @relation("ChecklistFolderCreatedBy")
   checklistInstances         ChecklistInstance[]        @relation("ChecklistInstanceUser")
   checklistInstancesAssigned ChecklistInstance[]        @relation("ChecklistInstanceAssignedBy")
   checklistItemReviews       ChecklistItemResult[]      @relation("ChecklistItemResultReviewedBy")
@@ -1165,19 +1167,45 @@ model Checklist {
   // PR 362в: when false only the creator and an admin may edit the sheet. The column default keeps every
   // checklist created before this change editable by all; the create schema defaults new ones to false.
   allowEditByAll               Boolean                       @default(true) @map("allow_edit_by_all")
+  // PR 395: the folder the sheet lives in; null = the root "all checklists" level.
+  folderId                     String?                       @map("folder_id") @db.Uuid
   createdBy                    String?                       @map("created_by") @db.Uuid
   createdAt                    DateTime                      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                    DateTime                      @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                    DateTime?                     @map("deleted_at") @db.Timestamptz
   organization                 Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   creator                      User?                         @relation("ChecklistCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  folder                       ChecklistFolder?              @relation(fields: [folderId], references: [id], onDelete: SetNull)
   items                        ChecklistItem[]
   itemGroups                   ChecklistItemGroup[]
   instances                    ChecklistInstance[]
 
   @@index([organizationId, status])
   @@index([organizationId, accessMode, status])
+  @@index([organizationId, folderId])
   @@map("checklists")
+}
+
+/// PR 395: organization-wide folder tree for checklists (up to 5 levels, root folder = level 1). Folders are
+/// soft-deleted together with everything inside; `visibleToStaff` opens a folder to every role except the learner.
+model ChecklistFolder {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  parentId       String?           @map("parent_id") @db.Uuid
+  name           String
+  visibleToStaff Boolean           @default(false) @map("visible_to_staff")
+  createdBy      String?           @map("created_by") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?         @map("deleted_at") @db.Timestamptz
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent         ChecklistFolder?  @relation("ChecklistFolderTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children       ChecklistFolder[] @relation("ChecklistFolderTree")
+  creator        User?             @relation("ChecklistFolderCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  checklists     Checklist[]
+
+  @@index([organizationId, parentId])
+  @@map("checklist_folders")
 }
 
 /// PR 296 observation-sheet builder: named, ordered grouping of ChecklistItem rows within one

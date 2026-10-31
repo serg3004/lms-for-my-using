@@ -672,3 +672,12 @@ Dry-run output includes `longreadFiles.candidates`; S3 candidates still reflect 
 Keep the existing expired-multipart cleanup scheduled as well. Published or pinned references have no age-based
 expiry and survive draft deletion/replacement. PostgreSQL tests cover the scan pipeline, cross-tenant/scope checks,
 version retention and cleanup; production backup/restore still requires the live verification described above.
+
+### Checklist folders (PR 395)
+
+Migration `20261031120000_checklist_folders` is additive and backward-compatible:
+
+- creates the table `checklist_folders` (id, organization_id, parent_id, name, visible_to_staff, created_by, timestamps, deleted_at) with FK to `organizations` (`ON DELETE CASCADE`), to itself (`parent_id`, `ON DELETE RESTRICT`: folders are only ever soft-deleted) and to `users` (`created_by`, `ON DELETE SET NULL`), and an index on `(organization_id, parent_id)`;
+- adds one nullable column `checklists.folder_id UUID` (no `DEFAULT`) with FK `ON DELETE SET NULL` and an index on `(organization_id, folder_id)`; existing sheets keep `NULL` (the root), so no backfill is needed;
+- an older application version neither reads nor writes the new table or column, so a rolling deploy is safe;
+- rollback: drop the FK, the column and the table; sheets stay where they were because folders never owned them.

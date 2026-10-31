@@ -8,10 +8,12 @@ import { ObserverPageLayout } from '../shared/observerLayout.js';
 import { ObserverSessionsNav } from './ObserverSessionsNav.js';
 import { ChecklistBuilder } from '../features/admin-checklists/ChecklistBuilder.js';
 import { ChecklistTemplateDialog } from '../features/admin-checklists/ChecklistTemplateDialog.js';
+import { ChecklistBulkBar, bulkDeleteMessage, bulkResultSummary } from '../features/admin-checklists/ChecklistBulkBar.js';
 import { ChecklistTable } from '../features/admin-checklists/ChecklistTable.js';
 import { CHECKLIST_STATUSES, filterChecklists, isUntouchedDraft } from '../features/admin-checklists/domain.js';
 import { Button, PageState, SearchInput, Toolbar } from '../shared/ui.js';
 import {
+  bulkChecklistAction,
   copyChecklist,
   createChecklist,
   deleteChecklist,
@@ -20,6 +22,8 @@ import {
   updateChecklist,
 } from '../shared/api/checklists.js';
 import type {
+  ChecklistBulkAction,
+  ChecklistBulkResult,
   ChecklistScoringMode,
   ChecklistStatus,
   ChecklistSummary,
@@ -77,6 +81,12 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
   );
   // Declared after useAsyncData so the smoke spec's positional useState mocks keep their numbering.
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  // PR 394: bulk selection. It is cleared whenever the search or the status filter changes, so an action never
+  // reaches a checklist the user can no longer see.
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkDeleteTargets, setBulkDeleteTargets] = useState<ChecklistSummary[] | null>(null);
+  const [bulkResult, setBulkResult] = useState<{ result: ChecklistBulkResult; titles: Map<string, string> } | null>(null);
   // Refreshes a single checklist in place (no full-list reload, no loading flash) — used after
   // an edit made from inside the builder, where a full reload would remount it mid-edit.
   const refreshChecklist = useCallback(async (id: string) => {
@@ -91,6 +101,33 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
     } catch (error) {
       setStatusError(error instanceof ApiClientError ? error.message : t('admin.checklists.statusError', 'Unable to update status.'));
     }
+  }
+  async function runBulk(action: ChecklistBulkAction, targets: ChecklistSummary[]) {
+    setStatusError(null);
+    setBulkResult(null);
+    setBulkBusy(true);
+    try {
+      const result = await bulkChecklistAction(action, targets.map((checklist) => checklist.id));
+      setBulkResult({ result, titles: new Map(targets.map((checklist) => [checklist.id, checklist.title])) });
+      setSelectedKeys(new Set());
+      await load();
+    } catch (error) {
+      setStatusError(error instanceof ApiClientError ? error.message : t('admin.checklists.bulk.error', 'Unable to apply the action to the selected checklists.'));
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+  function requestBulk(action: ChecklistBulkAction, targets: ChecklistSummary[]) {
+    if (action === 'delete') setBulkDeleteTargets(targets);
+    else void runBulk(action, targets);
+  }
+  function changeSearch(value: string) {
+    setSearch(value);
+    setSelectedKeys(new Set());
+  }
+  function changeStatusFilter(value: 'all' | ChecklistStatus) {
+    setStatusFilter(value);
+    setSelectedKeys(new Set());
   }
   async function copy(checklist: ChecklistSummary) {
     setStatusError(null);
@@ -196,9 +233,9 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
         </div>
       )}
       <Toolbar
-        left={<SearchInput value={search} onChange={setSearch} placeholder={t('admin.checklists.searchPlaceholder', 'Find checklist')} />}
+        left={<SearchInput value={search} onChange={changeSearch} placeholder={t('admin.checklists.searchPlaceholder', 'Find checklist')} />}
         right={
-          <select className="admin-status-select" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | ChecklistStatus)}>
+          <select className="admin-status-select" value={statusFilter} onChange={(e) => changeStatusFilter(e.target.value as 'all' | ChecklistStatus)}>
             <option value="all">{t('admin.checklists.allStatuses', 'All statuses')}</option>
             {CHECKLIST_STATUSES.map((status) => (
               <option key={status} value={status}>{statusLabels[status]}</option>
@@ -206,14 +243,37 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
           </select>
         }
       />
+      {bulkResult && (() => {
+        const summary = bulkResultSummary(bulkResult.result, bulkResult.titles, t);
+        return (
+          <div className="ui-state admin-inline-banner" role="status">
+            <p>{summary.headline}</p>
+            {summary.skipped.length > 0 && <ul>{summary.skipped.map((line) => <li key={line.id}>{line.text}</li>)}</ul>}
+            <button type="button" className="admin-inline-banner__close" aria-label={t('admin.checklists.close', 'Close')} onClick={() => setBulkResult(null)}>×</button>
+          </div>
+        );
+      })()}
       <ChecklistTable rows={filtered} statusLabels={statusLabels} scoringModeLabels={scoringModeLabels}
-        onStatusChange={updateStatus} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} onDelete={setDeleteTarget} t={t} />
+        onStatusChange={updateStatus} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} onDelete={setDeleteTarget}
+        selectedKeys={selectedKeys} onSelectionChange={setSelectedKeys}
+        batchActions={(selected) => <ChecklistBulkBar selected={selected} busy={bulkBusy} onAction={requestBulk} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} t={t} />}
+        t={t} />
       <ChecklistTemplateDialog
         open={templatesOpen}
         locale={(i18n.language ?? 'en').slice(0, 2)}
         onClose={() => setTemplatesOpen(false)}
         onCreated={(created) => { setTemplatesOpen(false); void load().then(() => setSelectedId(created.id)); }}
         t={t}
+      />
+      <ConfirmDialog
+        open={bulkDeleteTargets !== null}
+        title={t('admin.checklists.bulk.deleteTitle', 'Delete selected checklists')}
+        message={bulkDeleteTargets ? bulkDeleteMessage(bulkDeleteTargets, t) : ''}
+        confirmLabel={t('admin.checklists.delete', 'Delete')}
+        cancelLabel={t('admin.checklists.cancel', 'Cancel')}
+        variant="danger"
+        onConfirm={() => { const targets = bulkDeleteTargets ?? []; setBulkDeleteTargets(null); void runBulk('delete', targets); }}
+        onCancel={() => setBulkDeleteTargets(null)}
       />
       <ConfirmDialog
         open={deleteTarget !== null}

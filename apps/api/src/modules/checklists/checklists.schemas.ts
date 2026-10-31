@@ -42,6 +42,31 @@ export const checklistListQuerySchema = z.object({
 });
 export type ChecklistListQuery = z.infer<typeof checklistListQuerySchema>;
 
+// PR 394: one action over many sheets; the server skips what the caller may not change.
+export const bulkChecklistActionSchema = z
+  .object({
+    action: z.enum(['archive', 'draft', 'publish', 'delete', 'move']),
+    ids: z.array(z.string().uuid()).min(1).max(100),
+    // Only for `move`: the target folder, null = the root. The key must be present for a move.
+    folderId: z.string().uuid().nullable().optional(),
+  })
+  .refine((input) => input.action !== 'move' || input.folderId !== undefined, { message: 'folderId is required for move', path: ['folderId'] });
+export type BulkChecklistActionInput = z.infer<typeof bulkChecklistActionSchema>;
+
+// PR 395: checklist folders. Existence, visibility, depth and name clashes are checked in the service.
+const folderNameSchema = z.string().trim().min(1).max(255);
+export const createChecklistFolderSchema = z.object({
+  name: folderNameSchema,
+  parentId: z.string().uuid().nullable().optional(),
+  visibleToStaff: z.boolean().optional(),
+});
+export type CreateChecklistFolderInput = z.infer<typeof createChecklistFolderSchema>;
+export const updateChecklistFolderSchema = z
+  .object({ name: folderNameSchema, parentId: z.string().uuid().nullable(), visibleToStaff: z.boolean() })
+  .partial()
+  .refine((input) => Object.keys(input).length > 0, { message: 'Nothing to change' });
+export type UpdateChecklistFolderInput = z.infer<typeof updateChecklistFolderSchema>;
+
 export const createChecklistSchema = z.object({
   organizationId: z.string().uuid(),
   title: z.string().trim().min(1).max(200),
@@ -105,6 +130,8 @@ export const updateChecklistSchema = z
     accessMode: checklistAccessModeSchema,
     pinned: z.boolean(),
     allowEditByAll: z.boolean(),
+    // PR 395: move the sheet into a folder; null = back to the root.
+    folderId: z.string().uuid().nullable(),
   })
   .partial();
 export type UpdateChecklistInput = z.infer<typeof updateChecklistSchema>;

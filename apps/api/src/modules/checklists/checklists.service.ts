@@ -9,6 +9,8 @@ import { ChecklistScaleService } from './checklist-scale.service.js';
 import { performanceBand, type ManagerPerformanceBand } from './checklist-performance-band.js';
 import { managerExportRows, employeeExportRows, exportLocale, MAX_EXPORT_ROWS, serializeReportCsv, viewEmployees } from './checklist-report-csv.js';
 import { ChecklistOrgTemplates } from './checklist-org-templates.js';
+import { ChecklistBulkActions, type ChecklistBulkAction } from './checklist-bulk-actions.js';
+import { visibleFolderIds, type FolderActor } from './checklist-folder-tree.js';
 import { ChecklistResultDeletion } from './checklist-result-deletion.js';
 import { findTemplate, renderTemplate, templateLocale } from './checklist-templates.js';
 import {
@@ -117,6 +119,7 @@ const checklistSelect = {
   pinned: true,
   allowEditByAll: true,
   coverUpdatedAt: true,
+  folderId: true,
   createdBy: true,
   createdAt: true,
   updatedAt: true,
@@ -304,10 +307,21 @@ export class ChecklistsService {
     // Plain helpers, not providers: built here so Nest does not try to inject them.
     this.resultDeletion = new ChecklistResultDeletion(prisma, auditLog);
     this.orgTemplates = new ChecklistOrgTemplates(prisma, auditLog);
+    this.bulkActions = new ChecklistBulkActions(prisma, auditLog, {
+      setStatus: (id, organizationId, status, actorId) => this.updateChecklist(id, organizationId, { status }, actorId),
+      remove: (id, organizationId, actorId) => this.deleteChecklist(id, organizationId, actorId),
+      setFolder: (id, organizationId, folderId, actorId) => this.updateChecklist(id, organizationId, { folderId }, actorId),
+    });
   }
 
   private readonly resultDeletion: ChecklistResultDeletion;
   private readonly orgTemplates: ChecklistOrgTemplates;
+  private readonly bulkActions: ChecklistBulkActions;
+
+  /** PR 394: bulk archive / draft / publish / delete with per-sheet outcomes. */
+  bulkAction(action: ChecklistBulkAction, ids: readonly string[], organizationId: string, actor: { id: string; roles: readonly string[] }, folderId: string | null = null) {
+    return this.bulkActions.run(action, ids, organizationId, actor, folderId);
+  }
 
   /** PR 372: photo bytes for the report PDF; null when the object is missing or over the limit. */
   readPhotoBytes(objectKey: string, maxBytes: number) { return this.uploadService.getObjectBytes(objectKey, maxBytes); }
@@ -327,13 +341,35 @@ export class ChecklistsService {
 
   // ---- Templates ----
 
-  listChecklists(organizationId: string, status?: ChecklistListQuery['status']) {
+  async listChecklists(organizationId: string, status?: ChecklistListQuery['status'], actor?: FolderActor) {
+    // PR 395: sheets of a folder the actor may not see are left out of the list (assignments, sessions and reports are not affected).
+    const hiddenFolderIds = actor && !actor.roles.includes('admin') ? await this.hiddenFolderIds(organizationId, actor) : [];
     return this.prisma.checklist.findMany({
-      where: { organizationId, deletedAt: null, ...(status ? { status } : {}) },
+      where: {
+        organizationId,
+        deletedAt: null,
+        ...(status ? { status } : {}),
+        ...(hiddenFolderIds.length > 0 ? { OR: [{ folderId: null }, { folderId: { notIn: hiddenFolderIds } }] } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       // PR 393: the list shows who created the sheet; a deleted author reads as null (creator relation is SetNull).
       select: { ...checklistWithItemsSelect, creator: { select: { id: true, firstName: true, lastName: true } } },
     });
+  }
+
+  /** PR 395: the target folder of a move (null = root) must exist in the organization and be visible to the actor. */
+  async assertCanPlaceInFolder(folderId: string | null, organizationId: string, actor: FolderActor) {
+    if (folderId === null) return;
+    const folders = await this.prisma.checklistFolder.findMany({ where: { organizationId, deletedAt: null }, select: { id: true, parentId: true, createdBy: true, visibleToStaff: true } });
+    if (!folders.some((folder) => folder.id === folderId) || !visibleFolderIds(folders, actor).has(folderId)) {
+      throw new NotFoundException('Folder not found');
+    }
+  }
+
+  private async hiddenFolderIds(organizationId: string, actor: FolderActor) {
+    const folders = await this.prisma.checklistFolder.findMany({ where: { organizationId, deletedAt: null }, select: { id: true, parentId: true, createdBy: true, visibleToStaff: true } });
+    const visible = visibleFolderIds(folders, actor);
+    return folders.filter((folder) => !visible.has(folder.id)).map((folder) => folder.id);
   }
 
   async getChecklist(checklistId: string, organizationId: string) {
@@ -623,6 +659,8 @@ export class ChecklistsService {
           // PR 366: only an administrator's copy of a free checklist stays free.
           accessMode: keepFreeAccess ? source.accessMode : 'assigned',
           allowEditByAll: source.allowEditByAll,
+          // PR 395: a copy stays in the folder of the original.
+          folderId: source.folderId,
           createdBy: actorId,
         },
         select: { id: true },

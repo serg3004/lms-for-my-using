@@ -3,6 +3,8 @@ import { DatabaseModule } from '../../database/database.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { UploadModule } from '../upload/upload.module.js';
 import { ChecklistDeadlineWorker } from './checklist-deadline.worker.js';
+import { ChecklistFoldersController } from './checklist-folders.controller.js';
+import { ChecklistFoldersService } from './checklist-folders.service.js';
 import { ChecklistReviewAccessService } from './checklist-review-access.service.js';
 import { ChecklistScaleService } from './checklist-scale.service.js';
 import { ChecklistSessionReminderDelivery } from './checklist-session-reminder-delivery.js';
@@ -13,9 +15,10 @@ import { ChecklistsController } from './checklists.controller.js';
 import { ChecklistsService } from './checklists.service.js';
 @Module({
   imports: [AuthModule, DatabaseModule, UploadModule],
-  controllers: [ChecklistsController],
+  controllers: [ChecklistsController, ChecklistFoldersController],
   providers: [
     ChecklistsService,
+    ChecklistFoldersService,
     ChecklistReviewAccessService,
     ChecklistWorkplaceSettingsService,
     ChecklistSessionService,
