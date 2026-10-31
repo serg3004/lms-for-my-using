@@ -3,6 +3,7 @@ import type { ChecklistGeolocationPolicy, ChecklistPreSessionVisibility, Prisma 
 
 import type { PrismaService } from '../../database/prisma.service.js';
 import type { AuditLogService } from '../audit-log/public.js';
+import { overridesToColumns, presentOverrides, type ModuleSettingsOverridesView } from './checklist-settings-overrides.js';
 
 export const MAX_ORG_TEMPLATES = 100;
 
@@ -25,6 +26,8 @@ export type ChecklistTemplatePayload = {
   feedbackEnabled?: boolean;
   feedbackRequired?: boolean;
   allowSkipAll?: boolean;
+  // PR 397: per-sheet module-settings overrides; templates saved before it have none (= as in the organization).
+  moduleSettings?: ModuleSettingsOverridesView;
   groups: Array<{ title: string; order: number }>;
   items: PayloadItem[];
 };
@@ -63,6 +66,7 @@ export class ChecklistOrgTemplates {
       feedbackEnabled: source.feedbackEnabled,
       feedbackRequired: source.feedbackRequired,
       allowSkipAll: source.allowSkipAll,
+      moduleSettings: presentOverrides(source),
       groups: source.itemGroups.map((group) => ({ title: group.title, order: group.order })),
       items: source.items.map((item) => ({
         groupIndex: item.groupId ? groupIndex.get(item.groupId) ?? null : null, order: item.order, text: item.text, points: item.points,
@@ -134,6 +138,7 @@ export class ChecklistOrgTemplates {
           preSessionVisibility: payload.preSessionVisibility,
           allowFinishIncomplete: payload.allowFinishIncomplete, forbidGalleryPhotos: payload.forbidGalleryPhotos,
           feedbackEnabled: payload.feedbackEnabled ?? true, feedbackRequired: payload.feedbackRequired ?? false, allowSkipAll: payload.allowSkipAll ?? false,
+          ...(payload.moduleSettings ? overridesToColumns({ thresholds: payload.moduleSettings.thresholds, resultColors: payload.moduleSettings.resultColors, feedbackVisibility: payload.moduleSettings.feedbackVisibility, observers: payload.moduleSettings.observers }) as Prisma.ChecklistUncheckedCreateInput : {}),
           createdBy: actorId,
         },
         select: { id: true },

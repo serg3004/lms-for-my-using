@@ -35,6 +35,7 @@ module.exports = {
     '/src/integration/checklist-pinned\\.database\\.spec\\.ts$',
     '/src/integration/checklist-bulk-actions\\.database\\.spec\\.ts$',
     '/src/integration/checklist-folders\\.database\\.spec\\.ts$',
+    '/src/integration/checklist-settings-overrides\\.database\\.spec\\.ts$',
     '/src/integration/checklist-cover\\.database\\.spec\\.ts$',
     '/src/integration/checklist-observation-sheet-builder\\.database\\.spec\\.ts$',
     '/src/integration/checklist-templates\\.database\\.spec\\.ts$',

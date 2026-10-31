@@ -8,7 +8,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { runSerializableWithRetry } from '../departments/public.js';
 import { resolveResultColors, type ResultColors } from './checklist-colors.js';
-import { DEFAULT_OBSERVER_SELECTION } from './checklist-observer-eligibility.js';
+import { DEFAULT_OBSERVER_SELECTION } from './checklist-observer-defaults.js';
 import type { UpdateChecklistWorkplaceSettingsInput } from './checklists.schemas.js';
 
 export type ChecklistWorkplaceSettingsView = {
@@ -44,6 +44,25 @@ const DEFAULT_SETTINGS: Omit<ChecklistWorkplaceSettingsView, 'organizationId' | 
   feedbackVisibility: 'after_completion',
 };
 
+/** The organization settings of a tenant; a tenant without a row gets the safe defaults. */
+export function presentWorkplaceSettings(organizationId: string, row: ChecklistWorkplaceSettings | null): ChecklistWorkplaceSettingsView {
+  if (!row) return { organizationId, updatedAt: null, resultColors: resolveResultColors(null), ...DEFAULT_SETTINGS };
+  return {
+    organizationId,
+    moduleEnabled: row.moduleEnabled,
+    highPerformanceThreshold: row.highPerformanceThreshold,
+    criticalThreshold: row.criticalThreshold,
+    lowThreshold: row.lowThreshold,
+    resultColors: resolveResultColors(row),
+    defaultGeolocationPolicy: row.defaultGeolocationPolicy,
+    feedbackVisibility: row.feedbackVisibility,
+    observerEligibility: row.observerEligibility,
+    observerRoles: row.observerRoles,
+    observerUserIds: row.observerUserIds,
+    updatedAt: row.updatedAt,
+  };
+}
+
 @Injectable()
 export class ChecklistWorkplaceSettingsService {
   constructor(
@@ -52,21 +71,7 @@ export class ChecklistWorkplaceSettingsService {
   ) {}
 
   private present(organizationId: string, row: ChecklistWorkplaceSettings | null): ChecklistWorkplaceSettingsView {
-    if (!row) return { organizationId, updatedAt: null, resultColors: resolveResultColors(null), ...DEFAULT_SETTINGS };
-    return {
-      organizationId,
-      moduleEnabled: row.moduleEnabled,
-      highPerformanceThreshold: row.highPerformanceThreshold,
-      criticalThreshold: row.criticalThreshold,
-      lowThreshold: row.lowThreshold,
-      resultColors: resolveResultColors(row),
-      defaultGeolocationPolicy: row.defaultGeolocationPolicy,
-      feedbackVisibility: row.feedbackVisibility,
-      observerEligibility: row.observerEligibility,
-      observerRoles: row.observerRoles,
-      observerUserIds: row.observerUserIds,
-      updatedAt: row.updatedAt,
-    };
+    return presentWorkplaceSettings(organizationId, row);
   }
 
   async getSettings(organizationId: string, includeSelectedUsers = false): Promise<ChecklistWorkplaceSettingsView> {

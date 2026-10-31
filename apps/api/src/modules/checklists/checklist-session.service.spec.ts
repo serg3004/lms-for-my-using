@@ -53,6 +53,7 @@ function createPrisma(overrides: {
 } = {}) {
   const base: Record<string, unknown> = {
     checklistWorkplaceSettings: { findUnique: jest.fn(async () => null) },
+    checklist: { findFirst: jest.fn(async () => null) },
     outboxEvent: { create: jest.fn(async () => ({ id: 'outbox-1' })) },
     auditLog: { create: jest.fn(async () => ({})) },
     checklistSession: {

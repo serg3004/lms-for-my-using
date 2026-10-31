@@ -34,6 +34,7 @@ import { ChecklistAccessBadge } from '../../shared/checklistAccess.js';
 import { ChecklistCoverField } from './ChecklistCoverField.js';
 import { ChecklistCheckboxOption, ChecklistHelpTip } from './ChecklistHelpTip.js';
 import { ChecklistItemsEditor } from './ChecklistItemsEditor.js';
+import { ChecklistModuleSettingsBlock } from './ChecklistModuleSettings.js';
 import { ChecklistPreviewDialog } from './ChecklistPreviewDialog.js';
 import { ChecklistSettingsForm } from './ChecklistSettingsForm.js';
 import { ScaleManagerDialog } from './ScaleManagerDialog.js';
@@ -78,6 +79,14 @@ export function ChecklistBuilder({
   t: TFunction;
 }) {
   const [title, setTitle] = useState(checklist.title);
+  // PR 397: per-sheet overrides of the organization module settings (geolocation is `defaultLocationCapturePolicy`).
+  const storedModuleSettings = {
+    thresholds: checklist.moduleSettings?.thresholds ?? null,
+    resultColors: checklist.moduleSettings?.resultColors ?? null,
+    feedbackVisibility: checklist.moduleSettings?.feedbackVisibility ?? null,
+    observers: checklist.moduleSettings?.observers ?? null,
+  };
+  const [moduleSettings, setModuleSettings] = useState(storedModuleSettings);
   const [description, setDescription] = useState(checklist.description ?? '');
   const [scoringMode, setScoringMode] = useState<ChecklistScoringMode>(checklist.scoringMode);
   const [passThreshold, setPassThreshold] = useState(checklist.passThreshold);
@@ -120,6 +129,7 @@ export function ChecklistBuilder({
     feedbackEnabled: checklist.feedbackEnabled ?? true, feedbackRequired: checklist.feedbackRequired ?? false, allowSkipAll: checklist.allowSkipAll ?? false,
     accessMode: checklist.accessMode ?? 'assigned', pinned: (checklist.accessMode ?? 'assigned') === 'free' && (checklist.pinned ?? false),
     allowEditByAll: canManageEditAccess ? (checklist.allowEditByAll ?? true) : undefined,
+    moduleSettings: storedModuleSettings,
   })));
   // Items live in local state so a single keystroke or checkbox click never has to wait on (and
   // get interrupted by) a server round-trip — see the "why does the page reload" bug this fixes.
@@ -139,7 +149,7 @@ export function ChecklistBuilder({
     listChecklistItemGroups(checklist.id).then(setItemGroups).catch(() => setItemGroups([]));
     listChecklistScales().then(setScales).catch(() => setScales([]));
   }, [checklist.id]);
-  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, feedbackEnabled, feedbackRequired, allowSkipAll, accessMode, pinned, allowEditByAll: canManageEditAccess ? allowEditByAll : undefined });
+  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, feedbackEnabled, feedbackRequired, allowSkipAll, accessMode, pinned, allowEditByAll: canManageEditAccess ? allowEditByAll : undefined, moduleSettings });
   const hasUnsavedChanges = JSON.stringify(settingsPayload) !== savedSnapshot;
   async function saveSettings() {
     setSaveState({ status: 'saving' });
@@ -711,6 +721,15 @@ export function ChecklistBuilder({
               </select>
             </FormField>
             </details>
+            <ChecklistModuleSettingsBlock
+              canEditObservers={canSwitchAccessMode}
+              disabled={!canEdit}
+              locationPolicy={defaultLocationCapturePolicy}
+              onChange={setModuleSettings}
+              onResetLocation={() => setDefaultLocationCapturePolicy('')}
+              t={t}
+              value={moduleSettings}
+            />
             {saveState.status === 'error' && <p className="learner-quiz__submit-error" role="alert">{saveState.message}</p>}
             <p role="status" className="admin-form__hint">
               {hasUnsavedChanges

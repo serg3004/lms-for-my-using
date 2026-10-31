@@ -1365,7 +1365,8 @@
           },
           "removeUnavailable": "移除不可用用户",
           "readOnly": "只有管理员可以更改谁可以担任观察员。"
-        }
+        },
+        "moduleSettingsOrgHint": "默认值；单个清单可以覆盖。"
       },
       "color": {
         "palette": "{{label}}：调色板（{{color}}）",
@@ -1617,7 +1618,23 @@
       "feedbackEnabledHint": "会话结束时，观察员留下优势、待发展领域和备注。",
       "feedbackRequiredHint": "在填写优势和待发展领域之前无法完成会话。对保存后分配的会话生效。",
       "feedbackSectionTitle": "反馈",
-      "feedbackSectionHint": "观察结束时需要留下反馈。"
+      "feedbackSectionHint": "观察结束时需要留下反馈。",
+      "moduleSettings": {
+        "title": "此清单的模块设置",
+        "intro": "清单默认使用组织的设置。关闭某一组的“与组织一致”，即可仅为此清单设置该组。",
+        "orgNow": "组织当前设置",
+        "thresholds": "结果阈值：与组织一致",
+        "colors": "结果颜色：与组织一致",
+        "geolocation": "地理位置",
+        "geolocationHint": "请在上方“记录位置”中设置。",
+        "asOrg": "与组织一致",
+        "resetOne": "与组织一致",
+        "feedback": "反馈可见性：与组织一致",
+        "observers": "谁可以担任观察员：与组织一致",
+        "observersAdminOnly": "只有管理员可以更改此清单的观察员名单。",
+        "resetAll": "全部重置：与组织一致",
+        "badge": "自有模块设置"
+      }
     },
     "orgTools": {
       "cardTitle": "组织架构导入",

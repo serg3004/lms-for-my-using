@@ -1,18 +1,15 @@
-import type { ChecklistObserverEligibility, Prisma, UserRole } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 
-export const DEFAULT_OBSERVER_ROLES: UserRole[] = ['instructor', 'manager', 'admin'];
-export const DEFAULT_OBSERVER_SELECTION = {
-  observerEligibility: 'selected_roles' as ChecklistObserverEligibility,
-  observerRoles: DEFAULT_OBSERVER_ROLES,
-  observerUserIds: [] as string[],
-};
+import { loadEffectiveSettings } from './checklist-settings-overrides.js';
 
-/** Eligibility controls future selection only; never apply it to existing session access. */
-export async function eligibleObserverScope(tx: Prisma.TransactionClient, organizationId: string): Promise<Prisma.UserWhereInput> {
-  const settings = await tx.checklistWorkplaceSettings.findUnique({
-    where: { organizationId },
-    select: { observerEligibility: true, observerRoles: true, observerUserIds: true },
-  }) ?? DEFAULT_OBSERVER_SELECTION;
+export { DEFAULT_OBSERVER_ROLES, DEFAULT_OBSERVER_SELECTION } from './checklist-observer-defaults.js';
+
+/**
+ * Eligibility controls future selection only; never apply it to existing session access.
+ * PR 397: with a `checklistId` the sheet's observer override (if any) replaces the organization's list.
+ */
+export async function eligibleObserverScope(tx: Prisma.TransactionClient, organizationId: string, checklistId: string | null = null): Promise<Prisma.UserWhereInput> {
+  const settings = await loadEffectiveSettings(tx, organizationId, checklistId);
   const selection: Prisma.UserWhereInput = settings.observerEligibility === 'any_user'
     ? {}
     : settings.observerEligibility === 'selected_users'

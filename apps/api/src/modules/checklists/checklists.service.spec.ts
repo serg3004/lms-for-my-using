@@ -37,6 +37,7 @@ function createFakePrisma() {
   let seq = 0;
   const nextId = (prefix: string) => `${prefix}-${++seq}`;
   const prisma = {
+    checklistWorkplaceSettings: { findUnique: async () => null },
     checklist: {
       findFirst: async ({ where }: { where: Record<string, unknown> }) =>
         checklists.find((c) => c.id === where['id'] && c.organizationId === where['organizationId'] && c.deletedAt === (where['deletedAt'] ?? null)) ?? null,

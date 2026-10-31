@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from 'i18next';
 
 const mocks = vi.hoisted(() => ({
-  api: { updateChecklist: vi.fn(), updateChecklistItem: vi.fn(), listChecklistItemGroups: vi.fn(), listChecklistScales: vi.fn() },
+  api: { updateChecklist: vi.fn(), updateChecklistItem: vi.fn(), listChecklistItemGroups: vi.fn(), listChecklistScales: vi.fn(), getChecklistWorkplaceSettings: vi.fn().mockRejectedValue(new Error('offline')) },
   roles: ['instructor'] as string[],
 }));
 vi.mock('../shared/api/checklists.js', () => mocks.api);
