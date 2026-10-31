@@ -5,7 +5,7 @@ import { ChecklistsService } from './checklists.service.js';
 
 describe('ChecklistsService.listChecklists (PR 393)', () => {
   it('asks for the creator name so the list can show who created each sheet', async () => {
-    const findMany = jest.fn(async (_args: unknown) => []);
+    const findMany = jest.fn<(args: unknown) => Promise<unknown[]>>(async () => []);
     const prisma = { checklist: { findMany } } as unknown as PrismaService;
     const service = new ChecklistsService(prisma, {} as never, {} as never, {} as never);
 
