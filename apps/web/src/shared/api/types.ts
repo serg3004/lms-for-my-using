@@ -394,6 +394,13 @@ export type FreeChecklistSummary = {
   activeInstanceStatus: ChecklistInstanceStatus | null;
 };
 
+export type ChecklistBulkAction = 'archive' | 'draft' | 'publish' | 'delete';
+export type ChecklistBulkSkipReason = 'not_found' | 'forbidden' | 'already_in_status' | 'has_active_assignments' | 'cannot_publish' | 'moved_to_draft';
+export type ChecklistBulkOutcome =
+  | { id: string; result: 'done' }
+  | { id: string; result: 'skipped'; reason: ChecklistBulkSkipReason; message?: string };
+export type ChecklistBulkResult = { action: ChecklistBulkAction; done: number; skipped: number; results: ChecklistBulkOutcome[] };
+
 export type ChecklistSummary = {
   id: string;
   organizationId: string;

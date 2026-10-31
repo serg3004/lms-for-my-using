@@ -9,6 +9,7 @@ import { ChecklistScaleService } from './checklist-scale.service.js';
 import { performanceBand, type ManagerPerformanceBand } from './checklist-performance-band.js';
 import { managerExportRows, employeeExportRows, exportLocale, MAX_EXPORT_ROWS, serializeReportCsv, viewEmployees } from './checklist-report-csv.js';
 import { ChecklistOrgTemplates } from './checklist-org-templates.js';
+import { ChecklistBulkActions, type ChecklistBulkAction } from './checklist-bulk-actions.js';
 import { ChecklistResultDeletion } from './checklist-result-deletion.js';
 import { findTemplate, renderTemplate, templateLocale } from './checklist-templates.js';
 import {
@@ -304,10 +305,20 @@ export class ChecklistsService {
     // Plain helpers, not providers: built here so Nest does not try to inject them.
     this.resultDeletion = new ChecklistResultDeletion(prisma, auditLog);
     this.orgTemplates = new ChecklistOrgTemplates(prisma, auditLog);
+    this.bulkActions = new ChecklistBulkActions(prisma, auditLog, {
+      setStatus: (id, organizationId, status, actorId) => this.updateChecklist(id, organizationId, { status }, actorId),
+      remove: (id, organizationId, actorId) => this.deleteChecklist(id, organizationId, actorId),
+    });
   }
 
   private readonly resultDeletion: ChecklistResultDeletion;
   private readonly orgTemplates: ChecklistOrgTemplates;
+  private readonly bulkActions: ChecklistBulkActions;
+
+  /** PR 394: bulk archive / draft / publish / delete with per-sheet outcomes. */
+  bulkAction(action: ChecklistBulkAction, ids: readonly string[], organizationId: string, actor: { id: string; roles: readonly string[] }) {
+    return this.bulkActions.run(action, ids, organizationId, actor);
+  }
 
   /** PR 372: photo bytes for the report PDF; null when the object is missing or over the limit. */
   readPhotoBytes(objectKey: string, maxBytes: number) { return this.uploadService.getObjectBytes(objectKey, maxBytes); }

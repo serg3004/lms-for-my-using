@@ -33,6 +33,7 @@ export type AuditLogAction =
   | 'checklist.updated'
   | 'checklist.deleted'
   | 'checklist.copied'
+  | 'checklist.bulk'
   | 'checklist.created_from_template'
   | 'checklist.cover_updated'
   | 'checklist.cover_removed'

@@ -613,6 +613,7 @@
         "checklist.updated": "更新了检查清单",
         "checklist.deleted": "删除了检查清单",
         "checklist.copied": "复制了检查清单",
+        "checklist.bulk": "批量操作检查清单",
         "checklist_instance.assigned": "分配了检查清单",
         "checklist_item_result.reviewed": "审核了检查清单项",
         "certificate.issued": "颁发了证书"
@@ -984,6 +985,23 @@
       "close": "关闭",
       "searchPlaceholder": "搜索检查清单",
       "allStatuses": "所有状态",
+      "bulk": {
+        "selectAll": "选择全部检查清单",
+        "selectRow": "选择检查清单：{{title}}",
+        "deleteTitle": "删除所选检查清单",
+        "deleteConfirm": "删除 {{count}} 个检查清单：{{titles}}？它们将从列表中消失且不能再被分配；已完成的结果会保留。有进行中分配的检查清单不会被删除，而是转为草稿。此操作无法撤销。",
+        "andMore": "以及另外 {{count}} 个",
+        "result": "完成：{{done}}，已跳过：{{skipped}}",
+        "error": "无法对所选检查清单执行该操作。",
+        "reason": {
+          "not_found": "未找到",
+          "forbidden": "只有作者或管理员可以修改",
+          "already_in_status": "已处于该状态",
+          "has_active_assignments": "有进行中的分配",
+          "cannot_publish": "无法发布：没有评分项或使用了已归档的量表",
+          "moved_to_draft": "未删除，已转为草稿：有进行中的分配"
+        }
+      },
       "col": {
         "title": "标题",
         "items": "项目",

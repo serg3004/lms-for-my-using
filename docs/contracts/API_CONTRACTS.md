@@ -385,6 +385,14 @@ otherwise have to do manually. Omitting `status` preserves the prior unfiltered 
 PR 393: each row of `GET /checklists` also carries `creator: {id, firstName, lastName} | null` (null when the
 author account was deleted) next to `createdAt`; the admin list shows both as "Created by" / "Created".
 
+PR 394: `POST /checklists/bulk` (`checklistsCreate` roles) takes `{ action: archive | draft | publish | delete, ids[] }`
+(1-100 UUIDs, duplicates ignored, own organization only) and answers `{ action, done, skipped, results[] }` with one entry
+per id: `{ id, result: "done" }` or `{ id, result: "skipped", reason, message? }`. Reasons: `not_found` (also another
+organization's sheet), `forbidden` (the single-sheet edit rule: author, admin, or `allowEditByAll`), `already_in_status`,
+`cannot_publish` (same checks as publishing one sheet; `message` carries the cause) and `moved_to_draft` (a delete refused
+because of active assignments turns the sheet into a draft instead). One audit record per changed sheet plus one
+`checklist.bulk` summary record. A skipped sheet never fails the request.
+
 `GET /checklist-sessions` and `GET /checklist-sessions/:id` now return a joined projection instead
 of the bare `ChecklistSession` row: `checklist: {id, title}`, `learner: {id, firstName, lastName,
 email}`, `observer: {id, firstName, lastName, email}`, and `result: {instanceStatus, percentage,

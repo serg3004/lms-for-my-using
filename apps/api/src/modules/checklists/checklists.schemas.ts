@@ -42,6 +42,13 @@ export const checklistListQuerySchema = z.object({
 });
 export type ChecklistListQuery = z.infer<typeof checklistListQuerySchema>;
 
+// PR 394: one action over many sheets; the server skips what the caller may not change.
+export const bulkChecklistActionSchema = z.object({
+  action: z.enum(['archive', 'draft', 'publish', 'delete']),
+  ids: z.array(z.string().uuid()).min(1).max(100),
+});
+export type BulkChecklistActionInput = z.infer<typeof bulkChecklistActionSchema>;
+
 export const createChecklistSchema = z.object({
   organizationId: z.string().uuid(),
   title: z.string().trim().min(1).max(200),

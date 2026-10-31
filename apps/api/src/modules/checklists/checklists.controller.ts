@@ -20,6 +20,7 @@ import {
   bulkAssignChecklistSchema,
   bulkCreateChecklistSessionSchema,
   importChecklistSessionsSchema,
+  bulkChecklistActionSchema,
   checklistListQuerySchema,
   checklistTemplatesQuerySchema,
   createChecklistFromTemplateSchema,
@@ -247,6 +248,13 @@ export class ChecklistsController {
     if (input.accessMode !== undefined) await this.assertMayChangeAccessMode(checklistId, input.accessMode, request.currentUser!);
     if (input.allowEditByAll !== undefined) await this.checklistsService.assertCanChangeEditAccess(checklistId, request.currentUser!.organizationId, request.currentUser!);
     return this.checklistsService.updateChecklist(checklistId, request.currentUser!.organizationId, input, request.currentUser!.id);
+  }
+  // PR 394: declared before any `checklists/:id` route that could swallow "bulk" as an id.
+  @Post('checklists/bulk')
+  @Roles(...rolePolicies.checklistsCreate)
+  bulkChecklistAction(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = bulkChecklistActionSchema.parse(body);
+    return this.checklistsService.bulkAction(input.action, input.ids, request.currentUser!.organizationId, request.currentUser!);
   }
   @Post('checklists/:id/copy')
   @Roles(...rolePolicies.checklistsCreate)

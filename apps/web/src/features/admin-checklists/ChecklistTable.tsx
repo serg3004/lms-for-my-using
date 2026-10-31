@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { Badge, Button, DataTable, Menu, type BadgeVariant, type Column } from '../../shared/ui.js';
 import type { ChecklistScoringMode, ChecklistStatus, ChecklistSummary } from '../../shared/api/types.js';
@@ -17,7 +18,7 @@ export function creatorName(checklist: Pick<ChecklistSummary, 'creator'>): strin
   return name || '—';
 }
 
-export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatusChange, onEdit, onCopy, onDelete, t }: {
+export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatusChange, onEdit, onCopy, onDelete, selectedKeys, onSelectionChange, batchActions, t }: {
   rows: ChecklistSummary[];
   statusLabels: Record<ChecklistStatus, string>;
   scoringModeLabels: Record<ChecklistScoringMode, string>;
@@ -25,6 +26,10 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
   onEdit: (checklist: ChecklistSummary) => void;
   onCopy: (checklist: ChecklistSummary) => void | Promise<void>;
   onDelete: (checklist: ChecklistSummary) => void;
+  // PR 394: row selection with a batch-actions bar; omitted -> the table has no checkboxes.
+  selectedKeys?: ReadonlySet<string>;
+  onSelectionChange?: (selectedKeys: Set<string>) => void;
+  batchActions?: (selected: ChecklistSummary[]) => ReactNode;
   t: TFunction;
 }) {
   // PR 327: the status is a badge plus one explicit next-step button (not a free dropdown), so the
@@ -81,5 +86,14 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
       ),
     },
   ] satisfies Column<ChecklistSummary>[];
-  return <DataTable label={t('admin.checklists.title', 'Checklists')} columns={columns} rows={rows} keyExtractor={(checklist) => checklist.id} emptyMessage={t('admin.checklists.empty', 'No checklists found.')} responsiveDetails={{ label: t('courses.details'), expandLabel: (checklist) => `${t('courses.details')}: ${checklist.title}`, collapseLabel: (checklist) => `${t('courses.details')}: ${checklist.title}` }} />;
+  return <DataTable label={t('admin.checklists.title', 'Checklists')} columns={columns} rows={rows}
+    selection={selectedKeys && onSelectionChange ? {
+      selectedKeys,
+      onChange: onSelectionChange,
+      selectedLabel: (count) => t('common.selectedCount', { count }),
+      selectAllLabel: t('admin.checklists.bulk.selectAll', 'Select all checklists'),
+      rowLabel: (checklist) => t('admin.checklists.bulk.selectRow', 'Select checklist: {{title}}', { title: checklist.title }),
+    } : undefined}
+    batchActions={batchActions}
+    keyExtractor={(checklist) => checklist.id} emptyMessage={t('admin.checklists.empty', 'No checklists found.')} responsiveDetails={{ label: t('courses.details'), expandLabel: (checklist) => `${t('courses.details')}: ${checklist.title}`, collapseLabel: (checklist) => `${t('courses.details')}: ${checklist.title}` }} />;
 }
