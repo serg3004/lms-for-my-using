@@ -50,6 +50,16 @@ Repository/nginx contract использует API port `3000` внутри priv
 
 ## 3. API startup
 
+С PR 387 сборки API и web сначала компилируют `@lms/shared`: типизированная политика медиа используется во время
+выполнения. Production export ссылается на `dist`, development export медиаполитики — на TypeScript source для
+Vite/Vitest. При ручной сборке используйте package scripts, а не отдельный вызов `nest build`/`vite build` без
+сборки зависимостей. Новой переменной среды и миграции для PR 387 нет.
+
+Web image включает актуальный `infra/nginx/security-headers.conf`: HTTPS media/images/storage connect,
+только канонические YouTube/Vimeo frame origins, прежние script/object/frame-ancestor restrictions. Для
+реального воспроизведения storage должен поддерживать Range/206, а для multipart — настроенный CORS/ETag.
+Это проверяется на целевом окружении отдельно от успешной сборки. Внешние плееры не требуют публичного API.
+
 Current `apps/api/railway.json` запускает:
 
 ```text

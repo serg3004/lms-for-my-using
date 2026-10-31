@@ -6,13 +6,18 @@ export const fileTypes: Record<string, string> = {
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
   xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  mp3: 'audio/mpeg', wav: 'audio/wav', mp4: 'video/mp4', webm: 'video/webm',
 };
-export const acceptFiles = (image: boolean) => Object.keys(fileTypes).filter((ext) => fileTypes[ext]!.startsWith('image/') === image).map((ext) => `.${ext}`).join(',');
-export function prepareFiles(raw: File[], image: boolean): File[] {
-  if (!raw.length || raw.length > (image ? 1 : 20)) throw new Error('batch');
+export type FileCategory = 'image' | 'attachments' | 'audio' | 'video';
+const categoryOf = (kind: boolean | FileCategory): FileCategory => typeof kind === 'boolean' ? kind ? 'image' : 'attachments' : kind;
+const matchesCategory = (mime: string, kind: FileCategory) => kind === 'attachments' ? mime.startsWith('application/') : mime.startsWith(`${kind}/`);
+export const acceptFiles = (kind: boolean | FileCategory) => Object.keys(fileTypes).filter((ext) => matchesCategory(fileTypes[ext]!, categoryOf(kind))).map((ext) => `.${ext}`).join(',');
+export function prepareFiles(raw: File[], kind: boolean | FileCategory): File[] {
+  const category = categoryOf(kind);
+  if (!raw.length || raw.length > (category === 'attachments' ? 20 : 1)) throw new Error('batch');
   return raw.map((file) => {
     const type = fileTypes[file.name.split('.').at(-1)?.toLowerCase() ?? ''];
-    if (!type || type.startsWith('image/') !== image) throw new Error('type');
+    if (!type || !matchesCategory(type, category)) throw new Error('type');
     if (!file.size || file.size > 50 * 1024 * 1024) throw new Error('size');
     return new File([file], file.name, { type });
   });

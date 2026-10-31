@@ -51,6 +51,14 @@ The login suite exercises the real form, development proxy, API cookies, role gu
 
 ## Isolation and artifact policy
 
+PR 387 playback fixtures use ffmpeg-generated synthetic MP3/WAV (45 seconds of tone) and silent MP4/WebM (3 seconds)
+under `fixtures/assets/`. Tests decode/play/seek actual bytes via a range-capable mocked transport. They cover
+keyboard/volume/mute/shared speed, signed-URL expiry/access loss, poster/upload/editor persistence, approved iframe
+resolution and fallback, preview isolation and RU/EN/KK/ZH. The production CSP probe reads the actual nginx header
+file and exercises media Range, storage PUT and allowed/blocked frame origins in a synthetic document. It does not
+claim a live external-provider/scanner/CORS check. Separate reader/editor axe and visual scenarios use paused media
+and deterministic provider frames; PostgreSQL tests enforce ownership, scan state and version retention.
+
 - Tests run in independent browser contexts, and the `isolatedUser` fixture derives a unique synthetic `.invalid` identity from the worker and test IDs.
 - The manager workspace suite authenticates once through the real login form, then copies its test-only cookies in memory into each scenario's fresh context. Its four workspace checks retain independent local storage and route mocks without consuming four account login attempts. No authenticated state file is written; login response status is asserted before checking the redirect.
 - Tests that create persistent records must use that fixture and delete those records during fixture teardown. Tests must not depend on execution order or data created by another test.

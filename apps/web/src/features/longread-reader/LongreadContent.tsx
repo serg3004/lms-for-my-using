@@ -1,4 +1,5 @@
 import { MediaImage, MediaAttachment } from '../longread-files/Media.js';
+import { MediaPlayer, EmbeddedVideo } from '../longread-media/MediaPlayback.js';
 import { useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import type { ReaderBlock } from '../../shared/api/longreads.js';
@@ -50,6 +51,8 @@ export function LongreadContent({ blocks, chapter, allowCopy, navigate, t }: { b
     if (block.hidden) return null;
     const value = safeBlock(block);
     if (!value) return <p key={index} role="note">{t('longreadReader.unsupported')}</p>;
+    if (value.type === 'audio' || value.type === 'video') return <MediaPlayer key={index} type={value.type} content={value.content} />;
+    if (value.type === 'embed') return <EmbeddedVideo key={index} content={value.content} />;
     if (value.type === 'image') return <MediaImage key={index} image={value.content} />;
     if (value.type === 'attachments') return <div key={index}>{value.content.files.map((file) => <MediaAttachment key={file.fileId} {...file} />)}</div>;
     if (value.type === 'divider') return <hr key={index} />;

@@ -1,14 +1,15 @@
 import { isImageContent, isAttachmentsContent } from '../longread-files/model.js';
+import { audioContentSchema, videoContentSchema, embedContentSchema } from '@lms/shared/longread-media';
 import type { LongreadDraft, SaveLongread } from '../../shared/api/longreads.js';
 import { containerDepth, countNested, emptyTable, MAX_CONTAINER_DEPTH, MAX_ITEMS, MAX_NESTED_BLOCKS, MAX_SLOT_BLOCKS, slotsOf, tableValid, type NestedBlock, type TableContent } from './composite.js';
 
 export type Run = { text: string; bold?: boolean; italic?: boolean; underline?: boolean; code?: boolean; href?: string };
 export type TextBlockType = 'paragraph' | 'heading' | 'list' | 'quote' | 'note' | 'divider' | 'code';
 export type CompositeBlockType = 'table' | 'columns' | 'tabs' | 'accordion';
-export type AddableBlockType = TextBlockType | CompositeBlockType | 'image' | 'attachments';
+export type AddableBlockType = TextBlockType | CompositeBlockType | 'image' | 'attachments' | 'audio' | 'video' | 'embed';
 export const textBlockTypes: TextBlockType[] = ['paragraph', 'heading', 'list', 'quote', 'note', 'divider', 'code'];
 export const compositeTypes: string[] = ['table', 'columns', 'tabs', 'accordion'];
-export const blockTypes: AddableBlockType[] = [...textBlockTypes, 'image', 'attachments', 'table', 'columns', 'tabs', 'accordion'];
+export const blockTypes: AddableBlockType[] = [...textBlockTypes, 'image', 'attachments', 'audio', 'video', 'embed', 'table', 'columns', 'tabs', 'accordion'];
 export type EditorBlock = { key: string; type: string; schemaVersion: number; title: string | null; hidden: boolean; content: Record<string, unknown> };
 export type EditorChapter = { cover?: LongreadDraft['settings']['cover']; key: string; title: string; hidden: boolean; blocks: EditorBlock[] };
 export type EditorDocument = { chapters: EditorChapter[]; settings?: LongreadDraft['settings'] };
@@ -46,6 +47,7 @@ export function newBlock(type: AddableBlockType, itemTitle: (number: number) => 
     paragraph: { runs: [] }, heading: { level: 2, runs: [] }, quote: { runs: [], caption: '' },
     note: { runs: [], tone: 'info' }, divider: {}, code: { language: 'javascript', code: '' }, list: { ordered: false, items: [{ level: 1, runs: [] }] },
     image: { fileId: null, alt: '', caption: '', width: 100, align: 'center' }, attachments: { files: [] },
+    audio: { fileId: null, caption: '' }, video: { source: 'file', fileId: null, poster: null, caption: '', width: 100 }, embed: { source: null, caption: '', width: 100 },
     table: emptyTable() as unknown as Record<string, unknown>,
     columns: { count: 2, columns: [{ id: crypto.randomUUID(), blocks: [] }, { id: crypto.randomUUID(), blocks: [] }] },
     tabs: { items: [1, 2].map((n) => ({ id: crypto.randomUUID(), title: itemTitle(n), blocks: [] })) },
@@ -86,6 +88,9 @@ function contentValid(block: EditorBlock): boolean {
   const runsValid = (runs: unknown) => Array.isArray(runs) && runs.length <= 500 && runs.every((run: Run) => typeof run.text === 'string' && run.text.length <= 20_000 && (!run.href || safeHref(run.href)));
   if (block.type === 'image') return isImageContent(block.content);
   if (block.type === 'attachments') return isAttachmentsContent(block.content);
+  if (block.type === 'audio') return audioContentSchema.safeParse(block.content).success;
+  if (block.type === 'video') return videoContentSchema.safeParse(block.content).success;
+  if (block.type === 'embed') return embedContentSchema.safeParse(block.content).success;
   if (block.type === 'code') return typeof block.content.code === 'string' && block.content.code.length <= 50_000;
   if (block.type === 'divider') return true;
   if (block.type !== 'list') return runsValid(block.content.runs);

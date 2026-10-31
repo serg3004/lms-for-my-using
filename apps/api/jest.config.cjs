@@ -1,6 +1,7 @@
 module.exports = {
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
+    '^@lms/shared/longread-media$': '<rootDir>/../../packages/shared/src/longread-media.ts',
     '^@lms/shared$': '<rootDir>/../../packages/shared/src/index.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },

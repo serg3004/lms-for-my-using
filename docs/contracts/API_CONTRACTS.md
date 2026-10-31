@@ -1621,3 +1621,53 @@ Copies remap block identifiers while retaining file IDs. Publication and restore
 immutable settings/chapter snapshots, so removing/replacing a draft file does not affect a published/pinned version.
 The existing editor supplies alt/caption/size/alignment, covers and batches of attachments; text is safely rendered
 and decorative images may use empty alt text. RU/EN/KK/ZH and existing role shells are retained.
+
+## Longread audio, video and approved embeds (PR 387)
+
+The same file endpoints/pipeline now accept MP3 (`audio/mpeg`), WAV (`audio/wav`), MP4 (`video/mp4`) and WebM
+(`video/webm`). The 50 MiB limit, 8 MiB buffered path, immutable file IDs, malware quarantine, ownership guards,
+publication references and fresh entitlement checks are unchanged. Audio/video receive inline signed GETs with
+their declared MIME, including range playback; attachments remain forced downloads. A media file cannot be used
+as an image/poster/attachment or another media kind, including with an uppercase UUID. Video posters are owned
+image references and are retained by snapshots/restore/cleanup like other files.
+
+Known schema-version-1 blocks:
+
+- `audio`: `{ fileId: uuid|null, caption: string }`.
+- `video`, file source: `{ source: "file", fileId: uuid|null, poster: { fileId: uuid|null }|null, caption, width }`.
+- `video`, direct source: `{ source: "url", url, poster, caption, width }`. URL must be HTTPS, without credentials,
+  a non-default port, whitespace or markup, with an MP4/WebM path on a public-form DNS hostname; literal IPs and
+  local/internal/test hostnames are rejected. Fragments are removed. This is a browser media URL, never an iframe.
+  The server does not fetch the URL or resolve its DNS; this validation does not promise network reachability,
+  redirect destinations, codec support or availability of a third-party resource.
+- `embed`: `{ source: { provider: "youtube"|"vimeo", videoId }|null, caption, width }`. Width is an integer 10–100,
+  caption at most 2000 characters. Null references/sources are draft placeholders and block publication.
+
+`POST /lessons/:id/longread/embed/resolve` accepts strict `{ input: string }` (1–8192 characters), with
+`lessonsCreate` and method-level lesson course scope, the existing document and organization flag. It accepts an
+HTTPS YouTube/Vimeo link or one iframe with quoted attributes. The tokenizer rejects event handlers, `srcdoc`,
+style/unknown/duplicate attributes, nested/multiple tags and executable/non-approved URLs. Requested iframe
+permissions and URL parameters are discarded. The response is only `{ provider, videoId }`; neither raw HTML nor
+an arbitrary iframe URL is saved. YouTube IDs are 11 URL-safe characters, Vimeo IDs 1–12 decimal digits. Source
+hosts are matched exactly; lookalike suffixes, credentials and non-default ports are rejected.
+
+The reader derives only `https://www.youtube-nocookie.com/embed/:id` or `https://player.vimeo.com/video/:id`.
+External frames load after an explicit click, with `sandbox="allow-scripts allow-same-origin allow-presentation"`,
+an explicit fullscreen/PiP/encrypted-media allowlist and a cross-origin referrer limited to the site origin. No
+top navigation, forms, camera or microphone permissions are requested. A provider watch link remains available,
+including when its frame fails; a loading timeout offers retry. External services may return error pages that the
+application cannot inspect across origins. Uploaded/private assets continue to use the existing authorized URL
+API; direct external URLs are public author-supplied references, outside private-storage access enforcement.
+
+Audio offers play/pause, mute, volume, keyboard-operable seek, ±15 seconds and 0.75–2× speed shared by the audio
+players of one open longread, including chapter changes. Shared speed is a local reading preference, not progress.
+Video uses native controls, an optional owned poster, caption and width; unsupported/failed playback offers retry.
+Signed URLs are renewed before starting playback when expired, or after an expiry-related media error, preserving
+position and audio settings. There is no periodic source replacement during playback. Preview/resolution/control
+actions do not create progress, attempts or certificates. Media does not count as chapter completion.
+
+Post-scan inspection is bounded: MPEG Layer III frame headers after bounded ID3 skipping; RIFF/WAVE format and
+data chunks (PCM/IEEE float); MP4 box bounds, video track handler, mdat and moov (at most 1 MiB); WebM doctype.
+These checks reject signature-only probes and wrong containers and apply to buffered/multipart equally. They do
+not decode/transcode files or certify every codec; browser playback errors remain visible. All existing scanner
+failure cases stay fail-closed. No migration, new storage provider, upload size increase or permission role is added.

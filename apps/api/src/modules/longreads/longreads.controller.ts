@@ -10,6 +10,7 @@ import { CourseAccessGuard, CourseScope } from '../course-access/public.js';
 import { longreadPositionSchema, longreadPreviewQuerySchema, longreadReaderQuerySchema, saveLongreadSchema } from './longreads.schemas.js';
 import { LongreadVersionsService } from './longread-versions.service.js';
 import { LongreadsService } from './longreads.service.js';
+import { resolveLongreadEmbed } from './longread-embed.js';
 
 const duplicateChapterSchema = z.object({ revision: z.number().int().min(1) }).strict();
 /** `revision` is the draft revision the author saw: publishing or restoring a draft that changed since is a 409. */
@@ -30,6 +31,15 @@ export class LongreadsController {
   @CourseScope('param', 'id', 'lesson')
   getDraft(@Param('id', ParseUUIDPipe) lessonId: string, @Req() request: AuthenticatedRequest) {
     return this.longreadsService.getDraft(lessonId, request.currentUser!.organizationId);
+  }
+
+  @Post('lessons/:id/longread/embed/resolve')
+  @Roles(...rolePolicies.lessonsCreate)
+  @CourseScope('param', 'id', 'lesson')
+  async resolveEmbed(@Param('id', ParseUUIDPipe) lessonId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const { input } = z.object({ input: z.string().trim().min(1).max(8192) }).strict().parse(body);
+    await this.longreadsService.getDraft(lessonId, request.currentUser!.organizationId);
+    return resolveLongreadEmbed(input);
   }
 
   @Put('lessons/:id/longread')

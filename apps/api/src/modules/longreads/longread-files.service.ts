@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { PrismaService } from '../../database/prisma.service.js';
 import { CourseMaterialsService, MaterialMalwareScanService, MaterialMultipartUploadService } from '../course-materials/public.js';
-import { UploadService, collectFileIds, isLongreadImage, validateLongreadFileMetadata, validateUploadFile } from '../upload/public.js';
+import { UploadService, collectFileIds, isLongreadImage, isLongreadAudio, isLongreadVideo, validateLongreadFileMetadata, validateUploadFile } from '../upload/public.js';
 import type { CurrentUser } from '../auth/public.js';
 import { LongreadsService } from './longreads.service.js';
 import { LongreadReaderService } from './longread-reader.service.js';
@@ -79,7 +79,8 @@ export class LongreadFilesService {
     if (file.status !== 'active' || file.scanStatus !== 'available' || !file.objectKey) throw new NotFoundException('Longread file not found');
     const configuredTtl = Number(process.env['S3_PRESIGNED_TTL_SECONDS'] ?? 300);
     const expiresIn = Number.isFinite(configuredTtl) ? Math.min(300, Math.max(1, Math.floor(configuredTtl))) : 300;
-    const url = isLongreadImage(file.mimeType ?? '') ? await this.storage.getInlinePresignedUrl(file.objectKey, file.mimeType!, expiresIn) : await this.storage.getPresignedUrl(file.objectKey, file.fileName!, expiresIn);
+    const inline = isLongreadImage(file.mimeType ?? '') || isLongreadAudio(file.mimeType ?? '') || isLongreadVideo(file.mimeType ?? '');
+    const url = inline ? await this.storage.getInlinePresignedUrl(file.objectKey, file.mimeType!, expiresIn) : await this.storage.getPresignedUrl(file.objectKey, file.fileName!, expiresIn);
     return { url, expiresIn, fileName: file.fileName, mimeType: file.mimeType, sizeBytes: file.sizeBytes };
   }
 }
