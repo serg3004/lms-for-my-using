@@ -189,6 +189,14 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/lessons/{id}/longread` | `Longreads` | `bearer` |
 | `PUT` | `/api/v1/lessons/{id}/longread` | `Longreads` | `bearer` |
 | `POST` | `/api/v1/lessons/{id}/longread/chapters/{chapterId}/duplicate` | `Longreads` | `bearer` |
+| `POST` | `/api/v1/lessons/{id}/longread/files` | `LongreadFiles` | `bearer` |
+| `GET` | `/api/v1/lessons/{id}/longread/files/{fileId}` | `LongreadFiles` | `bearer` |
+| `POST` | `/api/v1/lessons/{id}/longread/files/{fileId}/content` | `LongreadFiles` | `bearer` |
+| `GET` | `/api/v1/lessons/{id}/longread/files/{fileId}/download` | `LongreadFiles` | `bearer` |
+| `POST` | `/api/v1/lessons/{id}/longread/files/{fileId}/multipart` | `LongreadFiles` | `bearer` |
+| `DELETE` | `/api/v1/lessons/{id}/longread/files/{fileId}/multipart/{uploadId}` | `LongreadFiles` | `bearer` |
+| `POST` | `/api/v1/lessons/{id}/longread/files/{fileId}/multipart/{uploadId}/complete` | `LongreadFiles` | `bearer` |
+| `GET` | `/api/v1/lessons/{id}/longread/files/{fileId}/preview` | `LongreadFiles` | `bearer` |
 | `PUT` | `/api/v1/lessons/{id}/longread/position` | `Longreads` | `bearer` |
 | `GET` | `/api/v1/lessons/{id}/longread/preview` | `Longreads` | `bearer` |
 | `POST` | `/api/v1/lessons/{id}/longread/publish` | `Longreads` | `bearer` |

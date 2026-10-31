@@ -206,7 +206,15 @@ export function collectContentIds(value: unknown, found: string[] = []): string[
   return found;
 }
 
+export const imageContentSchema = z.object({
+  fileId: z.string().uuid().nullable().default(null), alt: z.string().max(2000).default(''),
+  caption: z.string().max(2000).default(''), width: z.number().int().min(10).max(100).default(100),
+  align: z.enum(['start', 'center', 'end']).default('center'),
+}).strict();
+const attachmentsSchema = z.object({ files: z.array(z.object({ fileId: z.string().uuid(), label: z.string().max(255).optional() }).strict()) }).strict();
+
 const KNOWN_BLOCKS = {
+  image: imageContentSchema, attachments: attachmentsSchema,
   paragraph: paragraphSchema,
   heading: headingSchema,
   list: listSchema,

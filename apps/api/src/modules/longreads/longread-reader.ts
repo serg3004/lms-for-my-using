@@ -2,7 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import type { LongreadSettings } from './longreads.schemas.js';
 import type { SnapshotBlock } from './longread-publish-check.js';
 
-export type ReaderChapter = { title: string; anchor: string; blocks: SnapshotBlock[] };
+export type ReaderChapter = { title: string; anchor: string; cover?: import('./longreads.schemas.js').LongreadSettings['cover']; blocks: SnapshotBlock[] };
 export type ReaderSnapshot = { lessonId: string; version: number; schemaVersion: number; settings: LongreadSettings; chapters: ReaderChapter[] };
 export type ReadingState = { version: number; chapter: string; headingIndex: number | null; maxReached: number };
 
@@ -32,7 +32,7 @@ export function readerView(snapshot: ReaderSnapshot, state: ReadingState, reques
   const available = preview || snapshot.settings.readingOrder === 'free' ? snapshot.chapters.length : Math.min(state.maxReached + 2, snapshot.chapters.length);
   return {
     ...snapshot, version: preview ? null : snapshot.version, preview,
-    chapters: snapshot.chapters.map((item, position) => ({ ...item, blocks: !preview && snapshot.settings.readingOrder === 'sequential' && position > state.maxReached ? [] : item.blocks })),
+    chapters: snapshot.chapters.map((item, position) => ({ ...item, ...(!preview && snapshot.settings.readingOrder === 'sequential' && position > state.maxReached ? { blocks: [], cover: null } : {}) })),
     navigation: {
       chapter, headingIndex: chapter === state.chapter ? state.headingIndex : null,
       allowedAnchors: snapshot.chapters.slice(0, available).map((item) => item.anchor),

@@ -107,6 +107,7 @@ function uploadBufferedMaterialFile(
   materialId: string,
   file: File,
   onProgress: (percent: number) => void,
+  path = `/materials/${encodeURIComponent(materialId)}/file`,
 ): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const formData = new FormData();
@@ -147,7 +148,7 @@ function uploadBufferedMaterialFile(
       reject(new ApiClientError('Upload failed', 0));
     });
 
-    xhr.open('POST', `${apiBasePath}/materials/${encodeURIComponent(materialId)}/file`);
+    xhr.open('POST', `${apiBasePath}${path}`);
     xhr.withCredentials = true;
 
     const csrfToken = getCookieValue(csrfTokenCookieName);
@@ -221,10 +222,11 @@ export function uploadMaterialFileWithProgress(
   materialId: string,
   file: File,
   onProgress: (percent: number) => void,
+  paths?: { buffered: string; multipart: string },
 ): Promise<unknown> {
   return file.size <= MAX_BUFFERED_UPLOAD_SIZE_BYTES
-    ? uploadBufferedMaterialFile(materialId, file, onProgress)
-    : uploadMaterialFileMultipart(materialId, file, onProgress);
+    ? uploadBufferedMaterialFile(materialId, file, onProgress, paths?.buffered)
+    : uploadMaterialFileMultipart(materialId, file, onProgress, paths?.multipart);
 }
 
 type MultipartSession = {
@@ -254,8 +256,9 @@ export async function uploadMaterialFileMultipart(
   materialId: string,
   file: File,
   onProgress: (percent: number) => void,
+  path = `/materials/${materialId}/file/multipart`,
 ): Promise<unknown> {
-  const session = await apiRequest<MultipartSession>(`/materials/${materialId}/file/multipart`, {
+  const session = await apiRequest<MultipartSession>(path, {
     method: 'POST',
     body: JSON.stringify({ fileName: file.name, mimeType: file.type, sizeBytes: file.size }),
   });
@@ -272,14 +275,14 @@ export async function uploadMaterialFileMultipart(
       });
       return { partNumber, etag };
     }));
-    const material = await apiRequest(`/materials/${materialId}/file/multipart/${encodeURIComponent(session.uploadId)}/complete`, {
+    const material = await apiRequest(`${path}/${encodeURIComponent(session.uploadId)}/complete`, {
       method: 'POST',
       body: JSON.stringify({ parts }),
     });
     onProgress(100);
     return material;
   } catch (error) {
-    await apiRequest(`/materials/${materialId}/file/multipart/${encodeURIComponent(session.uploadId)}`, { method: 'DELETE' }).catch(() => undefined);
+    await apiRequest(`${path}/${encodeURIComponent(session.uploadId)}`, { method: 'DELETE' }).catch(() => undefined);
     throw error;
   }
 }

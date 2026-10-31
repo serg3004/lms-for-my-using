@@ -37,6 +37,11 @@ const courseMaterialSelect = {
 export class CourseMaterialsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async ensureStandaloneMaterial(materialId: string) {
+    const managed = await this.prisma.courseMaterial.findFirst({ where: { id: materialId, longreadDocumentId: { not: null } }, select: { id: true } });
+    if (managed) throw new NotFoundException('Course material not found');
+  }
+
   async listCourseMaterials(courseId: string, organizationId: string) {
     await this.ensureCourseExists(courseId, organizationId);
 
@@ -44,6 +49,7 @@ export class CourseMaterialsService {
       where: {
         courseId,
         organizationId,
+        longreadDocumentId: null,
         deletedAt: null,
       },
       orderBy: { createdAt: 'desc' },

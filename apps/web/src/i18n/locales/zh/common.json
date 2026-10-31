@@ -2951,7 +2951,9 @@
       "table": "表格",
       "columns": "分栏",
       "tabs": "标签页",
-      "accordion": "折叠面板"
+      "accordion": "折叠面板",
+      "image": "图片",
+      "attachments": "附件"
     },
     "tones": {
       "info": "信息",
@@ -3032,5 +3034,42 @@
     "rtl": "从右到左（RTL）",
     "allowCopy": "显示复制按钮（不提供复制保护）",
     "excludeFromToc": "在目录中隐藏此标题"
+  },
+  "longreadFiles": {
+    "uploadImage": "上传或替换图片",
+    "uploadFiles": "添加附件",
+    "limits": "每个文件最大 50 MB。每次最多上传 20 个附件。",
+    "uploading": "上传中：{{percent}}%",
+    "uploaded": "文件已上传并提交扫描。",
+    "checking": "正在加载或扫描文件…",
+    "unavailable": "文件不可用或尚未通过扫描。",
+    "file": "文件",
+    "download": "下载：{{name}}",
+    "noImage": "未选择图片",
+    "alt": "替代文本（装饰图片可留空）",
+    "caption": "图片说明",
+    "width": "宽度，%",
+    "align": "对齐方式",
+    "start": "行首",
+    "center": "居中",
+    "end": "行尾",
+    "removeImage": "移除图片",
+    "removeFile": "移除文件：{{name}}",
+    "documentCover": "文档封面",
+    "chapterCover": "章节封面",
+    "addCover": "添加封面",
+    "removeCover": "删除封面",
+    "scan": {
+      "pending": "等待扫描",
+      "scanning": "扫描中",
+      "available": "可供使用",
+      "rejected": "已拒绝"
+    },
+    "errors": {
+      "batch": "请选择 1–20 个附件或一张图片。",
+      "type": "图片：JPG、PNG、GIF、WebP。附件：PDF、DOC、DOCX、PPT、PPTX、XLS、XLSX。",
+      "size": "文件不能为空且不得超过 50 MB。",
+      "upload": "上传失败。已添加的文件已保存；请替换上传失败的文件。"
+    }
   }
 }

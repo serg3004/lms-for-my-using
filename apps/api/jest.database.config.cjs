@@ -48,6 +48,7 @@ module.exports = {
     '<rootDir>/src/integration/longreads.database.spec.ts',
     '<rootDir>/src/integration/longread-versions.database.spec.ts',
     '<rootDir>/src/integration/longread-reader.database.spec.ts',
+    '<rootDir>/src/integration/longread-files.database.spec.ts',
   ],
   testPathIgnorePatterns: [],
   testTimeout: 60_000,

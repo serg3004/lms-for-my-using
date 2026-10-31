@@ -271,3 +271,12 @@ Sequential mode withholds locked chapter bodies and validates one-step navigatio
 or user fields are rejected. `GET /lessons/:id/longread/preview` uses `lessonsCreate` plus the existing editing scope:
 admin or assigned instructor only, never learner/manager. Draft preview does not create progress, attempts or
 certificates and does not pin published versions. Existing roles and policies are unchanged.
+
+
+Longread files (PR 386): creation, status, buffered/multipart upload, abort and draft-preview URLs use
+`lessonsCreate` plus `CourseScope('param', 'id', 'lesson')` on every handler. `download` uses `lessonsRead` plus the
+same scope and the published reader's fresh course entitlement/version projection. Merely knowing a file UUID
+never grants access; hidden/locked chapter references are excluded. The organization flag and non-deleted parent
+course/lesson are checked for all file calls. Ordinary material APIs reject version-owned files, preventing broader
+material roles/scopes from bypassing this path or mutating immutable published assets. Preview does not write
+learning records. No new role or permission policy is introduced.

@@ -1,3 +1,4 @@
+import { checkLongreadFiles } from './longread-file-references.js';
 import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
@@ -43,6 +44,7 @@ export class LongreadVersionsService {
       title: chapter.title,
       anchor: chapter.anchor,
       hidden: chapter.hidden,
+      ...(chapter.cover ? { cover: chapter.cover as unknown as NonNullable<SnapshotChapter['cover']> } : {}),
       blocks: chapter.blocks.map((block) => ({ type: block.type, schemaVersion: block.schemaVersion, content: block.content, title: block.title, hidden: block.hidden })),
     }));
   }
@@ -51,7 +53,8 @@ export class LongreadVersionsService {
     await this.longreads.ensureEnabled(organizationId);
     const document = await this.prisma.longreadDocument.findFirst({ where: documentScope(lessonId, organizationId), select: { id: true, settings: true } });
     if (!document) throw new NotFoundException('Longread not found');
-    const reasons = checkPublishable(await this.draftSnapshot(this.prisma, document.id), readSettings(document.settings));
+    const snapshot = await this.draftSnapshot(this.prisma, document.id);
+    const reasons = [...checkPublishable(snapshot, readSettings(document.settings)), ...await checkLongreadFiles(this.prisma, document.id, { settings: document.settings, chapters: snapshot }, true)];
     return { ok: reasons.length === 0, reasons };
   }
 
@@ -79,7 +82,7 @@ export class LongreadVersionsService {
       } else {
         const snapshot = await this.draftSnapshot(tx, document.id);
         const settings = readSettings(document.settings);
-        const reasons = checkPublishable(snapshot, settings);
+        const reasons = [...checkPublishable(snapshot, settings), ...await checkLongreadFiles(tx, document.id, { settings, chapters: snapshot }, true)];
         if (reasons.length) throw new UnprocessableEntityException({ message: 'The longread cannot be published', reasons });
 
         const number = document.lastRevisionNumber + 1;
@@ -184,7 +187,7 @@ export class LongreadVersionsService {
       await tx.longreadChapter.deleteMany({ where: { documentId: found.id } });
       for (const [chapterIndex, chapter] of asSnapshot(revision.snapshot).entries()) {
         const created = await tx.longreadChapter.create({
-          data: { organizationId, documentId: found.id, order: chapterIndex, title: chapter.title, anchor: chapter.anchor, hidden: chapter.hidden },
+          data: { organizationId, documentId: found.id, order: chapterIndex, title: chapter.title, anchor: chapter.anchor, hidden: chapter.hidden, ...(chapter.cover ? { cover: chapter.cover } : {}) },
           select: { id: true },
         });
         for (const [blockIndex, block] of chapter.blocks.entries()) {
@@ -266,6 +269,7 @@ export class LongreadVersionsService {
         .map((chapter) => ({
           title: chapter.title,
           anchor: chapter.anchor,
+          ...(chapter.cover ? { cover: chapter.cover } : {}),
           blocks: chapter.blocks.map((block) => ({ type: block.type, schemaVersion: block.schemaVersion, content: block.content, title: block.title, hidden: block.hidden })),
         })),
     };

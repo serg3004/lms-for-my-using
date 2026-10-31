@@ -2951,7 +2951,9 @@
       "table": "Table",
       "columns": "Columns",
       "tabs": "Tabs",
-      "accordion": "Accordion"
+      "accordion": "Accordion",
+      "image": "Image",
+      "attachments": "Attachments"
     },
     "tones": {
       "info": "Information",
@@ -3032,5 +3034,42 @@
     "rtl": "Right to left (RTL)",
     "allowCopy": "Show copy buttons (not copy protection)",
     "excludeFromToc": "Exclude heading from contents"
+  },
+  "longreadFiles": {
+    "uploadImage": "Upload or replace image",
+    "uploadFiles": "Add attachments",
+    "limits": "Up to 50 MB per file. Up to 20 attachments per upload.",
+    "uploading": "Uploading: {{percent}}%",
+    "uploaded": "Files uploaded and submitted for scanning.",
+    "checking": "Loading or scanning file…",
+    "unavailable": "The file is unavailable or has not passed scanning yet.",
+    "file": "file",
+    "download": "Download: {{name}}",
+    "noImage": "No image selected",
+    "alt": "Alternative text (leave empty for a decorative image)",
+    "caption": "Caption",
+    "width": "Width, %",
+    "align": "Alignment",
+    "start": "Start",
+    "center": "Center",
+    "end": "End",
+    "removeImage": "Remove image",
+    "removeFile": "Remove file: {{name}}",
+    "documentCover": "Document cover",
+    "chapterCover": "Chapter cover",
+    "addCover": "Add cover",
+    "removeCover": "Remove cover",
+    "scan": {
+      "pending": "Awaiting scan",
+      "scanning": "Scanning",
+      "available": "Ready to use",
+      "rejected": "Rejected"
+    },
+    "errors": {
+      "batch": "Choose 1–20 attachments or one image.",
+      "type": "Images: JPG, PNG, GIF, WebP. Attachments: PDF, DOC, DOCX, PPT, PPTX, XLS, XLSX.",
+      "size": "The file must be nonempty and no larger than 50 MB.",
+      "upload": "Upload failed. Files already added are saved; replace the failed upload."
+    }
   }
 }

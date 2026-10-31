@@ -1,3 +1,5 @@
+import { AttachmentEditor, CoverEditor, ImageFields } from '../features/longread-files/FileEditors.js';
+import type { LongreadImage } from '../shared/api/longreads.js';
 import { ReaderSettings } from '../features/longread-reader/ReaderSettings.js';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
@@ -86,6 +88,7 @@ function Editor({ initial, title, back, reload }: { initial: LongreadDraft; titl
       {action(t('longread.copyEdits'), () => { setRecovery(editor.recovery()); setCopied(false); })}
     </section>}
     <ReaderSettings settings={editor.document.settings ?? initial.settings} onChange={(patch) => editor.change((doc) => ({ ...doc, settings: { ...(doc.settings ?? initial.settings), ...patch } }))} />
+    <CoverEditor lessonId={initial.lessonId} label={t('longreadFiles.documentCover')} value={editor.document.settings?.cover} onChange={(cover) => editor.change((doc) => ({ ...doc, settings: { ...(doc.settings ?? initial.settings), cover } }))} />
     <Dialog open={preview} onClose={() => setPreview(false)} labelledBy="longread-preview-title" className="admin-preview-overlay" initialFocusRef={previewClose}>
       {preview && <div style={{ maxWidth: 1400, marginInline: 'auto' }}>
         <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, position: 'sticky', top: 0, zIndex: 2, background: 'var(--color-surface)', padding: 8 }}>
@@ -128,6 +131,7 @@ function Editor({ initial, title, back, reload }: { initial: LongreadDraft; titl
             {action(t('longread.delete'), () => setRemove({ chapter: chapter.key }), chapters.length === 1)}
           </div>
         </div>
+        <CoverEditor lessonId={initial.lessonId} label={t('longreadFiles.chapterCover')} value={chapter.cover} onChange={(cover) => updateChapter((item) => ({ ...item, cover }))} />
         {!chapter.blocks.length && <p>{t('longread.empty')}</p>}
         {chapter.blocks.map((block, index) => <article key={block.key} className={`admin-card lr-panel lr-block${block.key === blockKey ? ' lr-selected' : ''}`} aria-label={`${index + 1}. ${label(block)}`} onKeyDown={(event) => {
           if (event.altKey && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) { event.preventDefault(); moveBlock(block.key, event.key === 'ArrowUp' ? -1 : 1); }
@@ -138,6 +142,8 @@ function Editor({ initial, title, back, reload }: { initial: LongreadDraft; titl
             {action(t('longread.up'), () => moveBlock(block.key, -1), index === 0)}{action(t('longread.down'), () => moveBlock(block.key, 1), index === chapter.blocks.length - 1)}
           </div>
           {!editableBlock(block) ? <p>{t('longread.unknownMessage')}</p>
+            : block.type === 'image' ? <ImageFields lessonId={initial.lessonId} image={block.content as unknown as LongreadImage} onChange={(patch) => updateBlock(block.key, (item) => ({ ...item, content: { ...item.content, ...patch } }))} />
+            : block.type === 'attachments' ? <AttachmentEditor lessonId={initial.lessonId} files={block.content.files as { fileId: string; label?: string }[]} onChange={(update) => updateBlock(block.key, (item) => ({ ...item, content: { files: update(item.content.files as { fileId: string; label?: string }[]) } }))} />
             : block.type === 'divider' ? <hr />
             : block.type === 'code' ? <>
               <label htmlFor={`code-${block.key}`}>{t('longread.codeText')}</label>

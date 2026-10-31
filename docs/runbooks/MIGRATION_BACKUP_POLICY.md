@@ -624,3 +624,23 @@ Rollback keeps the column and data, reverting the application and/or disabling `
 as that would discard saved reading positions. PostgreSQL tests verify defaults via migrated fixtures, concurrent
 navigation, version pinning, fresh entitlement/tenant checks and preview without learning-record writes. Production
 backup/restore remains subject to the live verification requirements above.
+
+### Longread files and covers (PR 386)
+
+`20261031040000_longread_files` adds nullable `course_materials.longread_document_id` (indexed FK, cascade on physical
+document deletion) and nullable JSONB `longread_chapters.cover`. Document cover uses existing settings JSON.
+Existing materials keep a null owner and retain their behavior; no content/version/progress backfill is needed.
+Apply before deploying the API. Rollback retains the columns and references; never drop files or rewrite immutable
+snapshots. Functional rollback is switching off `longreadEnabled` while retaining the ownership guard. An application
+rollback must keep the generic-material guard/list exclusion for as long as version-owned files exist; deploying
+an older API without these checks is not a safe rollback, even with the feature disabled. The existing scanner/S3 configuration is reused, with no
+new environment variables or larger upload limit.
+
+`pnpm --filter @lms/api storage:cleanup` remains dry-run by default (`-- --apply` applies deletion). It first runs
+longread file reference cleanup: paginated documents are locked using the same document row as save/publish;
+files untouched for `S3_ORPHAN_RETENTION_DAYS` (default 30) and absent from the draft **and every immutable revision**
+are released, excluding active multipart sessions. The existing S3 orphan cleanup then deletes eligible objects.
+Dry-run output includes `longreadFiles.candidates`; S3 candidates still reflect rows retained during dry-run.
+Keep the existing expired-multipart cleanup scheduled as well. Published or pinned references have no age-based
+expiry and survive draft deletion/replacement. PostgreSQL tests cover the scan pipeline, cross-tenant/scope checks,
+version retention and cleanup; production backup/restore still requires the live verification described above.

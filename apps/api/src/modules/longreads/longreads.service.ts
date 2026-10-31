@@ -1,10 +1,11 @@
+import { checkLongreadFiles } from './longread-file-references.js';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
-import { collectContentIds, COMPOSITE_BLOCK_TYPES, isKnownBlockType, LONGREAD_SCHEMA_VERSION, validateBlockContent } from './longread-blocks.js';
+import { collectContentIds, COMPOSITE_BLOCK_TYPES, imageContentSchema, isKnownBlockType, LONGREAD_SCHEMA_VERSION, validateBlockContent } from './longread-blocks.js';
 import {
   MAX_BLOCKS_PER_DOCUMENT,
   MAX_CHAPTERS,
@@ -92,6 +93,7 @@ export class LongreadsService {
         title: chapter.title,
         anchor: chapter.anchor,
         hidden: chapter.hidden,
+        ...(chapter.cover ? { cover: imageContentSchema.parse(chapter.cover) } : {}),
         blocks: chapter.blocks.map((block) => ({
           id: block.id,
           type: block.type,
@@ -152,6 +154,8 @@ export class LongreadsService {
         throw new ConflictException({ message: 'Longread was changed by someone else', currentRevision: current?.draftRevision ?? null });
       }
 
+      await checkLongreadFiles(tx, document.id, input);
+
       const existingChapters = await tx.longreadChapter.findMany({ where: { documentId: document.id }, select: { id: true, anchor: true } });
       const existingBlocks = await tx.longreadBlock.findMany({ where: { organizationId, chapter: { documentId: document.id } }, select: { id: true } });
       const chapterAnchors = new Map(existingChapters.map((chapter) => [chapter.id, chapter.anchor]));
@@ -182,10 +186,10 @@ export class LongreadsService {
       for (const [chapterIndex, chapter] of input.chapters.entries()) {
         let chapterId = chapter.id;
         if (chapterId) {
-          await tx.longreadChapter.update({ where: { id: chapterId }, data: { order: chapterIndex, title: chapter.title, hidden: chapter.hidden } });
+          await tx.longreadChapter.update({ where: { id: chapterId }, data: { order: chapterIndex, title: chapter.title, hidden: chapter.hidden, ...(chapter.cover !== undefined ? { cover: chapter.cover ?? Prisma.JsonNull } : {}) } });
         } else {
           const created = await tx.longreadChapter.create({
-            data: { organizationId, documentId: document.id, order: chapterIndex, title: chapter.title, hidden: chapter.hidden, anchor: newAnchor() },
+            data: { organizationId, documentId: document.id, order: chapterIndex, title: chapter.title, hidden: chapter.hidden, anchor: newAnchor(), ...(chapter.cover ? { cover: chapter.cover } : {}) },
             select: { id: true },
           });
           chapterId = created.id;
@@ -251,6 +255,7 @@ export class LongreadsService {
           order: source.order + 1,
           title: `${source.title} (копия)`.slice(0, 200),
           hidden: source.hidden,
+          ...(source.cover ? { cover: source.cover } : {}),
           anchor: newAnchor(),
         },
         select: { id: true },

@@ -22,7 +22,7 @@ export function longreadEditorServer(initial: LongreadDraft = longreadFixture) {
   let stored = structuredClone(initial), failure = 0;
   const writes: SaveLongread[] = [];
   let held: (() => void) | null = null, hold = false;
-  async function attach(page: Page, options: { locale?: 'ru' | 'en' | 'kk' | 'zh'; role?: 'admin' | 'instructor'; denied?: number } = {}) {
+  async function attach(page: Page, options: { locale?: 'ru' | 'en' | 'kk' | 'zh'; role?: 'admin' | 'instructor'; denied?: number; beforeNavigate?: () => Promise<void> } = {}) {
     const role = options.role ?? 'admin';
     await page.route('**/api/v1/**', async (route) => {
       const path = new URL(route.request().url()).pathname.replace('/api/v1', '');
@@ -48,6 +48,7 @@ export function longreadEditorServer(initial: LongreadDraft = longreadFixture) {
       }
       return route.fulfill({ status: 404, json: { message: 'Unknown synthetic editor route' } });
     });
+    await options.beforeNavigate?.();
     await page.goto(`/${role}/lessons/${longreadLessonId}/longread`);
     if (!options.denied) {
       await expect(page.getByRole('heading', { level: 1, name: 'Безопасная работа' })).toBeVisible();
