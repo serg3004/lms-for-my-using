@@ -50,3 +50,27 @@ test('preview checks a typed answer without loading or writing real attempts', a
   expect(server.state.exercises.every((value) => value.attemptsUsed === 0)).toBe(true);
   await expect(page.getByRole('button', { name: 'Завершить итоговый тест', exact: true })).toHaveCount(0);
 });
+
+test('creates a short-answer question and autosaves its new reference without a revision conflict', async ({ page }) => {
+  const server = exerciseEditorServer(6); await server.attach(page);
+  await page.getByRole('button', { name: 'Создать вопрос', exact: true }).click();
+  const form = page.getByRole('region', { name: 'Редактор вопроса', exact: true });
+  await form.getByLabel('Тип вопроса', { exact: true }).selectOption('short_answer');
+  await form.getByLabel('Название вопроса', { exact: true }).fill('Новый вопрос');
+  await form.getByLabel('Допустимые ответы (по одному на строку)', { exact: true }).fill('Астана\nAstana');
+  await form.getByRole('button', { name: 'Сохранить и связать вопрос', exact: true }).click();
+  await expect(form).toHaveCount(0);
+  await expect.poll(() => server.editor.writes.at(-1)?.chapters[0]?.blocks[0]?.content.questionId).toBe('38900000-0000-4000-8000-000000000401');
+  expect(server.editor.writes.at(-1)?.revision).toBe(2);
+  await expect(page.getByRole('combobox', { name: 'Вопрос из теста этого урока', exact: true })).toHaveValue('38900000-0000-4000-8000-000000000401');
+});
+test('editing a blank identifier retains keyboard focus and writes the explicit text policy', async ({ page }) => {
+  const server = exerciseEditorServer(5); await server.attach(page);
+  await page.getByRole('button', { name: 'Изменить вопрос', exact: true }).click(); const form = page.getByRole('region', { name: 'Редактор вопроса', exact: true });
+  const field = form.getByLabel('Идентификатор пропуска', { exact: true }); await field.focus(); await field.press('End'); await field.pressSequentially('Name');
+  await expect(field).toHaveValue('cityName'); await expect(field).toBeFocused();
+  await form.getByLabel('Учитывать регистр', { exact: true }).check(); await form.getByRole('combobox', { name: /^Пробелы/ }).selectOption('exact');
+  await form.getByRole('button', { name: 'Сохранить и связать вопрос', exact: true }).click();
+  await expect.poll(() => server.writes.length).toBe(1);
+  expect(server.writes[0]?.definition).toMatchObject({ type: 'fill_blank', blanks: [{ id: 'cityName' }], caseSensitive: true, whitespace: 'exact' });
+});

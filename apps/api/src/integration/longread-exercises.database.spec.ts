@@ -130,6 +130,7 @@ describe('longread versioned exercises (PR 389) — database', () => {
     expect((await results.listAssessmentResults(assessmentId, org))).toHaveLength(1);
     expect(await prisma.certificate.count({ where: { organizationId: org, assessmentAttemptId: a.attemptId } })).toBe(1);
     expect(await prisma.notification.count({ where: { organizationId: org } })).toBe(1);
+    expect((await prisma.notification.findFirstOrThrow({ where: { organizationId: org } })).link).toBe(`/learn/attempts/${a.attemptId}`);
   });
   it('retains old keys, labels and grades after editing/deleting sources and republishing; reports distinguish versions', async () => {
     await answerAll(); const old = await exercises.finish(lessonId, learner, 1, assessmentId), frozen = await results.getAttemptResult(old.attemptId, learner);
@@ -165,6 +166,24 @@ describe('longread versioned exercises (PR 389) — database', () => {
     await prisma.assignment.updateMany({ where: { userId: learner.id, courseId }, data: { status: 'cancelled' } }); await expect(submit(0)).rejects.toBeInstanceOf(NotFoundException);
     await prisma.organization.update({ where: { id: org }, data: { longreadEnabled: false } }); await expect(submit(0, 1, good[0], second)).rejects.toBeInstanceOf(NotFoundException);
     expect(await prisma.assessmentAttempt.count({ where: { organizationId: org } })).toBe(0);
+  });
+
+
+  it('writes an existing bank question with optimistic revision/updatedAt while preserving option ids and pinned keys', async () => {
+    await reader.read(lessonId, learner);
+    const paper = (await bank.list(lessonId, org))[0]!, question = paper.questions.find((q) => q.id === good[0]!.questionId)!;
+    const draft = await drafts.getDraft(lessonId, org);
+    const input = writeLongreadQuestionSchema.parse({ questionId: question.id, assessmentId, updatedAt: question.updatedAt.toISOString(), type: question.type,
+      title: 'Edited bank title', text: question.text ?? '', definition: question.definition, scoringMode: question.scoringMode,
+      options: question.options.map((o) => ({ id: o.id, text: o.text, isCorrect: !o.isCorrect })), assessmentPassingScore: 60, assessmentMaxAttempts: 1 });
+    const saved = await bank.save(lessonId, org, draft.revision, input);
+    expect(saved).toEqual({ questionId: question.id, revision: draft.revision + 1 });
+    expect((await prisma.assessmentAnswerOption.findMany({ where: { questionId: question.id, deletedAt: null }, orderBy: { order: 'asc' } })).map((o) => o.id)).toEqual(question.options.map((o) => o.id));
+    await expect(bank.save(lessonId, org, saved.revision, input)).rejects.toBeInstanceOf(ConflictException);
+    const unchanged = await reader.read(lessonId, learner); expect(unchanged.chapters[0]!.blocks[0]!.question?.title).toBe('Question 0');
+    expect((await submit(0)).acceptedResult.score).toBe(8);
+    await versions.publish(lessonId, org, saved.revision, admin.id);
+    expect((await submit(0, 1, good[0], second, 2)).acceptedResult.score).toBe(0);
   });
 
   it('does not accept answers for hidden blocks or locked sequential chapters', async () => {

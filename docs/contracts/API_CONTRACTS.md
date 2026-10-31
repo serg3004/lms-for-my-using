@@ -1786,7 +1786,7 @@ their options are edited in the existing test editor. Exercises are not allowed 
 Content is strict: `questionId` (UUID, null allowed only as an unpublished placeholder), `mode` (`practice` default or
 `graded`), `required` (true), `weight` (1–1,000,000 points, default 1), `hint` (≤2,000 characters), `maxAttempts` (1–100,
 default 3), `passingScore` (0–100, default 70), `feedback` (`result` default or `answers`). Publication captures block IDs,
-question texts/options/keys, scoring rules and parent test limits/thresholds into the immutable revision. Missing,
+question texts/options/keys, scoring rules and parent test limits/thresholds into the immutable revision. The question/options/parent capture uses one PostgreSQL MVCC statement, including when the ordinary test API edits them concurrently. Missing,
 deleted, invalid or foreign references produce `question_unavailable`; unpersistable total weights are refused.
 Changing a bank question requires republishing, even if the document revision itself did not change. Restoring a version
 clones its frozen assessments/questions/options into independent draft records; historical keys and attempts stay intact.
@@ -1819,7 +1819,7 @@ Practice does not contribute. A fingerprint of the selected best attempts makes 
 an improved set of best attempts can create another final result within the captured parent limit. Identical finishes
 consume no slot. Practice remains available independently of the parent budget.
 
-The final attempt uses the normal result/notification/certificate recording path. Answer rows keep frozen question data;
+The final attempt uses the normal result/notification/certificate recording path; its notification links directly to the recorded result. Answer rows keep frozen question data;
 results show the captured labels, option text, weights and keys (only per-block feedback opt-in), plus `longread:
 { lessonId, version }`. Assessment reports add `versions` with per-version counts and averages. Republish never recomputes
 existing grades; a started learner stays pinned. The review page displays all seven response formats and links back to

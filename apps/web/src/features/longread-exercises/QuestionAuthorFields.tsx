@@ -37,7 +37,7 @@ export function QuestionAuthorFields({ value, onChange }: { value: WriteLongread
     </>}
     {d.type === 'fill_blank' && <>
       <p>{t('longreadExercises.blankHelp')}</p>
-      {d.blanks.map((blank, index) => <div key={blank.id}>
+      {d.blanks.map((blank, index) => <div key={index}>
         {text('blankId', blank.id, (value) => patch({ ...d, blanks: d.blanks.map((v, n) => n === index ? { ...v, id: value } : v) }))}
         {text('acceptedAnswers', blank.acceptedAnswers.join('\n'), (value) => patch({ ...d, blanks: d.blanks.map((v, n) => n === index ? { ...v, acceptedAnswers: variants(value) } : v) }), true)}
         <button type="button" className="admin-btn admin-btn--secondary" disabled={d.blanks.length <= 1} onClick={() => patch({ ...d, blanks: d.blanks.filter((_, n) => n !== index) })}>{t('longread.delete')}</button>

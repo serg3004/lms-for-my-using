@@ -1,5 +1,5 @@
 import { frozenAssessmentQuestionSchema } from '../../common/assessment-frozen.js';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { exerciseContentSchema, type ExerciseContent } from '@lms/shared/longread-exercises';
 import { validateQuestionDefinition, publicQuestionDefinition } from '../../common/assessment-question-definition.js';
 import { seededShuffle } from '../../common/seeded-shuffle.js';
@@ -18,13 +18,26 @@ export function publicExerciseQuestion(question: FrozenQuestion, seed: string) {
     ...(question.definition ? { definition: publicQuestionDefinition(question.definition, seed) } : {}) };
 }
 /** Resolve references under the publication transaction. Only version snapshots contain answer keys. */
-export async function captureExerciseQuestions(db: Pick<Prisma.TransactionClient, 'assessmentQuestion'>, lessonId: string, organizationId: string, chapters: SnapshotChapter[]) {
+export async function captureExerciseQuestions(db: Pick<Prisma.TransactionClient, '$queryRaw'>, lessonId: string, organizationId: string, chapters: SnapshotChapter[]) {
   const blocks = chapters.flatMap((chapter) => chapter.blocks.filter((block) => block.type === 'exercise'));
   const ids = blocks.flatMap((block) => { const value = exerciseContentSchema.safeParse(block.content); return value.success && value.data.questionId ? [value.data.questionId] : []; });
-  const rows = ids.length ? await db.assessmentQuestion.findMany({ where: { id: { in: [...new Set(ids)] }, organizationId, deletedAt: null, assessment: { lessonId, organizationId, deletedAt: null } },
-    select: { id: true, type: true, title: true, text: true, imageUrl: true, order: true, points: true, scoringMode: true, definition: true,
-      options: { where: { deletedAt: null }, orderBy: [{ order: 'asc' }, { id: 'asc' }], select: { id: true, text: true, imageUrl: true, isCorrect: true, order: true } },
-      assessment: { select: { id: true, title: true, passingScore: true, maxAttempts: true } } } }) : [];
+  // One PostgreSQL statement supplies one MVCC snapshot, including keys/options/parent settings.
+  // Independent ORM relation reads could straddle a concurrent edit through the ordinary test API.
+  const captured = ids.length ? await db.$queryRaw<{ question: FrozenQuestion }[]>(Prisma.sql`
+    SELECT jsonb_build_object(
+      'id', q.id, 'type', q.type, 'title', q.title, 'text', q.text, 'imageUrl', q.image_url,
+      'order', q."order", 'points', q.points, 'scoringMode', q.scoring_mode, 'definition', q.definition,
+      'options', COALESCE((SELECT jsonb_agg(jsonb_build_object('id', o.id, 'text', o.text, 'imageUrl', o.image_url,
+        'isCorrect', o.is_correct, 'order', o."order") ORDER BY o."order", o.id)
+        FROM assessment_answer_options o WHERE o.question_id = q.id AND o.organization_id = ${organizationId}::uuid AND o.deleted_at IS NULL), '[]'::jsonb),
+      'assessment', jsonb_build_object('id', a.id, 'title', a.title, 'passingScore', a.passing_score, 'maxAttempts', a.max_attempts)
+    ) AS question
+    FROM assessment_questions q JOIN assessments a ON a.id = q.assessment_id
+    WHERE q.id IN (${Prisma.join([...new Set(ids)].map((id) => Prisma.sql`${id}::uuid`))})
+      AND q.organization_id = ${organizationId}::uuid AND q.deleted_at IS NULL
+      AND a.organization_id = ${organizationId}::uuid AND a.lesson_id = ${lessonId}::uuid AND a.deleted_at IS NULL
+  `) : [];
+  const rows = captured.map((row) => row.question);
   const byId = new Map(rows.map((row) => [row.id, row]));
   const reasons: PublishRefusal[] = [];
   const result = chapters.map((chapter) => ({ ...chapter, blocks: chapter.blocks.map((block, blockIndex) => {

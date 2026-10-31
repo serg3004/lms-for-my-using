@@ -7,7 +7,7 @@ import { stableJson } from '../../common/stable-json.js';
 const q = { id: randomUUID(), type: 'short_answer' as const, title: 'Question', text: null, imageUrl: null, order: 0, points: 10, scoringMode: 'all_or_nothing' as const,
   definition: { type: 'short_answer' as const, acceptedAnswers: ['secret'], caseSensitive: false, whitespace: 'trim' as const }, options: [], assessment: { id: randomUUID(), title: 'Test', passingScore: 70, maxAttempts: null } };
 const chapter = (count = 1): SnapshotChapter[] => [{ title: 'Chapter', anchor: 'intro', hidden: false, blocks: Array.from({ length: count }, () => ({ id: randomUUID(), type: 'exercise', schemaVersion: 1, content: exerciseContentSchema.parse({ questionId: q.id, mode: 'graded', weight: 1_000_000 }) })) }];
-const db = (rows = [q]) => ({ assessmentQuestion: { findMany: async () => rows } }) as unknown as PrismaService;
+const db = (rows = [q]) => ({ $queryRaw: async () => rows.map((question) => ({ question })) }) as unknown as PrismaService;
 describe('exercise publication snapshots', () => {
   it('captures server keys and block weight, and explicitly removes keys from the reader view', async () => {
     const original = chapter(), captured = await captureExerciseQuestions(db(), 'lesson', 'org', original);

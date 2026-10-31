@@ -56,7 +56,10 @@ export function exerciseEditorServer(index?: number) {
     await page.route('**/api/v1/**/longread/questions', async (route) => {
       if (route.request().method() === 'GET') return route.fulfill({ json: bank });
       const body = route.request().postDataJSON() as { revision: number; question: WriteLongreadQuestion }; writes.push(body.question);
-      editor.bumpRevision(); return route.fulfill({ json: { questionId: body.question.questionId ?? uuid(400 + writes.length), revision: body.revision + 1 } });
+      const questionId = body.question.questionId ?? uuid(400 + writes.length), value = body.question;
+      const stored = { ...value, id: questionId, assessmentId: bank[0]!.id, updatedAt: `2026-10-31T00:00:${String(writes.length).padStart(2, '0')}.000Z`, text: value.text, options: value.options.map((o, order) => ({ ...o, id: o.id ?? uuid(500 + writes.length * 10 + order), imageUrl: null, order })) };
+      const index = bank[0]!.questions.findIndex((q) => q.id === questionId); if (index >= 0) bank[0]!.questions[index] = stored; else bank[0]!.questions.push(stored);
+      editor.bumpRevision(); return route.fulfill({ json: { questionId, revision: body.revision + 1 } });
     });
     await page.route('**/api/v1/**/longread/publish', (route) => route.fulfill({ json: { version: 2 } }));
   } }) };

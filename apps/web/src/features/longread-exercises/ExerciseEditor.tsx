@@ -57,7 +57,7 @@ export function ExerciseEditor({ lessonId, content, onChange, ready, revision, a
       {bank.map((assessment) => <optgroup key={assessment.id} label={assessment.title}>{assessment.questions.map((q) => <option key={q.id} value={q.id}>{q.title} · {t(`longreadExercises.types.${q.type}`)}</option>)}</optgroup>)}
     </select>
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBlock: 12 }}>
-      <button type="button" className="admin-btn admin-btn--secondary" disabled={!ready} onClick={() => setForm(emptyQuestion('single_choice'))}>{t('longreadExercises.createQuestion')}</button>
+      <button type="button" className="admin-btn admin-btn--secondary" disabled={!ready} onClick={() => { const assessment = parent ?? bank[0]; setForm({ ...emptyQuestion('single_choice'), ...(assessment ? { assessmentId: assessment.id, assessmentPassingScore: assessment.passingScore, assessmentMaxAttempts: assessment.maxAttempts } : {}) }); }}>{t('longreadExercises.createQuestion')}</button>
       {linked && <button type="button" className="admin-btn admin-btn--secondary" disabled={!ready || linked.options.some((o) => o.imageUrl)} onClick={() => {
         let definition = linked.definition;
         if (definition?.type === 'matching') { const d = definition; definition = { ...d, right: d.left.map((left) => d.right.find((right) => right.id === d.correctPairs.find((p) => p.leftId === left.id)!.rightId)!) }; }
@@ -68,7 +68,7 @@ export function ExerciseEditor({ lessonId, content, onChange, ready, revision, a
     {linked?.options.some((o) => o.imageUrl) && <p>{t('longreadExercises.imageOptionsHelp')}</p>}
     {!ready && <p role="status">{t('longreadExercises.waitSaved')}</p>}
     {form && <section style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: 12 }} aria-label={t('longreadExercises.questionForm')}>
-      <label htmlFor={`${id}-type`}>{t('longreadExercises.questionType')}</label><select id={`${id}-type`} value={form.type} onChange={(e) => setForm({ ...emptyQuestion(e.target.value as QuestionType), ...(form.questionId ? { questionId: form.questionId, assessmentId: form.assessmentId, updatedAt: form.updatedAt } : {}), title: form.title, text: form.text, assessmentPassingScore: form.assessmentPassingScore, assessmentMaxAttempts: form.assessmentMaxAttempts })}>{questionTypeSchema.options.map((type) => <option value={type} key={type}>{t(`longreadExercises.types.${type}`)}</option>)}</select>
+      <label htmlFor={`${id}-type`}>{t('longreadExercises.questionType')}</label><select id={`${id}-type`} value={form.type} onChange={(e) => setForm({ ...emptyQuestion(e.target.value as QuestionType), ...(form.questionId ? { questionId: form.questionId, updatedAt: form.updatedAt } : {}), ...(form.assessmentId ? { assessmentId: form.assessmentId } : {}), title: form.title, text: form.text, assessmentPassingScore: form.assessmentPassingScore, assessmentMaxAttempts: form.assessmentMaxAttempts })}>{questionTypeSchema.options.map((type) => <option value={type} key={type}>{t(`longreadExercises.types.${type}`)}</option>)}</select>
       <label style={{ display: 'block' }}>{t('longreadExercises.title')}<input value={form.title} maxLength={200} onChange={(e) => setForm({ ...form, title: e.target.value })} /></label>
       <label style={{ display: 'block' }}>{t('longreadExercises.text')}<textarea value={form.text} maxLength={4000} onChange={(e) => setForm({ ...form, text: e.target.value })} /></label>
       <QuestionAuthorFields value={form} onChange={setForm} />

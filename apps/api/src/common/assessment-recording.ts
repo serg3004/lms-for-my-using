@@ -18,6 +18,7 @@ export async function recordCompletedAssessment(tx: Prisma.TransactionClient, da
       create: { organizationId: data.organizationId, courseId, userId: data.userId, assessmentAttemptId: attempt.id },
     });
     const notification = buildAttemptResultNotification(title, data.assessmentId, !!data.passed, data.percentage ?? 0);
+    if (data.longreadRevisionId) notification.link = `/learn/attempts/${attempt.id}`;
     await tx.notification.create({ data: { organizationId: data.organizationId, userId: data.userId, ...notification } });
   }
   return attempt.id;

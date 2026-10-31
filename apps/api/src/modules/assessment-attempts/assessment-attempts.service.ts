@@ -197,7 +197,7 @@ export class AssessmentAttemptsService {
 
   /**
    * Dry-run grading for the assessment author (admin/instructor): reuses the exact same grading
-   * logic as createAttempt (getQuestions/gradeAnswers/scoreMultipleChoiceAnswer), so the preview
+   * shared gradeAssessmentAnswers logic as createAttempt, so the preview
    * can never diverge from how a real submission would be scored — but it writes nothing to the
    * database (no AssessmentAttempt row, no maxAttempts consumed, no certificate). Works for
    * draft assessments too, since previewing before publishing is the point.
