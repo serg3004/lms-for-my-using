@@ -1,7 +1,7 @@
 import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getOrganizationFeatures } from '../shared/api/organizations.js';
+import { OrganizationLongreadSettings, useOrganizationLongreads } from '../features/longread-settings/OrganizationLongreadSettings.js';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError } from '../shared/apiClient.js';
@@ -15,6 +15,7 @@ import { listLessons } from '../shared/api/lessons.js';
 import type { CourseSummary, LessonSummary } from '../shared/api/types.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { useCourseBuilderMutations } from './course-builder/useCourseBuilderMutations.js';
+import { lessonSlug } from '../shared/lessonSlug.js';
 
 type CourseStatus = 'draft' | 'published' | 'archived';
 type LessonStatus = 'draft' | 'published' | 'archived';
@@ -23,15 +24,6 @@ type CourseBuilderData = { course: CourseSummary; lessons: LessonSummary[] };
 
 type SaveState = { status: 'idle' } | { status: 'saving' } | { status: 'saved' } | { status: 'error'; message: string };
 type LessonFormState = { status: 'idle' } | { status: 'submitting' } | { status: 'error'; message: string };
-
-function slugify(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80);
-}
 
 function lessonStatusBadge(status: string, t: TFunction): { variant: 'published' | 'draft' | 'neutral'; label: string } {
   if (status === 'published') return { variant: 'published', label: t('admin.courseBuilder.lessonStatus.published', 'Ready') };
@@ -55,13 +47,7 @@ export function AdminCourseBuilderPage() {
   const { courseId } = useParams<{ courseId: string }>();
   const mutations = useCourseBuilderMutations();
   const navigate = useNavigate();
-  const [longreadEnabled, setLongreadEnabled] = useState(false);
   const [longreadLesson, setLongreadLesson] = useState(false);
-  useEffect(() => {
-    let active = true;
-    if (currentUser) void getOrganizationFeatures(currentUser.organizationId).then((f) => { if (active) setLongreadEnabled(f.longreadEnabled); }).catch(() => { if (active) setLongreadEnabled(false); });
-    return () => { active = false; };
-  }, [currentUser]);
 
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
@@ -84,7 +70,7 @@ export function AdminCourseBuilderPage() {
     { label: t('admin.courses.builder', 'Builder'), href: `/admin/courses/${courseId}`, isCurrent: true },
   ];
 
-  const { state: pageState, reload: loadData } = useAsyncData<CourseBuilderData>(
+  const { state: pageState, reload: loadData, mutate } = useAsyncData<CourseBuilderData>(
     async () => {
       if (!courseId) throw new Error('Missing course id');
       const [course, lessons] = await Promise.all([
@@ -99,13 +85,20 @@ export function AdminCourseBuilderPage() {
       error: t('admin.courseBuilder.loadError', 'Unable to load the course.'),
     },
   );
+  const longreads = useOrganizationLongreads(async () => {
+    if (!courseId) return;
+    const lessons = await listLessons(courseId);
+    mutate((data) => ({ ...data, lessons }));
+  });
+  const longreadEnabled = longreads.enabled;
+  const loadedCourse = pageState.status === 'loaded' ? pageState.data.course : null;
 
   useEffect(() => {
-    if (pageState.status === 'loaded') {
-      setFormTitle(pageState.data.course.title);
-      setFormDescription(pageState.data.course.description ?? '');
+    if (loadedCourse) {
+      setFormTitle(loadedCourse.title);
+      setFormDescription(loadedCourse.description ?? '');
     }
-  }, [pageState]);
+  }, [loadedCourse]);
 
   useEffect(() => {
     if (showAddLesson) addLessonDialogRef.current?.showModal();
@@ -160,7 +153,7 @@ export function AdminCourseBuilderPage() {
     const nextLessonErrors = validateLessonForm({ title, description: lessonDesc }, t);
     setLessonErrors(nextLessonErrors);
     if (hasValidationErrors(nextLessonErrors)) return;
-    const slug = slugify(title);
+    const slug = lessonSlug(title);
     setLessonFormState({ status: 'submitting' });
     try {
       const created = await mutations.createLesson(courseId, {
@@ -184,6 +177,11 @@ export function AdminCourseBuilderPage() {
         message: error instanceof ApiClientError ? error.message : t('admin.courseBuilder.lessonSaveError', 'Unable to create the lesson.'),
       });
     }
+  }
+
+  function openAddLesson(longread = false) {
+    setLessonTitle(''); setLongreadLesson(longread); setLessonDesc('');
+    setLessonFormState({ status: 'idle' }); setLessonErrors({}); setShowAddLesson(true);
   }
 
   async function handleToggleLessonStatus(lesson: LessonSummary) {
@@ -246,7 +244,7 @@ export function AdminCourseBuilderPage() {
 
       <div className="edit-layout">
         {/* Left: main content */}
-        <div>
+        <div style={{ minWidth: 0 }}>
           <Card style={{ marginBottom: '20px' }}>
             <div className="ds-card__title">{t('admin.courseBuilder.infoTitle', 'Basic information')}</div>
             <form onSubmit={(e) => void handleSaveCourse(e)}>
@@ -295,25 +293,22 @@ export function AdminCourseBuilderPage() {
           </Card>
 
           <Card>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
               <div className="ds-card__title" style={{ marginBottom: 0 }}>{t('admin.lessons.lessonsTitle', 'Lessons')}</div>
+              <div className="admin-table-actions" style={{ flexWrap: 'wrap' }}>
+              {longreadEnabled && <Button variant="primary" size="sm" type="button" onClick={() => openAddLesson(true)}>+ {t('longreadSettings.addLesson')}</Button>}
               <Button
                 variant="secondary"
                 size="sm"
                 type="button"
-                onClick={() => {
-                  setLessonTitle('');
-                  setLongreadLesson(false);
-                  setLessonDesc('');
-                  setLessonFormState({ status: 'idle' });
-                  setLessonErrors({});
-                  setShowAddLesson(true);
-                }}
+                onClick={() => openAddLesson()}
               >
                 + {t('admin.courseBuilder.addLesson', 'Add lesson')}
               </Button>
+              </div>
             </div>
 
+            <OrganizationLongreadSettings feature={longreads} />
             {lessons.length === 0 ? (
               <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '14px' }}>
                 {t('admin.courseBuilder.noLessons', 'No lessons yet. Add the first one.')}
@@ -326,13 +321,13 @@ export function AdminCourseBuilderPage() {
                   .map((lesson, idx) => {
                     const { variant, label } = lessonStatusBadge(lesson.status, t);
                     return (
-                      <div key={lesson.id} className="lesson-row">
+                      <div key={lesson.id} className="lesson-row" style={{ flexWrap: 'wrap' }}>
                         <span className="lesson-row__drag" aria-hidden="true">⠿</span>
                         <span className="lesson-row__num">{idx + 1}</span>
-                        <span className="lesson-row__title">{lesson.title}</span>
+                        <span className="lesson-row__title" style={{ overflowWrap: 'anywhere' }}>{lesson.title}</span>
                         <Badge variant={variant} style={{ marginRight: '4px' }}>{label}</Badge>
-                        <div className="lesson-row__actions">
-                          {lesson.type === 'longread' && <Link to={`/admin/lessons/${lesson.id}/longread`}>{t('longread.openEditor')}</Link>}
+                        <div className="lesson-row__actions" style={{ flexWrap: 'wrap', minWidth: 0 }}>
+                          {lesson.type === 'longread' && <Link to={`/admin/lessons/${lesson.id}/longread`} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, overflowWrap: 'anywhere' }}>{t('longread.openEditor')}</Link>}
                           <Button
                             variant="ghost"
                             size="sm"
@@ -385,6 +380,7 @@ export function AdminCourseBuilderPage() {
             <div style={{ marginTop: '16px', display: 'grid', gap: '8px' }}>
               <select
                 value={course.status}
+                aria-label={t('admin.courses.col.status', 'Status')}
                 onChange={(e) => void handleStatusChange(e.target.value as CourseStatus)}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)', fontSize: 'var(--text-sm)', cursor: 'pointer' }}
               >

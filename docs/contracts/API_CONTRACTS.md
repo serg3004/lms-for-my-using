@@ -1456,6 +1456,13 @@ removed, so moving a block out of a chapter and deleting its source in one save 
 
 Authors open the lazily loaded TipTap editor from lessons or course forms at `/admin/lessons/:id/longread` or
 `/instructor/lessons/:id/longread`. Existing course editing scope and the organization flag apply; no new menu or role.
+In the admin UI, `/admin/lessons` retains its localized Activity label (RU: «Задание»). Administrators can change the
+same organization-wide longread flag on that page, the Courses list, or inside a course. The setting reports loading,
+save failures and retry; it is not offered to non-admins. Course titles link to the course builder; once the flag is
+enabled, «Добавить лонгрид» opens the existing lesson dialog with the longread type selected, then navigates to its
+draft editor. Existing longread lessons retain their editor link. Changing the setting refreshes the course's lesson
+list without discarding unsaved course fields. Localized or short lesson titles receive an ASCII fallback identifier
+when they cannot form a valid readable slug; the user-facing title is preserved.
 Chapter and block creation, labels, ordering (buttons or Alt+Up/Down), visibility, duplication, confirmed deletion and
 undo/redo are local draft operations until the atomic save. At least one named chapter is kept. Copying creates new
 server identifiers; renaming/reordering retained chapters keeps their anchors. Restoring deleted content with undo

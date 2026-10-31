@@ -20,6 +20,7 @@ import {
   type CourseInstructor,
 } from '../shared/api/courses.js';
 import { formatUserName, usersAvailableToAdd } from './admin-courses/model.js';
+import { OrganizationLongreadSettings, useOrganizationLongreads } from '../features/longread-settings/OrganizationLongreadSettings.js';
 
 type CourseStatus = 'draft' | 'published' | 'archived';
 
@@ -104,6 +105,7 @@ export function AdminCoursesPage() {
       error: t('admin.courses.loadError', 'Unable to load courses. Try again later.'),
     },
   );
+  const longreads = useOrganizationLongreads();
 
   useEffect(() => {
     if (showCreate) dialogRef.current?.showModal();
@@ -264,7 +266,7 @@ export function AdminCoursesPage() {
       label: t('admin.courses.col.course', 'Course'),
       render: (course) => (
         <>
-          <div className="td-title">{course.title}</div>
+          <a className="td-title" href={`/admin/courses/${course.id}`}>{course.title}</a>
           {course.description ? (
             <div className="td-meta">{course.description.slice(0, 80)}{course.description.length > 80 ? '…' : ''}</div>
           ) : null}
@@ -347,6 +349,7 @@ export function AdminCoursesPage() {
         <StatCard label={t('admin.courses.stats.archived', 'Archived')} value={archived} />
       </StatsGrid>
 
+      <OrganizationLongreadSettings feature={longreads} />
       <SectionHeader title={t('admin.courses.title', 'Courses')} />
 
       <Toolbar
@@ -360,6 +363,7 @@ export function AdminCoursesPage() {
         right={
           <select
             className="admin-status-select"
+            aria-label={t('admin.courses.col.status', 'Status')}
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as 'all' | CourseStatus)}
           >

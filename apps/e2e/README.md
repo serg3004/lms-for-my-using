@@ -35,6 +35,12 @@ mocked browser downloads do not replace those server checks.
 
 ## Accessibility baseline
 
+Longread entrypoint scenarios cover the unchanged Activity/«Задание» sidebar label, the shared organization setting
+on the course list, course builder and lesson page, a localized-title draft creation from Courses, existing editor
+links, unsaved course fields, disable/re-enable, error/retry, admin-only controls, RU/EN/KK/ZH and the mobile drawer.
+These use synthetic API responses; backend tenant/role enforcement remains covered by API/database tests. The three
+setting surfaces have separate visual and axe checks at 375/1440 px.
+
 Run `pnpm test:a11y` from the repository root. The suite audits public pages and every role workspace with axe, fails on critical, serious, or moderate WCAG 2.1 AA violations (the moderate baseline is zero), and checks core keyboard/focus flows plus a 320 px/200% zoom scenario. Every audit logs counts and produces a JSON report grouped by severity; CI retains those reports even when the gate passes. Minor findings are reported without blocking the build. See the [accessibility exception policy](../../docs/quality/ACCESSIBILITY.md).
 
 Session-management audits cover instructor and mentor at 375/1440 px: list, creation/edit dialogs, and report summary, participants, criteria and history. Each state writes its own JSON report; the checks also exercise Escape, focus restoration and keyboard tab activation.

@@ -1,4 +1,6 @@
 import { longreadFileServer } from '../fixtures/longread-files.js';
+import { openLongreadEntrypoints } from '../fixtures/longread-entrypoints.js';
+import { longreadCourseId } from '../fixtures/longread-editor.js';
 import { openPreviewBuilder, openSheetPreview } from '../fixtures/checklist-preview.js';
 import { longreadCompositeFixture, longreadEditorServer } from '../fixtures/longread-editor.js';
 import { longreadReaderServer, openLongreadPreview } from '../fixtures/longread-reader.js';
@@ -11,6 +13,18 @@ import { expect, test, type Page } from '@playwright/test';
 
 const widths = [320, 375, 768, 1024, 1280, 1440] as const;
 const height = 900;
+
+for (const width of [375, 1440]) for (const [screen, path] of [
+  ['courses', '/admin/courses'], ['course', `/admin/courses/${longreadCourseId}`], ['lessons', '/admin/lessons'],
+] as const) {
+  test(`longread settings in ${screen} are responsive at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await openLongreadEntrypoints(page, { enabled: true, path });
+    await expect(page.getByRole('checkbox', { name: 'Лонгрид-уроки включены для организации' })).toBeChecked();
+    await expectNoPageOverflow(page);
+    await expectVisualMatch(page, `longread-settings-${screen}-${width}`, false, { maxDiffPixels: 3000 });
+  });
+}
 
 for (const width of [375, 768, 1440]) {
   test(`longread media reader is responsive at ${width}px`, async ({ page }) => {
