@@ -23,12 +23,21 @@ test('the production CSP permits HTTPS media/ranges and storage PUT, confines fr
   await expect.poll(() => page.locator('video').evaluate((node) => (node as HTMLVideoElement).duration)).toBeGreaterThan(1);
   expect(videoRanges).toBeGreaterThan(0); expect(provider).toBe(true);
   const result = await page.evaluate(async () => {
-    const blocked: string[] = [];
-    document.addEventListener('securitypolicyviolation', (event) => blocked.push(event.violatedDirective));
+    // CSP violations are queued as browser tasks; a fast mocked PUT can finish first.
+    // Wait for this iframe's violation rather than assuming it precedes the response.
+    const violation = new Promise<string>((resolve) => {
+      const onViolation = (event: SecurityPolicyViolationEvent) => {
+        // Cross-origin CSP events redact the path to the blocked origin.
+        if (!['https://evil.example', 'https://evil.example/frame'].includes(event.blockedURI)) return;
+        document.removeEventListener('securitypolicyviolation', onViolation);
+        resolve(event.violatedDirective);
+      };
+      document.addEventListener('securitypolicyviolation', onViolation);
+    });
     const frame = document.createElement('iframe'); frame.src = 'https://evil.example/frame'; document.body.append(frame);
     const response = await fetch('https://storage.example.com/upload', { method: 'PUT', body: 'synthetic multipart part', credentials: 'omit' });
-    return { ok: response.ok, blocked };
+    return { ok: response.ok, blocked: await violation };
   });
-  expect(result.ok).toBe(true); expect(uploaded).toBe(true); expect(foreignFrame).toBe(false); expect(result.blocked).toContain('frame-src');
+  expect(result.ok).toBe(true); expect(uploaded).toBe(true); expect(foreignFrame).toBe(false); expect(result.blocked).toBe('frame-src');
   expect(policy).toContain("script-src 'self';"); expect(policy).toContain("object-src 'none'"); expect(policy).toContain("frame-ancestors 'none'"); expect(policy).not.toContain("'unsafe-eval'");
 });
