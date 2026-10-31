@@ -1,6 +1,6 @@
+import { publicAttemptContext } from '../../common/assessment-frozen.js';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import type { QuestionType, QuestionResponse } from '@lms/shared/assessment-question-types';
-import { gradeDefinedQuestion } from '../../common/assessment-question-definition.js';
+import { gradeAssessmentAnswers, type QuestionWithOptions } from '../../common/assessment-grading.js';
 import { createAssessmentAttemptSchema } from './assessment-attempts.schemas.js';
 
 import { PrismaService } from '../../database/prisma.service.js';
@@ -8,24 +8,14 @@ import { LEGACY_LIST_LIMIT } from '../../common/query-limits.js';
 import { ManagerTeamScope, normalizeActor } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import {
-  CreateAssessmentAttemptAnswerInput,
   CreateAssessmentAttemptInput,
 } from './assessment-attempts.schemas.js';
 
-/**
- * Notification content is kept as a translation-ready { type, data } pair rather than
- * pre-rendered text, so the frontend can render it in the learner's own locale via i18n —
- * the same convention used for every other user-facing string in this app.
- */
-export function buildAttemptResultNotification(assessmentTitle: string, assessmentId: string, passed: boolean, percentage: number) {
-  return {
-    type: passed ? 'assessment_passed' : 'assessment_failed',
-    data: { assessmentTitle, percentage },
-    link: `/learn/assessments/${assessmentId}`,
-  };
-}
+export { buildAttemptResultNotification } from '../../common/assessment-recording.js';
+import { recordCompletedAssessment } from '../../common/assessment-recording.js';
 
 const attemptSelect = {
+  longreadMetadata: true,
   id: true,
   organizationId: true,
   assessmentId: true,
@@ -55,27 +45,6 @@ const attemptAnswerSelect = {
   updatedAt: true,
 } as const;
 
-type QuestionWithOptions = {
-  id: string;
-  type: QuestionType;
-  definition?: unknown;
-  points: number;
-  scoringMode: 'all_or_nothing' | 'proportional' | 'proportional_with_penalty' | 'per_option';
-  options: {
-    id: string;
-    isCorrect: boolean;
-  }[];
-};
-
-type GradedAnswer = {
-  questionId: string;
-  selectedOptionId?: string;
-  selectedOptionIds?: string[];
-  response?: QuestionResponse;
-  isCorrect: boolean;
-  score: number;
-};
-
 @Injectable()
 export class AssessmentAttemptsService {
   constructor(private readonly prisma: PrismaService, private readonly teamScope: ManagerTeamScope = new ManagerTeamScope()) {}
@@ -86,10 +55,11 @@ export class AssessmentAttemptsService {
     const assessment = await this.ensureAssessmentExists(assessmentId, organizationId);
     await this.finalizeExpiredAttempts(assessmentId, organizationId, assessment.timeLimitMinutes);
 
-    return this.prisma.assessmentAttempt.findMany({
+    const attempts = await this.prisma.assessmentAttempt.findMany({
       where: {
         assessmentId,
         organizationId,
+        countsTowardResults: true,
         ...this.teamScope.userOwnedResource(actor),
         deletedAt: null,
       },
@@ -97,6 +67,7 @@ export class AssessmentAttemptsService {
       take: LEGACY_LIST_LIMIT,
       select: attemptSelect,
     });
+    return attempts.map(publicAttemptContext);
   }
 
   async getAttempt(attemptId: string, actorInput: TeamScopeActor | string) {
@@ -106,6 +77,7 @@ export class AssessmentAttemptsService {
       where: {
         id: attemptId,
         organizationId,
+        countsTowardResults: true,
         ...this.teamScope.userOwnedResource(actor),
         deletedAt: null,
       },
@@ -124,7 +96,8 @@ export class AssessmentAttemptsService {
       throw new NotFoundException('Assessment attempt not found');
     }
 
-    const { assessment, ...attemptFields } = attempt;
+    const { assessment, ...stored } = attempt;
+    const attemptFields = publicAttemptContext(stored);
 
     if (attemptFields.status === 'in_progress') {
       const finalized = await this.finalizeExpiredAttempts(attemptFields.assessmentId, organizationId, assessment.timeLimitMinutes);
@@ -150,7 +123,7 @@ export class AssessmentAttemptsService {
     }
 
     const cutoff = new Date(Date.now() - timeLimitMinutes * 60_000);
-    const where = { assessmentId, organizationId, status: 'in_progress' as const, deletedAt: null, startedAt: { lt: cutoff } };
+    const where = { assessmentId, organizationId, longreadRevisionId: null, status: 'in_progress' as const, deletedAt: null, startedAt: { lt: cutoff } };
     const expiredCount = await this.prisma.assessmentAttempt.count({ where });
 
     if (expiredCount === 0) {
@@ -186,7 +159,7 @@ export class AssessmentAttemptsService {
 
     const inProgress = assessment.timeLimitMinutes
       ? await this.prisma.assessmentAttempt.findFirst({
-          where: { assessmentId, userId, organizationId, status: 'in_progress', deletedAt: null },
+          where: { assessmentId, userId, organizationId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
           select: { id: true, startedAt: true },
         })
       : null;
@@ -200,7 +173,7 @@ export class AssessmentAttemptsService {
     }
 
     const questions = await this.getQuestions(assessmentId, organizationId);
-    const gradedAnswers = this.gradeAnswers(questions, input.answers);
+    const gradedAnswers = gradeAssessmentAnswers(questions, input.answers);
     const maxScore = questions.reduce((sum, question) => sum + question.points, 0);
     const score = gradedAnswers.reduce((sum, answer) => sum + answer.score, 0);
     const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
@@ -211,53 +184,12 @@ export class AssessmentAttemptsService {
     const completedAt = new Date();
 
     const attemptId = await this.prisma.$transaction(async (tx) => {
-      const attemptData = { score, maxScore, percentage, passed, completedAt, status: 'completed' as const };
-      const attempt = inProgress
-        ? await tx.assessmentAttempt.update({ where: { id: inProgress.id, organizationId }, data: attemptData, select: { id: true } })
-        : await tx.assessmentAttempt.create({ data: { organizationId, assessmentId, userId, ...attemptData }, select: { id: true } });
+      return recordCompletedAssessment(tx,
+        { organizationId, assessmentId, userId, score, maxScore, percentage, passed, completedAt, status: 'completed' },
+        gradedAnswers.map((answer) => ({ questionId: answer.questionId, selectedOptionId: answer.selectedOptionId,
+          selectedOptionIds: answer.selectedOptionIds, response: answer.response, isCorrect: answer.isCorrect, score: answer.score })),
+        assessment.courseId, assessment.title, inProgress?.id);
 
-      await tx.assessmentAttemptAnswer.createMany({
-        data: gradedAnswers.map((answer) => ({
-          organizationId,
-          attemptId: attempt.id,
-          questionId: answer.questionId,
-          selectedOptionId: answer.selectedOptionId,
-          selectedOptionIds: answer.selectedOptionIds ?? undefined,
-          response: answer.response,
-          isCorrect: answer.isCorrect,
-          score: answer.score,
-        })),
-      });
-
-      if (passed) {
-        await tx.certificate.upsert({
-          where: {
-            organizationId_courseId_userId: {
-              organizationId,
-              courseId: assessment.courseId,
-              userId,
-            },
-          },
-          update: {
-            assessmentAttemptId: attempt.id,
-            status: 'issued',
-            revokedAt: null,
-          },
-          create: {
-            organizationId,
-            courseId: assessment.courseId,
-            userId,
-            assessmentAttemptId: attempt.id,
-          },
-        });
-      }
-
-      const notification = buildAttemptResultNotification(assessment.title, assessmentId, passed, percentage);
-      await tx.notification.create({
-        data: { organizationId, userId, ...notification },
-      });
-
-      return attempt.id;
     });
 
     return this.getAttempt(attemptId, { id: userId, organizationId, roles: ['learner'] });
@@ -282,7 +214,7 @@ export class AssessmentAttemptsService {
     }
 
     const questions = await this.getQuestions(assessmentId, organizationId);
-    const gradedAnswers = this.gradeAnswers(questions, input.answers);
+    const gradedAnswers = gradeAssessmentAnswers(questions, input.answers);
     const maxScore = questions.reduce((sum, question) => sum + question.points, 0);
     const score = gradedAnswers.reduce((sum, answer) => sum + answer.score, 0);
     const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
@@ -307,7 +239,7 @@ export class AssessmentAttemptsService {
     await this.ensureAssessmentIsAvailable(assessment.courseId, userId, organizationId, assessment.availableAfterCourseCompletion);
 
     const existing = await this.prisma.assessmentAttempt.findFirst({
-      where: { assessmentId, userId, organizationId, status: 'in_progress', deletedAt: null },
+      where: { assessmentId, userId, organizationId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
       select: { id: true },
     });
 
@@ -447,6 +379,8 @@ export class AssessmentAttemptsService {
     const attemptsCount = await this.prisma.assessmentAttempt.count({
       where: {
         assessmentId,
+        longreadRevisionId: null,
+        countsTowardResults: true,
         userId,
         organizationId,
         deletedAt: null,
@@ -489,138 +423,4 @@ export class AssessmentAttemptsService {
     return questions;
   }
 
-  private gradeAnswers(questions: QuestionWithOptions[], answers: CreateAssessmentAttemptAnswerInput[]) {
-    const answerByQuestionId = new Map(answers.map((answer) => [answer.questionId, answer]));
-
-    if (answerByQuestionId.size !== answers.length) {
-      throw new BadRequestException('Duplicate question answers are not allowed');
-    }
-
-    const questionIds = new Set(questions.map((question) => question.id));
-    if (answers.some((answer) => !questionIds.has(answer.questionId))) throw new BadRequestException('Answer question does not belong to assessment');
-    return questions.map((question) => {
-      const answer = answerByQuestionId.get(question.id);
-
-      if (!answer) {
-        throw new BadRequestException('All assessment questions must be answered');
-      }
-
-      return this.gradeAnswer(question, answer);
-    });
-  }
-
-  private gradeAnswer(question: QuestionWithOptions, answer: CreateAssessmentAttemptAnswerInput): GradedAnswer {
-    if (question.definition || ['matching', 'ordering', 'fill_blank', 'short_answer'].includes(question.type)) {
-      if (answer.selectedOptionId || answer.selectedOptionIds) throw new BadRequestException('Defined question requires a typed response');
-      return { questionId: question.id, ...gradeDefinedQuestion(question.type, question.definition, answer.response, question.points, question.scoringMode) };
-    }
-    if (answer.response) throw new BadRequestException('Legacy choice question requires option ids');
-    const optionIds = new Set(question.options.map((option) => option.id));
-    const correctOptionIds = question.options.filter((option) => option.isCorrect).map((option) => option.id);
-
-    if (question.type === 'multiple_choice') {
-      return this.gradeMultipleChoiceAnswer(question, answer, optionIds, correctOptionIds);
-    }
-
-    return this.gradeSingleChoiceAnswer(question, answer, optionIds, correctOptionIds);
-  }
-
-  private gradeSingleChoiceAnswer(
-    question: QuestionWithOptions,
-    answer: CreateAssessmentAttemptAnswerInput,
-    optionIds: Set<string>,
-    correctOptionIds: string[],
-  ): GradedAnswer {
-    if (!answer.selectedOptionId || answer.selectedOptionIds) {
-      throw new BadRequestException('Single choice answer requires selectedOptionId');
-    }
-
-    if (!optionIds.has(answer.selectedOptionId)) {
-      throw new BadRequestException('Selected option does not belong to question');
-    }
-
-    const isCorrect = correctOptionIds.length === 1 && correctOptionIds[0] === answer.selectedOptionId;
-
-    return {
-      questionId: question.id,
-      selectedOptionId: answer.selectedOptionId,
-      isCorrect,
-      score: isCorrect ? question.points : 0,
-    };
-  }
-
-  private gradeMultipleChoiceAnswer(
-    question: QuestionWithOptions,
-    answer: CreateAssessmentAttemptAnswerInput,
-    optionIds: Set<string>,
-    correctOptionIds: string[],
-  ): GradedAnswer {
-    if (!answer.selectedOptionIds || answer.selectedOptionId) {
-      throw new BadRequestException('Multiple choice answer requires selectedOptionIds');
-    }
-
-    const selectedOptionIds = [...new Set(answer.selectedOptionIds)];
-
-    if (selectedOptionIds.length !== answer.selectedOptionIds.length) {
-      throw new BadRequestException('Duplicate selected options are not allowed');
-    }
-
-    if (selectedOptionIds.some((optionId) => !optionIds.has(optionId))) {
-      throw new BadRequestException('Selected option does not belong to question');
-    }
-
-    const selected = selectedOptionIds.sort();
-    const correct = [...correctOptionIds].sort();
-    const isFullMatch = selected.length === correct.length && selected.every((optionId, index) => optionId === correct[index]);
-    const score = this.scoreMultipleChoiceAnswer(question, new Set(selectedOptionIds), new Set(correctOptionIds), isFullMatch);
-
-    return {
-      questionId: question.id,
-      selectedOptionIds,
-      isCorrect: isFullMatch,
-      score,
-    };
-  }
-
-  /**
-   * `isCorrect` always means an exact match with the correct set — score is what varies by
-   * scoringMode. all_or_nothing is the only mode where a non-exact selection scores 0; the other
-   * three award partial credit for a partially-correct multiple_choice selection.
-   */
-  private scoreMultipleChoiceAnswer(
-    question: QuestionWithOptions,
-    selectedSet: Set<string>,
-    correctSet: Set<string>,
-    isFullMatch: boolean,
-  ): number {
-    const correctCount = correctSet.size;
-
-    switch (question.scoringMode) {
-      case 'all_or_nothing':
-        return isFullMatch ? question.points : 0;
-
-      case 'proportional': {
-        if (correctCount === 0) return 0;
-        const correctSelectedCount = [...selectedSet].filter((optionId) => correctSet.has(optionId)).length;
-        return Math.round((correctSelectedCount / correctCount) * question.points);
-      }
-
-      case 'proportional_with_penalty': {
-        if (correctCount === 0) return 0;
-        const correctSelectedCount = [...selectedSet].filter((optionId) => correctSet.has(optionId)).length;
-        const incorrectSelectedCount = selectedSet.size - correctSelectedCount;
-        const ratio = Math.max(0, (correctSelectedCount - incorrectSelectedCount) / correctCount);
-        return Math.round(ratio * question.points);
-      }
-
-      case 'per_option': {
-        const totalOptions = question.options.length;
-        if (totalOptions === 0) return 0;
-        const correctJudgments = question.options.filter(
-          (option) => selectedSet.has(option.id) === option.isCorrect,
-        ).length;
-        return Math.round((correctJudgments / totalOptions) * question.points);
-      }
-    }
-  }
 }

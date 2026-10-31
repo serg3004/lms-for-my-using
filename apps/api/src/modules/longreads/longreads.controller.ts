@@ -1,3 +1,7 @@
+import { LongreadExercisesService } from './longread-exercises.service.js';
+import { LongreadQuestionBankService } from './longread-question-bank.service.js';
+import { writeLongreadQuestionSchema, finishLongreadTestSchema } from '@lms/shared/longread-exercises';
+import { assessmentAnswerSchema } from '@lms/shared/assessment-question-types';
 import { LongreadReaderService } from './longread-reader.service.js';
 import { Body, Controller, Get, Param, ParseIntPipe, ParseUUIDPipe, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
@@ -24,7 +28,55 @@ export class LongreadsController {
     private readonly longreadsService: LongreadsService,
     private readonly versions: LongreadVersionsService,
     private readonly reader: LongreadReaderService,
+    private readonly exercises?: LongreadExercisesService,
+    private readonly questionBank?: LongreadQuestionBankService,
   ) {}
+
+  @Get('lessons/:id/longread/questions')
+  @Roles(...rolePolicies.lessonsCreate)
+  @CourseScope('param', 'id', 'lesson')
+  questions(@Param('id', ParseUUIDPipe) id: string, @Req() req: AuthenticatedRequest) {
+    return this.questionBank!.list(id, req.currentUser!.organizationId);
+  }
+
+  @Post('lessons/:id/longread/questions')
+  @Roles(...rolePolicies.lessonsCreate)
+  @CourseScope('param', 'id', 'lesson')
+  saveQuestion(@Param('id', ParseUUIDPipe) id: string, @Body() raw: unknown, @Req() req: AuthenticatedRequest) {
+    const { revision, question } = z.object({ revision: z.number().int().min(1), question: writeLongreadQuestionSchema }).strict().parse(raw);
+    return this.questionBank!.save(id, req.currentUser!.organizationId, revision, question);
+  }
+
+  @Get('lessons/:id/longread/exercises')
+  @Roles(...rolePolicies.lessonsRead)
+  @CourseScope('param', 'id', 'lesson')
+  exerciseStates(@Param('id', ParseUUIDPipe) id: string, @Query() query: unknown, @Req() req: AuthenticatedRequest) {
+    const { version } = z.object({ version: z.coerce.number().int().min(1) }).strict().parse(query);
+    return this.exercises!.states(id, req.currentUser!, version);
+  }
+
+  @Post('lessons/:id/longread/exercises/:blockId/attempts')
+  @Roles(...rolePolicies.assessmentAttemptsCreate)
+  @CourseScope('param', 'id', 'lesson')
+  submitExercise(@Param('id', ParseUUIDPipe) id: string, @Param('blockId', ParseUUIDPipe) blockId: string, @Body() raw: unknown, @Req() req: AuthenticatedRequest) {
+    return this.exercises!.submit(id, blockId, req.currentUser!, raw);
+  }
+
+  @Post('lessons/:id/longread/exercises/:blockId/preview')
+  @Roles(...rolePolicies.lessonsCreate)
+  @CourseScope('param', 'id', 'lesson')
+  previewExercise(@Param('id', ParseUUIDPipe) id: string, @Param('blockId', ParseUUIDPipe) blockId: string, @Body() raw: unknown, @Req() req: AuthenticatedRequest) {
+    const { revision, answer } = z.object({ revision: z.number().int().min(1), answer: assessmentAnswerSchema }).strict().parse(raw);
+    return this.exercises!.preview(id, blockId, req.currentUser!.organizationId, revision, answer);
+  }
+
+  @Post('lessons/:id/longread/exercises/finish')
+  @Roles(...rolePolicies.assessmentAttemptsCreate)
+  @CourseScope('param', 'id', 'lesson')
+  finishExercises(@Param('id', ParseUUIDPipe) id: string, @Body() raw: unknown, @Req() req: AuthenticatedRequest) {
+    const { version, assessmentId } = finishLongreadTestSchema.parse(raw);
+    return this.exercises!.finish(id, req.currentUser!, version, assessmentId);
+  }
 
   @Get('lessons/:id/longread')
   @Roles(...rolePolicies.lessonsCreate)

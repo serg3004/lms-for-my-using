@@ -286,6 +286,7 @@ export class CertificatesService {
         organizationId: input.organizationId,
         userId: input.userId,
         passed: true,
+        countsTowardResults: true,
         deletedAt: null,
         assessment: {
           courseId: input.courseId,

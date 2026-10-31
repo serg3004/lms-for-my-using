@@ -1,3 +1,4 @@
+import { ExerciseRuntime } from '../longread-exercises/ExerciseRuntime.js';
 import { LongreadMediaContext, MediaImage } from '../longread-files/Media.js';
 import { MediaPlaybackProvider } from '../longread-media/MediaPlayback.js';
 import { safeImage } from './model.js';
@@ -81,7 +82,7 @@ export function LongreadReader({ data, busy = false, onNavigate, onBookmark }: {
       <article ref={article} style={{ ...card, flex: '4 1 480px', overflowWrap: 'anywhere' }}>
         <h2 data-chapter-title tabIndex={-1} style={{ marginTop: 0, scrollMarginTop: 100 }}>{chapter.title}</h2>
         {safeImage(chapter.cover) && <MediaImage image={chapter.cover} />}
-        <LongreadContent blocks={chapter.blocks} chapter={chapter.anchor} allowCopy={data.settings.allowCopy} navigate={(anchor) => void navigate(anchor)} t={t} />
+        <ExerciseRuntime key={`${data.lessonId}:${data.version}:${data.preview}`} data={data}><LongreadContent blocks={chapter.blocks} chapter={chapter.anchor} allowCopy={data.settings.allowCopy} navigate={(anchor) => void navigate(anchor)} t={t} /></ExerciseRuntime>
         {!chapter.blocks.length && <p>{t('longreadReader.emptyChapter')}</p>}
         <nav aria-label={t('longreadReader.navigation')} style={{ marginTop: 24, justifyContent: 'space-between' }}>
           <button className="admin-btn admin-btn--secondary" style={control} type="button" disabled={busy || !data.navigation.previousAnchor} onClick={() => data.navigation.previousAnchor && void navigate(data.navigation.previousAnchor)}>{t('longreadReader.previous')}</button>

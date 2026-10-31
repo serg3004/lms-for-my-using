@@ -56,7 +56,7 @@ export function longreadEditorServer(initial: LongreadDraft = longreadFixture) {
       else await expect(page.locator('.lr-editor')).toBeVisible();
     }
   }
-  return { attach, writes, snapshot: () => structuredClone(stored), failNext: (status: number) => { failure = status; },
+  return { attach, writes, bumpRevision: () => { stored.revision++; }, snapshot: () => structuredClone(stored), failNext: (status: number) => { failure = status; },
     pause: () => { hold = true; }, resume: () => { hold = false; held?.(); held = null; } };
 }
 

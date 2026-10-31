@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { AssessmentAttemptResult, getAttemptResult } from '../shared/apiClient.js';
 import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
-import { getAssessmentOptionLabel } from './assessment-taking/model.js';
+import { ownAnswerText, reviewedCorrectText } from '../features/longread-exercises/answer-text.js';
 
 type AssessmentReviewData = { result: AssessmentAttemptResult };
 
@@ -39,7 +39,7 @@ export function LearnerAssessmentReviewPage({ attemptId }: { attemptId: string }
   }
 
   const { result } = loadState.data;
-  const assessmentHref = `/learn/assessments/${encodeURIComponent(result.assessmentId)}`;
+  const assessmentHref = result.longread ? `/learn/lessons/${encodeURIComponent(result.longread.lessonId)}` : `/learn/assessments/${encodeURIComponent(result.assessmentId)}`;
 
   return (
     <div className="learner-quiz">
@@ -77,12 +77,12 @@ export function LearnerAssessmentReviewPage({ attemptId }: { attemptId: string }
                     <p className="learner-quiz__breakdown-question">{answer.question.title}</p>
                     <p className="learner-quiz__breakdown-answer">
                       <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultYourAnswer')}:</span>{' '}
-                      {answer.selectedOption ? getAssessmentOptionLabel(answer.selectedOption) : '—'}
+                      {ownAnswerText(answer, t)}
                     </p>
-                    {!answer.isCorrect && answer.correctOptions && answer.correctOptions.length > 0 ? (
+                    {!answer.isCorrect && (answer.correctDefinition || answer.correctOptions?.length) ? (
                       <p className="learner-quiz__breakdown-answer learner-quiz__breakdown-answer--correct">
                         <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultCorrectAnswer')}:</span>{' '}
-                        {answer.correctOptions.map((option) => getAssessmentOptionLabel(option)).join(', ')}
+                        {reviewedCorrectText(answer, t)}
                       </p>
                     ) : null}
                     <p className="learner-quiz__breakdown-points">
@@ -95,6 +95,7 @@ export function LearnerAssessmentReviewPage({ attemptId }: { attemptId: string }
         </section>
       ) : null}
 
+      {result.longread && <p>{t('longreadExercises.resultVersion', { version: result.longread.version })}</p>}
       <div className="learner-quiz__result-actions">
         <a className="learner-btn learner-btn--primary" href={assessmentHref}>{t('assessments.backToAssessment')}</a>
       </div>

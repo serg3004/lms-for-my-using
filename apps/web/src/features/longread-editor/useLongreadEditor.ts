@@ -7,7 +7,7 @@ type History = { past: EditorDocument[]; present: EditorDocument; future: Editor
 export type SaveStatus = 'saved' | 'changed' | 'saving' | 'error' | 'conflict' | 'invalid';
 
 /** Serial autosave. A response assigns server ids to the exact sent snapshot, never to later edits. */
-export function useLongreadEditor(initial: LongreadDraft) {
+export function useLongreadEditor(initial: LongreadDraft, paused = false) {
   const [history, setHistory] = useState<History>(() => ({ past: [], present: fromDraft(initial), future: [] }));
   const [status, setStatus] = useState<SaveStatus>('saved');
   const [retry, setRetry] = useState(0);
@@ -27,7 +27,7 @@ export function useLongreadEditor(initial: LongreadDraft) {
   function undo() { setHistory((h) => h.past.length ? { past: h.past.slice(0, -1), present: h.past.at(-1)!, future: [h.present, ...h.future] } : h); }
   function redo() { setHistory((h) => h.future.length ? { past: [...h.past, h.present], present: h.future[0]!, future: h.future.slice(1) } : h); }
   useEffect(() => {
-    if (state.current === 'conflict' || state.current === 'saving' || (state.current === 'error' && retry === 0)) return;
+    if (paused || state.current === 'conflict' || state.current === 'saving' || (state.current === 'error' && retry === 0)) return;
     if (JSON.stringify(history.present) === metadata.current.saved) { state.current = 'saved'; setStatus('saved'); return; }
     if (!documentValid(history.present)) { state.current = 'invalid'; setStatus('invalid'); return; }
     state.current = 'changed'; setStatus('changed');
@@ -49,8 +49,10 @@ export function useLongreadEditor(initial: LongreadDraft) {
       });
     }, 900);
     return () => window.clearTimeout(timer);
-  }, [history.present, initial.lessonId, initial.settings, retry, status]);
+  }, [history.present, initial.lessonId, initial.settings, retry, status, paused]);
   return { document: history.present, change, undo, redo, canUndo: history.past.length > 0, canRedo: history.future.length > 0,
+    revision: () => metadata.current.revision,
+    adoptRevision: (revision: number) => { metadata.current.revision = revision; setRetry((n) => n + 1); },
     serverId: (key: string) => metadata.current.ids.get(key),
     status, dirty, retry: () => { state.current = 'changed'; setRetry((n) => n + 1); },
     recovery: () => JSON.stringify({ lessonId: initial.lessonId, schemaVersion: initial.schemaVersion, ...toSave(present.current, metadata.current.revision, initial.settings, metadata.current.ids) }, null, 2) };
