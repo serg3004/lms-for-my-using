@@ -339,7 +339,7 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
             right={
               <>
                 <Button onClick={() => setFolderDialog({ kind: 'create', parent: selectedFolder })} type="button" variant="secondary">{t('admin.checklists.folders.new', 'New folder')}</Button>
-                <select className="admin-status-select" value={statusFilter} onChange={(e) => changeStatusFilter(e.target.value as 'all' | ChecklistStatus)}>
+                <select aria-label={t('admin.checklists.allStatuses', 'All statuses')} className="admin-status-select" value={statusFilter} onChange={(e) => changeStatusFilter(e.target.value as 'all' | ChecklistStatus)}>
                   <option value="all">{t('admin.checklists.allStatuses', 'All statuses')}</option>
                   {CHECKLIST_STATUSES.map((status) => (
                     <option key={status} value={status}>{statusLabels[status]}</option>
