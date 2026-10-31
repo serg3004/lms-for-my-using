@@ -50,6 +50,7 @@ export function longreadFileServer() {
     });
   }
   async function readyImages(page: Page) {
+    await page.evaluate(() => document.fonts.ready);
     for (const image of await page.getByRole('img').all()) {
       await image.scrollIntoViewIfNeeded();
       await expect.poll(() => image.evaluate((node) => (node as HTMLImageElement).complete && (node as HTMLImageElement).naturalWidth > 0)).toBe(true);

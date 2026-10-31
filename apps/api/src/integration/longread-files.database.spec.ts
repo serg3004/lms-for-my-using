@@ -200,6 +200,17 @@ describe('longread files, scan pipeline, immutable references and live download 
     if (upload.status === 'fulfilled') { expect(row?.scanStatus).toBe('pending'); expect(await prisma.multipartUpload.count({ where: { materialId: id, status: 'pending' } })).toBe(1); }
     else { expect(upload.reason instanceof ConflictException || upload.reason instanceof NotFoundException).toBe(true); expect(row).toBeNull(); }
   });
+  it('retains expired multipart tracking until the existing cleanup has aborted storage parts', async () => {
+    const id = (await create('expired.pdf', 'application/pdf', pdf)).id, session = await files.initiate(lessonId, id, org);
+    await prisma.courseMaterial.update({ where: { id }, data: { updatedAt: new Date('2020-01-01') } });
+    await prisma.multipartUpload.update({ where: { uploadId: session.uploadId }, data: { expiresAt: new Date('2020-01-01') } });
+    const cleanup = new LongreadFileCleanupService(prisma);
+    expect((await cleanup.cleanup(false)).deleted).toEqual([]);
+    expect(await prisma.multipartUpload.findUnique({ where: { uploadId: session.uploadId } })).not.toBeNull();
+    await new MaterialMultipartUploadService(prisma, storage, materials, scanner).cleanupExpired(false);
+    expect((await prisma.multipartUpload.findUniqueOrThrow({ where: { uploadId: session.uploadId } })).status).toBe('aborted');
+    expect((await cleanup.cleanup(false)).deleted).toEqual([id]);
+  });
   it('keeps every revision reference during orphan cleanup, including covers and removed attachments', async () => {
     const cover = await clean(), attachment = await clean('file.pdf', 'application/pdf', pdf), orphan = await clean('orphan.png');
     const saved = await save([{ type: 'attachments', content: { files: [{ fileId: attachment, label: 'Handbook' }] } }], { cover, chapterCover: cover }); await versions.publish(lessonId, org, saved.revision, admin.id);

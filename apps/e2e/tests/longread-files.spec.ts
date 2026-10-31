@@ -68,3 +68,11 @@ for (const width of [375, 768, 1440]) test(`media is responsive in RTL at ${widt
 for (const [locale, label] of [['en', 'Upload or replace image'], ['kk', 'Кескінді жүктеу немесе ауыстыру'], ['zh', '上传或替换图片']] as const) test(`media controls are localized in ${locale}`, async ({ page }) => {
   await longreadFileServer().editor(page, { locale }); await expect(page.getByRole('article').first().getByLabel(label)).toBeVisible();
 });
+
+for (const role of ['admin', 'instructor'] as const) test(`${role} attachment controls fit 375px after fonts load`, async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 900 }); await longreadFileServer().editor(page, { role });
+  const remove = page.getByRole('button', { name: 'Убрать файл: Инструкция по безопасности.pdf', exact: true });
+  await remove.scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  const box = (await remove.boundingBox())!; expect(box.x + box.width).toBeLessThanOrEqual(375);
+});

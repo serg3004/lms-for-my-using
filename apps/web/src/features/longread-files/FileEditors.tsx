@@ -73,6 +73,6 @@ export function AttachmentEditor({ lessonId, files, onChange }: { lessonId: stri
   const { t } = useTranslation();
   if (!isAttachmentsContent({ files })) return <p>{t('longread.unknownMessage')}</p>;
   return <div><UploadPicker lessonId={lessonId} image={false} onCreated={(created) => onChange((previous) => [...previous, ...created.map((file) => ({ fileId: file.id, label: file.fileName }))])} />
-    <ul style={{ paddingInlineStart: 20 }}>{files.map((file) => <li key={file.fileId} style={{ marginBlock: 12, overflowWrap: 'anywhere' }}><FileStatus lessonId={lessonId} fileId={file.fileId} />{' '}<button type="button" className="admin-btn admin-btn--secondary" style={{ minHeight: 44 }} onClick={() => onChange((previous) => previous.filter((item) => item.fileId !== file.fileId))}>{t('longreadFiles.removeFile', { name: file.label ?? file.fileId })}</button></li>)}</ul>
+    <ul style={{ paddingInlineStart: 20 }}>{files.map((file) => <li key={file.fileId} style={{ marginBlock: 12, overflowWrap: 'anywhere' }}><FileStatus lessonId={lessonId} fileId={file.fileId} />{' '}<button type="button" className="admin-btn admin-btn--secondary" style={{ minHeight: 44, maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere', textAlign: 'start' }} onClick={() => onChange((previous) => previous.filter((item) => item.fileId !== file.fileId))}>{t('longreadFiles.removeFile', { name: file.label ?? file.fileId })}</button></li>)}</ul>
   </div>;
 }

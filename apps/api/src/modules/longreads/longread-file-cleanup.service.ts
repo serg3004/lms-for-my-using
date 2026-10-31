@@ -17,7 +17,7 @@ export class LongreadFileCleanupService {
         const doc = await tx.longreadDocument.findUnique({ where: { id }, include: { chapters: { include: { blocks: { select: { content: true } } } }, revisions: { select: { settings: true, snapshot: true } } } });
         if (!doc) return;
         const referenced = [...collectFileIds(doc)];
-        const orphaned = await tx.courseMaterial.findMany({ where: { longreadDocumentId: id, updatedAt: { lt: cutoff }, id: { notIn: referenced }, multipartUploads: { none: { status: 'pending', expiresAt: { gt: now } } } }, select: { id: true } });
+        const orphaned = await tx.courseMaterial.findMany({ where: { longreadDocumentId: id, updatedAt: { lt: cutoff }, id: { notIn: referenced }, multipartUploads: { none: { status: 'pending' } } }, select: { id: true } });
         candidates.push(...orphaned.map((file) => file.id));
         if (!dryRun && orphaned.length) await tx.courseMaterial.deleteMany({ where: { id: { in: orphaned.map((file) => file.id) }, longreadDocumentId: id } });
       });

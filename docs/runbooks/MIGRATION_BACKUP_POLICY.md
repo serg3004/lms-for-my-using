@@ -639,7 +639,8 @@ new environment variables or larger upload limit.
 `pnpm --filter @lms/api storage:cleanup` remains dry-run by default (`-- --apply` applies deletion). It first runs
 longread file reference cleanup: paginated documents are locked using the same document row as save/publish;
 files untouched for `S3_ORPHAN_RETENTION_DAYS` (default 30) and absent from the draft **and every immutable revision**
-are released, excluding active multipart sessions. The existing S3 orphan cleanup then deletes eligible objects.
+are released, excluding all pending multipart sessions (including expired ones until the existing multipart
+cleanup has aborted their storage parts). The existing S3 orphan cleanup then deletes eligible objects.
 Dry-run output includes `longreadFiles.candidates`; S3 candidates still reflect rows retained during dry-run.
 Keep the existing expired-multipart cleanup scheduled as well. Published or pinned references have no age-based
 expiry and survive draft deletion/replacement. PostgreSQL tests cover the scan pipeline, cross-tenant/scope checks,
