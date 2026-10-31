@@ -9,7 +9,7 @@ import type { LessonSummary } from '../shared/api/types.js';
 import { InstructorPageLayout } from '../shared/instructorLayout.js';
 import { FormField } from '../shared/adminPage.js';
 import { clearFieldError, hasValidationErrors, type FormValidationErrors } from '../shared/formValidation.js';
-import { slugify } from '../shared/slugify.js';
+import { lessonSlug } from '../shared/lessonSlug.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 
 type Mode = 'create' | 'edit';
@@ -149,7 +149,7 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
       const created = await createLesson(courseId, {
         organizationId: loadState.data.organizationId,
         title,
-        slug: slugify(title),
+        slug: lessonSlug(title),
         type: longreadLesson ? 'longread' : 'text',
         order: loadState.data.lessons.length,
         status: 'draft',

@@ -3072,5 +3072,13 @@
       "size": "The file must be nonempty and no larger than 50 MB.",
       "upload": "Upload failed. Files already added are saved; replace the failed upload."
     }
+  },
+  "longreadSettings": {
+    "title": "Longreads",
+    "help": "This setting applies to all courses in the organization. Once enabled, open a course and choose Add longread.",
+    "loadError": "Unable to load the longread setting. Try again.",
+    "saveError": "Unable to save the setting. Check its state and try again.",
+    "loading": "Loading the longread setting…",
+    "addLesson": "Add longread"
   }
 }

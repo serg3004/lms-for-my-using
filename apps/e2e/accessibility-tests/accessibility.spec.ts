@@ -1,4 +1,6 @@
 import { longreadFileServer } from '../fixtures/longread-files.js';
+import { openLongreadEntrypoints } from '../fixtures/longread-entrypoints.js';
+import { longreadCourseId } from '../fixtures/longread-editor.js';
 import { openSummaryReport } from '../fixtures/session-summary-export.js';
 import { longreadCompositeFixture, longreadEditorServer } from '../fixtures/longread-editor.js';
 import { longreadReaderServer, openLongreadPreview } from '../fixtures/longread-reader.js';
@@ -64,6 +66,16 @@ async function auditAccessibility(page: Page, testInfo: TestInfo, name = 'axe-fi
 }
 
 test.describe('WCAG AA browser baseline', () => {
+  for (const width of [375, 1440]) for (const [screen, path] of [
+    ['courses', '/admin/courses'], ['course', `/admin/courses/${longreadCourseId}`], ['lessons', '/admin/lessons'],
+  ] as const) {
+    test(`longread settings in ${screen} are accessible at ${width}px`, async ({ page }, testInfo) => {
+      await page.setViewportSize({ width, height: 900 });
+      await openLongreadEntrypoints(page, { enabled: true, path });
+      await expect(page.getByRole('checkbox', { name: 'Лонгрид-уроки включены для организации' })).toBeChecked();
+      await auditAccessibility(page, testInfo, `longread-settings-${screen}`);
+    });
+  }
   for (const width of [375, 768, 1440]) {
     test(`longread media reader is accessible at ${width}px`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: 900 }); await longreadFileServer().reader(page, width === 768 ? 'rtl' : 'ltr');

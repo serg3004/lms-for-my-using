@@ -5,12 +5,12 @@ import { useTranslation } from 'react-i18next';
 
 import { apiRequest, ApiClientError } from '../shared/apiClient.js';
 import { filterLessons, parseLessonOrder } from './admin-lessons/model.js';
-import { slugify } from '../shared/slugify.js';
+import { lessonSlug } from '../shared/lessonSlug.js';
 import { AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { Badge, Button, EmptyState, PageState, SearchInput, Toolbar } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
-import { getOrganizationFeatures, saveOrganizationFeatures } from '../shared/api/organizations.js';
+import { OrganizationLongreadSettings, useOrganizationLongreads } from '../features/longread-settings/OrganizationLongreadSettings.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 
@@ -27,7 +27,7 @@ type Lesson = {
   course: { title: string };
 };
 
-type AdminLessonsData = { courses: Course[]; lessons: Lesson[]; longreadEnabled?: boolean };
+type AdminLessonsData = { courses: Course[]; lessons: Lesson[] };
 
 type LessonStatus = 'draft' | 'published' | 'archived';
 type LessonType = 'video' | 'text' | 'test' | 'checklist' | 'workplace_check' | 'photo' | 'practical' | 'longread';
@@ -90,12 +90,11 @@ export function AdminLessonsPage() {
 
   const { state: loadState, reload: load } = useAsyncData<AdminLessonsData>(
     async () => {
-      const [{ items: courses }, { items: lessons }, features] = await Promise.all([
+      const [{ items: courses }, { items: lessons }] = await Promise.all([
         apiRequest<PaginatedResponse<Course>>('/courses?pageSize=200'),
         apiRequest<PaginatedResponse<Lesson>>('/lessons?pageSize=200'),
-        currentUser ? getOrganizationFeatures(currentUser.organizationId) : Promise.resolve({ longreadEnabled: false }),
       ]);
-      return { courses, lessons, longreadEnabled: features.longreadEnabled };
+      return { courses, lessons };
     },
     [t, currentUser],
     {
@@ -103,6 +102,7 @@ export function AdminLessonsPage() {
       error: t('admin.lessons.loadError', 'Unable to load lesson editor.'),
     },
   );
+  const longreads = useOrganizationLongreads(load);
 
   useEffect(() => {
     if (loadState.status === 'loaded') {
@@ -133,7 +133,7 @@ export function AdminLessonsPage() {
     if (!course) return;
 
     const lessonTitle = title.trim();
-    const slug = slugify(lessonTitle);
+    const slug = lessonSlug(lessonTitle);
 
     const errors = validateRequiredFields([{ name: 'title', value: lessonTitle, message: t('admin.lessons.titleRequired', 'Lesson title is required.') }]);
     if (hasValidationErrors(errors)) { setCreateErrors(errors); return; }
@@ -251,13 +251,7 @@ export function AdminLessonsPage() {
   }
 
   const filteredLessons = filterLessons(loadState.data.lessons, search, typeFilter);
-  const longreadEnabled = loadState.data.longreadEnabled === true;
-  const isAdmin = currentUser?.roles.includes('admin') ?? false;
-
-  function toggleLongread(enabled: boolean) {
-    if (!currentUser) return;
-    void saveOrganizationFeatures(currentUser.organizationId, { longreadEnabled: enabled }).then(load, load);
-  }
+  const longreadEnabled = longreads.enabled;
 
   const navItems: AdminNavItem[] = [
     { label: t('admin.courseBuilder.title', 'Course builder'), href: '/admin/courses' },
@@ -292,6 +286,7 @@ export function AdminLessonsPage() {
         right={
           <select
             className="admin-status-select"
+            aria-label={t('admin.lessons.fieldType', 'Type')}
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value as 'all' | LessonType)}
           >
@@ -305,12 +300,7 @@ export function AdminLessonsPage() {
         }
       />
 
-      {isAdmin && (
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44 }}>
-          <input style={{ width: 'auto' }} type="checkbox" checked={longreadEnabled} onChange={(event) => toggleLongread(event.target.checked)} />
-          {' '}{t('admin.lessons.longreadEnabled', 'Longread lessons are enabled for this organization')}
-        </label>
-      )}
+      <OrganizationLongreadSettings feature={longreads} />
 
       {filteredLessons.length === 0 ? (
         <EmptyState message={t('admin.lessons.noResults', 'No lessons found.')} />
