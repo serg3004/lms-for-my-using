@@ -391,10 +391,10 @@ describe('admin page smoke rendering', () => {
   });
 
   it('renders course builder happy path without crashing', () => {
-    // useState call order in AdminCourseBuilderPage: 12 form/dialog/feature states, then
-    // useAsyncData's internal state as call #13.
+    // useState call order in AdminCourseBuilderPage: 11 form/dialog states, then
+    // useAsyncData's internal state as call #12.
     useStateAtCalls({
-      13: {
+      12: {
         status: 'loaded',
         data: {
           currentUser,
