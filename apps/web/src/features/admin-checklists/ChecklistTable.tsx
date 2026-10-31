@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { Badge, Button, DataTable, Menu, type BadgeVariant, type Column } from '../../shared/ui.js';
-import type { ChecklistScoringMode, ChecklistStatus, ChecklistSummary } from '../../shared/api/types.js';
+import type { ChecklistFolder, ChecklistScoringMode, ChecklistStatus, ChecklistSummary } from '../../shared/api/types.js';
+import { folderPathLabel } from './folders.js';
 import { formatDate } from '../../shared/formatDate.js';
 import { ChecklistAccessBadge } from '../../shared/checklistAccess.js';
 import { checklistStatusAction } from './domain.js';
@@ -18,7 +19,7 @@ export function creatorName(checklist: Pick<ChecklistSummary, 'creator'>): strin
   return name || '—';
 }
 
-export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatusChange, onEdit, onCopy, onDelete, selectedKeys, onSelectionChange, batchActions, t }: {
+export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatusChange, onEdit, onCopy, onDelete, folders, onMove, selectedKeys, onSelectionChange, batchActions, t }: {
   rows: ChecklistSummary[];
   statusLabels: Record<ChecklistStatus, string>;
   scoringModeLabels: Record<ChecklistScoringMode, string>;
@@ -26,6 +27,9 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
   onEdit: (checklist: ChecklistSummary) => void;
   onCopy: (checklist: ChecklistSummary) => void | Promise<void>;
   onDelete: (checklist: ChecklistSummary) => void;
+  // PR 396: with folders the table shows the folder path and the row menu offers "Move to folder".
+  folders?: ChecklistFolder[];
+  onMove?: (checklist: ChecklistSummary) => void;
   // PR 394: row selection with a batch-actions bar; omitted -> the table has no checkboxes.
   selectedKeys?: ReadonlySet<string>;
   onSelectionChange?: (selectedKeys: Set<string>) => void;
@@ -44,6 +48,7 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
     { key: 'items', label: t('admin.checklists.col.items', 'Items'), priority: 'secondary', render: (checklist) => checklist.items.length },
     { key: 'access', label: t('admin.checklists.col.access', 'Access'), priority: 'secondary', render: (checklist) => <ChecklistAccessBadge checklist={checklist} t={t} /> },
     { key: 'scoring', label: t('admin.checklists.col.scoring', 'Scoring'), priority: 'secondary', render: (checklist) => <Badge variant="neutral">{scoringModeLabels[checklist.scoringMode]}</Badge> },
+    ...(folders ? [{ key: 'folder', label: t('admin.checklists.col.folder', 'Folder'), priority: 'secondary' as const, render: (checklist: ChecklistSummary) => folderPathLabel(folders, checklist.folderId) || '—' }] : []),
     { key: 'createdBy', label: t('admin.checklists.col.createdBy', 'Created by'), priority: 'secondary', render: (checklist) => creatorName(checklist) },
     { key: 'createdAt', label: t('admin.checklists.col.createdAt', 'Created'), priority: 'secondary', render: (checklist) => formatDate(checklist.createdAt, undefined, { dateStyle: 'medium', timeStyle: 'short' }) },
     {
@@ -80,6 +85,7 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
                 {statusActionLabels.archived}
               </button>
             )}
+            {onMove && <button onClick={() => onMove(checklist)} role="menuitem" type="button">{t('admin.checklists.folders.moveOpen', 'Move to folder…')}</button>}
             <button onClick={() => onDelete(checklist)} role="menuitem" type="button">{t('admin.checklists.delete', 'Delete')}</button>
           </Menu>
         </div>

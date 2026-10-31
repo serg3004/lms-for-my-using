@@ -401,6 +401,23 @@ export type ChecklistBulkOutcome =
   | { id: string; result: 'skipped'; reason: ChecklistBulkSkipReason; message?: string };
 export type ChecklistBulkResult = { action: ChecklistBulkAction; done: number; skipped: number; results: ChecklistBulkOutcome[] };
 
+/** PR 395/396: one folder of the checklist tree as `GET /checklist-folders` returns it (only the folders the caller may see). */
+export type ChecklistFolder = {
+  id: string;
+  parentId: string | null;
+  name: string;
+  /** Open to every role except the learner; a closed folder shows a lock in the tree. */
+  visibleToStaff: boolean;
+  createdBy: string | null;
+  createdAt: string;
+  /** The caller is the administrator or the creator: may rename, move, open to staff and delete. */
+  canManage: boolean;
+  checklistCount: number;
+  totalChecklistCount: number;
+};
+export type ChecklistFolderList = { folders: ChecklistFolder[]; checklistCount: number };
+export type ChecklistFolderDeleteImpact = { folders: number; checklists: number; movedToDraft: Array<{ id: string; title: string }> };
+
 export type ChecklistSummary = {
   id: string;
   organizationId: string;

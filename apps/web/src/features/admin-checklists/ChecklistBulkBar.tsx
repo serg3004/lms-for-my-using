@@ -33,10 +33,12 @@ export function bulkResultSummary(result: ChecklistBulkResult, titles: ReadonlyM
   };
 }
 
-export function ChecklistBulkBar({ selected, busy, onAction, onEdit, onCopy, t }: {
+export function ChecklistBulkBar({ selected, busy, onAction, onMove, onEdit, onCopy, t }: {
   selected: ChecklistSummary[];
   busy: boolean;
   onAction: (action: ChecklistBulkAction, selected: ChecklistSummary[]) => void;
+  /** PR 396: opens the folder choice; omitted when the screen has no folders. */
+  onMove?: (selected: ChecklistSummary[]) => void;
   onEdit: (checklist: ChecklistSummary) => void;
   onCopy: (checklist: ChecklistSummary) => void | Promise<void>;
   t: TFunction;
@@ -46,6 +48,7 @@ export function ChecklistBulkBar({ selected, busy, onAction, onEdit, onCopy, t }
     <>
       <Button disabled={busy || !single} onClick={() => single && onEdit(single)} size="sm" type="button" variant="secondary">{t('admin.checklists.edit', 'Edit')}</Button>
       <Button disabled={busy || !single} onClick={() => single && void onCopy(single)} size="sm" type="button" variant="secondary">{t('admin.checklists.copy', 'Copy')}</Button>
+      {onMove && <Button disabled={busy} onClick={() => onMove(selected)} size="sm" type="button" variant="secondary">{t('admin.checklists.folders.moveOpen', 'Move to folder…')}</Button>}
       <Button disabled={busy} onClick={() => onAction('publish', selected)} size="sm" type="button" variant="secondary">{t('admin.checklists.action.publish', 'Publish')}</Button>
       <Button disabled={busy} onClick={() => onAction('draft', selected)} size="sm" type="button" variant="secondary">{t('admin.checklists.action.toDraft', 'Move to draft')}</Button>
       <Button disabled={busy} onClick={() => onAction('archive', selected)} size="sm" type="button" variant="secondary">{t('admin.checklists.action.archive', 'Archive')}</Button>

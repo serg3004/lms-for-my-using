@@ -10,7 +10,9 @@ const assetDirectory = new URL('../dist/assets/', import.meta.url);
 // toolbar and the wrapping manager/action rows needed ~1.1 KB more. A dead-class scan found only
 // .learner-btn--completed (removed); the tree reuses admin-section-card, admin-code and avatars.
 // Bumped 88 KiB -> 90 KiB for checklist option rows with popup hints (the headroom was ~14 B).
-const maximumCssBytes = 90 * 1024;
+// Bumped 90 KiB -> 92 KiB for the checklist folder tree (PR 396): only ~100 B of headroom were left. The tree itself reuses the
+// department-tree rules; the new CSS is the two-column layout, the breadcrumbs and the narrow-screen picker.
+const maximumCssBytes = 92 * 1024;
 
 const cssAssets = (await readdir(assetDirectory)).filter((file) => file.endsWith('.css'));
 
