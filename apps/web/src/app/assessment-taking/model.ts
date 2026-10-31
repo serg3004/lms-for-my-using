@@ -1,8 +1,10 @@
+import type { QuestionType, PublicQuestionDefinition } from '@lms/shared/assessment-question-types';
 import { ApiClientError } from '../../shared/apiClient.js';
 
 export type AssessmentQuestion = {
   id: string;
-  type: 'single_choice' | 'multiple_choice' | 'true_false';
+  type: QuestionType;
+  definition?: PublicQuestionDefinition | null;
   title: string;
   text: string | null;
   points: number;
@@ -24,8 +26,13 @@ export function selectedIds(value: string | string[] | undefined): string[] {
   return Array.isArray(value) ? value : [];
 }
 
+export function supportsOptionQuestion(question: { type: string; definition?: unknown }): boolean {
+  return ['single_choice', 'multiple_choice', 'true_false'].includes(question.type) && !question.definition;
+}
+
 export function buildAssessmentAnswers(questions: QuestionWithOptions[], selected: SelectedAnswers) {
   return questions.map((question) => {
+    if (!supportsOptionQuestion(question)) throw new Error('This question requires a typed response');
     const value = selected[question.id];
     if (question.type === 'multiple_choice') {
       return { questionId: question.id, selectedOptionIds: selectedIds(value) };

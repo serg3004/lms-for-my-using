@@ -9,6 +9,7 @@ import {
   getAssessmentOptionLabel,
   getAssessmentSubmitErrorKey,
   selectedIds,
+  supportsOptionQuestion,
   type QuestionWithOptions,
 } from './model.js';
 
@@ -28,6 +29,15 @@ const questions: QuestionWithOptions[] = [
 ];
 
 describe('assessment taking model', () => {
+  it('keeps typed questions out of the legacy option-id form instead of treating them as single choice', () => {
+    for (const type of ['matching', 'ordering', 'fill_blank', 'short_answer'] as const) {
+      const question = { ...questions[0]!, type };
+      expect(supportsOptionQuestion(question)).toBe(false);
+      expect(() => buildAssessmentAnswers([question], { [question.id]: 'forged-option' })).toThrow('typed response');
+    }
+    expect(supportsOptionQuestion({ type: 'true_false', definition: { type: 'true_false' } })).toBe(false);
+    expect(supportsOptionQuestion(questions[2]!)).toBe(true);
+  });
   it('normalizes only arrays as multiple-choice selections', () => {
     expect(selectedIds(['one', 'two'])).toEqual(['one', 'two']);
     expect(selectedIds('one')).toEqual([]);

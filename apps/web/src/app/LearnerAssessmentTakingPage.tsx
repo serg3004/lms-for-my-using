@@ -22,6 +22,7 @@ import {
   getAssessmentOptionLabel,
   getAssessmentSubmitErrorKey,
   selectedIds,
+  supportsOptionQuestion,
   type QuestionWithOptions,
   type SelectedAnswers,
 } from './assessment-taking/model.js';
@@ -65,7 +66,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
    * useAsyncData's reload()/mutate() cover — it's a side channel that needs its own state.
    */
   useEffect(() => {
-    if (loadState.status !== 'loaded' || !loadState.data.assessment.timeLimitMinutes) {
+    if (loadState.status !== 'loaded' || !loadState.data.assessment.timeLimitMinutes || loadState.data.questions.some((question) => !supportsOptionQuestion(question))) {
       setSecondsLeft(null);
       return;
     }
@@ -117,7 +118,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (loadState.status !== 'loaded') return;
+    if (loadState.status !== 'loaded' || loadState.data.questions.some((question) => !supportsOptionQuestion(question))) return;
 
     const answeredCount = countAnsweredQuestions(loadState.data.questions, selected);
     if (answeredCount < loadState.data.questions.length) {
@@ -188,6 +189,9 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
   }
 
   const { assessment, questions } = loadState.data;
+  if (questions.some((question) => !supportsOptionQuestion(question))) {
+    return <PageState title={assessment.title} message={t('assessments.typedQuestionUnavailable')} variant="error" action={<a href="/learn/assessments">{t('assessments.navLink')}</a>} />;
+  }
 
   if (submitState.status === 'done') {
     const { result, certificateId } = submitState;

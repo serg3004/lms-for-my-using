@@ -1,3 +1,4 @@
+import type { QuestionType as ApiQuestionType, QuestionDefinition } from '@lms/shared/assessment-question-types';
 import { ApiClientError } from '../../shared/apiClient.js';
 import { slugify } from '../../shared/slugify.js';
 import { getAssessmentOptionLabel, type QuestionWithOptions } from '../assessment-taking/model.js';
@@ -6,8 +7,8 @@ export type Course = { id: string; organizationId: string; title: string; status
 export type Lesson = { id: string; title: string; order: number };
 export type AssessmentStatus = 'draft' | 'published' | 'archived';
 export type Assessment = { id: string; title: string; slug: string; description: string | null; passingScore: number; maxAttempts: number | null; availableAfterCourseCompletion: boolean; passMessage: string | null; failMessage: string | null; showCorrectAnswers: boolean; randomizeOrder: boolean; status: string };
-export type QuestionType = 'single_choice' | 'multiple_choice' | 'true_false';
-export type Question = { id: string; organizationId: string; type: QuestionType; title: string; text: string | null; points: number; order: number };
+export type QuestionType = ApiQuestionType;
+export type Question = { id: string; organizationId: string; type: QuestionType; definition?: QuestionDefinition | null; title: string; text: string | null; points: number; order: number };
 export type AnswerOption = { id: string; text: string | null; imageUrl: string | null; isCorrect: boolean; order: number };
 export type SaveState = { status: 'idle' | 'saving' | 'error'; message?: string };
 
@@ -92,7 +93,7 @@ export function buildOptionUpdatePayload(text: string, isCorrect: boolean): Opti
   return { text: trimmedText, isCorrect };
 }
 
-export type QuestionCreatePayload = { organizationId: string; type: QuestionType; title: string; points: number; order: number };
+export type QuestionCreatePayload = { organizationId: string; type: QuestionType; definition?: QuestionDefinition | null; title: string; points: number; order: number };
 export function buildQuestionCreatePayload(organizationId: string, type: QuestionType, title: string, points: string, order: number): QuestionCreatePayload | null {
   const trimmedTitle = title.trim();
   if (!trimmedTitle) return null;

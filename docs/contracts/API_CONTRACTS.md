@@ -1625,6 +1625,82 @@ immutable settings/chapter snapshots, so removing/replacing a draft file does no
 The existing editor supplies alt/caption/size/alignment, covers and batches of attachments; text is safely rendered
 and decorative images may use empty alt text. RU/EN/KK/ZH and existing role shells are retained.
 
+## Assessment question types and server grading (PR 388)
+
+The existing `Assessment` question, quiz, preview, attempt, result, report and certificate endpoints
+remain the only assessment system. No new route or role is introduced. Author access still uses
+the existing organization/assigned-course guards; learners cannot read author question/option endpoints.
+
+`single_choice`, `multiple_choice` and legacy `true_false` retain their existing option UUID protocol:
+`{questionId, selectedOptionId}` or `{questionId, selectedOptionIds}`. An option ID identifies the
+choice independently of randomized display order, rather than indexing into an answer key.
+Multiple-choice IDs must be a nonempty duplicate-free set belonging to that question. `isCorrect`
+means exact set equality in every scoring mode; legacy integer scores and rounding remain unchanged.
+
+New definitions are stored in nullable `AssessmentQuestion.definition`. Author create/PATCH accepts
+the following strict JSON shapes; the nested `type` must match the question's outer `type`.
+PATCH validates the resulting type/definition together and writes both atomically. Switching from
+a defined type to a legacy option type requires explicitly clearing `definition: null`.
+
+| Type | Author-only `definition` | Submitted `response` (alongside `questionId`) |
+| --- | --- | --- |
+| `true_false` (typed form) | `{type:"true_false",correctAnswer:false}` | `{type:"true_false",value:false}` |
+| `matching` | `{type:"matching",left:[{id,text}],right:[{id,text}],correctPairs:[{leftId,rightId}]}` | `{type:"matching",pairs:[{leftId,rightId}]}` |
+| `ordering` | `{type:"ordering",items:[{id,text}],correctOrder:[id]}` | `{type:"ordering",itemIds:[id]}` |
+| `fill_blank` | `{type:"fill_blank",blanks:[{id,acceptedAnswers:[string]}],caseSensitive,whitespace}` | `{type:"fill_blank",blanks:[{blankId,value}]}` |
+| `short_answer` | `{type:"short_answer",acceptedAnswers:[string],caseSensitive,whitespace}` | `{type:"short_answer",text:string}` |
+
+Matching and ordering require 2–50 items, unique IDs (1–64 ASCII letters, digits, `_`, `-`),
+and a full bijection/permutation using only the definition's IDs. Matching left/right counts must
+agree. Fill-blank requires 1–50 unique blank IDs and an entry for every blank; empty submitted text
+is a valid wrong answer. Short answer and each blank allow 1–50 distinct, nonempty normalized answer
+variants; each variant/submitted text has at most 4000 UTF-16 code units. Display item text is at most
+2000 characters. Text must be well-formed Unicode without NUL (the PostgreSQL JSONB constraint).
+Type/ID substitution, duplicate items, missing/foreign items, unknown fields and
+multiple answer formats are rejected before any attempt/result/certificate is written. The client
+cannot submit `score`, `isCorrect` or an answer key. Defined questions do not use option CRUD.
+
+Boolean values are actual JSON booleans (including `false`), never strings or numeric coercions.
+Legacy true/false questions without a definition still require their existing selected-option UUID;
+the API does not guess boolean meaning from localized option text or position.
+
+Text comparison always normalizes Unicode to NFC. `caseSensitive:false` then uses locale-independent
+Unicode lowercase; punctuation/diacritics are preserved, with no fuzzy matching. `whitespace` is
+required and is one of `exact` (preserve spaces), `trim` (trim ends only), `collapse` (trim ends and
+replace runs of JavaScript Unicode whitespace with one ASCII space). An author must choose both
+policies explicitly. Variants which become identical or empty under that policy are rejected.
+
+For a defined composite question let `N` be the number of pairs/positions/blanks and `C` the number
+correct. Every response must still be structurally complete; partial credit never legitimizes a
+malformed response. Ordering compares the item at each position, not edit distance or adjacent pairs.
+
+| Scoring mode | Defined matching/ordering/fill-blank score for `P` points |
+| --- | --- |
+| `all_or_nothing` | `P` if `C=N`, otherwise `0` |
+| `proportional` | `round(P*C/N)` |
+| `proportional_with_penalty` | `round(P*max(0,C-(N-C))/N)` |
+| `per_option` | `round(P*C/N)` — each complete pair/position/blank is one judgment |
+
+Atomic boolean and short-answer questions use all-or-nothing in all four modes, consistent with
+legacy single/boolean grading. Scores are bounded to `0..P`, stored as integers; percentage/pass,
+reports and certificate issuance continue through the existing attempt service. Rounded partial
+credit may equal `P` for small weights while `isCorrect` remains false. No historical score is
+recomputed when this migration runs or new question types are added.
+
+`GET /assessments/:assessmentId/quiz` explicitly projects public definitions: matching left/right
+items, ordering items, blank IDs and text policy. It never emits `correctPairs`, `correctOrder`,
+`acceptedAnswers`, `correctAnswer` or `isCorrect`. Item presentation is shuffled deterministically
+per learner even when question randomization is off; the ordering key is independent of display order.
+Author preview runs the same grader and writes no attempt/progress/certificate. Completed result
+detail includes the learner's typed `response`; `correctDefinition` is exposed only when the attempt
+is completed **and** `showCorrectAnswers` is enabled. In-progress results never expose answer keys.
+
+PR 388 supplies API and grading. The existing option-only taking/editor/preview forms display an
+explicit unsupported-question state rather than interpreting a new type as a radio question or
+starting a timed attempt. Their existing three option-based types continue unchanged. The seven-type
+longread editor/reader integration and immutable question snapshots belong to PR 389; PR 388 grades
+against the server's current persisted question, as existing standalone assessments do.
+
 ## Longread audio, video and approved embeds (PR 387)
 
 The same file endpoints/pipeline now accept MP3 (`audio/mpeg`), WAV (`audio/wav`), MP4 (`video/mp4`) and WebM

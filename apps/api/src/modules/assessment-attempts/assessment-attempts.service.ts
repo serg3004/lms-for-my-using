@@ -1,4 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import type { QuestionType, QuestionResponse } from '@lms/shared/assessment-question-types';
+import { gradeDefinedQuestion } from '../../common/assessment-question-definition.js';
+import { createAssessmentAttemptSchema } from './assessment-attempts.schemas.js';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { LEGACY_LIST_LIMIT } from '../../common/query-limits.js';
@@ -45,6 +48,7 @@ const attemptAnswerSelect = {
   questionId: true,
   selectedOptionId: true,
   selectedOptionIds: true,
+  response: true,
   isCorrect: true,
   score: true,
   createdAt: true,
@@ -53,7 +57,8 @@ const attemptAnswerSelect = {
 
 type QuestionWithOptions = {
   id: string;
-  type: 'single_choice' | 'multiple_choice' | 'true_false';
+  type: QuestionType;
+  definition?: unknown;
   points: number;
   scoringMode: 'all_or_nothing' | 'proportional' | 'proportional_with_penalty' | 'per_option';
   options: {
@@ -66,6 +71,7 @@ type GradedAnswer = {
   questionId: string;
   selectedOptionId?: string;
   selectedOptionIds?: string[];
+  response?: QuestionResponse;
   isCorrect: boolean;
   score: number;
 };
@@ -172,6 +178,7 @@ export class AssessmentAttemptsService {
    * passed: false regardless of score — the attempt is spent, not silently rejected.
    */
   async createAttempt(assessmentId: string, userId: string, organizationId: string, input: CreateAssessmentAttemptInput) {
+    input = createAssessmentAttemptSchema.parse(input);
     const assessment = await this.loadAssessmentForAttempt(assessmentId, organizationId);
 
     await this.ensureUserExists(userId, organizationId);
@@ -216,6 +223,7 @@ export class AssessmentAttemptsService {
           questionId: answer.questionId,
           selectedOptionId: answer.selectedOptionId,
           selectedOptionIds: answer.selectedOptionIds ?? undefined,
+          response: answer.response,
           isCorrect: answer.isCorrect,
           score: answer.score,
         })),
@@ -263,6 +271,7 @@ export class AssessmentAttemptsService {
    * draft assessments too, since previewing before publishing is the point.
    */
   async previewAttempt(assessmentId: string, organizationId: string, input: CreateAssessmentAttemptInput) {
+    input = createAssessmentAttemptSchema.parse(input);
     const assessment = await this.prisma.assessment.findFirst({
       where: { id: assessmentId, organizationId, deletedAt: null },
       select: { id: true, passingScore: true },
@@ -462,6 +471,7 @@ export class AssessmentAttemptsService {
         type: true,
         points: true,
         scoringMode: true,
+        definition: true,
         options: {
           where: { deletedAt: null },
           select: {
@@ -486,6 +496,8 @@ export class AssessmentAttemptsService {
       throw new BadRequestException('Duplicate question answers are not allowed');
     }
 
+    const questionIds = new Set(questions.map((question) => question.id));
+    if (answers.some((answer) => !questionIds.has(answer.questionId))) throw new BadRequestException('Answer question does not belong to assessment');
     return questions.map((question) => {
       const answer = answerByQuestionId.get(question.id);
 
@@ -498,6 +510,11 @@ export class AssessmentAttemptsService {
   }
 
   private gradeAnswer(question: QuestionWithOptions, answer: CreateAssessmentAttemptAnswerInput): GradedAnswer {
+    if (question.definition || ['matching', 'ordering', 'fill_blank', 'short_answer'].includes(question.type)) {
+      if (answer.selectedOptionId || answer.selectedOptionIds) throw new BadRequestException('Defined question requires a typed response');
+      return { questionId: question.id, ...gradeDefinedQuestion(question.type, question.definition, answer.response, question.points, question.scoringMode) };
+    }
+    if (answer.response) throw new BadRequestException('Legacy choice question requires option ids');
     const optionIds = new Set(question.options.map((option) => option.id));
     const correctOptionIds = question.options.filter((option) => option.isCorrect).map((option) => option.id);
 
