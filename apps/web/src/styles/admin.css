@@ -2168,3 +2168,14 @@
 .admin-option:focus-within .admin-help__tip { display: block; }
 .admin-heading-tip { display: flex; align-items: center; gap: 6px; }
 @media (max-width: 860px) { .admin-help__btn { width: 44px; height: 44px; } }
+
+/* PR 396: folder tree beside the checklist list. The tree reuses the department-tree rules; below 860px it
+   gives way to a folder picker above the table. */
+.checklist-folders { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.checklist-folders__picker { display: none; }
+.checklist-folders__crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 var(--space-3); padding: 0; list-style: none; }
+@media (max-width: 860px) {
+  .checklist-folders { display: block; }
+  .checklist-folders__aside { display: none; }
+  .checklist-folders__picker { display: block; width: 100%; margin-bottom: var(--space-3); }
+}

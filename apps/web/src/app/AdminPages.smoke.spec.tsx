@@ -532,7 +532,7 @@ describe('admin page smoke rendering', () => {
   it('renders checklists loading state without crashing', () => {
     useLoadingState();
 
-    const html = renderToStaticMarkup(<AdminChecklistsPage />);
+    const html = renderToStaticMarkup(<MemoryRouter><AdminChecklistsPage /></MemoryRouter>);
 
     expect(html).toContain('role="status"');
   });
@@ -568,7 +568,7 @@ describe('admin page smoke rendering', () => {
       },
     });
 
-    const html = renderToStaticMarkup(<AdminChecklistsPage />);
+    const html = renderToStaticMarkup(<MemoryRouter><AdminChecklistsPage /></MemoryRouter>);
 
     expect(html).toContain('Приёмка нового стажёра');
   });
@@ -606,7 +606,7 @@ describe('admin page smoke rendering', () => {
     // 5 statusError, 6 useAsyncData's internal loadState.
     useStateAtCalls({ 3: 'checklist-1', 6: loaded });
 
-    const html = renderToStaticMarkup(<AdminChecklistsPage />);
+    const html = renderToStaticMarkup(<MemoryRouter><AdminChecklistsPage /></MemoryRouter>);
 
     expect(html).toContain('Аттестация кассира');
     expect(html).toContain('Работа с кассой');

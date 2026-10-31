@@ -4,6 +4,9 @@ import type {
   ChecklistAnalytics,
   ChecklistBulkAction,
   ChecklistBulkResult,
+  ChecklistFolder,
+  ChecklistFolderDeleteImpact,
+  ChecklistFolderList,
   ChecklistAnalyticsQuery,
   ChecklistInstanceEvent,
   ChecklistInstanceSummary,
@@ -116,8 +119,30 @@ export function deleteChecklist(checklistId: string) {
 }
 
 /** PR 394: one action over many sheets; the response lists what happened to each id. */
-export function bulkChecklistAction(action: ChecklistBulkAction, ids: string[]) {
-  return apiRequest<ChecklistBulkResult>('/checklists/bulk', { method: 'POST', body: JSON.stringify({ action, ids }) });
+export function bulkChecklistAction(action: ChecklistBulkAction, ids: string[], folderId?: string | null) {
+  return apiRequest<ChecklistBulkResult>('/checklists/bulk', { method: 'POST', body: JSON.stringify({ action, ids, ...(action === 'move' ? { folderId: folderId ?? null } : {}) }) });
+}
+
+/** PR 396: the folder tree. Older or mocked servers may answer without `folders`; that reads as no folders. */
+export async function listChecklistFolders(): Promise<ChecklistFolderList> {
+  const response = await apiRequest<Partial<ChecklistFolderList> | null>('/checklist-folders');
+  return { folders: Array.isArray(response?.folders) ? response.folders : [], checklistCount: response?.checklistCount ?? 0 };
+}
+
+export function createChecklistFolder(input: { name: string; parentId?: string | null; visibleToStaff?: boolean }) {
+  return apiRequest<ChecklistFolder>('/checklist-folders', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export function updateChecklistFolder(folderId: string, input: { name?: string; parentId?: string | null; visibleToStaff?: boolean }) {
+  return apiRequest<ChecklistFolder>(`/checklist-folders/${encodeURIComponent(folderId)}`, { method: 'PATCH', body: JSON.stringify(input) });
+}
+
+export function getChecklistFolderDeleteImpact(folderId: string) {
+  return apiRequest<ChecklistFolderDeleteImpact>(`/checklist-folders/${encodeURIComponent(folderId)}/delete-impact`);
+}
+
+export function deleteChecklistFolder(folderId: string) {
+  return apiRequest<ChecklistFolderDeleteImpact>(`/checklist-folders/${encodeURIComponent(folderId)}`, { method: 'DELETE' });
 }
 
 export function createChecklistItem(
