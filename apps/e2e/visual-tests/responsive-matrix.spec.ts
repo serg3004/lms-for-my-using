@@ -22,7 +22,6 @@ for (const width of [375, 768, 1440]) {
 for (const role of ['admin', 'instructor'] as const) for (const width of [375, 1440]) {
   test(`${role} longread media editor is responsive at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height }); await longreadFileServer().editor(page, { role });
-    await page.getByRole('article').first().getByRole('img').scrollIntoViewIfNeeded();
     await expectNoPageOverflow(page); if (width === 375) await expectTouchTargets(page);
     await expectVisualMatch(page, `${role}-longread-media-editor-${width}`, false, { maxDiffPixels: 3000 });
   });
