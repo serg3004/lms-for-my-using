@@ -76,8 +76,8 @@ for (const [locale, label, add] of [['en', 'Activity', 'Add longread'], ['kk', '
   });
 }
 
-test('the mobile menu keeps Activity and the course has no horizontal overflow', async ({ page }) => {
-  await page.setViewportSize({ width: 375, height: 900 });
+for (const width of [320, 375]) test(`the mobile menu keeps Activity and the course fits at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 });
   await openLongreadEntrypoints(page, { enabled: true, path: `/admin/courses/${longreadCourseId}` });
   await expect(page.getByRole('button', { name: 'Добавить лонгрид', exact: false })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
@@ -85,6 +85,7 @@ test('the mobile menu keeps Activity and the course has no horizontal overflow',
     const box = element.getBoundingClientRect(); return box.left < 0 || box.right > innerWidth;
   }).map((element) => element.className));
   expect(clipped).toEqual([]);
+  expect(await page.locator('.lesson-row__title').evaluate((element) => element.getBoundingClientRect().width)).toBeGreaterThanOrEqual(60);
   await page.getByRole('button', { name: 'Открыть навигацию', exact: true }).click();
   await page.locator('.admin-nav').getByRole('link', { name: 'Задание', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Задание', exact: true, level: 1 })).toBeVisible();

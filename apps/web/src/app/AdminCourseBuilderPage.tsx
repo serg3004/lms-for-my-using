@@ -324,7 +324,7 @@ export function AdminCourseBuilderPage() {
                       <div key={lesson.id} className="lesson-row" style={{ flexWrap: 'wrap' }}>
                         <span className="lesson-row__drag" aria-hidden="true">⠿</span>
                         <span className="lesson-row__num">{idx + 1}</span>
-                        <span className="lesson-row__title" style={{ overflowWrap: 'anywhere' }}>{lesson.title}</span>
+                        <span className="lesson-row__title" style={{ overflowWrap: 'anywhere', flexBasis: '12ch' }}>{lesson.title}</span>
                         <Badge variant={variant} style={{ marginRight: '4px' }}>{label}</Badge>
                         <div className="lesson-row__actions" style={{ flexWrap: 'wrap', minWidth: 0 }}>
                           {lesson.type === 'longread' && <Link to={`/admin/lessons/${lesson.id}/longread`} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, overflowWrap: 'anywhere' }}>{t('longread.openEditor')}</Link>}
