@@ -35,7 +35,7 @@ export function analyticsPath(user: SessionsNavUser): string | null {
 }
 
 /** In-page tabs between "to conduct", "all sessions" and the checklist library -- no new menu item (PR 360б, 362). */
-export function ObserverSessionsNav({ current }: { current: 'conduct' | 'all' | 'library' | 'analytics' }) {
+export function ObserverSessionsNav({ current }: { current: 'conduct' | 'all' | 'library' | 'analytics' | 'scales' }) {
   const { t } = useTranslation();
   const user = useOptionalSession()?.currentUser;
   const allPath = allSessionsPath(user);
@@ -44,6 +44,7 @@ export function ObserverSessionsNav({ current }: { current: 'conduct' | 'all' | 
     { key: 'conduct' as const, href: conductSessionsPath(user), label: t('checklistSessions.nav.conduct', 'To conduct') },
     { key: 'all' as const, href: allPath, label: t('checklistSessions.nav.all', 'All sessions') },
     { key: 'library' as const, href: libraryPath(user) ?? allPath, label: t('checklistSessions.nav.library', 'Checklists') },
+    { key: 'scales' as const, href: user?.roles.includes('instructor') ? '/instructor/checklists/scales' : '/mentor/scales', label: t('admin.checklists.scaleManager.title', 'Evaluation scales') },
     { key: 'analytics' as const, href: analyticsPath(user) ?? allPath, label: t('checklistSessions.nav.analytics', 'Analytics') },
   ];
   return (

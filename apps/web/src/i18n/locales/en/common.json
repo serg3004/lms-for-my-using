@@ -1651,7 +1651,25 @@
       "groupDeleteConfirm": "Delete the group \"{{name}}\" and {{count}} criteria?",
       "groupDeleteConfirmEmpty": "Delete the empty group \"{{name}}\"?",
       "groupDeleteKeepItems": "Delete only the group, keep the criteria without a group",
-      "groupDeleteError": "Unable to delete the group."
+      "groupDeleteError": "Unable to delete the group.",
+      "scaleLibrary": {
+        "forbidden": "You do not have access to manage evaluation scales.",
+        "notFound": "Evaluation scale not found or no longer available.",
+        "loading": "Loading evaluation scales…",
+        "saved": "Evaluation scale changes saved.",
+        "breadcrumbs": "Breadcrumbs",
+        "search": "Search scales",
+        "sort": "Sort by name",
+        "ascending": "A–Z",
+        "descending": "Z–A",
+        "usage": "Used in {{count}} checklists",
+        "system": "System",
+        "unknownCreator": "Author unavailable",
+        "preview": "Preview",
+        "usedBy": "Checklists using this scale",
+        "readOnly": "You can view scales here. Editing is available to administrators and managers.",
+        "archiveConfirm": "Archive this scale? It will be hidden when selecting scales for new checklists. Existing checklists and sessions keep working."
+      }
     },
     "orgTools": {
       "cardTitle": "Organization structure import",

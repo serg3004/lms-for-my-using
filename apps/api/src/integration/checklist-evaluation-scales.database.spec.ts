@@ -74,6 +74,21 @@ describe('checklist evaluation scales (PR 293) — database', () => {
     await prisma.organization.deleteMany({ where: { id: organizationId } });
   });
 
+  it('PR 404: counts distinct sheets, resolves the author and hides private-folder usage names', async () => {
+    const scale = await scaleService.create(organizationId, { name: 'Library scale', levels: [{ value: 1, label: 'No', score: 0 }, { value: 2, label: 'Yes', score: 1 }] }, learnerId);
+    await prisma.checklistItem.createMany({ data: [0, 1].map((order) => ({ organizationId, checklistId, order, text: `Criterion ${order}`, points: 1, scaleId: scale.id })) });
+    const folder = await prisma.checklistFolder.create({ data: { organizationId, name: 'Private', createdBy: learnerId, visibleToStaff: false } });
+    const hidden = await prisma.checklist.create({ data: { organizationId, title: 'Private sheet', folderId: folder.id } });
+    await prisma.checklistItem.create({ data: { organizationId, checklistId: hidden.id, order: 0, text: 'Private criterion', points: 1, scaleId: scale.id } });
+    const admin = { id: learnerId, roles: ['admin'] };
+    const listed = (await scaleService.list(organizationId, 'en', admin)).find((row) => row.id === scale.id)!;
+    expect(listed).toMatchObject({ usageCount: 2, creator: { id: learnerId, firstName: 'Scale', lastName: 'Learner' } });
+    expect(listed.usedByChecklists).toHaveLength(2);
+    const observer = await scaleService.get(scale.id, organizationId, { id: randomUUID(), roles: ['mentor'] });
+    expect(observer.usageCount).toBe(2); expect(observer.usedByChecklists).toEqual([{ id: checklistId, title: 'Evaluation scales checklist' }]);
+    await expect(scaleService.get(scale.id, randomUUID(), admin)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
   it('create/edit/archive lifecycle: a used scale stays editable and archive always succeeds', async () => {
     const scale = await scaleService.create(
       organizationId,

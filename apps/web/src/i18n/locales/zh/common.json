@@ -1651,7 +1651,25 @@
       "groupDeleteConfirm": "删除分组“{{name}}”及其 {{count}} 个标准吗？",
       "groupDeleteConfirmEmpty": "删除空分组“{{name}}”吗？",
       "groupDeleteKeepItems": "仅删除分组，保留标准（不属于任何分组）",
-      "groupDeleteError": "无法删除分组。"
+      "groupDeleteError": "无法删除分组。",
+      "scaleLibrary": {
+        "forbidden": "您无权管理评估量表。",
+        "notFound": "评估量表不存在或已不可用。",
+        "loading": "正在加载评估量表…",
+        "saved": "评估量表更改已保存。",
+        "breadcrumbs": "面包屑导航",
+        "search": "搜索量表",
+        "sort": "按名称排序",
+        "ascending": "升序",
+        "descending": "降序",
+        "usage": "使用此量表的检查表：{{count}}",
+        "system": "系统",
+        "unknownCreator": "作者不可用",
+        "preview": "预览",
+        "usedBy": "使用此量表的检查表",
+        "readOnly": "您可以在此查看量表。仅管理员和经理可以编辑。",
+        "archiveConfirm": "归档此量表？创建新检查表时将不再显示该量表。现有检查表和会话将继续正常工作。"
+      }
     },
     "orgTools": {
       "cardTitle": "组织架构导入",

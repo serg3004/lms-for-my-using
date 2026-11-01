@@ -1,3 +1,4 @@
+import { scaleLibraryServer } from '../fixtures/scale-library.js';
 import { progressReaderServer, continueEditorServer, openProgressReport } from '../fixtures/longread-progress.js';
 import { exerciseReaderServer, exerciseEditorServer } from '../fixtures/longread-exercises.js';
 import { longreadFileServer } from '../fixtures/longread-files.js';
@@ -1215,4 +1216,9 @@ for (const width of [375, 1440]) test(`admin longread progress report at ${width
   await page.setViewportSize({ width, height }); await openProgressReport(page);
   await page.getByRole('region', { name: 'Состояние прохождения' }).first().scrollIntoViewIfNeeded();
   await expectNoPageOverflow(page); await expectVisualMatch(page, `admin-longread-progress-report-${width}`, false, { fullPage: false, maxDiffPixels: 3000 });
+});
+
+for (const width of [375, 1440]) for (const screen of ['list', 'detail'] as const) test(`scale library ${screen} at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await scaleLibraryServer().attach(page, screen === 'detail' ? '/quality' : '');
+  await expectNoPageOverflow(page); await expectVisualMatch(page, `scale-library-${screen}-${width}`, false, { fullPage: screen === 'detail', maxDiffPixels: 3000 });
 });

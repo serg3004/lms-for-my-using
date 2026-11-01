@@ -394,11 +394,12 @@ export function OrgStructurePageHeader({ current, action, countsState }: OrgStru
 
 // ── ChecklistsTabs ───────────────────────────────────────────────────────────
 
-export type ChecklistsTabKey = 'checklists' | 'sessions';
+export type ChecklistsTabKey = 'checklists' | 'sessions' | 'scales';
 
 const CHECKLISTS_TABS: readonly { key: ChecklistsTabKey; href: string; labelKey: string; fallback: string }[] = [
   { key: 'checklists', href: '/admin/checklists', labelKey: 'admin.checklists.title', fallback: 'Checklists' },
   { key: 'sessions', href: '/admin/checklists/sessions', labelKey: 'admin.checklists.sessions.title', fallback: 'Sessions' },
+  { key: 'scales', href: '/admin/checklists/scales', labelKey: 'admin.checklists.scaleManager.title', fallback: 'Evaluation scales' },
 ];
 
 /** In-page tab strip shared by the checklist builder and the workplace-training session screens. */

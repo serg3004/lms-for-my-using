@@ -5,60 +5,9 @@ import { ApiClientError } from '../../shared/apiClient.js';
 import { archiveChecklistScale, copyChecklistScale, createChecklistScale, deleteChecklistScale, listChecklistScales, updateChecklistScale } from '../../shared/api/checklists.js';
 import type { ChecklistScaleSummary } from '../../shared/api/types.js';
 import { ConfirmDialog } from '../../shared/adminPage.js';
-import { HighlightColorField } from '../../shared/HighlightColorField.js';
-import { Button, Dialog, Input } from '../../shared/ui.js';
-import {
-  SCALE_MAX_LEVELS,
-  SCALE_MIN_LEVELS,
-  createScaleLevelDraft,
-  moveScaleLevelDraft,
-  newScaleLevelDrafts,
-  scaleDraftToInput,
-  scaleLevelDraftsFromLevels,
-  validateScaleDraft,
-  SCALE_LEVEL_COLORS,
-  type ScaleDraftError,
-  type ScaleLevelDraft,
-} from './domain.js';
-
-const SCALE_NAME_MAX = 255;
-
-type EditorState = {
-  /** null while creating a new scale. */
-  scaleId: string | null;
-  /** The scale is archived or the default one: shown read-only, "Make a copy" is the way to change it. */
-  readOnly: boolean;
-  isDefault: boolean;
-  /** PR 369: used by assigned checklists -- still editable, with a warning. */
-  inUse: boolean;
-  name: string;
-  levels: ScaleLevelDraft[];
-};
-
-function newEditor(): EditorState {
-  return { scaleId: null, readOnly: false, isDefault: false, inUse: false, name: '', levels: newScaleLevelDrafts() };
-}
-
-function editorFor(scale: ChecklistScaleSummary): EditorState {
-  return { scaleId: scale.id, readOnly: scale.isDefault || scale.status === 'archived', isDefault: scale.isDefault, inUse: scale.inUse, name: scale.name, levels: scaleLevelDraftsFromLevels(scale.levels) };
-}
-
-function draftErrorText(error: ScaleDraftError, t: TFunction) {
-  switch (error) {
-    case 'name':
-      return t('admin.checklists.scaleManager.errorName', 'Enter a scale name.');
-    case 'tooFewLevels':
-      return t('admin.checklists.scaleManager.errorMinLevels', 'A scale needs at least {{count}} levels.', { count: SCALE_MIN_LEVELS });
-    case 'tooManyLevels':
-      return t('admin.checklists.scaleManager.errorMaxLevels', 'A scale can have at most {{count}} levels.', { count: SCALE_MAX_LEVELS });
-    case 'label':
-      return t('admin.checklists.scaleManager.errorLabel', 'Every level needs a name.');
-    case 'score':
-      return t('admin.checklists.scaleManager.errorScore', 'Points must be a whole number from 0 to 1000.');
-    case 'color':
-      return t('admin.checklists.scaleManager.errorColor', 'Every level colour must be a code like #2E7D32.');
-  }
-}
+import { Button, Dialog } from '../../shared/ui.js';
+import { scaleDraftToInput, validateScaleDraft, SCALE_LEVEL_COLORS } from './domain.js';
+import { ScaleEditor, newScaleEditor as newEditor, scaleEditorFor as editorFor, scaleDraftErrorText as draftErrorText, type ScaleEditorState as EditorState } from './ScaleEditor.js';
 
 /**
  * "Оценочные шкалы" -- a secondary/contextual dialog reached from the builder (not a top-level
@@ -163,10 +112,6 @@ export function ScaleManagerDialog({ open, onClose, onChanged, onSaved, startCre
     }
   }
 
-  function patchLevel(key: string, patch: Partial<ScaleLevelDraft>) {
-    setEditor((current) => current && { ...current, levels: current.levels.map((level) => (level.key === key ? { ...level, ...patch } : level)) });
-  }
-
   if (editor) {
     return (
       <Dialog labelledBy={titleId} onClose={onClose} open={open}>
@@ -175,103 +120,7 @@ export function ScaleManagerDialog({ open, onClose, onChanged, onSaved, startCre
             ? t('admin.checklists.scaleManager.newTitle', 'New scale')
             : t('admin.checklists.scaleManager.editTitle', 'Edit scale')}
         </h2>
-        {editor.readOnly && (
-          <p className="admin-form__hint" role="note">
-            {editor.isDefault
-              ? t('admin.checklists.scaleManager.defaultNote', 'This is the default scale and cannot be changed. Make a copy and edit the copy.')
-              : t('admin.checklists.scaleManager.readOnlyNote', 'This scale is archived and cannot be changed. Make a copy and edit the copy.')}
-          </p>
-        )}
-        {editor.inUse && !editor.readOnly && (
-          <p className="admin-form__hint" role="note">
-            {t('admin.checklists.scaleManager.usedWarning', 'This scale is already used in observation sheets. The updated scale will be used for sessions that have not started yet; the rest stay unchanged.')}
-          </p>
-        )}
-        {error && <p className="learner-quiz__submit-error" role="alert">{error}</p>}
-        <Input
-          disabled={editor.readOnly}
-          label={t('admin.checklists.scaleManager.name', 'Scale name')}
-          maxLength={SCALE_NAME_MAX}
-          onChange={(e) => setEditor({ ...editor, name: e.target.value })}
-          value={editor.name}
-        />
-        <p aria-live="off" className="admin-form__hint">{editor.name.length}/{SCALE_NAME_MAX}</p>
-        <h3>{t('admin.checklists.scaleManager.levels', 'Levels')}</h3>
-        <ol className="admin-checklist-instances">
-          {editor.levels.map((level, index) => {
-            const n = index + 1;
-            return (
-              <li key={level.key} style={{ flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                  <Input
-                    aria-label={t('admin.checklists.scaleManager.levelName', 'Level {{n}} name', { n })}
-                    disabled={editor.readOnly}
-                    maxLength={80}
-                    onChange={(e) => patchLevel(level.key, { label: e.target.value })}
-                    value={level.label}
-                  />
-                </div>
-                <Input
-                  aria-label={t('admin.checklists.scaleManager.levelScore', 'Level {{n}} points', { n })}
-                  disabled={editor.readOnly}
-                  inputMode="numeric"
-                  onChange={(e) => patchLevel(level.key, { score: e.target.value })}
-                  value={level.score}
-                />
-                <HighlightColorField
-                  disabled={editor.readOnly}
-                  label={t('admin.checklists.scaleManager.levelColor', 'Level {{n}} colour', { n })}
-                  onChange={(color) => patchLevel(level.key, { color })}
-                  value={level.color}
-                />
-                {!editor.readOnly && (
-                  <>
-                    <Button
-                      aria-label={t('admin.checklists.scaleManager.moveLevelUp', 'Move level {{n}} up', { n })}
-                      disabled={index === 0}
-                      onClick={() => setEditor({ ...editor, levels: moveScaleLevelDraft(editor.levels, index, 'up') })}
-                      type="button"
-                      variant="secondary"
-                    >
-                      ↑
-                    </Button>
-                    <Button
-                      aria-label={t('admin.checklists.scaleManager.moveLevelDown', 'Move level {{n}} down', { n })}
-                      disabled={index === editor.levels.length - 1}
-                      onClick={() => setEditor({ ...editor, levels: moveScaleLevelDraft(editor.levels, index, 'down') })}
-                      type="button"
-                      variant="secondary"
-                    >
-                      ↓
-                    </Button>
-                    <Button
-                      aria-label={t('admin.checklists.scaleManager.removeLevel', 'Remove level {{n}}', { n })}
-                      disabled={editor.levels.length <= SCALE_MIN_LEVELS}
-                      onClick={() => setEditor({ ...editor, levels: editor.levels.filter((l) => l.key !== level.key) })}
-                      type="button"
-                      variant="secondary"
-                    >
-                      ✕
-                    </Button>
-                  </>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-        {!editor.readOnly && (
-          <Button
-            disabled={editor.levels.length >= SCALE_MAX_LEVELS}
-            onClick={() => setEditor({ ...editor, levels: [...editor.levels, createScaleLevelDraft()] })}
-            type="button"
-            variant="secondary"
-          >
-            + {t('admin.checklists.scaleManager.addLevel', 'Add level')}
-          </Button>
-        )}
-        <p className="admin-form__hint">
-          {t('admin.checklists.scaleManager.appliesToNew', 'Changes apply to new and not yet started sessions; sessions already started keep their own copy.')}
-        </p>
+        <ScaleEditor editor={editor} onChange={setEditor} error={error} t={t} />
         <div className="ds-dialog__actions">
           <Button disabled={saving} onClick={() => { setError(null); if (startCreating && editor.scaleId === null) onClose(); else setEditor(null); }} type="button" variant="secondary">
             {t('admin.checklists.cancel', 'Cancel')}

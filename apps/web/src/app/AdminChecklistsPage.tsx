@@ -103,6 +103,13 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
   const [bulkResult, setBulkResult] = useState<{ result: ChecklistBulkResult; titles: Map<string, string> } | null>(null);
   // PR 396: folders. Collapsed folder ids (everything is expanded by default); the selected folder lives in the URL (`?folder=`).
   const [searchParams, setSearchParams] = useSearchParams();
+  // PR 404: usage links open only a sheet already returned by the permission-filtered library.
+  useEffect(() => {
+    const target = searchParams.get('checklistId');
+    if (!target || loadState.status !== 'loaded') return;
+    if (loadState.data.checklists.some((checklist) => checklist.id === target)) setSelectedId(target);
+    const next = new URLSearchParams(searchParams); next.delete('checklistId'); setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, loadState]);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set());
   const [folderDialog, setFolderDialog] = useState<FolderDialogTarget | null>(null);
   const [folderDelete, setFolderDelete] = useState<{ folder: ChecklistFolder; message: string } | null>(null);
