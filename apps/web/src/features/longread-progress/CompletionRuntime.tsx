@@ -20,7 +20,7 @@ export function CompletionRuntime({ data, onUpdate, children }: { data: Longread
     const doc = latest.current;
     if (doc.preview || !doc.completion || !onUpdate || inFlight.current) return;
     const request = ++reads.current;
-    try { const next = await getPublishedLongread(doc.lessonId, doc.navigation.chapter); if (active.current && request === reads.current && !inFlight.current && latest.current.lessonId === doc.lessonId && latest.current.version === doc.version && latest.current.navigation.chapter === doc.navigation.chapter && next.version === doc.version) onUpdate(next); }
+    try { const next = await getPublishedLongread(doc.lessonId, doc.navigation.chapter); if (active.current && request === reads.current && !inFlight.current && latest.current.lessonId === doc.lessonId && latest.current.version === doc.version && latest.current.navigation.chapter === doc.navigation.chapter && next.version === doc.version) { setError(''); onUpdate(next); } }
     catch (cause) { if (active.current) setError(errorKey(cause)); }
   }, [onUpdate]);
   const timed = data.completion?.chapters.find((c) => c.anchor === data.navigation.chapter)?.reasons.some((r) => r.code === 'time');

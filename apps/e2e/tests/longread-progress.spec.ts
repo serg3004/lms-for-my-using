@@ -56,3 +56,12 @@ test('admin report displays the version and the same blocked/file state as the l
   expect(await status.evaluate((section) => section.scrollWidth <= section.clientWidth + 1)).toBe(true);
   expect(await status.evaluate((section) => section.getBoundingClientRect().right <= innerWidth)).toBe(true);
 });
+
+
+test('refresh recovers from a network failure and clears the stale error', async ({ page }) => {
+  const server = progressReaderServer({ mode: 'free' }); await server.attach(page);
+  await page.route('**/api/v1/**/longread/published*', (route) => route.fulfill({ status: 500, json: { message: 'Synthetic failure' } }), { times: 1 });
+  await page.getByRole('button', { name: 'Обновить проверку', exact: true }).click();
+  const alert = page.getByRole('alert'); await expect(alert).toContainText('Не удалось выполнить действие');
+  await alert.getByRole('button', { name: 'Обновить проверку', exact: true }).click(); await expect(alert).toHaveCount(0);
+});
