@@ -16,20 +16,22 @@ export function CompletionRuntime({ data, onUpdate, children }: { data: Longread
   const [busy, setBusy] = useState(false), [error, setError] = useState(''); const inFlight = useRef(false), active = useRef(true), latest = useRef(data), reads = useRef(0); latest.current = data;
   const { t } = useTranslation();
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
+  useEffect(() => { reads.current++; setError(''); }, [data.lessonId, data.version, data.navigation.chapter, data.preview]);
+  const isCurrent = useCallback((doc: LongreadReaderDocument, request: number) => active.current && request === reads.current && latest.current.lessonId === doc.lessonId && latest.current.version === doc.version && latest.current.navigation.chapter === doc.navigation.chapter && latest.current.preview === doc.preview, []);
   const refresh = useCallback(async () => {
     const doc = latest.current;
     if (doc.preview || !doc.completion || !onUpdate || inFlight.current) return;
     const request = ++reads.current;
-    try { const next = await getPublishedLongread(doc.lessonId, doc.navigation.chapter); if (active.current && request === reads.current && !inFlight.current && latest.current.lessonId === doc.lessonId && latest.current.version === doc.version && latest.current.navigation.chapter === doc.navigation.chapter && next.version === doc.version) { setError(''); onUpdate(next); } }
-    catch (cause) { if (active.current) setError(errorKey(cause)); }
-  }, [onUpdate]);
+    try { const next = await getPublishedLongread(doc.lessonId, doc.navigation.chapter); if (isCurrent(doc, request) && !inFlight.current && next.version === doc.version) { setError(''); onUpdate(next); } }
+    catch (cause) { if (isCurrent(doc, request) && !inFlight.current) setError(errorKey(cause)); }
+  }, [onUpdate, isCurrent]);
   const timed = data.completion?.chapters.find((c) => c.anchor === data.navigation.chapter)?.reasons.some((r) => r.code === 'time');
   useEffect(() => { if (!timed || data.preview) return; const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 3000); return () => clearInterval(timer); }, [timed, data.preview, refresh]);
   const action = async (blockId?: string) => {
     if (inFlight.current || data.preview || data.version === null) return;
-    inFlight.current = true; reads.current++; setBusy(true); setError('');
-    try { const next = await completeLongreadChapter(data.lessonId, { version: data.version, chapter: data.navigation.chapter, ...(blockId ? { blockId } : {}) }); if (active.current && latest.current.lessonId === data.lessonId && latest.current.version === data.version && latest.current.navigation.chapter === data.navigation.chapter) onUpdate?.(next); }
-    catch (cause) { if (active.current) { setError(errorKey(cause)); } }
+    inFlight.current = true; const request = ++reads.current; setBusy(true); setError('');
+    try { const next = await completeLongreadChapter(data.lessonId, { version: data.version, chapter: data.navigation.chapter, ...(blockId ? { blockId } : {}) }); if (isCurrent(data, request)) onUpdate?.(next); }
+    catch (cause) { if (isCurrent(data, request)) setError(errorKey(cause)); }
     finally { inFlight.current = false; if (active.current) setBusy(false); }
   };
   return <Context.Provider value={{ data, busy, action, refresh }}>{children}{error && <div role="alert"><p>{t(error)}</p><button type="button" className="admin-btn admin-btn--secondary" onClick={() => void refresh()}>{t('longreadProgress.refresh')}</button></div>}</Context.Provider>;
