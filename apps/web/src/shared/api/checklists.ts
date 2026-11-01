@@ -186,6 +186,17 @@ export function updateChecklistItemGroup(groupId: string, input: { title?: strin
   });
 }
 
+export function deleteChecklistItemGroup(groupId: string, items: 'delete' | 'keep') {
+  return apiRequest<{ deletedItems: number; keptItems: number }>(`/checklist-item-groups/${encodeURIComponent(groupId)}?items=${items}`, { method: 'DELETE' });
+}
+
+export function saveChecklistLayout(checklistId: string, layout: { groups: Array<{ id: string; itemIds: string[] }>; ungroupedItemIds: string[] }) {
+  return apiRequest<{ groups: number; items: number }>(`/checklists/${encodeURIComponent(checklistId)}/layout`, {
+    method: 'PUT',
+    body: JSON.stringify(layout),
+  });
+}
+
 export function copyChecklistItemGroup(groupId: string) {
   return apiRequest<ChecklistItemGroup>(`/checklist-item-groups/${encodeURIComponent(groupId)}/copy`, { method: 'POST' });
 }

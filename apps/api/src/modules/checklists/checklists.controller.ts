@@ -1,5 +1,5 @@
 import { MAX_SESSION_IMPORT_BYTES, type SessionImportFile } from './checklist-session-import.js';
-import { BadRequestException, Body, Controller, ForbiddenException, NotFoundException, Get, Headers, Param, Patch, Post, Delete, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, NotFoundException, Get, Headers, Param, Patch, Post, Put, Delete, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { AuthGuard } from '../auth/public.js';
@@ -47,6 +47,8 @@ import {
   submitChecklistSessionFeedbackSchema,
   submitChecklistSessionContextSchema,
   updateChecklistItemGroupSchema,
+  updateChecklistLayoutSchema,
+  deleteChecklistItemGroupQuerySchema,
   updateChecklistItemSchema,
   updateChecklistScaleSchema,
   updateChecklistSchema,
@@ -383,6 +385,21 @@ export class ChecklistsController {
     await this.checklistsService.assertCanEdit({ groupId }, request.currentUser!.organizationId, request.currentUser!);
     const input = updateChecklistItemGroupSchema.parse(body);
     return this.checklistsService.updateItemGroup(groupId, request.currentUser!.organizationId, input);
+  }
+  @Delete('checklist-item-groups/:id')
+  @Roles(...rolePolicies.checklistsCreate)
+  async deleteItemGroup(@Param('id') groupId: string, @Query() query: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    await this.checklistsService.assertCanEdit({ groupId }, user.organizationId, user);
+    const { items } = deleteChecklistItemGroupQuerySchema.parse(query);
+    return this.checklistsService.deleteItemGroup(groupId, user.organizationId, user.id, items);
+  }
+  @Put('checklists/:checklistId/layout')
+  @Roles(...rolePolicies.checklistsCreate)
+  async updateLayout(@Param('checklistId') checklistId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    await this.checklistsService.assertCanEdit({ checklistId }, request.currentUser!.organizationId, request.currentUser!);
+    const input = updateChecklistLayoutSchema.parse(body);
+    return this.checklistsService.updateLayout(checklistId, request.currentUser!.organizationId, input);
   }
   @Post('checklist-item-groups/:id/copy')
   @Roles(...rolePolicies.checklistsCreate)

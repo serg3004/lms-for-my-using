@@ -34,6 +34,7 @@ import {
   SubmitChecklistItemResultInput,
   UpdateChecklistInput,
   UpdateChecklistItemGroupInput,
+  UpdateChecklistLayoutInput,
   UpdateChecklistItemInput,
   MAX_BULK_CHECKLIST_RECIPIENTS,
 } from './checklists.schemas.js';
@@ -953,6 +954,87 @@ export class ChecklistsService {
     }
 
     return this.prisma.checklistItemGroup.update({ where: { id: groupId, organizationId }, data: input });
+  }
+
+  /**
+   * PR 402: deletes a group. With `items: 'delete'` its criteria are soft-deleted too, with
+   * `items: 'keep'` they stay in the checklist without a group. Sessions hold their own snapshot,
+   * so history is unaffected.
+   */
+  async deleteItemGroup(groupId: string, organizationId: string, actorId: string, mode: 'delete' | 'keep') {
+    const group = await this.prisma.checklistItemGroup.findFirst({ where: { id: groupId, organizationId } });
+    if (!group) {
+      throw new NotFoundException('Checklist item group not found');
+    }
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      let affected: number;
+      if (mode === 'delete') {
+        affected = (await tx.checklistItem.updateMany({
+          where: { groupId, organizationId, deletedAt: null },
+          data: { deletedAt: new Date() },
+        })).count;
+      } else {
+        affected = await tx.checklistItem.count({ where: { groupId, organizationId, deletedAt: null } });
+      }
+      await tx.checklistItem.updateMany({ where: { groupId, organizationId }, data: { groupId: null } });
+      await tx.checklistItemGroup.delete({ where: { id: groupId } });
+      return affected;
+    });
+
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'checklist.group_deleted',
+      targetType: 'checklist',
+      targetId: group.checklistId,
+      summary: `Deleted group ${group.title} (${mode === 'delete' ? 'with' : 'keeping'} ${result} criteria)`,
+    });
+
+    return mode === 'delete' ? { deletedItems: result, keptItems: 0 } : { deletedItems: 0, keptItems: result };
+  }
+
+  /**
+   * PR 402: saves the whole drag-and-drop layout in one transaction. The submitted ids must be
+   * exactly the live groups/criteria of the checklist, otherwise somebody else changed it
+   * meanwhile and the client must reload (409).
+   */
+  async updateLayout(checklistId: string, organizationId: string, input: UpdateChecklistLayoutInput) {
+    await this.getChecklist(checklistId, organizationId);
+
+    const itemIds = [...input.groups.flatMap((group) => group.itemIds), ...input.ungroupedItemIds];
+    const groupIds = input.groups.map((group) => group.id);
+    if (new Set(itemIds).size !== itemIds.length || new Set(groupIds).size !== groupIds.length) {
+      throw new BadRequestException('Layout contains duplicate ids');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const [groups, items] = await Promise.all([
+        tx.checklistItemGroup.findMany({ where: { checklistId, organizationId }, select: { id: true } }),
+        tx.checklistItem.findMany({ where: { checklistId, organizationId, deletedAt: null }, select: { id: true } }),
+      ]);
+      const knownGroups = new Set(groups.map((group) => group.id));
+      const knownItems = new Set(items.map((item) => item.id));
+      if (groupIds.some((id) => !knownGroups.has(id)) || itemIds.some((id) => !knownItems.has(id))) {
+        throw new BadRequestException('Layout references unknown groups or criteria');
+      }
+      if (knownGroups.size !== groupIds.length || knownItems.size !== itemIds.length) {
+        throw new ConflictException('Checklist changed, reload it');
+      }
+
+      let itemOrder = 0;
+      for (const [groupIndex, group] of input.groups.entries()) {
+        await tx.checklistItemGroup.update({ where: { id: group.id }, data: { order: groupIndex } });
+        for (const itemId of group.itemIds) {
+          await tx.checklistItem.update({ where: { id: itemId }, data: { groupId: group.id, order: itemOrder++ } });
+        }
+      }
+      for (const itemId of input.ungroupedItemIds) {
+        await tx.checklistItem.update({ where: { id: itemId }, data: { groupId: null, order: itemOrder++ } });
+      }
+
+      return { groups: groupIds.length, items: itemIds.length };
+    });
   }
 
   /**

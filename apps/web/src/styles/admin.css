@@ -1716,6 +1716,16 @@
   padding: 2px 0;
 }
 
+.admin-drag {
+  flex: none;
+  width: 20px;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: grab;
+  touch-action: none;
+}
+
 .admin-criteria-row__order button:disabled {
   opacity: .3;
   cursor: default;
@@ -1785,7 +1795,8 @@
     gap: 4px;
   }
 
-  .admin-criteria-row__order button {
+  .admin-criteria-row__order button,
+  .admin-drag {
     min-width: 44px;
   }
 }

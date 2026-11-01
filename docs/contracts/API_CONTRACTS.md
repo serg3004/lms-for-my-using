@@ -687,15 +687,27 @@ takes them from the snapshot, never the live checklist), so editing a checklist 
 sessions assigned afterwards.
 
 **Item groups** (`GET/POST /checklists/:checklistId/groups`, `PATCH /checklist-item-groups/:id`,
-`POST /checklist-item-groups/:id/copy`): named, ordered `ChecklistItemGroup` rows a `ChecklistItem`
+`POST /checklist-item-groups/:id/copy`, `DELETE /checklist-item-groups/:id?items=delete|keep`,
+`PUT /checklists/:checklistId/layout`): named, ordered `ChecklistItemGroup` rows a `ChecklistItem`
 can optionally belong to via `groupId` (also added to `POST /checklists/:checklistId/items` and
-`PATCH /checklist-items/:id`). Deliberately no delete endpoint -- the DoD only calls for
-add/rename/reorder/copy; assigning an item to a group belonging to a *different* checklist is
+`PATCH /checklist-items/:id`); assigning an item to a group belonging to a *different* checklist is
 rejected (404). Copy duplicates the group and every one of its (non-deleted) items in one
 transaction, appended at the end of the same checklist's ordering -- the copy is fully independent
-of the original from that point on. `groupId` is a `SetNull` foreign key (not `Cascade`/
-`Restrict`): a future group-delete endpoint, if one is ever added, should ungroup surviving items
-rather than silently delete them.
+of the original from that point on. All routes need `checklistsCreate` and edit rights on the
+checklist (`assertCanEdit`).
+
+PR 402 delete: the group row is removed (groups have no `deletedAt`; sessions hold their own
+snapshot, so started and finished sessions do not change). `items=delete` (default in the UI) soft
+deletes the group's criteria, `items=keep` leaves them without a group (`groupId` is a `SetNull`
+foreign key). Response `{ deletedItems, keptItems }`; audit action `checklist.group_deleted`.
+Another organization's group is 404.
+
+PR 402 layout: `PUT /checklists/:checklistId/layout` with `{ groups: [{ id, itemIds[] }],
+ungroupedItemIds[] }` stores a whole drag-and-drop result in one transaction: group `order` = index,
+criterion `order` counts across the groups in order and then the ungrouped ones, each criterion gets
+its new `groupId`. Duplicate ids or ids of another checklist/organization are 400; a set that does
+not equal the checklist's live groups and criteria (somebody changed it meanwhile) is 409 and
+nothing is written. Response `{ groups, items }`.
 
 **Templates** (`GET /checklist-templates?locale=`, `POST /checklists/from-template` with
 `{ templateKey, locale }`; both `checklistsCreate`): a small set of built-in starter sheets kept in

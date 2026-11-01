@@ -1279,8 +1279,8 @@ model ChecklistItem {
   // archived), so this FK can never actually block a real deletion.
   scaleId            String?               @map("scale_id") @db.Uuid
   // PR 296 observation-sheet builder grouping ("Группы и критерии"). SetNull, not Cascade/Restrict
-  // -- there is no group-delete endpoint yet, but if one is ever added an item should survive as
-  // ungrouped rather than being silently deleted along with its group.
+  // -- deleting a group (PR 402) either soft-deletes its items explicitly or leaves them ungrouped;
+  // the database never deletes an item together with its group.
   groupId            String?               @map("group_id") @db.Uuid
   createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime              @updatedAt @map("updated_at") @db.Timestamptz

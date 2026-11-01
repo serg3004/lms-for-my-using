@@ -2,7 +2,7 @@
 
 import { randomUUID } from 'node:crypto';
 
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../database/prisma.service.js';
 import { ChecklistsService } from '../modules/checklists/checklists.service.js';
@@ -181,5 +181,106 @@ describe('checklist observation-sheet builder (PR 296) — database', () => {
     // existed yet), unaffected by the post-assignment edits -- same guarantee PR 293 established
     // for scaleLevels/scale.
     expect((reloadedInstance.checklist as { contextFields?: unknown }).contextFields).toBeNull();
+  });
+  describe('PR 402: delete group and drag-and-drop layout', () => {
+    const itemInput = (text: string) =>
+      ({ text, points: 1, isRequired: true, photoRequired: false, weight: 1, allowSkip: false, autoSkipUnanswered: false }) as never;
+
+    async function seed() {
+      const actor = await prisma.user.create({
+        data: { organizationId, email: `actor-${randomUUID()}@example.test`, passwordHash: 'unused', firstName: 'Actor', lastName: 'One' },
+      });
+      const g1 = await checklistsService.createItemGroup(checklistId, organizationId, { title: 'G1' });
+      const g2 = await checklistsService.createItemGroup(checklistId, organizationId, { title: 'G2' });
+      const a = await checklistsService.createItem(checklistId, organizationId, { ...(itemInput('A') as object), groupId: g1.id } as never);
+      const b = await checklistsService.createItem(checklistId, organizationId, { ...(itemInput('B') as object), groupId: g1.id } as never);
+      const c = await checklistsService.createItem(checklistId, organizationId, { ...(itemInput('C') as object), groupId: g2.id } as never);
+      const d = await checklistsService.createItem(checklistId, organizationId, itemInput('D'));
+      return { actor, g1, g2, a, b, c, d };
+    }
+
+    it('deleting a group with items "delete" soft-deletes its criteria and reports the count', async () => {
+      const { actor, g1, a, b, c } = await seed();
+      const result = await checklistsService.deleteItemGroup(g1.id, organizationId, actor.id, 'delete');
+      expect(result).toEqual({ deletedItems: 2, keptItems: 0 });
+      expect(await prisma.checklistItemGroup.findUnique({ where: { id: g1.id } })).toBeNull();
+      const live = await checklistsService.listItems(checklistId, organizationId);
+      expect(live.map((item) => item.id)).not.toContain(a.id);
+      expect(live.map((item) => item.id)).not.toContain(b.id);
+      expect(live.map((item) => item.id)).toContain(c.id);
+      const audit = await prisma.auditLog.findFirst({ where: { organizationId, action: 'checklist.group_deleted' } });
+      expect(audit).not.toBeNull();
+    });
+
+    it('deleting a group with items "keep" leaves criteria without a group', async () => {
+      const { actor, g1, a, b } = await seed();
+      const result = await checklistsService.deleteItemGroup(g1.id, organizationId, actor.id, 'keep');
+      expect(result).toEqual({ deletedItems: 0, keptItems: 2 });
+      const live = await checklistsService.listItems(checklistId, organizationId);
+      expect(live.find((item) => item.id === a.id)?.groupId).toBeNull();
+      expect(live.find((item) => item.id === b.id)?.groupId).toBeNull();
+    });
+
+    it('does not delete a group of another organization', async () => {
+      const { actor, g1 } = await seed();
+      const other = await prisma.organization.create({ data: { name: 'Other', slug: `other-${randomUUID()}` } });
+      try {
+        await expect(checklistsService.deleteItemGroup(g1.id, other.id, actor.id, 'delete')).rejects.toBeInstanceOf(NotFoundException);
+        expect(await prisma.checklistItemGroup.findUnique({ where: { id: g1.id } })).not.toBeNull();
+      } finally {
+        await prisma.organization.delete({ where: { id: other.id } });
+      }
+    });
+
+    it('updateLayout reorders groups and moves criteria across groups in one transaction', async () => {
+      const { g1, g2, a, b, c, d } = await seed();
+      const result = await checklistsService.updateLayout(checklistId, organizationId, {
+        groups: [
+          { id: g2.id, itemIds: [c.id, b.id] },
+          { id: g1.id, itemIds: [a.id] },
+        ],
+        ungroupedItemIds: [d.id],
+      });
+      expect(result).toEqual({ groups: 2, items: 4 });
+      const groups = await checklistsService.listItemGroups(checklistId, organizationId);
+      expect(groups.map((group) => group.id)).toEqual([g2.id, g1.id]);
+      const items = await checklistsService.listItems(checklistId, organizationId);
+      expect(items.map((item) => [item.id, item.groupId])).toEqual([
+        [c.id, g2.id],
+        [b.id, g2.id],
+        [a.id, g1.id],
+        [d.id, null],
+      ]);
+    });
+
+    it('updateLayout rejects duplicates, foreign ids and stale sets and changes nothing', async () => {
+      const { g1, g2, a, b, c, d } = await seed();
+      const full = { groups: [{ id: g1.id, itemIds: [a.id, b.id] }, { id: g2.id, itemIds: [c.id] }], ungroupedItemIds: [d.id] };
+
+      await expect(
+        checklistsService.updateLayout(checklistId, organizationId, { ...full, ungroupedItemIds: [a.id] }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        checklistsService.updateLayout(checklistId, organizationId, { ...full, ungroupedItemIds: [randomUUID()] }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      await expect(
+        checklistsService.updateLayout(checklistId, organizationId, { groups: [{ id: g1.id, itemIds: [a.id, b.id, c.id] }], ungroupedItemIds: [d.id] }),
+      ).rejects.toBeInstanceOf(ConflictException);
+
+      const items = await checklistsService.listItems(checklistId, organizationId);
+      expect(items.map((item) => item.id)).toEqual([a.id, b.id, c.id, d.id]);
+    });
+
+    it('updateLayout does not accept ids of another checklist', async () => {
+      const { g1, a, b, c, d } = await seed();
+      const other = await prisma.checklist.create({ data: { organizationId, title: 'Other', status: 'draft' } });
+      const otherItem = await checklistsService.createItem(other.id, organizationId, itemInput('X'));
+      await expect(
+        checklistsService.updateLayout(checklistId, organizationId, {
+          groups: [{ id: g1.id, itemIds: [a.id, b.id, c.id, otherItem.id] }],
+          ungroupedItemIds: [d.id],
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
   });
 });
