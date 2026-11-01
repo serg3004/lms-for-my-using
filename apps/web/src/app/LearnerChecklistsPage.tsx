@@ -1,17 +1,18 @@
 import { ObserverSessionsBlock } from './ObserverSessionsBlock.js';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint, validateChecklistPhoto } from '../shared/checklistPhoto.js';
-import { getChecklistItemPhotoUrl, listFreeChecklists, listMyChecklistInstances, startFreeChecklist, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
+import { getChecklistItemPhotoBlob, listFreeChecklists, listMyChecklistInstances, startFreeChecklist, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
 import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary, FreeChecklistSummary } from '../shared/api/types.js';
 import { ChecklistCover } from '../shared/ChecklistCover.js';
 import { ChecklistAccessBadge } from '../shared/checklistAccess.js';
 import { PinnedChecklistTiles } from './PinnedChecklistTiles.js';
 import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
+import { useProtectedImage } from '../shared/useProtectedImage.js';
 import {
   checklistResultToAnswer,
   checklistItemLevels,
@@ -417,26 +418,10 @@ function PhotoAttachment({
   t: TFunction;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
   const attached = Boolean(result?.photoFileName);
-  useEffect(() => {
-    if (!attached) {
-      setPreviewUrl(null);
-      return;
-    }
-    let cancelled = false;
-    getChecklistItemPhotoUrl(instanceId, item.id)
-      .then((response) => {
-        if (!cancelled) setPreviewUrl(response.url);
-      })
-      .catch(() => {
-        if (!cancelled) setPreviewUrl(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [attached, instanceId, item.id, result?.photoFileName]);
+  // PR 400: the photo is fetched with the session and shown through a blob: URL.
+  const preview = useProtectedImage(attached ? () => getChecklistItemPhotoBlob(instanceId, item.id) : null, attached ? `${instanceId}:${item.id}:${result?.photoFileName ?? ''}` : null);
+  const previewUrl = preview.url;
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';

@@ -93,6 +93,8 @@ Download response forced как attachment / binary-safe content handling.
 
 **LIVE-VERIFY:** фактическая browser accessibility URL зависит от live provider/network/CORS/origin configuration.
 
+**Картинки в интерфейсе (PR 400):** браузер не обращается к хранилищу напрямую. Обложка листа и фото критериев читаются API (`GET /checklists/:id/cover/file`, `GET /checklist-instances/:instanceId/items/:itemId/photo/file`, права как у подписанных ссылок) и показываются клиентом через `blob:` ссылку, поэтому картинка работает при любом адресе хранилища (в том числе внутреннем) и без публичного домена хранилища. Политика безопасности страницы не меняется.
+
 ---
 
 ## 4. Buffered upload

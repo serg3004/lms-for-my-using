@@ -1,4 +1,4 @@
-import { apiRequest, uploadChecklistItemPhotoWithProgress } from '../apiClient.js';
+import { apiDownloadRequest, apiRequest, uploadChecklistItemPhotoWithProgress } from '../apiClient.js';
 
 import type {
   ChecklistAnalytics,
@@ -318,6 +318,11 @@ export function getChecklistItemPhotoUrl(instanceId: string, itemId: string) {
   );
 }
 
+/** PR 400: the photo itself (the browser cannot reach the storage, so the API serves it). */
+export async function getChecklistItemPhotoBlob(instanceId: string, itemId: string) {
+  return (await apiDownloadRequest(`/checklist-instances/${encodeURIComponent(instanceId)}/items/${encodeURIComponent(itemId)}/photo/file`)).blob;
+}
+
 export function reviewChecklistItemResult(
   instanceId: string,
   itemId: string,
@@ -365,6 +370,11 @@ export function uploadChecklistCover(checklistId: string, file: File) {
 
 export function deleteChecklistCover(checklistId: string) {
   return apiRequest<{ id: string; coverUpdatedAt: string | null }>(`/checklists/${encodeURIComponent(checklistId)}/cover`, { method: 'DELETE' });
+}
+
+/** PR 400: the cover itself; `getChecklistCoverUrl` below stays for API clients, the page does not use it. */
+export async function getChecklistCoverBlob(checklistId: string) {
+  return (await apiDownloadRequest(`/checklists/${encodeURIComponent(checklistId)}/cover/file`)).blob;
 }
 
 export function getChecklistCoverUrl(checklistId: string) {

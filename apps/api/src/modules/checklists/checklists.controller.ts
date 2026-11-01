@@ -1,5 +1,5 @@
 import { MAX_SESSION_IMPORT_BYTES, type SessionImportFile } from './checklist-session-import.js';
-import { BadRequestException, Body, Controller, ForbiddenException, NotFoundException, Get, Param, Patch, Post, Delete, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, NotFoundException, Get, Headers, Param, Patch, Post, Delete, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { AuthGuard } from '../auth/public.js';
@@ -60,6 +60,23 @@ import {
   markChecklistSessionObserverUnavailableSchema,
 } from './checklists.schemas.js';
 const ALLOWED_ITEM_PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+
+type FileDownloadResponse = {
+  set(headers: Record<string, string>): FileDownloadResponse;
+  status(code: number): FileDownloadResponse;
+  send(body?: Buffer): FileDownloadResponse;
+};
+
+/** PR 400: image bytes for `<img>`; private cache, revalidated by ETag so an unchanged picture is a 304. */
+function sendPrivateImage(ifNoneMatch: string | undefined, response: FileDownloadResponse, file: { bytes: Buffer; mimeType: string; version: string | number }) {
+  const etag = `"${file.version}"`;
+  const headers = { 'Content-Type': file.mimeType, 'Cache-Control': 'private, no-cache', ETag: etag, 'X-Content-Type-Options': 'nosniff' };
+  if (ifNoneMatch === etag) {
+    response.set(headers).status(304).send();
+    return;
+  }
+  response.set({ ...headers, 'Content-Length': String(file.bytes.length) }).send(file.bytes);
+}
 
 type PdfDownloadResponse = {
   set(headers: Record<string, string>): PdfDownloadResponse;
@@ -299,6 +316,13 @@ export class ChecklistsController {
   getCover(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     return this.checklistsService.getCoverDownload(checklistId, user.organizationId, user.id, !isLearnerOnly(user.roles));
+  }
+  // PR 400: the picture itself, served by the API (the browser cannot reach the storage).
+  @Get('checklists/:id/cover/file')
+  @Roles(...rolePolicies.checklistInstancesRead)
+  async getCoverFile(@Param('id') checklistId: string, @Headers('if-none-match') ifNoneMatch: string | undefined, @Req() request: AuthenticatedRequest, @Res() response: FileDownloadResponse) {
+    const user = request.currentUser!;
+    sendPrivateImage(ifNoneMatch, response, await this.checklistsService.getCoverFile(checklistId, user.organizationId, user.id, !isLearnerOnly(user.roles)));
   }
   @Delete('checklists/:id/cover')
   @Roles(...rolePolicies.checklistsCreate)
@@ -603,6 +627,29 @@ export class ChecklistsController {
       user.id,
       isObserver || !isLearnerOnly(user.roles),
     );
+  }
+  // PR 400: the photo itself, same access rules as the signed-URL route above.
+  @Get('checklist-instances/:instanceId/items/:itemId/photo/file')
+  @Roles(...rolePolicies.checklistInstancesRead)
+  async getItemPhotoFile(
+    @Param('instanceId') instanceId: string,
+    @Param('itemId') itemId: string,
+    @Headers('if-none-match') ifNoneMatch: string | undefined,
+    @Req() request: AuthenticatedRequest,
+    @Res() response: FileDownloadResponse,
+  ) {
+    const user = request.currentUser!;
+    const isObserver = await this.reviewAccess.isAssignedObserver(user, instanceId);
+    if (!isLearnerOnly(user.roles) && !isObserver) {
+      await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
+    }
+    sendPrivateImage(ifNoneMatch, response, await this.checklistsService.getItemPhotoFile(
+      instanceId,
+      itemId,
+      user.organizationId,
+      user.id,
+      isObserver || !isLearnerOnly(user.roles),
+    ));
   }
   @Post('checklist-instances/:instanceId/items/:itemId/review')
   @Roles(...rolePolicies.checklistReviewWrite)

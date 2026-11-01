@@ -1,44 +1,49 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { getChecklistCoverUrl } from './api/checklists.js';
+import { getChecklistCoverBlob } from './api/checklists.js';
+import { useProtectedImage } from './useProtectedImage.js';
 
 /**
- * PR 355: the cover of a checklist. Without a cover, or when the signed URL cannot be fetched or the
- * image fails to load, a default illustration is shown so the layout never shifts or breaks.
- * `coverUpdatedAt` is also the cache key: a replaced cover is fetched again.
+ * PR 355: the cover of a checklist. Without a cover, or when the file cannot be fetched or the image
+ * fails to load, a default illustration is shown so the layout never shifts or breaks.
+ * PR 400: the file comes from the API and is shown through a `blob:` URL (the page policy does not
+ * allow images from the storage). `coverUpdatedAt` is also the cache key: a replaced cover is fetched
+ * again. With `retryable` (the editor) a failure says so and offers "Retry" instead of a silent placeholder.
  */
-export function ChecklistCover({ checklistId, coverUpdatedAt, title, ratio = '16 / 9' }: {
+export function ChecklistCover({ checklistId, coverUpdatedAt, title, ratio = '16 / 9', retryable = false }: {
   checklistId: string;
   coverUpdatedAt?: string | null;
   title: string;
   ratio?: string;
+  retryable?: boolean;
 }) {
   const { t } = useTranslation();
-  const [url, setUrl] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    setUrl(null);
-    setFailed(false);
-    if (!coverUpdatedAt) return undefined;
-    let cancelled = false;
-    getChecklistCoverUrl(checklistId)
-      .then((result) => { if (!cancelled) setUrl(result.url); })
-      .catch(() => { if (!cancelled) setFailed(true); });
-    return () => { cancelled = true; };
-  }, [checklistId, coverUpdatedAt]);
+  const image = useProtectedImage(coverUpdatedAt ? () => getChecklistCoverBlob(checklistId) : null, coverUpdatedAt ? `${checklistId}:${coverUpdatedAt}` : null);
+  const [brokenUrl, setBrokenUrl] = useState<string | null>(null);
+  const url = image.status === 'ready' && image.url !== brokenUrl ? image.url : null;
+  const failed = image.status === 'error' || (image.status === 'ready' && image.url === brokenUrl);
 
   const frame = { width: '100%', aspectRatio: ratio, borderRadius: 10, overflow: 'hidden', background: 'var(--color-surface-muted, #eef2ff)' } as const;
-  if (url && !failed) {
+  if (url) {
     return (
       <div style={frame}>
         <img
           src={url}
           alt={t('checklists.cover.alt', 'Cover of the checklist “{{title}}”', { title })}
-          onError={() => setFailed(true)}
+          onError={() => setBrokenUrl(url)}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
+      </div>
+    );
+  }
+  if (retryable && failed) {
+    return (
+      <div role="alert" style={{ ...frame, display: 'grid', placeItems: 'center', alignContent: 'center', gap: 8, padding: 12, textAlign: 'center' }}>
+        <span>{t('checklists.cover.loadError', 'Unable to show the picture.')}</span>
+        <button className="ds-button ds-button--secondary ds-button--sm" onClick={() => { setBrokenUrl(null); image.retry(); }} type="button">
+          {t('checklists.cover.retry', 'Retry')}
+        </button>
       </div>
     );
   }

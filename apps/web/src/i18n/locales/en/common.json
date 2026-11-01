@@ -2697,7 +2697,9 @@
     },
     "cover": {
       "alt": "Cover of the checklist “{{title}}”",
-      "defaultAlt": "Default checklist illustration"
+      "defaultAlt": "Default checklist illustration",
+      "loadError": "Unable to show the picture.",
+      "retry": "Retry"
     },
     "all": {
       "title": "All my checklists",

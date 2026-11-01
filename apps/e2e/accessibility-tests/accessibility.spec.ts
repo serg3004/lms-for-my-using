@@ -321,8 +321,9 @@ test.describe('WCAG AA browser baseline', () => {
       ],
     }));
     // PR 355: the tile picture needs alternative text; the second tile uses the default illustration.
-    const cover = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#bfdbfe"/></svg>')}`;
-    await page.route('**/api/v1/checklists/free-1/cover', (route) => route.fulfill({ json: { url: cover, expiresIn: 300 } }));
+    // PR 400: the page shows the picture from the API file route through a blob: URL.
+    const cover = '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#bfdbfe"/></svg>';
+    await page.route('**/api/v1/checklists/free-1/cover/file', (route) => route.fulfill({ status: 200, contentType: 'image/svg+xml', body: cover }));
     await page.goto('/learn/checklists');
     await expect(page.getByRole('heading', { name: 'Закреплённые листы' })).toBeVisible();
     await expect(page.getByRole('img', { name: /Открытие смены/ })).toHaveCount(2);

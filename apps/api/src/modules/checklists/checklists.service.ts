@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
-import { UploadService } from '../upload/public.js';
+import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, UploadService } from '../upload/public.js';
 import { withResolvedLevelColors } from './checklist-colors.js';
 import { ChecklistScaleService } from './checklist-scale.service.js';
 import { performanceBand, type ManagerPerformanceBand } from './checklist-performance-band.js';
@@ -485,9 +485,32 @@ export class ChecklistsService {
    * draft cover or another tenant's cover is a plain 404.
    */
   async getCoverDownload(checklistId: string, organizationId: string, userId: string, isPrivileged: boolean) {
+    const checklist = await this.findVisibleCover(checklistId, organizationId, userId, isPrivileged);
+    const expiresIn = 300;
+    const url = await this.uploadService.getInlinePresignedUrl(
+      checklist.coverObjectKey,
+      checklist.coverMimeType ?? 'image/png',
+      expiresIn,
+    );
+    return { url, expiresIn };
+  }
+
+  /**
+   * PR 400: the cover bytes themselves, read by the server. The browser never talks to the storage
+   * (the page security policy allows only its own origin and `blob:` images), so this works with any
+   * storage address. Same visibility rules as the signed URL; `coverUpdatedAt` is the cache key.
+   */
+  async getCoverFile(checklistId: string, organizationId: string, userId: string, isPrivileged: boolean) {
+    const checklist = await this.findVisibleCover(checklistId, organizationId, userId, isPrivileged);
+    const bytes = await this.uploadService.getObjectBytes(checklist.coverObjectKey, MAX_BUFFERED_UPLOAD_SIZE_BYTES);
+    if (!bytes) throw new NotFoundException('No cover for this checklist');
+    return { bytes, mimeType: checklist.coverMimeType ?? 'image/png', version: checklist.coverUpdatedAt?.getTime() ?? 0 };
+  }
+
+  private async findVisibleCover(checklistId: string, organizationId: string, userId: string, isPrivileged: boolean) {
     const checklist = await this.prisma.checklist.findFirst({
       where: { id: checklistId, organizationId, deletedAt: null },
-      select: { coverObjectKey: true, coverMimeType: true, status: true, accessMode: true },
+      select: { coverObjectKey: true, coverMimeType: true, coverUpdatedAt: true, status: true, accessMode: true },
     });
     if (!checklist?.coverObjectKey) {
       throw new NotFoundException('No cover for this checklist');
@@ -501,14 +524,7 @@ export class ChecklistsService {
         throw new NotFoundException('No cover for this checklist');
       }
     }
-
-    const expiresIn = 300;
-    const url = await this.uploadService.getInlinePresignedUrl(
-      checklist.coverObjectKey,
-      checklist.coverMimeType ?? 'image/png',
-      expiresIn,
-    );
-    return { url, expiresIn };
+    return { ...checklist, coverObjectKey: checklist.coverObjectKey };
   }
 
   /**
@@ -2152,6 +2168,29 @@ export class ChecklistsService {
     requesterId: string,
     isPrivileged: boolean,
   ) {
+    const photo = await this.findViewablePhoto(instanceId, itemId, organizationId, requesterId, isPrivileged);
+    const expiresIn = 300;
+    const url = await this.uploadService.getInlinePresignedUrl(photo.objectKey, photo.mimeType ?? 'image/jpeg', expiresIn);
+    await this.auditPhotoAccess(photo, organizationId, requesterId, isPrivileged, instanceId, itemId);
+    return { url, expiresIn };
+  }
+
+  /** PR 400: the photo bytes read by the server, for the same reason as `getCoverFile`. */
+  async getItemPhotoFile(
+    instanceId: string,
+    itemId: string,
+    organizationId: string,
+    requesterId: string,
+    isPrivileged: boolean,
+  ) {
+    const photo = await this.findViewablePhoto(instanceId, itemId, organizationId, requesterId, isPrivileged);
+    const bytes = await this.uploadService.getObjectBytes(photo.objectKey, MAX_BUFFERED_UPLOAD_SIZE_BYTES);
+    if (!bytes) throw new NotFoundException('No photo attached to this item');
+    await this.auditPhotoAccess(photo, organizationId, requesterId, isPrivileged, instanceId, itemId);
+    return { bytes, mimeType: photo.mimeType ?? 'image/jpeg', version: photo.version };
+  }
+
+  private async findViewablePhoto(instanceId: string, itemId: string, organizationId: string, requesterId: string, isPrivileged: boolean) {
     const instance = await this.prisma.checklistInstance.findFirst({
       where: { id: instanceId, organizationId, deletedAt: null },
       select: { userId: true, reviewerId: true },
@@ -2174,27 +2213,37 @@ export class ChecklistsService {
       throw new NotFoundException('No photo attached to this item');
     }
 
-    const expiresIn = 300;
-    const url = await this.uploadService.getInlinePresignedUrl(
-      result.photoObjectKey,
-      result.photoMimeType ?? 'image/jpeg',
-      expiresIn,
-    );
+    return {
+      resultId: result.id,
+      objectKey: result.photoObjectKey,
+      mimeType: result.photoMimeType,
+      // The key changes with every replaced photo, so it is the cache version.
+      version: result.photoObjectKey,
+      instanceUserId: instance.userId,
+      reviewerId: instance.reviewerId,
+    };
+  }
 
-    const isOutsideNormalWorkflow = instance.userId !== requesterId && instance.reviewerId !== requesterId;
+  private async auditPhotoAccess(
+    photo: { resultId: string; instanceUserId: string; reviewerId: string | null },
+    organizationId: string,
+    requesterId: string,
+    isPrivileged: boolean,
+    instanceId: string,
+    itemId: string,
+  ) {
+    const isOutsideNormalWorkflow = photo.instanceUserId !== requesterId && photo.reviewerId !== requesterId;
     if (isPrivileged && isOutsideNormalWorkflow) {
       await this.auditLog.record({
         organizationId,
         actorId: requesterId,
         action: 'checklist_evidence.accessed',
         targetType: 'checklist_item_result',
-        targetId: result.id,
+        targetId: photo.resultId,
         summary: 'Viewed photo evidence for a checklist assignment outside own review assignment',
         metadata: { instanceId, itemId },
       });
     }
-
-    return { url, expiresIn };
   }
 
   private async listInstancesWithDeadlineRefresh(scope: { organizationId: string; userId?: string; checklistId?: string }) {

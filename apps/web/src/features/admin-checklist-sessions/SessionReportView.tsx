@@ -1,7 +1,8 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 
-import { getChecklistItemPhotoUrl } from '../../shared/api/checklists.js';
+import { useProtectedImage } from '../../shared/useProtectedImage.js';
+import { getChecklistItemPhotoBlob } from '../../shared/api/checklists.js';
 import type { ChecklistReportHighlight, ChecklistReportPerson, ChecklistSessionReport } from '../../shared/api/types.js';
 import { formatDate } from '../../shared/formatDate.js';
 import { formatParticipantName } from './domain.js';
@@ -231,12 +232,7 @@ export function ReportSummary({ report, t }: { report: Report; t: TFunction }) {
 
 /** Thumbnail of the criterion's photo; the signed link is requested once the row is shown. */
 function CriterionPhoto({ instanceId, itemId, fileName, t }: { instanceId: string; itemId: string; fileName: string | null; t: TFunction }) {
-  const [url, setUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let active = true;
-    getChecklistItemPhotoUrl(instanceId, itemId).then((response) => { if (active) setUrl(response.url); }).catch(() => undefined);
-    return () => { active = false; };
-  }, [instanceId, itemId]);
+  const { url } = useProtectedImage(() => getChecklistItemPhotoBlob(instanceId, itemId), `${instanceId}:${itemId}`);
   const label = t('admin.checklists.report.photoOpen', 'Open photo');
   if (!url) return <span style={{ fontSize: 12 }}>{fileName ?? label}</span>;
   return (
