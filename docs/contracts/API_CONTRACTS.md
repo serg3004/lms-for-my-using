@@ -1895,7 +1895,7 @@ longread lesson writes for every role: only the longread completion flow may com
 Reader responses add `completion: { version, percentage, completed, requiredCount, completedCount, chapters }`.
 Chapter entries include anchor/title, required/access flags, completion timestamp, gate state and reasons
 `unanswered`, `incorrect`, `exhausted`, `file_unavailable`, `time`, `locked`, `continue_required`. The reader shows
-«Готово / Не завершено», reasons, chapter completion and refresh controls; waiting uses refreshed server state.
+«Готово / Не завершено», reasons, chapter completion and refresh controls; waiting uses refreshed server state. Refresh and completion errors belong to the current lesson/version/chapter/preview scope only: navigating clears the previous error, and a late failed request cannot overwrite a newer successful refresh or the state of another chapter. This client-side recovery does not change server completion rules.
 Author preview shows all content, bypasses Continue conditions explicitly, and never writes learning progress.
 
 `GET /progress`, `GET /progress/:id` and `GET /reports/summary` project the same last server-checked summary as
