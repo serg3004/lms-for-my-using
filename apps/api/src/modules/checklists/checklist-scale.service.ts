@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { withResolvedLevelColors } from './checklist-colors.js';
+import { visibleFolderIds, type FolderActor } from './checklist-folder-tree.js';
 import { defaultScaleDefinition } from './checklist-default-scale.js';
 import type { CreateChecklistScaleInput, UpdateChecklistScaleInput } from './checklists.schemas.js';
 
@@ -70,7 +71,7 @@ export class ChecklistScaleService {
     }
   }
 
-  async list(organizationId: string, locale?: string | null) {
+  async list(organizationId: string, locale?: string | null, actor?: FolderActor) {
     await this.ensureDefaultScale(organizationId, locale);
     const scales = await this.prisma.checklistScale.findMany({
       where: { organizationId },
@@ -81,17 +82,17 @@ export class ChecklistScaleService {
       organizationId,
       scales.map((scale) => scale.id),
     );
-    return scales.map((scale) => ({ ...scale, levels: withResolvedLevelColors(scale.levels), inUse: usedIds.has(scale.id) }));
+    return this.withLibraryMetadata(scales.map((scale) => ({ ...scale, levels: withResolvedLevelColors(scale.levels), inUse: usedIds.has(scale.id) })), organizationId, actor);
   }
 
-  async get(scaleId: string, organizationId: string) {
+  async get(scaleId: string, organizationId: string, actor?: FolderActor) {
     const scale = await this.prisma.checklistScale.findFirst({
       where: { id: scaleId, organizationId },
       select: scaleSelect,
     });
     if (!scale) throw new NotFoundException('Evaluation scale not found');
     const usedIds = await this.findUsedScaleIds(organizationId, [scale.id]);
-    return { ...scale, levels: withResolvedLevelColors(scale.levels), inUse: usedIds.has(scale.id) };
+    return (await this.withLibraryMetadata([{ ...scale, levels: withResolvedLevelColors(scale.levels), inUse: usedIds.has(scale.id) }], organizationId, actor))[0]!;
   }
 
   async create(organizationId: string, input: CreateChecklistScaleInput, actorId: string) {
@@ -294,6 +295,22 @@ export class ChecklistScaleService {
       distinct: ['scaleId'],
     });
     return new Set(items.flatMap((item) => (item.scaleId ? [item.scaleId] : [])));
+  }
+
+  /** PR 404: batch metadata; checklist names respect the same folder visibility as the library. */
+  private async withLibraryMetadata<T extends { id: string; createdBy: string | null }>(scales: T[], organizationId: string, actor?: FolderActor) {
+    const ids = scales.map((scale) => scale.id), authors = scales.flatMap((scale) => scale.createdBy ? [scale.createdBy] : []);
+    const [items, creators, folders] = await Promise.all([
+      this.prisma.checklistItem.findMany({ where: { organizationId, scaleId: { in: ids } }, select: { scaleId: true, checklist: { select: { id: true, title: true, folderId: true, deletedAt: true } } }, distinct: ['scaleId', 'checklistId'] }),
+      this.prisma.user.findMany({ where: { organizationId, id: { in: authors } }, select: { id: true, firstName: true, lastName: true } }),
+      actor && !actor.roles.includes('admin') ? this.prisma.checklistFolder.findMany({ where: { organizationId, deletedAt: null }, select: { id: true, parentId: true, createdBy: true, visibleToStaff: true } }) : [],
+    ]);
+    const visible = actor ? visibleFolderIds(folders, actor) : new Set<string>();
+    return scales.map((scale) => {
+      const uses = items.filter((item) => item.scaleId === scale.id);
+      const usedByChecklists = uses.filter((item) => actor && !item.checklist.deletedAt && (actor.roles.includes('admin') || item.checklist.folderId === null || visible.has(item.checklist.folderId))).map(({ checklist }) => ({ id: checklist.id, title: checklist.title }));
+      return { ...scale, creator: creators.find((user) => user.id === scale.createdBy) ?? null, usageCount: uses.length, usedByChecklists };
+    });
   }
 
   private countUsingChecklists(scaleId: string, organizationId: string) {

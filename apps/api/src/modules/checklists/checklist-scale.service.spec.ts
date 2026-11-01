@@ -33,6 +33,8 @@ function baseScale(overrides: Partial<Record<string, unknown>> = {}) {
 }
 
 function createPrisma(overrides: {
+  user?: Partial<Record<'findMany', jest.Mock>>;
+  checklistFolder?: Partial<Record<'findMany', jest.Mock>>;
   checklistScale?: Partial<Record<'findFirst' | 'findMany' | 'create' | 'update' | 'delete', jest.Mock>>;
   checklistScaleLevel?: Partial<Record<'createMany' | 'deleteMany', jest.Mock>>;
   checklistInstance?: Partial<Record<'findFirst', jest.Mock>>;
@@ -40,6 +42,8 @@ function createPrisma(overrides: {
   checklist?: Partial<Record<'count', jest.Mock>>;
 } = {}) {
   const base: Record<string, unknown> = {
+    user: { findMany: jest.fn(async () => []), ...overrides.user },
+    checklistFolder: { findMany: jest.fn(async () => []), ...overrides.checklistFolder },
     checklistScale: {
       findFirst: jest.fn(async () => baseScale()),
       findMany: jest.fn(async () => [baseScale()]),
@@ -94,7 +98,7 @@ describe('ChecklistScaleService', () => {
       const result = await service.list(organizationId);
 
       expect(result.map((scale) => scale.inUse)).toEqual([true, false]);
-      expect(prisma.checklistItem.findMany).toHaveBeenCalledTimes(1);
+      expect(prisma.checklistItem.findMany).toHaveBeenCalledTimes(2);
     });
 
     it('reports inUse=false for an unused scale on get', async () => {
@@ -108,6 +112,26 @@ describe('ChecklistScaleService', () => {
       const service = new ChecklistScaleService(prisma, fakeAuditLog());
 
       await expect(service.get(scaleId, organizationId)).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('library metadata (PR 404)', () => {
+    it('batches author and distinct sheet usage metadata with tenant-scoped queries', async () => {
+      const creator = { id: actorId, firstName: 'Anna', lastName: 'Author' };
+      const prisma = createPrisma({ user: { findMany: jest.fn(async () => [creator]) }, checklistItem: { findMany: jest.fn(async () => [{ scaleId, checklist: { id: 'sheet', title: 'Opening', folderId: null } }]) } });
+      const rows = await new ChecklistScaleService(prisma, fakeAuditLog()).list(organizationId, null, { id: actorId, roles: ['admin'] });
+      expect(rows[0]).toMatchObject({ creator, usageCount: 1, usedByChecklists: [{ id: 'sheet', title: 'Opening' }] });
+      expect(prisma.user.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { organizationId, id: { in: [actorId] } } }));
+      expect(prisma.checklistItem.findMany).toHaveBeenLastCalledWith(expect.objectContaining({ where: { organizationId, scaleId: { in: [scaleId] } }, distinct: ['scaleId', 'checklistId'] }));
+    });
+    it('does not reveal sheets in private folders to an observer', async () => {
+      const prisma = createPrisma({
+        checklistItem: { findMany: jest.fn(async () => [{ scaleId, checklist: { id: 'private', title: 'Secret sheet', folderId: 'closed' } }, { scaleId, checklist: { id: 'root', title: 'Public sheet', folderId: null } }]) },
+        checklistFolder: { findMany: jest.fn(async () => [{ id: 'closed', parentId: null, createdBy: 'other', visibleToStaff: false }]) },
+      });
+      const row = await new ChecklistScaleService(prisma, fakeAuditLog()).get(scaleId, organizationId, { id: actorId, roles: ['mentor'] });
+      expect(row.usageCount).toBe(2); expect(row.usedByChecklists).toEqual([{ id: 'root', title: 'Public sheet' }]);
+      expect(JSON.stringify(row)).not.toContain('Secret sheet');
     });
   });
 

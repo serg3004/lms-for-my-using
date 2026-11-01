@@ -42,7 +42,7 @@ export default defineConfig({
   retries: 0,
   workers: ci ? 2 : undefined,
   reporter: ci
-    ? [['line'], ['html', { outputFolder: '../../playwright-report', open: 'never' }]]
+    ? [['line'], ['github'], ['html', { outputFolder: '../../playwright-report', open: 'never' }]]
     : [['list'], ['html', { outputFolder: '../../playwright-report', open: 'never' }]],
   use: {
     baseURL: 'http://127.0.0.1:5173',

@@ -488,6 +488,12 @@ export type ChecklistScaleLevelSummary = {
 };
 
 export type ChecklistScaleSummary = {
+  /** PR 404: additive library metadata; optional for older cached responses. */
+  createdBy?: string | null;
+  createdAt?: string;
+  creator?: { id: string; firstName: string; lastName: string } | null;
+  usageCount?: number;
+  usedByChecklists?: { id: string; title: string }[];
   id: string;
   organizationId: string;
   name: string;

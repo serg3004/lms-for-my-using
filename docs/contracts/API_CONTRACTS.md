@@ -549,17 +549,30 @@ within the scale.
 
 Lifecycle is create/edit/archive, plus `DELETE /checklist-scales/:id` (204) only while no
 `ChecklistItem` in any checklist references the scale; otherwise 409 and the caller must archive
-instead (`ChecklistItem.scaleId` is a `RESTRICT` foreign key as a second line of defence; sessions
-and instances keep their own immutable snapshot). `PATCH
-/checklist-scales/:id` is rejected (400) once the scale is already archived, or once it is "used"
--- defined as: at least one `ChecklistInstance` exists for a checklist that has an item referencing
-this scale. This is a deliberately conservative proxy for "already captured in an assignment-time
-snapshot" (see below): it also blocks edits for a scale whose referencing item was later removed
-from a checklist that still has old instances, which is the safe direction to err in. The only
-lifecycle transition permitted on a used scale is `POST .../archive`, which is non-destructive
-(levels are untouched) and always allowed regardless of usage; archiving an already-archived scale
-is a no-op, not an error. The fix for an in-use scale that needs different levels is to archive it
-and create a fresh one, never to mutate levels a real instance already snapshotted.
+instead (`ChecklistItem.scaleId` is a `RESTRICT` foreign key). PR 369 permits editing a scale
+already used by assigned checklists: new/not-yet-started sessions use the updated definition,
+while sessions already started or finished retain their snapshot. Archived and protected default
+scales cannot be edited (400); default scales cannot be archived or deleted. Copy creates an
+independent active scale. Archiving keeps the levels and existing references intact; it hides the
+scale from selection for new checklists. Repeated archive is idempotent.
+
+PR 404 adds library metadata to list/get responses: `createdBy`, `createdAt`, `creator`
+(`id`, `firstName`, `lastName`, or null), `usageCount` (distinct referencing checklists, not criteria),
+and `usedByChecklists` (`id`, `title`). Queries are batched and scoped to the organization.
+Usage counts include all references that can prevent deletion; links exclude deleted sheets and
+sheets in folders the caller cannot see, using the existing folder-tree visibility policy.
+`inUse` keeps its prior meaning: used by an assigned checklist. No new endpoints or permissions.
+
+The standalone library is `/admin/checklists/scales`, with `/new` and `/:scaleId` pages. It is a
+third checklist tab, with no new sidebar item. Admins/managers manage scales; instructor and mentor
+library routes (`/instructor/checklists/scales`, `/mentor/scales`) expose a read-only view. The API
+continues to enforce existing `checklistsRead`/`checklistsCreate` policies (observer authoring
+permissions used by the old builder are not revoked). The standalone page and the builder dialog
+share `ScaleEditor`: 255-character name, ordered levels, scores and colours, common validation.
+The page adds a live preview, usage links, archive/delete confirmation and server-error recovery;
+a failed save retains the draft. Successful saves navigate to a freshly loaded list with a status
+message. The existing builder reloads scale choices when opened or after dialog changes; archive
+filters still apply. The Answer Sets switch remains hidden until PR 405 supplies that feature.
 
 Snapshot integration: at assignment time (`ChecklistsService.assignChecklist`/
 `bulkAssignChecklist`, and the legacy pre-snapshot fallback path), every item's `scaleId` is

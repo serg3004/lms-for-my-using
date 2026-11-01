@@ -1,3 +1,4 @@
+import { scaleLibraryServer } from '../fixtures/scale-library.js';
 import { progressReaderServer, continueEditorServer, openProgressReport } from '../fixtures/longread-progress.js';
 import { exerciseReaderServer, exerciseEditorServer } from '../fixtures/longread-exercises.js';
 import { longreadFileServer } from '../fixtures/longread-files.js';
@@ -443,4 +444,11 @@ for (const role of ['admin', 'instructor'] as const) for (const width of [375, 1
 for (const width of [375, 1440]) test(`admin longread progress report accessibility at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 }); await openProgressReport(page);
   await auditAccessibility(page, testInfo, 'longread-progress-report');
+});
+
+for (const width of [375, 1440]) for (const screen of ['list', 'detail'] as const) test(`scale library ${screen} accessibility at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 }); await scaleLibraryServer().attach(page, screen === 'detail' ? '/quality' : '');
+  const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+  expect(result.violations.filter(({ impact }) => ['critical', 'serious', 'moderate'].includes(impact ?? ''))).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

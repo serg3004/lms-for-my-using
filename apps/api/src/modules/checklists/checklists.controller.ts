@@ -413,12 +413,12 @@ export class ChecklistsController {
   @Roles(...rolePolicies.checklistsRead)
   listScales(@Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
-    return this.scales.list(user.organizationId, user.locale);
+    return this.scales.list(user.organizationId, user.locale, user);
   }
   @Get('checklist-scales/:id')
   @Roles(...rolePolicies.checklistsRead)
   getScale(@Param('id') scaleId: string, @Req() request: AuthenticatedRequest) {
-    return this.scales.get(scaleId, request.currentUser!.organizationId);
+    return this.scales.get(scaleId, request.currentUser!.organizationId, request.currentUser!);
   }
   @Post('checklist-scales')
   @Roles(...rolePolicies.checklistsCreate)

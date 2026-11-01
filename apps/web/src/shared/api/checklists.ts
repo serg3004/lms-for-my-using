@@ -203,6 +203,10 @@ export function copyChecklistItemGroup(groupId: string) {
 
 // ---- Reusable evaluation scale library (PR 293) ----
 
+export function getChecklistScale(scaleId: string) {
+  return apiRequest<ChecklistScaleSummary>(`/checklist-scales/${encodeURIComponent(scaleId)}`);
+}
+
 export function listChecklistScales() {
   return apiRequest<ChecklistScaleSummary[]>('/checklist-scales');
 }
