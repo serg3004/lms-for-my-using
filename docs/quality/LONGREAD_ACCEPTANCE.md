@@ -13,6 +13,10 @@ Only fixture provisioning and cleanup use Prisma. Each scenario creates unique o
 
 The existing CI Browser E2E job includes both scenarios automatically. The unit job includes the sentry. Existing database, browser, accessibility and visual jobs remain required for regression coverage of courses, lessons, materials, assignments, certificates and reports. No snapshots, application UI or permissions change in PR 391.
 
+## Recovery regression (PR 392)
+
+`apps/web/src/features/longread-progress/CompletionRuntime.spec.tsx` covers six deterministic request-race cases: late refresh failures across lesson/version/chapter changes, an older failure after a newer successful refresh, clearing a displayed error on navigation, and a previous chapter's late Continue/completion failure. These tests reproduced the problem before the fix. Only results/errors for the current request and reader scope are applied; the existing browser progress suite continues to verify real controls and recovery from a current network error. The UI structure and server rules are unchanged.
+
 ## Running the targeted checks
 
 ```bash
