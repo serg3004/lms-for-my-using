@@ -75,8 +75,8 @@ async function drag(page: Page, handle: Locator, target: Locator, position: 'top
 }
 
 const groupCard = (page: Page, title: string) => page.locator('.admin-group-card').filter({ has: page.locator(`input[value="${title}"]`) });
-const criterion = (page: Page, id: string) => page.locator('.admin-criteria-row').filter({ has: page.locator(`input[value="Критерий ${id}"]`) });
-const order = async (page: Page) => page.locator('.admin-criteria-row:not(.admin-criteria-row--head) input.admin-criteria-row__text').evaluateAll((nodes) => nodes.map((node) => (node as HTMLInputElement).value.replace('Критерий ', '')));
+const criterion = (page: Page, id: string) => page.locator('.admin-criteria-row').filter({ has: page.getByRole('button', { name: `Перетащить критерий: Критерий ${id}` }) });
+const order = async (page: Page) => page.locator('.admin-criteria-row:not(.admin-criteria-row--head) textarea.admin-criteria-row__text').evaluateAll((nodes) => nodes.map((node) => (node as HTMLInputElement).value.replace('Критерий ', '')));
 
 test.describe('Checklist editor: drag-and-drop of groups and criteria (PR 402)', () => {
   test.beforeEach(async ({ page }) => { await page.setViewportSize({ width: 1280, height: 2600 }); });
