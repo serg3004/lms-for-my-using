@@ -1280,6 +1280,36 @@
   flex: 1 1 220px;
 }
 
+/* The generic field rule outranks .ds-search__input, so the text started under the magnifier. */
+.admin-form__field .ds-search__input {
+  padding-left: 2.25rem;
+}
+
+/* Sessions list actions: three fixed slots (open, repeat/cancel, menu) keep every row aligned. */
+.admin-session-actions {
+  display: grid;
+  grid-template-columns: 5rem 6.5rem 2.75rem;
+  align-items: center;
+  justify-content: end;
+  gap: 8px;
+}
+
+.admin-session-actions .ds-button,
+.admin-session-actions__slot,
+.admin-session-actions__slot > * {
+  width: 100%;
+}
+
+.admin-session-actions .ds-button {
+  justify-content: center;
+}
+
+@media (max-width: 860px) {
+  .admin-session-actions .ds-button {
+    min-height: 44px;
+  }
+}
+
 .admin-upload {
   display: flex;
   flex-direction: column;
