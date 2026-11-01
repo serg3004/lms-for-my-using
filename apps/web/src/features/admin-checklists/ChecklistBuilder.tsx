@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react';
+import { verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useOptionalSession } from '../../shared/session.js';
 import type { TFunction } from 'i18next';
 import { ApiClientError } from '../../shared/apiClient.js';
 import { AdminPageHeader, ConfirmDialog, FormField } from '../../shared/adminPage.js';
-import { Badge, Button, EmptyState, Menu, type BadgeVariant } from '../../shared/ui.js';
+import { Badge, Button, ConfirmDialog as RichConfirmDialog, EmptyState, Menu, type BadgeVariant } from '../../shared/ui.js';
 import {
   copyChecklistItemGroup,
   createChecklistItem,
   createChecklistOrgTemplate,
   createChecklistItemGroup,
   deleteChecklistItem,
+  deleteChecklistItemGroup,
+  saveChecklistLayout,
   getChecklist,
   listChecklistItemGroups,
   listChecklistScales,
@@ -34,6 +37,8 @@ import { ChecklistAccessBadge } from '../../shared/checklistAccess.js';
 import { ChecklistCoverField } from './ChecklistCoverField.js';
 import { ChecklistCheckboxOption, ChecklistHelpTip } from './ChecklistHelpTip.js';
 import { ChecklistItemsEditor } from './ChecklistItemsEditor.js';
+import { DndContext, DragHandle, GroupShell, ItemsSortable, SortableBox, SortableContext, useChecklistLayoutDnd } from './ChecklistSortable.js';
+import { applyLayout, toLayoutPayload, type Layout } from './layout.js';
 import { ChecklistModuleSettingsBlock } from './ChecklistModuleSettings.js';
 import { ChecklistPreviewDialog } from './ChecklistPreviewDialog.js';
 import { ChecklistSettingsForm } from './ChecklistSettingsForm.js';
@@ -138,6 +143,9 @@ export function ChecklistBuilder({
   const [previewOpen, setPreviewOpen] = useState(false);
   // PR 296 observation-sheet builder state.
   const [itemGroups, setItemGroups] = useState<ChecklistItemGroup[]>(checklist.itemGroups ?? []);
+  const [groupToDelete, setGroupToDelete] = useState<ChecklistItemGroup | null>(null);
+  const [keepItemsOnGroupDelete, setKeepItemsOnGroupDelete] = useState(false);
+  const layoutDnd = useChecklistLayoutDnd({ items, groups: itemGroups, t, onCommit: (layout) => void commitLayout(layout) });
   const [contextFields, setContextFields] = useState<ContextField[]>(checklist.contextFields ?? []);
   const [scales, setScales] = useState<ChecklistScaleSummary[]>([]);
   const [scaleManagerOpen, setScaleManagerOpen] = useState(false);
@@ -202,6 +210,41 @@ export function ChecklistBuilder({
       return next;
     });
     await Promise.all(patches.map((patch) => updateChecklistItem(patch.id, { order: patch.order })));
+  }
+  async function commitLayout(layout: Layout) {
+    const previous = { items, groups: itemGroups };
+    const next = applyLayout(items, itemGroups, layout);
+    setItems(next.items);
+    setItemGroups(next.groups);
+    try {
+      await saveChecklistLayout(checklist.id, toLayoutPayload(layout));
+    } catch (error) {
+      setItems(previous.items);
+      setItemGroups(previous.groups);
+      const conflict = error instanceof ApiClientError && error.status === 409;
+      setSaveState({
+        status: 'error',
+        message: conflict
+          ? t('admin.checklists.dnd.conflict', 'The checklist was changed elsewhere. The latest version is loaded, repeat the move.')
+          : t('admin.checklists.dnd.error', 'Unable to save the new order. The previous order is restored.'),
+      });
+      if (conflict) {
+        const [refreshed, groups] = await Promise.all([getChecklist(checklist.id), listChecklistItemGroups(checklist.id)]);
+        setItems(refreshed.items);
+        setItemGroups(groups);
+      }
+    }
+  }
+  async function confirmDeleteGroup(group: ChecklistItemGroup, keepItems: boolean) {
+    try {
+      await deleteChecklistItemGroup(group.id, keepItems ? 'keep' : 'delete');
+      setItemGroups((prev) => prev.filter((entry) => entry.id !== group.id));
+      setItems((prev) => (keepItems
+        ? prev.map((item) => (item.groupId === group.id ? { ...item, groupId: null } : item))
+        : prev.filter((item) => item.groupId !== group.id)));
+    } catch (error) {
+      setSaveState({ status: 'error', message: error instanceof ApiClientError ? error.message : t('admin.checklists.groupDeleteError', 'Unable to delete the group.') });
+    }
   }
   async function copyGroup(groupId: string) {
     const newGroup = await copyChecklistItemGroup(groupId);
@@ -455,9 +498,13 @@ export function ChecklistBuilder({
                 + {t('admin.checklists.addGroup', 'Group')}
               </Button>
             </div>
-            {groupItems(items, itemGroups).map(({ group, items: groupedItems }, groupIndex, allGroups) => (
-              <div className="admin-group-card" key={group?.id ?? 'ungrouped'}>
+            <DndContext {...layoutDnd.dndProps}>
+            <SortableContext items={itemGroups.map((entry) => entry.id)} strategy={verticalListSortingStrategy}>
+            {(layoutDnd.dragging ? layoutDnd.buckets : groupItems(items, itemGroups)).map(({ group, items: groupedItems }, groupIndex, allGroups) => {
+              return (
+              <GroupShell key={group?.id ?? 'ungrouped'} groupId={group?.id ?? null}>{(groupHandle) => (<>
                 <div className="admin-group-card__head">
+                  {group && groupHandle && <DragHandle handle={groupHandle} label={t('admin.checklists.dnd.dragGroup', 'Drag group: {{name}}', { name: group.title })} />}
                   <div>
                     {group ? (
                       <input
@@ -477,6 +524,7 @@ export function ChecklistBuilder({
                         <button className="admin-btn admin-btn--sm" disabled={groupIndex === 0} onClick={() => void moveGroupDirection(group.id, 'up')} type="button" aria-label={t('admin.checklists.moveNamedUp', 'Move up: {{name}}', { name: group.title })}>↑</button>
                         <button className="admin-btn admin-btn--sm" disabled={groupIndex === allGroups.filter((b) => b.group).length - 1} onClick={() => void moveGroupDirection(group.id, 'down')} type="button" aria-label={t('admin.checklists.moveNamedDown', 'Move down: {{name}}', { name: group.title })}>↓</button>
                         <button className="admin-btn admin-btn--sm" onClick={() => void copyGroup(group.id)} type="button">{t('admin.checklists.copyGroup', 'Copy')}</button>
+                        <button className="admin-btn admin-btn--sm" onClick={() => { setKeepItemsOnGroupDelete(false); setGroupToDelete(group); }} type="button" aria-label={t('admin.checklists.deleteNamedGroup', 'Delete group: {{name}}', { name: group.title })}>{t('admin.checklists.delete', 'Delete')}</button>
                       </>
                     )}
                     <button className="admin-btn admin-btn--sm admin-btn--primary" onClick={() => void addCriterionToGroup(group?.id ?? null)} type="button">
@@ -488,6 +536,7 @@ export function ChecklistBuilder({
                   <div className="admin-criteria-table" role="table" aria-label={t('admin.checklists.groupsTitle', 'Groups and criteria')}>
                     <div className="admin-criteria-row admin-criteria-row--head" role="row">
                       <span className="admin-criteria-row__order" aria-hidden="true" />
+                      <span className="admin-criteria-row__order" aria-hidden="true" />
                       <span className="admin-criteria-row__text">{t('admin.checklists.field.criterion', 'Criterion')}</span>
                       <span className="admin-criteria-row__scale">{t('admin.checklists.field.scale', 'Scale')}</span>
                       {scoringMode === 'sum_points' && <span className="admin-criteria-row__points">{t('admin.checklists.field.points', 'Points')}</span>}
@@ -496,8 +545,10 @@ export function ChecklistBuilder({
                       <span className="admin-criteria-row__toggle">{t('admin.checklists.criteriaTable.photo', 'Photo')}</span>
                       <span className="admin-criteria-row__menu" aria-hidden="true" />
                     </div>
+                    <ItemsSortable ids={groupedItems.map((entry) => entry.id)}>
                     {groupedItems.map((item, itemIndex) => (
-                      <div className="admin-criteria-row" role="row" key={item.id}>
+                      <SortableBox className="admin-criteria-row" id={item.id} key={item.id} role="row">{(itemHandle) => (<>
+                        <DragHandle handle={itemHandle} label={t('admin.checklists.dnd.dragCriterion', 'Drag criterion: {{name}}', { name: item.text })} />
                         <div className="admin-criteria-row__order">
                           <button disabled={itemIndex === 0} onClick={() => void moveItemDirection(item.id, 'up')} type="button" aria-label={t('admin.checklists.moveNamedUp', 'Move up: {{name}}', { name: item.text })}>↑</button>
                           <button disabled={itemIndex === groupedItems.length - 1} onClick={() => void moveItemDirection(item.id, 'down')} type="button" aria-label={t('admin.checklists.moveNamedDown', 'Move down: {{name}}', { name: item.text })}>↓</button>
@@ -582,13 +633,17 @@ export function ChecklistBuilder({
                             {t('admin.checklists.delete', 'Delete')}
                           </button>
                         </Menu>
-                      </div>
+                      </>)}</SortableBox>
                     ))}
+                    </ItemsSortable>
                   </div>
                 )}
                 {groupedItems.length === 0 && <EmptyState message={t('admin.checklists.noItems', 'No items yet.')} />}
-              </div>
-            ))}
+              </>)}</GroupShell>
+              );
+            })}
+            </SortableContext>
+            </DndContext>
           </ChecklistItemsEditor>
           {feedbackEnabled && (
             <section className="admin-card admin-feedback-block" aria-labelledby="checklist-feedback-title">
@@ -757,6 +812,35 @@ export function ChecklistBuilder({
           if (target) void removeContextField(target.id);
         }}
         onCancel={() => setContextFieldToDelete(null)}
+      />
+      <RichConfirmDialog
+        open={groupToDelete !== null}
+        title={t('admin.checklists.groupDeleteTitle', 'Delete group')}
+        message={(() => {
+          const count = items.filter((item) => item.groupId === groupToDelete?.id).length;
+          return (
+            <>
+              <p>{count > 0
+                ? t('admin.checklists.groupDeleteConfirm', 'Delete the group "{{name}}" and {{count}} criteria?', { name: groupToDelete?.title ?? '', count })
+                : t('admin.checklists.groupDeleteConfirmEmpty', 'Delete the empty group "{{name}}"?', { name: groupToDelete?.title ?? '' })}</p>
+              {count > 0 && (
+                <label>
+                  <input checked={keepItemsOnGroupDelete} onChange={(e) => setKeepItemsOnGroupDelete(e.target.checked)} type="checkbox" />
+                  {' '}{t('admin.checklists.groupDeleteKeepItems', 'Delete only the group, keep the criteria without a group')}
+                </label>
+              )}
+            </>
+          );
+        })()}
+        confirmLabel={t('admin.checklists.delete', 'Delete')}
+        cancelLabel={t('admin.checklists.cancel', 'Cancel')}
+        danger
+        onConfirm={() => {
+          const target = groupToDelete;
+          setGroupToDelete(null);
+          if (target) void confirmDeleteGroup(target, keepItemsOnGroupDelete);
+        }}
+        onCancel={() => setGroupToDelete(null)}
       />
       {previewOpen && (
         <ChecklistPreviewDialog

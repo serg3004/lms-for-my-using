@@ -220,6 +220,20 @@ export const updateChecklistItemGroupSchema = z
   .partial();
 export type UpdateChecklistItemGroupInput = z.infer<typeof updateChecklistItemGroupSchema>;
 
+// PR 402: deleting a group either removes its criteria too or keeps them without a group.
+export const deleteChecklistItemGroupQuerySchema = z.object({
+  items: z.enum(['delete', 'keep']).default('keep'),
+});
+export type DeleteChecklistItemGroupQuery = z.infer<typeof deleteChecklistItemGroupQuerySchema>;
+
+// PR 402: whole-layout reorder (drag-and-drop) — groups in order, each with its criteria, plus
+// the criteria that stay outside any group.
+export const updateChecklistLayoutSchema = z.object({
+  groups: z.array(z.object({ id: z.string().uuid(), itemIds: z.array(z.string().uuid()).max(2000) })).max(500),
+  ungroupedItemIds: z.array(z.string().uuid()).max(2000),
+});
+export type UpdateChecklistLayoutInput = z.infer<typeof updateChecklistLayoutSchema>;
+
 export const assignChecklistSchema = z.object({
   userId: z.string().uuid(),
   dueAt: z.string().datetime().optional(),

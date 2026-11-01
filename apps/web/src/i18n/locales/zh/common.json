@@ -1634,7 +1634,24 @@
         "observersAdminOnly": "只有管理员可以更改此清单的观察员名单。",
         "resetAll": "全部重置：与组织一致",
         "badge": "自有模块设置"
-      }
+      },
+      "dnd": {
+        "dragGroup": "拖动分组：{{name}}",
+        "dragCriterion": "拖动标准：{{name}}",
+        "picked": "已拿起：{{name}}。",
+        "over": "“{{name}}”位于“{{target}}”上方。",
+        "dropped": "“{{name}}”已移动。",
+        "cancelled": "已取消移动“{{name}}”。",
+        "instructions": "按空格或回车拿起。用方向键移动，按空格或回车放下，按 Esc 取消。",
+        "error": "无法保存新顺序，已恢复原顺序。",
+        "conflict": "清单已在别处被修改。已加载最新版本，请重新移动。"
+      },
+      "deleteNamedGroup": "删除分组：{{name}}",
+      "groupDeleteTitle": "删除分组",
+      "groupDeleteConfirm": "删除分组“{{name}}”及其 {{count}} 个标准吗？",
+      "groupDeleteConfirmEmpty": "删除空分组“{{name}}”吗？",
+      "groupDeleteKeepItems": "仅删除分组，保留标准（不属于任何分组）",
+      "groupDeleteError": "无法删除分组。"
     },
     "orgTools": {
       "cardTitle": "组织架构导入",

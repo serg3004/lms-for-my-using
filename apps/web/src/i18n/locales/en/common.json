@@ -1634,7 +1634,24 @@
         "observersAdminOnly": "Only an administrator can change who may observe this checklist.",
         "resetAll": "Reset all: as in the organization",
         "badge": "Own module settings"
-      }
+      },
+      "dnd": {
+        "dragGroup": "Drag group: {{name}}",
+        "dragCriterion": "Drag criterion: {{name}}",
+        "picked": "Picked up {{name}}.",
+        "over": "{{name}} is over {{target}}.",
+        "dropped": "{{name}} was moved.",
+        "cancelled": "Moving {{name}} was cancelled.",
+        "instructions": "To pick up, press space or enter. Move with the arrow keys, drop with space or enter, cancel with escape.",
+        "error": "Unable to save the new order. The previous order is restored.",
+        "conflict": "The checklist was changed elsewhere. The latest version is loaded, repeat the move."
+      },
+      "deleteNamedGroup": "Delete group: {{name}}",
+      "groupDeleteTitle": "Delete group",
+      "groupDeleteConfirm": "Delete the group \"{{name}}\" and {{count}} criteria?",
+      "groupDeleteConfirmEmpty": "Delete the empty group \"{{name}}\"?",
+      "groupDeleteKeepItems": "Delete only the group, keep the criteria without a group",
+      "groupDeleteError": "Unable to delete the group."
     },
     "orgTools": {
       "cardTitle": "Organization structure import",
