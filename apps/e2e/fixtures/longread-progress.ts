@@ -77,5 +77,5 @@ export async function openProgressReport(page: Page) {
     if (path === '/reports/summary') return route.fulfill({ json: { progress: [{ id: 'progress', status: 'in_progress', score: 0, completedAt: null, lesson: { id: longreadLessonId, title: 'Лонгрид: безопасность' }, longread: summary, course: { id: 'course', title: 'Курс с лонгридом' }, user: { id: 'learner', firstName: 'Алексей', lastName: 'Ученик', email: 'learner@example.invalid' } }], certificates: [], overdueAssignments: [], counts: { progressTotal: 1, progressCompletedTotal: 0, progressAvgScore: 0, certificatesIssuedTotal: 0, overdueTotal: 0 } } });
     return route.fulfill({ status: 404, json: { message: 'Unknown synthetic progress route' } });
   });
-  await page.goto('/admin/results'); await expect(page.getByRole('region', { name: 'Состояние прохождения' }).first()).toBeVisible();
+  await page.goto('/admin/results'); await page.getByRole('button', { name: /Ученик/ }).first().click(); await expect(page.getByRole('region', { name: 'Состояние прохождения' }).first()).toBeVisible();
 }

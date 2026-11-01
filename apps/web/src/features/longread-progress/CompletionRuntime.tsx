@@ -20,7 +20,7 @@ export function CompletionRuntime({ data, onUpdate, children }: { data: Longread
     const doc = latest.current;
     if (doc.preview || !doc.completion || !onUpdate || inFlight.current) return;
     const request = ++reads.current;
-    try { const next = await getPublishedLongread(doc.lessonId, doc.navigation.chapter); if (active.current && request === reads.current && !inFlight.current && latest.current.navigation.chapter === doc.navigation.chapter && next.version === doc.version) onUpdate(next); }
+    try { const next = await getPublishedLongread(doc.lessonId, doc.navigation.chapter); if (active.current && request === reads.current && !inFlight.current && latest.current.lessonId === doc.lessonId && latest.current.version === doc.version && latest.current.navigation.chapter === doc.navigation.chapter && next.version === doc.version) onUpdate(next); }
     catch (cause) { if (active.current) setError(errorKey(cause)); }
   }, [onUpdate]);
   const timed = data.completion?.chapters.find((c) => c.anchor === data.navigation.chapter)?.reasons.some((r) => r.code === 'time');
@@ -28,7 +28,7 @@ export function CompletionRuntime({ data, onUpdate, children }: { data: Longread
   const action = async (blockId?: string) => {
     if (inFlight.current || data.preview || data.version === null) return;
     inFlight.current = true; reads.current++; setBusy(true); setError('');
-    try { const next = await completeLongreadChapter(data.lessonId, { version: data.version, chapter: data.navigation.chapter, ...(blockId ? { blockId } : {}) }); if (active.current && latest.current.navigation.chapter === data.navigation.chapter) onUpdate?.(next); }
+    try { const next = await completeLongreadChapter(data.lessonId, { version: data.version, chapter: data.navigation.chapter, ...(blockId ? { blockId } : {}) }); if (active.current && latest.current.lessonId === data.lessonId && latest.current.version === data.version && latest.current.navigation.chapter === data.navigation.chapter) onUpdate?.(next); }
     catch (cause) { if (active.current) { setError(errorKey(cause)); } }
     finally { inFlight.current = false; if (active.current) setBusy(false); }
   };

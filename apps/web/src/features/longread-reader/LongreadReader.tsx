@@ -77,7 +77,7 @@ export function LongreadReader({ data, busy = false, onNavigate, onBookmark, onU
       <span>{t('longreadReader.chapter')} <bdi dir="ltr">{currentIndex + 1} / {data.chapters.length}</bdi></span>
       {hasToc && <button className="admin-btn admin-btn--secondary" style={control} type="button" aria-controls={tocId} aria-expanded={tocOpen} onClick={() => setTocOpen(!tocOpen)}>{t(tocOpen ? 'longreadReader.hideContents' : 'longreadReader.showContents')}</button>}
     </div>
-    <p>{t(data.settings.readingOrder === 'sequential' ? 'longreadReader.sequential' : 'longreadReader.free')} · {t('longreadReader.required', { count: data.settings.requiredChapters })}</p>
+    <p>{t(data.settings.readingOrder === 'sequential' ? 'longreadReader.sequential' : 'longreadReader.free')} · {t('longreadReader.required', { count: data.completion?.requiredCount ?? data.settings.requiredChapters })}</p>
     {!data.settings.allowCopy && <p>{t('longreadReader.copyNotice')}</p>}
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 20, minWidth: 0 }}>
       {hasToc && <aside id={tocId} hidden={!tocOpen} style={{ ...card, flex: '1 1 200px' }}>

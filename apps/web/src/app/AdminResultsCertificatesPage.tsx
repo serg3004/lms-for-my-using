@@ -147,6 +147,7 @@ export async function downloadAssessmentResultsXlsx(results: AssessmentResult[],
 
 export function AdminResultsCertificatesPage() {
   const { t } = useTranslation();
+  const [expandedProgress, setExpandedProgress] = useState<Set<string>>(new Set());
   const [courseId, setCourseId] = useState('');
   const [userId, setUserId] = useState('');
   const [assessmentId, setAssessmentId] = useState('');
@@ -328,12 +329,12 @@ export function AdminResultsCertificatesPage() {
             priority: 'primary',
             label: t('admin.results.col.progress', 'Progress'),
             render: (p) => (
-              <div>{p.longread && <CompletionStatus completion={p.longread} report />}<div className="admin-results-bar">
+              <div className="admin-results-bar">
                 <span className="admin-results-bar__track">
                   <span className="admin-results-bar__fill" style={{ width: `${progressPercent(p)}%` }} />
                 </span>
                 <span className="admin-results-bar__value">{progressPercent(p)}%</span>
-              </div></div>
+              </div>
             ),
           },
           {
@@ -348,6 +349,7 @@ export function AdminResultsCertificatesPage() {
               ),
           },
         ] satisfies Column<Progress>[]}
+        expansion={loadState.data.progressItems.some((item) => !!item.longread) ? { expandedKeys: expandedProgress, onChange: setExpandedProgress, expandLabel: (item) => `${t('courses.details')}: ${findUserLabel(loadState.data.users, item.userId)}`, collapseLabel: (item) => `${t('courses.details')}: ${findUserLabel(loadState.data.users, item.userId)}`, render: (item) => item.longread ? <CompletionStatus completion={item.longread} report /> : <p>{findCourseTitle(loadState.data.courses, item.courseId)}</p> } : undefined}
         rows={loadState.data.progressItems}
         keyExtractor={(p) => p.id}
         responsiveDetails={{ label: t('courses.details'), expandLabel: (p) => `${t('courses.details')}: ${findUserLabel(loadState.data.users, p.userId)}`, collapseLabel: (p) => `${t('courses.details')}: ${findUserLabel(loadState.data.users, p.userId)}` }}
