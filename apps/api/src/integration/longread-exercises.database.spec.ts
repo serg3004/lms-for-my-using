@@ -232,6 +232,15 @@ describe('longread versioned exercises (PR 389) — database', () => {
     return { chapter, gateA, gateB, pass, finishChapter, saved };
   }
   describe('PR 390: Continue and authoritative chapter completion', () => {
+    it('preserves a completed pre-390 record without creating assessment results or changing its timestamp', async () => {
+      const revision = await prisma.longreadRevision.findFirstOrThrow({ where: { organizationId: org } });
+      const chapter = (await drafts.getDraft(lessonId, org)).chapters[0]!.anchor, completedAt = new Date('2026-10-31T12:00:00Z');
+      const row = await prisma.progress.create({ data: { organizationId: org, courseId, lessonId, userId: learner.id, status: 'completed', score: 100, completedAt, longreadRevisionId: revision.id, longreadReadingState: { version: 1, chapter, headingIndex: null, maxReached: 0 } } });
+      expect((await reader.read(lessonId, learner)).completion).toMatchObject({ completed: true, percentage: 100 });
+      expect((await prisma.progress.findUniqueOrThrow({ where: { id: row.id } })).completedAt).toEqual(completedAt);
+      expect(await prisma.assessmentAttempt.count({ where: { organizationId: org } })).toBe(0);
+    });
+
     it('scopes A → Continue A → B → Continue B and never reveals/accepts B before A', async () => {
       const f = await progressFixture(), first = await reader.read(lessonId, learner);
       expect(first.chapters[0]!.blocks.map((b) => b.id)).toEqual([blocks[0], f.gateA]);

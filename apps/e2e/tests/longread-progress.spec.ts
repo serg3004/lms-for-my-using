@@ -49,7 +49,10 @@ test('author preview never writes a Continue action or learning progress', async
 });
 
 test('admin report displays the version and the same blocked/file state as the learner', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 900 });
   const { openProgressReport } = await import('../fixtures/longread-progress.js'); await openProgressReport(page);
   const status = page.getByRole('region', { name: 'Состояние прохождения' }).first(); await expect(status).toContainText('Версия 1'); await expect(status).toContainText('Файл недоступен');
   await expect(status.getByRole('button')).toHaveCount(0);
+  expect(await status.evaluate((section) => section.scrollWidth <= section.clientWidth + 1)).toBe(true);
+  expect(await status.evaluate((section) => section.getBoundingClientRect().right <= innerWidth)).toBe(true);
 });

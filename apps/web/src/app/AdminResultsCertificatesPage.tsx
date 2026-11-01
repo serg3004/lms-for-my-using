@@ -147,7 +147,6 @@ export async function downloadAssessmentResultsXlsx(results: AssessmentResult[],
 
 export function AdminResultsCertificatesPage() {
   const { t } = useTranslation();
-  const [expandedProgress, setExpandedProgress] = useState<Set<string>>(new Set());
   const [courseId, setCourseId] = useState('');
   const [userId, setUserId] = useState('');
   const [assessmentId, setAssessmentId] = useState('');
@@ -349,12 +348,16 @@ export function AdminResultsCertificatesPage() {
               ),
           },
         ] satisfies Column<Progress>[]}
-        expansion={loadState.data.progressItems.some((item) => !!item.longread) ? { expandedKeys: expandedProgress, onChange: setExpandedProgress, expandLabel: (item) => `${t('courses.details')}: ${findUserLabel(loadState.data.users, item.userId)}`, collapseLabel: (item) => `${t('courses.details')}: ${findUserLabel(loadState.data.users, item.userId)}`, render: (item) => item.longread ? <CompletionStatus completion={item.longread} report /> : <p>{findCourseTitle(loadState.data.courses, item.courseId)}</p> } : undefined}
         rows={loadState.data.progressItems}
         keyExtractor={(p) => p.id}
         responsiveDetails={{ label: t('courses.details'), expandLabel: (p) => `${t('courses.details')}: ${findUserLabel(loadState.data.users, p.userId)}`, collapseLabel: (p) => `${t('courses.details')}: ${findUserLabel(loadState.data.users, p.userId)}` }}
         emptyMessage={t('admin.results.noProgress', 'No progress records found.')}
       />
+
+      {loadState.data.progressItems.filter((item) => !!item.longread).map((item) => <details key={item.id} data-longread-progress className="admin-card" style={{ marginBlock: 16, minWidth: 0 }}>
+        <summary style={{ minHeight: 44, overflowWrap: 'anywhere', whiteSpace: 'normal' }}>{findUserLabel(loadState.data.users, item.userId)} · {findCourseTitle(loadState.data.courses, item.courseId)} · {item.lesson?.title ?? ''} · {t('longreadProgress.versionLabel')} {item.longread!.version}</summary>
+        <CompletionStatus completion={item.longread!} report />
+      </details>)}
 
       <section className="admin-results-reports">
         <AdminCard>

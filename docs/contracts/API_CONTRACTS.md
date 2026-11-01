@@ -1891,6 +1891,6 @@ Author preview shows all content, bypasses Continue conditions explicitly, and n
 
 `GET /progress`, `GET /progress/:id` and `GET /reports/summary` project the same last server-checked summary as
 `longread`, without internal timers or other version histories. Existing tenant, instructor/course and manager/team
-filters remain. The admin report shows lesson, version and per-chapter reasons; CSV adds these fields when longread
+filters remain. The admin report shows lesson, version and per-chapter reasons in an expandable full-width card below the table; CSV adds these fields when longread
 rows are present and retains the ordinary export shape when absent. File-state changes appear after the next server
 reader/check refresh; the persisted report is the same checked snapshot, not a second calculation.

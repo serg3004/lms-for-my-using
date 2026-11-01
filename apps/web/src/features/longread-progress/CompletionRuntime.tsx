@@ -47,7 +47,7 @@ export function ContinueBlock({ blockId }: { blockId?: string }) {
 export function CompletionStatus({ completion, currentAnchor, report = false }: { completion: LongreadCompletion; currentAnchor?: string; report?: boolean }) {
   const { t } = useTranslation(), runtime = useCompletion();
   const current = completion.chapters.find((c) => c.anchor === currentAnchor), reasons = current ? current.reasons : completion.chapters.filter((c) => c.required && !c.completedAt).flatMap((c) => c.reasons);
-  return <section aria-label={t('longreadProgress.status')} style={{ marginBlock: 16, overflowWrap: 'anywhere' }}>
+  return <section aria-label={t('longreadProgress.status')} style={{ marginBlock: 16, overflowWrap: 'anywhere', whiteSpace: 'normal', maxWidth: '100%' }}>
     <h3>{t(completion.completed ? 'longreadProgress.done' : 'longreadProgress.incomplete')}</h3>
     <p>{t('longreadProgress.summary', { completed: completion.completedCount, total: completion.requiredCount, percentage: completion.percentage, version: completion.version })}</p>
     {report ? <ul>{completion.chapters.map((chapter) => <li key={chapter.anchor}><strong>{chapter.title ?? chapter.anchor}</strong> · {t(chapter.completedAt ? 'longreadProgress.done' : 'longreadProgress.incomplete')}{chapter.required ? ` · ${t('longreadExercises.required')}` : ''}<CompletionReasons reasons={chapter.reasons} /></li>)}</ul> : <CompletionReasons reasons={reasons} />}
