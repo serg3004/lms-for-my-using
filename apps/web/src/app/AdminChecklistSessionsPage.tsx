@@ -277,43 +277,48 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
       // PR 325: the main actions (open, repeat, cancel) are always visible; PR 318's menu keeps
       // only the rarer ones so the row still fits one line at 1440px.
       render: (row) => (
-        <div className="admin-toolbar__right">
+        <div className="admin-session-actions">
           <Link className="ds-button ds-button--secondary ds-button--sm" to={`${reportBase}/${row.id}`}>
             {t('admin.checklists.sessions.open', 'Open')}
           </Link>
-          {canRepeatSession(row) && (
-            <Button onClick={() => void repeat(row)} size="sm" type="button" variant="secondary">
-              {t('admin.checklists.sessions.repeat', 'Repeat')}
-            </Button>
-          )}
-          {canCancelSession(row) && (
-            <Button onClick={() => setCancelTarget(row)} size="sm" type="button" variant="secondary">
-              {t('admin.checklists.sessions.cancel', 'Cancel')}
-            </Button>
-          )}
-          {(canReassignObserver(row) || canMessageParticipant(row) || canDeleteSession(row)) && (
-            <Menu
-              align="end"
-              buttonClassName="ds-button ds-button--secondary ds-button--sm"
-              label={<><span aria-hidden="true">⋮</span><span className="ui-visually-hidden">{t('admin.checklists.rowActions', 'Actions')}</span></>}
-            >
-              {canReassignObserver(row) && (
-                <button onClick={() => setEditTarget(row)} role="menuitem" type="button">
-                  {t('admin.checklists.sessions.edit.open', 'Edit time or observer')}
-                </button>
-              )}
-              {canMessageParticipant(row) && (
-                <button onClick={() => setMessageTarget(row)} role="menuitem" type="button">
-                  {t('admin.checklists.sessions.message.open', 'Write to the participant')}
-                </button>
-              )}
-              {canDeleteSession(row) && (
-                <button onClick={() => setDeleteTarget(row)} role="menuitem" type="button">
-                  {t('admin.checklists.sessions.delete', 'Delete')}
-                </button>
-              )}
-            </Menu>
-          )}
+          {/* Repeat and cancel never apply to the same status, so they share one slot. */}
+          <span className="admin-session-actions__slot">
+            {canRepeatSession(row) && (
+              <Button onClick={() => void repeat(row)} size="sm" type="button" variant="secondary">
+                {t('admin.checklists.sessions.repeat', 'Repeat')}
+              </Button>
+            )}
+            {canCancelSession(row) && (
+              <Button onClick={() => setCancelTarget(row)} size="sm" type="button" variant="secondary">
+                {t('admin.checklists.sessions.cancel', 'Cancel')}
+              </Button>
+            )}
+          </span>
+          <span className="admin-session-actions__slot">
+            {(canReassignObserver(row) || canMessageParticipant(row) || canDeleteSession(row)) && (
+              <Menu
+                align="end"
+                buttonClassName="ds-button ds-button--secondary ds-button--sm"
+                label={<><span aria-hidden="true">⋮</span><span className="ui-visually-hidden">{t('admin.checklists.rowActions', 'Actions')}</span></>}
+              >
+                {canReassignObserver(row) && (
+                  <button onClick={() => setEditTarget(row)} role="menuitem" type="button">
+                    {t('admin.checklists.sessions.edit.open', 'Edit time or observer')}
+                  </button>
+                )}
+                {canMessageParticipant(row) && (
+                  <button onClick={() => setMessageTarget(row)} role="menuitem" type="button">
+                    {t('admin.checklists.sessions.message.open', 'Write to the participant')}
+                  </button>
+                )}
+                {canDeleteSession(row) && (
+                  <button onClick={() => setDeleteTarget(row)} role="menuitem" type="button">
+                    {t('admin.checklists.sessions.delete', 'Delete')}
+                  </button>
+                )}
+              </Menu>
+            )}
+          </span>
         </div>
       ),
       priority: 'primary',
