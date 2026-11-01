@@ -6,8 +6,18 @@ test('standalone scale creation and editing return to the live list without a do
   await page.getByRole('link', { name: 'Новая шкала', exact: true }).click();
   await page.getByLabel('Название шкалы', { exact: true }).fill('Безопасность');
   await page.getByLabel('Название уровня 1', { exact: true }).fill('Нет'); await page.getByLabel('Название уровня 2', { exact: true }).fill('Да');
-  await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
-  await expect(page).toHaveURL(/\/scales$/); await expect(page.getByRole('status')).toContainText('Изменения оценочных шкал сохранены');
+  // Keep the list pending so its loading status coexists with the saved notice, as it did in CI.
+  let releaseList!: () => void;
+  const listReady = new Promise<void>((resolve) => { releaseList = resolve; });
+  await page.route('**/api/v1/checklist-scales', async (route) => {
+    if (route.request().method() === 'GET') await listReady;
+    await route.fallback();
+  });
+  try {
+    await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
+    await expect(page).toHaveURL(/\/scales$/);
+    await expect(page.getByRole('status').filter({ hasText: 'Изменения оценочных шкал сохранены' })).toBeVisible();
+  } finally { releaseList(); }
   await page.getByRole('link', { name: /Безопасность/ }).click(); await page.getByLabel('Баллы уровня 2', { exact: true }).fill('80');
   await expect(page.getByRole('region', { name: 'Предпросмотр', exact: true })).toContainText('80');
   await page.getByRole('button', { name: 'Сохранить', exact: true }).click(); await expect(page).toHaveURL(/\/scales$/);
