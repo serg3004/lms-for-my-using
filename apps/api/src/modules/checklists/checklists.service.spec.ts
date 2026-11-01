@@ -454,6 +454,7 @@ describe('ChecklistsService — item photo attachment', () => {
     return {
       deleteObject: jest.fn().mockResolvedValue(undefined),
       getInlinePresignedUrl: jest.fn().mockResolvedValue('https://files.example.com/signed-photo'),
+      getObjectBytes: jest.fn().mockResolvedValue(Buffer.from('photo-bytes')),
     };
   }
 
@@ -565,6 +566,22 @@ describe('ChecklistsService — item photo attachment', () => {
 
     expect(download.url).toBe('https://files.example.com/signed-photo');
     expect(uploadService.getInlinePresignedUrl).toHaveBeenCalledWith('key-1', 'image/jpeg', 300);
+  });
+
+  it('PR 400: returns the photo bytes read by the server, only for the owner or a privileged viewer', async () => {
+    const prisma = createFakePrisma();
+    const uploadService = createFakeUploadService();
+    const { service, instance, item } = await setUpCheckedInstance(prisma, uploadService);
+    await service.attachItemPhoto(instance.id, item.id, organizationId, learnerId, false, { objectKey: 'key-1', fileName: 'photo.jpg', mimeType: 'image/jpeg', sizeBytes: 1000 });
+
+    const file = await service.getItemPhotoFile(instance.id, item.id, organizationId, learnerId, false);
+    expect(file.bytes.toString()).toBe('photo-bytes');
+    expect(file.mimeType).toBe('image/jpeg');
+    expect(file.version).toBe('key-1');
+    expect(uploadService.getObjectBytes).toHaveBeenCalledWith('key-1', 8 * 1024 * 1024);
+    await expect(service.getItemPhotoFile(instance.id, item.id, organizationId, 'someone-else', false)).rejects.toThrow('only view your own');
+    uploadService.getObjectBytes.mockResolvedValueOnce(null);
+    await expect(service.getItemPhotoFile(instance.id, item.id, organizationId, learnerId, false)).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('throws NotFoundException when no photo has been attached', async () => {

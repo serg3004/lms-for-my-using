@@ -13,7 +13,7 @@ const api = vi.hoisted(() => ({
   submitChecklistItemResult: vi.fn(),
   uploadChecklistItemPhoto: vi.fn(),
   getChecklistItemPhotoUrl: vi.fn(),
-  getChecklistCoverUrl: vi.fn(),
+  getChecklistCoverBlob: vi.fn(),
 }));
 vi.mock('../shared/api/checklists.js', () => api);
 vi.mock('./LearnerChecklistSessions.js', () => ({ LearnerChecklistSessions: () => null }));
@@ -35,6 +35,9 @@ async function render(props: { openInstanceId?: string | null } = {}) {
 }
 
 beforeEach(async () => {
+  // PR 400: pictures are shown through blob: URLs; jsdom has no object URLs.
+  URL.createObjectURL = vi.fn(() => 'blob:cover');
+  URL.revokeObjectURL = vi.fn();
   await i18n.changeLanguage('ru');
   api.listMyChecklistInstances.mockResolvedValue([]);
 });
@@ -99,7 +102,7 @@ describe('LearnerChecklistsPage: pinned tiles (PR 354)', () => {
 
   // PR 355: picture and access badges.
   it('shows the picture on a tile, the default illustration without one, and the access badges', async () => {
-    api.getChecklistCoverUrl.mockResolvedValue({ url: 'https://storage.example.test/cover.png', expiresIn: 300 });
+    api.getChecklistCoverBlob.mockResolvedValue(new Blob(['x'], { type: 'image/png' }));
     api.listFreeChecklists.mockResolvedValue([
       free('a', 'Лист с картинкой', { pinned: true, coverUpdatedAt: '2026-10-27T10:00:00.000Z' }),
       free('b', 'Лист без картинки', { pinned: true }),
@@ -109,8 +112,8 @@ describe('LearnerChecklistsPage: pinned tiles (PR 354)', () => {
 
     const tiles = container.querySelector('section[aria-label="Закреплённые листы"]');
     // The picture is requested once for the tile and once for the row of the same checklist.
-    expect(api.getChecklistCoverUrl).toHaveBeenCalledTimes(2);
-    expect(api.getChecklistCoverUrl).toHaveBeenCalledWith('a');
+    expect(api.getChecklistCoverBlob).toHaveBeenCalledTimes(2);
+    expect(api.getChecklistCoverBlob).toHaveBeenCalledWith('a');
     expect(tiles?.querySelector('img')?.getAttribute('alt')).toBe('Картинка листа «Лист с картинкой»');
     expect(tiles?.querySelectorAll('img').length).toBe(1);
     expect(tiles?.querySelectorAll('svg[role="img"]').length).toBe(1);
@@ -124,7 +127,7 @@ describe('LearnerChecklistsPage: pinned tiles (PR 354)', () => {
   });
 
   it('falls back to the default illustration when the picture cannot be loaded', async () => {
-    api.getChecklistCoverUrl.mockRejectedValue(new Error('offline'));
+    api.getChecklistCoverBlob.mockRejectedValue(new Error('offline'));
     api.listFreeChecklists.mockResolvedValue([free('a', 'Лист', { pinned: true, coverUpdatedAt: '2026-10-27T10:00:00.000Z' })]);
     await render();
 

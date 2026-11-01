@@ -31,6 +31,7 @@ describe('checklist cover (PR 355) — database', () => {
     await prisma.$connect();
     const upload = {
       deleteObject: async (key: string) => { deleted.push(key); },
+      getObjectBytes: async (key: string) => (key.startsWith('missing') ? null : Buffer.from(`bytes:${key}`)),
       getInlinePresignedUrl: async (key: string) => `https://storage.example.test/${key}`,
       copyChecklistCover: async (key: string, org: string, id: string) => `organizations/${org}/checklist-covers/${id}/copy-of-${key.split('/').pop()}`,
     };
@@ -126,5 +127,24 @@ describe('checklist cover (PR 355) — database', () => {
     await prisma.checklistInstance.create({ data: { organizationId, checklistId: assigned.id, userId: learnerId, status: 'assigned' } });
     await expect(service.getCoverDownload(assigned.id, organizationId, learnerId, false)).resolves.toMatchObject({ expiresIn: 300 });
     await expect(service.getCoverDownload(draftFree.id, organizationId, userId, true)).resolves.toMatchObject({ expiresIn: 300 });
+  });
+
+  // PR 400: the browser cannot reach the storage, so the API serves the bytes under the same rules.
+  it('serves the cover bytes under the same visibility rules as the signed URL', async () => {
+    const free = await makeChecklist();
+    const draftFree = await makeChecklist({ status: 'draft' });
+    const lost = await makeChecklist();
+    for (const checklist of [free, draftFree]) {
+      await service.replaceCover(checklist.id, organizationId, userId, png(`key-${checklist.id}`));
+    }
+    await service.replaceCover(lost.id, organizationId, userId, png('missing-object'));
+    const file = await service.getCoverFile(free.id, organizationId, learnerId, false);
+    expect(file.bytes.toString()).toBe(`bytes:key-${free.id}`);
+    expect(file.mimeType).toBe('image/png');
+    expect(file.version).toBeGreaterThan(0);
+    await expect(service.getCoverFile(draftFree.id, organizationId, learnerId, false)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.getCoverFile(draftFree.id, organizationId, userId, true)).resolves.toMatchObject({ mimeType: 'image/png' });
+    await expect(service.getCoverFile(free.id, otherOrganizationId, userId, true)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.getCoverFile(lost.id, organizationId, userId, true)).rejects.toBeInstanceOf(NotFoundException);
   });
 });

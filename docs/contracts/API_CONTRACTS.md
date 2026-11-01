@@ -658,6 +658,15 @@ object is copied, never shared; if storage fails the copy is created without a c
 "By assignment" / "Free access" / "On the panel" label is computed by clients from `accessMode`
 and `pinned`; it is not stored. Audit actions `checklist.cover_updated` and `checklist.cover_removed`.
 
+PR 400: the browser never opens the storage. `GET /checklists/:id/cover/file` (same roles and visibility
+as `GET /checklists/:id/cover`) and `GET /checklist-instances/:instanceId/items/:itemId/photo/file` (same
+access rules and the same `checklist_evidence.accessed` audit entry as the signed-URL photo route) return
+the image bytes read by the API: `Content-Type` of the stored image, `Cache-Control: private, no-cache`,
+`X-Content-Type-Options: nosniff` and an `ETag` (cover: `coverUpdatedAt` in milliseconds; photo: the storage
+key, which changes with every replaced photo); a matching `If-None-Match` is 304 without a body. A missing
+object or an object over `MAX_BUFFERED_UPLOAD_SIZE_BYTES` is 404. The web client uses these routes and shows
+the bytes through a `blob:` URL; the signed-URL routes stay for API clients and are not used by the page.
+
 **Who may edit a checklist (PR 362в)** (same create/update routes): `allowEditByAll` (boolean; `false` by
 default for a new checklist, `true` for every checklist that existed before). When it is `false`, only the
 creator and an `admin` may `PATCH`/`DELETE` the checklist, upload or remove its cover, and create, change or

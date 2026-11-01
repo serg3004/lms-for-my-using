@@ -59,7 +59,7 @@ export function ChecklistCoverField({ checklistId, title, coverUpdatedAt }: {
   return (
     <div role="group" aria-labelledby="checklist-cover-title" style={{ display: 'grid', gap: 8, maxWidth: 360 }}>
       <strong id="checklist-cover-title">{t('admin.checklists.cover.title', 'Checklist picture')}</strong>
-      <ChecklistCover checklistId={checklistId} coverUpdatedAt={current} title={title} />
+      <ChecklistCover checklistId={checklistId} coverUpdatedAt={current} retryable title={title} />
       <p className="admin-form__hint" style={{ margin: 0 }}>
         {t('admin.checklists.cover.hint', 'JPEG, PNG, GIF or WEBP, up to {{max}} MB. Without a picture a default illustration is shown.', { max: CHECKLIST_PHOTO_MAX_MB })}
       </p>

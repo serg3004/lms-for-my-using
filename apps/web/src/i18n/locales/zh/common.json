@@ -2697,7 +2697,9 @@
     },
     "cover": {
       "alt": "清单“{{title}}”的图片",
-      "defaultAlt": "默认清单插图"
+      "defaultAlt": "默认清单插图",
+      "loadError": "无法显示图片。",
+      "retry": "重试"
     },
     "all": {
       "title": "我的全部清单",

@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { TFunction } from 'i18next';
 
 import { ApiClientError } from '../shared/apiClient.js';
-import { getChecklistItemPhotoUrl } from '../shared/api/checklists.js';
+import { getChecklistItemPhotoBlob } from '../shared/api/checklists.js';
 import type { ChecklistItemResultSummary } from '../shared/api/types.js';
 import { hasChecklistPhotoEvidence } from './checklistPhotoEvidence.js';
 
@@ -25,14 +25,18 @@ export function ChecklistReviewPhotoEvidence({
 }) {
   const [state, setState] = useState<EvidenceState>({ status: 'idle' });
   const attached = hasChecklistPhotoEvidence(result);
+  const loadedUrl = state.status === 'loaded' ? state.url : null;
+
+  // PR 400: the object URL is released when another photo is opened or the row goes away.
+  useEffect(() => () => { if (loadedUrl) URL.revokeObjectURL(loadedUrl); }, [loadedUrl]);
 
   if (!attached) return null;
 
   async function loadPhoto() {
     setState({ status: 'loading' });
     try {
-      const response = await getChecklistItemPhotoUrl(instanceId, itemId);
-      setState({ status: 'loaded', url: response.url });
+      const blob = await getChecklistItemPhotoBlob(instanceId, itemId);
+      setState({ status: 'loaded', url: URL.createObjectURL(blob) });
     } catch (error) {
       setState({
         status: 'error',
