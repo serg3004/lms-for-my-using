@@ -228,6 +228,7 @@ export class ProgressService {
       this.prisma.assessmentAttempt.findMany({
         where: {
           organizationId,
+          countsTowardResults: true,
           userId,
           deletedAt: null,
           completedAt: { not: null },

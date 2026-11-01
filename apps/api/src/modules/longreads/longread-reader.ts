@@ -2,7 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import type { LongreadSettings } from './longreads.schemas.js';
 import type { SnapshotBlock } from './longread-publish-check.js';
 
-export type ReaderChapter = { title: string; anchor: string; cover?: import('./longreads.schemas.js').LongreadSettings['cover']; blocks: SnapshotBlock[] };
+export type ReaderChapter = { title: string; anchor: string; cover?: import('./longreads.schemas.js').LongreadSettings['cover']; blocks: (Omit<SnapshotBlock, 'question'> & { question?: ReturnType<typeof import('./longread-exercise-snapshot.js').publicExerciseQuestion> })[] };
 export type ReaderSnapshot = { lessonId: string; version: number; schemaVersion: number; settings: LongreadSettings; chapters: ReaderChapter[] };
 export type ReadingState = { version: number; chapter: string; headingIndex: number | null; maxReached: number };
 

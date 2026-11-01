@@ -1,3 +1,4 @@
+import { ExerciseBlock } from '../longread-exercises/ExerciseBlock.js';
 import { MediaImage, MediaAttachment } from '../longread-files/Media.js';
 import { MediaPlayer, EmbeddedVideo } from '../longread-media/MediaPlayback.js';
 import { useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
@@ -49,6 +50,7 @@ function Code({ code, language, allowCopy, t }: { code: string; language: string
 export function LongreadContent({ blocks, chapter, allowCopy, navigate, t }: { blocks: ReaderBlock[]; chapter: string; allowCopy: boolean; navigate: (chapter: string) => void; t: TFunction }) {
   return <>{blocks.map((block, index) => {
     if (block.hidden) return null;
+    if (block.type === 'exercise' && block.schemaVersion === 1) return <ExerciseBlock key={block.id ?? index} block={block} />;
     const value = safeBlock(block);
     if (!value) return <p key={index} role="note">{t('longreadReader.unsupported')}</p>;
     if (value.type === 'audio' || value.type === 'video') return <MediaPlayer key={index} type={value.type} content={value.content} />;

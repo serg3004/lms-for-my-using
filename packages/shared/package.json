@@ -28,6 +28,11 @@
       "types": "./src/assessment-question-types.ts",
       "development": "./src/assessment-question-types.ts",
       "import": "./dist/assessment-question-types.js"
+    },
+    "./longread-exercises": {
+      "types": "./src/longread-exercises.ts",
+      "development": "./src/longread-exercises.ts",
+      "import": "./dist/longread-exercises.js"
     }
   },
   "scripts": {

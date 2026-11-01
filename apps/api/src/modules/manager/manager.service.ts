@@ -45,7 +45,7 @@ export class ManagerService {
         select: { userId: true, courseId: true, lessonId: true, status: true },
       }),
       this.prisma.assessmentAttempt.findMany({
-        where: { organizationId, userId: { in: memberIds }, deletedAt: null, completedAt: { not: null } },
+        where: { organizationId, countsTowardResults: true, userId: { in: memberIds }, deletedAt: null, completedAt: { not: null } },
         select: { percentage: true },
       }),
       this.prisma.assignment.findMany({
