@@ -367,6 +367,7 @@ model Organization {
   checklistSessionReminders  ChecklistSessionReminder[]
   checklistLocationCaptures  ChecklistLocationCapture[]
   checklistScales            ChecklistScale[]
+  checklistAnswerSets        ChecklistAnswerSet[]
   checklistScaleLevels       ChecklistScaleLevel[]
   checklistIdempotencyKeys   ChecklistIdempotencyKey[]
   theme                      OrganizationTheme?
@@ -439,6 +440,7 @@ model User {
   checklistScoreRevisions    ChecklistScoreRevision[]   @relation("ChecklistScoreRevisionActor")
   checklistLocationCaptures  ChecklistLocationCapture[] @relation("ChecklistLocationCaptureActor")
   checklistScalesCreated     ChecklistScale[]           @relation("ChecklistScaleCreatedBy")
+  checklistAnswerSetsCreated ChecklistAnswerSet[]       @relation("ChecklistAnswerSetCreatedBy")
   orgStructureEvents         OrgStructureEvent[]        @relation("OrgStructureEventActor")
   longreadRevisionsCreated   LongreadRevision[]
 
@@ -1169,6 +1171,10 @@ model Checklist {
   feedbackEnabled              Boolean                       @default(true) @map("feedback_enabled")
   feedbackRequired             Boolean                       @default(false) @map("feedback_required")
   allowSkipAll                 Boolean                       @default(false) @map("allow_skip_all")
+  // PR 405a: configurable "Feedback" section (sections, sub-sections, text/choice fields). Null =
+  // the built-in three fields (strengths, development areas, next steps). Frozen into the instance
+  // snapshot together with the answer sets it references.
+  feedbackLayout               Json?                         @map("feedback_layout")
   // PR 353: assigned (default, existing behaviour) or free self-start. Affects visibility and
   // start only; it is not frozen into the instance snapshot.
   accessMode                   ChecklistAccessMode           @default(assigned) @map("access_mode")
@@ -1451,6 +1457,9 @@ model ChecklistSession {
   strengths                 String?                    @db.Text
   developmentAreas          String?                    @map("development_areas") @db.Text
   nextSteps                 String?                    @map("next_steps") @db.Text
+  // PR 405a: answers to the configurable feedback section, field id -> text or selected option ids.
+  // The three legacy columns above stay in step for the built-in fields (dual representation).
+  feedbackAnswers           Json?                      @map("feedback_answers")
   // PR 323: definitions are frozen when the session starts so later checklist edits cannot
   // relabel historical answers; values remain a compact field-id -> string object.
   contextFieldsSnapshot     Json?                      @map("context_fields_snapshot")
@@ -1637,6 +1646,24 @@ model ChecklistScale {
 
   @@index([organizationId, status])
   @@map("checklist_scales")
+}
+
+/// PR 405a: reusable set of template answers for "choice" feedback fields. Deliberately not an
+/// evaluation scale: no scores, no colours. `options` is a JSON array of { id, name, description }.
+model ChecklistAnswerSet {
+  id             String               @id @default(uuid()) @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  name           String
+  status         ChecklistScaleStatus @default(active)
+  options        Json
+  createdBy      String?              @map("created_by") @db.Uuid
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator        User?                @relation("ChecklistAnswerSetCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@map("checklist_answer_sets")
 }
 
 model ChecklistScaleLevel {

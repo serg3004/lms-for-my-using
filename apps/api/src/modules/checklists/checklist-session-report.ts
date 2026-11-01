@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 import {
   DEFAULT_LEVEL_COLORS, defaultLevelColor, highlightStyle, type HighlightStyle, type ResultColors,
 } from './checklist-colors.js';
+import { readFeedbackAnswers, type FeedbackAnswerSetSnapshot, type FeedbackLayout } from './checklist-feedback-layout.js';
 import { performanceBand } from './checklist-performance-band.js';
 import type { ChecklistsService } from './checklists.service.js';
 
@@ -23,6 +24,7 @@ export type SessionReportInput = {
     id: string; instanceId: string; status: string; scheduledAt: Date | null; durationMinutes: number | null;
     startedAt: Date | null; timezone: string; locationCapturePolicy: string;
     strengths: string | null; developmentAreas: string | null; nextSteps: string | null;
+    feedbackAnswers?: Prisma.JsonValue | null;
     contextFieldsSnapshot: Prisma.JsonValue | null; contextValues: Prisma.JsonValue | null;
   };
   instance: {
@@ -38,6 +40,8 @@ export type SessionReportInput = {
   /** False when the viewer is the learner and the feedback policy still hides the result (see applyFeedbackVisibility). */
   visible: boolean;
   locationCaptures: ReportLocationCapture[];
+  /** PR 405: the feedback section frozen with the instance; null/absent = switched off. */
+  feedbackConfig?: { layout: FeedbackLayout; answerSets: Record<string, FeedbackAnswerSetSnapshot> } | null;
 };
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
@@ -178,6 +182,10 @@ export function buildSessionReport(input: SessionReportInput) {
     criteria,
     feedback: breakdown.checklist.feedbackEnabled
       ? { strengths: session.strengths, developmentAreas: session.developmentAreas, comment: session.nextSteps }
+      : null,
+    // PR 405: layout + answers by field id; the legacy `feedback` above stays for older readers.
+    feedbackForm: breakdown.checklist.feedbackEnabled && input.feedbackConfig
+      ? { layout: input.feedbackConfig.layout, answerSets: input.feedbackConfig.answerSets, answers: readFeedbackAnswers(session) }
       : null,
     location: { policy: session.locationCapturePolicy, captures: input.locationCaptures },
   };

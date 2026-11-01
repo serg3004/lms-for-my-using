@@ -6,6 +6,18 @@
 >
 > **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
 
+## Checklist feedback layout migration (PR 405а)
+
+`20261101180000_checklist_feedback_layout` is additive and backward-compatible:
+
+- adds nullable JSONB `checklists.feedback_layout` (NULL = the classic three text fields) and nullable JSONB
+  `checklist_sessions.feedback_answers`, and creates the new `checklist_answer_sets` table (organization FK `CASCADE`, creator FK `SET NULL`);
+- one data statement: every session that already has any of `strengths`, `development_areas`, `next_steps` gets `feedback_answers`
+  filled from those columns (non-null values only). The old columns are kept, are still written for the built-in fields and are never
+  dropped, so the statement is repeatable and loses nothing; sessions without feedback stay NULL;
+- an older API build ignores the new columns and table, so the forward migration may run before the API deploy and can be left in place on rollback;
+- no special backup beyond the general policy is needed. No new environment variable.
+
 ## Checklist settings overrides migration (PR 397)
 
 `20261031140000_checklist_settings_overrides` is additive and backward-compatible:

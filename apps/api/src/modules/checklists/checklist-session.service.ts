@@ -1,5 +1,15 @@
 import { buildSessionSummary, MAX_SUMMARY_OBSERVATIONS } from './checklist-session-summary.js';
 import { createHash } from 'node:crypto';
+import {
+  applyFeedbackPatch,
+  effectiveFeedbackLayout,
+  firstMissingRequiredFeedback,
+  legacyFeedbackColumns,
+  normalizeFeedbackPatch,
+  readFeedbackAnswers,
+  type FeedbackAnswerSetSnapshot,
+  type FeedbackAnswersPatch,
+} from './checklist-feedback-layout.js';
 import { parseSessionImport, type SessionImportFile, type SessionImportRow } from './checklist-session-import.js';
 import { BadRequestException, ForbiddenException, ConflictException, HttpException, HttpStatus, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import type {
@@ -52,6 +62,7 @@ const sessionProjectionInclude = {
       percentage: true,
       passed: true,
       scored: true,
+      templateSnapshot: true,
       checklist: { select: { id: true, title: true } },
       user: { select: { id: true, firstName: true, lastName: true, email: true } },
     },
@@ -137,6 +148,8 @@ function presentProjected(session: SessionWithProjection) {
   return {
     ...present(rest as ChecklistSession),
     checklist: instance.checklist,
+    // PR 405: the feedback section as frozen with the instance (null = switched off for this sheet).
+    feedback: sessionFeedbackConfig(instance.templateSnapshot),
     learner: instance.user,
     observer,
     result: {
@@ -177,6 +190,7 @@ function applyFeedbackVisibility<
     strengths: string | null;
     developmentAreas: string | null;
     nextSteps: string | null;
+    feedbackAnswers: Prisma.JsonValue | null;
     contextValues: Prisma.JsonValue | null;
   },
 >(session: T, viewer: ChecklistSessionViewerContext): T {
@@ -191,14 +205,21 @@ function applyFeedbackVisibility<
     strengths: null,
     developmentAreas: null,
     nextSteps: null,
+    feedbackAnswers: null,
     contextValues: null,
   };
 }
 
-/** PR 368: read from the frozen instance snapshot; snapshots made before it read as "not required". */
-function feedbackRequiredBySnapshot(snapshot: unknown): boolean {
-  const checklist = (snapshot as { checklist?: { feedbackEnabled?: boolean; feedbackRequired?: boolean } } | null)?.checklist;
-  return checklist?.feedbackRequired === true && checklist.feedbackEnabled !== false;
+/**
+ * PR 368 / 405: the feedback section a session shows, read from the frozen instance snapshot only.
+ * A snapshot made before PR 405 (or none at all) reads as the classic three text fields, required
+ * (strengths and development areas) only when the sheet said so.
+ */
+function sessionFeedbackConfig(snapshot: unknown) {
+  const checklist = (snapshot as { checklist?: Record<string, unknown> } | null)?.checklist;
+  const layout = effectiveFeedbackLayout(checklist ?? {});
+  const answerSets = (checklist?.feedbackAnswerSets ?? {}) as Record<string, FeedbackAnswerSetSnapshot>;
+  return layout ? { layout, answerSets } : null;
 }
 
 @Injectable()
@@ -752,6 +773,7 @@ export class ChecklistSessionService {
       // unfinished one follows the sheet's current effective settings (sheet override over organization).
       settings: readFrozenReportSettings(extra.instance.reportSettings) ?? freezeReportSettings(effective),
       visible: masked.result.visible,
+      feedbackConfig: masked.feedback,
       locationCaptures: captures as Array<{ capturePoint: string; status: string; capturedAt: Date; latitude?: number | null; longitude?: number | null; accuracyMeters?: number | null }>,
     });
   }
@@ -1054,9 +1076,16 @@ export class ChecklistSessionService {
         const values = parseContextValues(session.contextValues);
         const missing = fields.find((field) => field.required && !values[field.id]?.trim());
         if (missing) throw new BadRequestException(`Required context field is missing: ${missing.label}`);
-        // PR 368: a sheet that requires the feedback section needs strengths and development areas.
-        if (feedbackRequiredBySnapshot(session.instance?.templateSnapshot) && !(session.strengths?.trim() && session.developmentAreas?.trim())) {
-          throw new UnprocessableEntityException('Feedback is required: fill in strengths and development areas before completing the session');
+        // PR 368 / 405: every required field of the sheet's feedback section needs an answer. A sheet without
+        // a configured layout keeps the old rule: strengths and development areas.
+        const feedback = sessionFeedbackConfig(session.instance?.templateSnapshot);
+        const missingFeedback = firstMissingRequiredFeedback(feedback?.layout ?? null, readFeedbackAnswers(session));
+        if (missingFeedback) {
+          throw new UnprocessableEntityException(
+            missingFeedback.builtin
+              ? 'Feedback is required: fill in strengths and development areas before completing the session'
+              : `Feedback is required: fill in "${missingFeedback.title}" before completing the session`,
+          );
         }
       }
 
@@ -1120,10 +1149,18 @@ export class ChecklistSessionService {
    * Same optimistic-concurrency contract (version, 409 on stale write) as update()/transition().
    */
   async submitFeedback(sessionId: string, organizationId: string, input: SubmitChecklistSessionFeedbackInput, actorId: string, scope: object) {
-    const { version: expectedVersion, ...changes } = input;
+    const { version: expectedVersion, answers, ...legacy } = input;
+    // The three classic fields keep their own request keys; both spellings land in the same answers.
+    const requested: FeedbackAnswersPatch = {
+      ...Object.fromEntries(Object.entries(legacy).filter(([, value]) => value !== undefined)),
+      ...answers,
+    };
 
     return runSerializableWithRetry(this.prisma, async (tx) => {
-      const session = await tx.checklistSession.findFirst({ where: { id: sessionId, organizationId, deletedAt: null, ...scope } });
+      const session = await tx.checklistSession.findFirst({
+        where: { id: sessionId, organizationId, deletedAt: null, ...scope },
+        include: { instance: { select: { templateSnapshot: true } } },
+      });
       if (!session) throw new NotFoundException('Checklist session not found');
       if (session.observerId !== actorId) throw new NotFoundException('Checklist session not found');
       if (session.status === 'scheduled' || session.status === 'cancelled') {
@@ -1131,12 +1168,16 @@ export class ChecklistSessionService {
       }
       if (session.version !== expectedVersion) throw new ConflictException(STALE_WRITE_MESSAGE);
 
+      const feedback = sessionFeedbackConfig(session.instance?.templateSnapshot);
+      const patch = normalizeFeedbackPatch(feedback?.layout ?? null, feedback?.answerSets, requested);
+      const next = applyFeedbackPatch(readFeedbackAnswers(session), patch);
+
       const result = await tx.checklistSession.updateMany({
         where: { id: sessionId, organizationId, version: expectedVersion },
         data: {
-          ...(changes.strengths !== undefined ? { strengths: changes.strengths } : {}),
-          ...(changes.developmentAreas !== undefined ? { developmentAreas: changes.developmentAreas } : {}),
-          ...(changes.nextSteps !== undefined ? { nextSteps: changes.nextSteps } : {}),
+          feedbackAnswers: next as Prisma.InputJsonValue,
+          // The classic fields stay mirrored in their own columns for readers that predate the layout.
+          ...Object.fromEntries(Object.entries(legacyFeedbackColumns(next)).filter(([column]) => column in patch)),
           version: { increment: 1 },
         },
       });
