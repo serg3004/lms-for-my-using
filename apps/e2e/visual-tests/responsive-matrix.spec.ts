@@ -779,8 +779,9 @@ for (const width of widths) {
         ],
       }));
       // PR 355: one tile has a picture (a deterministic inline SVG), the other falls back to the default illustration.
-      const cover = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#bfdbfe"/><circle cx="160" cy="90" r="40" fill="#2563eb"/></svg>')}`;
-      await page.route('**/api/v1/checklists/free-1/cover', (route) => route.fulfill({ json: { url: cover, expiresIn: 300 } }));
+      // PR 400: the picture comes from the API file route and is shown through a blob: URL.
+      const cover = '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#bfdbfe"/><circle cx="160" cy="90" r="40" fill="#2563eb"/></svg>';
+      await page.route('**/api/v1/checklists/free-1/cover/file', (route) => route.fulfill({ status: 200, contentType: 'image/svg+xml', body: cover }));
       await page.goto('/learn/checklists');
       await expect(page.getByRole('heading', { name: /Pinned checklists|Закреплённые листы/ })).toBeVisible();
       // The picture is shown on the tile and again on the row of the same checklist in the big block.

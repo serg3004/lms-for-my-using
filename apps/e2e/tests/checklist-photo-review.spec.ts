@@ -8,6 +8,8 @@ const instanceId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const checklistId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 const itemId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const learnerId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+// PR 400: the pages read the picture from the API file route (bytes), not from a signed URL.
+const photoBytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLz9QAAAABJRU5ErkJggg==', 'base64');
 const photoDataUrl = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLz9QAAAABJRU5ErkJggg==';
 
 type Result = {
@@ -91,6 +93,8 @@ test('learner evidence is detected and opened by instructor before approval', as
     learnerStatus = 'in_progress';
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(instance(learnerResult, learnerStatus)) });
   });
+  await learnerPage.route(`**/api/v1/checklist-instances/${instanceId}/items/${itemId}/photo/file`, (route) =>
+    route.fulfill({ status: 200, contentType: 'image/png', body: photoBytes }));
   await learnerPage.route(`**/api/v1/checklist-instances/${instanceId}/items/${itemId}/photo`, async (route) => {
     if (route.request().method() === 'POST') {
       learnerResult = { ...learnerResult!, photoFileName: 'evidence.png' };
@@ -145,6 +149,8 @@ test('learner evidence is detected and opened by instructor before approval', as
     }));
   await instructorPage.route(`**/api/v1/checklist-instances/${instanceId}/events`, (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) }));
+  await instructorPage.route(`**/api/v1/checklist-instances/${instanceId}/items/${itemId}/photo/file`, (route) =>
+    route.fulfill({ status: 200, contentType: 'image/png', body: photoBytes }));
   await instructorPage.route(`**/api/v1/checklist-instances/${instanceId}/items/${itemId}/photo`, (route) =>
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ url: photoDataUrl, expiresIn: 300 }) }));
   await instructorPage.route(`**/api/v1/checklist-instances/${instanceId}/items/${itemId}/review`, async (route) => {
