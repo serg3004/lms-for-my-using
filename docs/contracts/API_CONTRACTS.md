@@ -1842,3 +1842,55 @@ results show the captured labels, option text, weights and keys (only per-block 
 existing grades; a started learner stays pinned. The review page displays all seven response formats and links back to
 the lesson. The editor's publish action requires a saved draft. Chapter/lesson completion gates remain PR 390: submitting
 or finishing a test does not synthesize chapter completion or rewrite reading position.
+
+## Longread Continue and server chapter progress (PR 390)
+
+Top-level `continue` blocks use strict `{ mode: "free" | "answered" | "correct", minViewSeconds: 0..86400 }`,
+with defaults `free` and 0. Multiple buttons are allowed in a chapter; composite containers do not accept them.
+The editor exposes the condition and minimum time. Published revisions capture Continue IDs/settings just like exercises.
+
+A button opens the following fragment of its chapter. The reader sends only the prefix through the first unaccepted
+button; later questions/files/headings are absent, and exercise/file APIs retain that same access boundary. Conditions
+inspect only visible exercises **above that button in the same chapter**, including practice: `answered` requires any
+recorded response, `correct` requires a fully correct response (partial credit/passing threshold alone is insufficient).
+An earlier correct response remains sufficient after later errors. Accepted buttons stay accepted; a wrong B never
+revokes the accepted A. A later button cannot be posted before earlier buttons. `free` skips the answer condition but
+still checks its minimum time and preceding file availability.
+
+`POST /lessons/:id/longread/completion` accepts strict `{ version, chapter, blockId? }`, under the same authentication,
+`lessonsRead`, course/instructor scope, organization flag and current entitlement as the reader. `blockId` accepts a
+Continue action; omission completes the chapter. A missing/foreign/hidden block or inaccessible chapter is 404, a
+changed version is 409, and unmet conditions are 422 with structured `reasons`. Client timestamps, elapsed time,
+user IDs, scores or completion flags are rejected. The result is the updated reader document with `completion`.
+
+The PostgreSQL progress-row lock serializes reads, bookmarks, Continue, exercise attempts and completion for a learner.
+Chapter opening stores a database timestamp once. Minimum time means server wall-clock time since that opening,
+including time away from the tab; it is not an assertion of attention. Reload/two tabs cannot reset or double the timer.
+Completing requires all visible Continue actions, a response to every required exercise in the chapter, and available
+referenced files. Replays retain completion timestamps and never add duplicate completed chapters.
+
+For `requiredChapters=N>0`, the first N visible chapters are mandatory; 0 means all visible chapters. Hidden chapters
+never count. Sequential order requires every preceding visible chapter to be completed. Free order allows optional
+chapters out of order once required predecessors are completed. Both URL reads and position/completion APIs enforce
+this policy; the old cursor frontier is only a bookmark and cannot grant access. Progress percentage is the fraction
+of completed required chapters. A lesson becomes completed when that fraction is 100%; optional chapter completion
+cannot change that timestamp. Assessment grades/certificates remain the separate PR 389 result contract.
+
+Existing `Progress.longreadReadingState` JSON stores a `learning` map keyed by immutable version number. Each entry
+contains chapter server timestamps, accepted Continue IDs and the exact checked public summary. No new table or DDL
+migration is needed. New learners use the latest publication, started learners keep their pinned version; changing
+publication never rewrites earlier chapter/assessment results. Pre-390 completed records for versions without Continue
+blocks retain completion; merely visited chapters are never converted into completion. `POST /progress` refuses
+longread lesson writes for every role: only the longread completion flow may compute that progress.
+
+Reader responses add `completion: { version, percentage, completed, requiredCount, completedCount, chapters }`.
+Chapter entries include anchor/title, required/access flags, completion timestamp, gate state and reasons
+`unanswered`, `incorrect`, `exhausted`, `file_unavailable`, `time`, `locked`, `continue_required`. The reader shows
+«Готово / Не завершено», reasons, chapter completion and refresh controls; waiting uses refreshed server state.
+Author preview shows all content, bypasses Continue conditions explicitly, and never writes learning progress.
+
+`GET /progress`, `GET /progress/:id` and `GET /reports/summary` project the same last server-checked summary as
+`longread`, without internal timers or other version histories. Existing tenant, instructor/course and manager/team
+filters remain. The admin report shows lesson, version and per-chapter reasons in an expandable full-width card below the table; CSV adds these fields when longread
+rows are present and retains the ordinary export shape when absent. File-state changes appear after the next server
+reader/check refresh; the persisted report is the same checked snapshot, not a second calculation.

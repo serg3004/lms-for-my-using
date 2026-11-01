@@ -52,6 +52,6 @@ export default function LongreadLessonReader({ lessonId, title, courseId, course
     {error && <div role="alert"><p>{error}</p><button type="button" onClick={() => void load(retryTarget.current ?? undefined)}>{t('longread.retry')}</button></div>}
     {busy && <p role="status">{t('longreadReader.loading')}</p>}
     {bookmarkFailed && <p role="status">{t('longreadReader.bookmarkFailed')}</p>}
-    <LongreadReader data={data} busy={busy} onNavigate={(chapter, index) => load({ chapter, index })} onBookmark={bookmark} />
+    <LongreadReader data={data} onUpdate={setData} busy={busy} onNavigate={(chapter, index) => load({ chapter, index })} onBookmark={bookmark} />
   </>;
 }

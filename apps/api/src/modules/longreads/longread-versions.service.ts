@@ -49,7 +49,7 @@ export class LongreadVersionsService {
       anchor: chapter.anchor,
       hidden: chapter.hidden,
       ...(chapter.cover ? { cover: chapter.cover as unknown as NonNullable<SnapshotChapter['cover']> } : {}),
-      blocks: chapter.blocks.map((block) => ({ ...(block.type === 'exercise' ? { id: block.id } : {}), type: block.type, schemaVersion: block.schemaVersion, content: block.content, title: block.title, hidden: block.hidden })),
+      blocks: chapter.blocks.map((block) => ({ ...(['exercise', 'continue'].includes(block.type) ? { id: block.id } : {}), type: block.type, schemaVersion: block.schemaVersion, content: block.content, title: block.title, hidden: block.hidden })),
     }));
   }
 

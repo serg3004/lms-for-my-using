@@ -3032,7 +3032,8 @@
       "audio": "Audio",
       "video": "Video",
       "embed": "Embedded video",
-      "exercise": "Exercise"
+      "exercise": "Exercise",
+      "continue": "Continue"
     },
     "tones": {
       "info": "Information",
@@ -3301,5 +3302,40 @@
       "fill_blank": "Fill in blanks",
       "short_answer": "Short answer"
     }
+  },
+  "longreadProgress": {
+    "continue": "Continue",
+    "continued": "Continued",
+    "mode": "Continue condition",
+    "modes": {
+      "free": "Freely",
+      "answered": "After answering exercises above",
+      "correct": "After correctly answering exercises above"
+    },
+    "editorHelp": "This button reveals the next section. Only visible exercises above it in this chapter count. Finish required chapters to open the next chapter.",
+    "minimumTime": "Minimum seconds since opening the chapter (0 for no wait)",
+    "status": "Completion status",
+    "done": "Done",
+    "incomplete": "Not completed",
+    "summary": "Version {{version}} · required chapters: {{completed}} of {{total}} · {{percentage}}%",
+    "completeChapter": "Complete chapter",
+    "chapterDone": "Chapter completed.",
+    "refresh": "Refresh checks",
+    "preview": "Preview: conditions do not block reading and progress is not saved.",
+    "changed": "The version or chapter changed. Reopen the lesson.",
+    "failed": "The action failed. Refresh the conditions and retry.",
+    "reasons": {
+      "unanswered": "Answer the exercises above the button.",
+      "incorrect": "Some answers are incorrect. Correct them and check again.",
+      "exhausted": "No correct answer was recorded and attempts are exhausted. Contact your instructor.",
+      "file_unavailable": "A file is unavailable or awaiting validation. Check again later.",
+      "time": "Minimum viewing time has not elapsed: {{count}} seconds remain.",
+      "locked": "Complete preceding required chapters first.",
+      "continue_required": "Pass the Continue buttons in this chapter."
+    },
+    "requiredHelp": "The first N visible chapters are required; 0 means all. Hidden chapters are excluded.",
+    "versionLabel": "Longread version",
+    "lesson": "Lesson",
+    "chapters": "Chapter status"
   }
 }

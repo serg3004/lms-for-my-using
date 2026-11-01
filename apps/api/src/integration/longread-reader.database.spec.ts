@@ -92,17 +92,20 @@ describe('longread reader and side-effect-free preview (PR 385) — database', (
     expect(JSON.stringify(first)).not.toMatch(/Second content|Third content|HIDDEN/);
     await expect(reader.read(lessonId, learner, anchors[1])).rejects.toBeInstanceOf(NotFoundException);
     await expect(reader.position(lessonId, learner, position(anchors[2]!))).rejects.toBeInstanceOf(NotFoundException);
+    await reader.complete(lessonId, learner, { version: 1, chapter: anchors[0]! });
     const second = await reader.position(lessonId, learner, position(anchors[1]!)); expect(second.navigation.chapter).toBe(anchors[1]);
     expect(second.chapters[1]!.blocks).not.toEqual([]); expect(second.chapters[2]!.blocks).toEqual([]);
     await expect(reader.position(lessonId, learner, position(anchors[3]!))).rejects.toBeInstanceOf(NotFoundException);
+    await reader.complete(lessonId, learner, { version: 1, chapter: anchors[1]! });
     await reader.position(lessonId, learner, position(anchors[2]!));
     const row = await prisma.progress.findFirstOrThrow({ where: { organizationId: org, userId: learner.id } });
-    expect(row).toMatchObject({ status: 'in_progress', score: null, completedAt: null, longreadReadingState: { maxReached: 2 } });
+    expect(row).toMatchObject({ status: 'completed', score: 100, completedAt: expect.any(Date), longreadReadingState: { maxReached: 2 } });
   });
   it('restores the chapter/heading and rejects a late bookmark from the previous chapter', async () => {
     await reader.read(lessonId, learner);
     await reader.position(lessonId, learner, { ...position(anchors[0]!, 1), mode: 'bookmark' });
     expect((await reader.read(lessonId, learner)).navigation).toMatchObject({ chapter: anchors[0], headingIndex: 1 });
+    await reader.complete(lessonId, learner, { version: 1, chapter: anchors[0]! });
     await reader.position(lessonId, learner, position(anchors[1]!));
     await expect(reader.position(lessonId, learner, { ...position(anchors[0]!, 0), mode: 'bookmark' })).rejects.toBeInstanceOf(ConflictException);
     expect((await reader.read(lessonId, learner)).navigation.chapter).toBe(anchors[1]);
@@ -110,18 +113,19 @@ describe('longread reader and side-effect-free preview (PR 385) — database', (
   });
   it('keeps unlocked navigation monotonic with two concurrent windows', async () => {
     await reader.read(lessonId, learner);
+    await reader.complete(lessonId, learner, { version: 1, chapter: anchors[0]! });
     await Promise.all([reader.position(lessonId, learner, position(anchors[1]!)), reader.position(lessonId, learner, position(anchors[0]!))]);
     const row = await prisma.progress.findFirstOrThrow({ where: { organizationId: org, userId: learner.id } });
     expect(row.longreadReadingState).toMatchObject({ maxReached: 1 });
     await expect(reader.read(lessonId, learner, anchors[1])).resolves.toBeDefined();
   });
   it('preserves the chapter URL after renaming and keeps a started learner pinned to their version', async () => {
-    await reader.read(lessonId, learner); await reader.position(lessonId, learner, position(anchors[1]!));
+    await reader.read(lessonId, learner); await reader.complete(lessonId, learner, { version: 1, chapter: anchors[0]! }); await reader.position(lessonId, learner, position(anchors[1]!));
     const draft = await drafts.getDraft(lessonId, org);
     const changed = await drafts.saveDraft(lessonId, org, { revision: draft.revision, settings: { ...draft.settings, readingOrder: 'free', direction: 'rtl' }, chapters: draft.chapters.map((chapter, index) => ({ id: chapter.id, title: index === 1 ? 'Renamed second' : chapter.title, hidden: chapter.hidden,
       blocks: chapter.blocks.map(({ id, type, schemaVersion, content, hidden, title }) => ({ id, type, schemaVersion, content, hidden, title })) })) }, admin.id);
     await versions.publish(lessonId, org, changed.revision, admin.id);
-    const old = await reader.read(lessonId, learner, anchors[1]); const latest = await reader.read(lessonId, secondLearner, anchors[1]);
+    const old = await reader.read(lessonId, learner, anchors[1]); await reader.read(lessonId, secondLearner); await reader.complete(lessonId, secondLearner, { version: 2, chapter: anchors[0]! }); const latest = await reader.read(lessonId, secondLearner, anchors[1]);
     expect(old.version).toBe(1); expect(old.chapters[1]!.title).toBe('Second');
     expect(latest.version).toBe(2); expect(latest.chapters[1]!.title).toBe('Renamed second'); expect(latest.settings.direction).toBe('rtl');
   });

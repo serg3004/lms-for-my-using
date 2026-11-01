@@ -1,3 +1,4 @@
+import { ContinueBlock } from '../longread-progress/CompletionRuntime.js';
 import { ExerciseBlock } from '../longread-exercises/ExerciseBlock.js';
 import { MediaImage, MediaAttachment } from '../longread-files/Media.js';
 import { MediaPlayer, EmbeddedVideo } from '../longread-media/MediaPlayback.js';
@@ -50,6 +51,7 @@ function Code({ code, language, allowCopy, t }: { code: string; language: string
 export function LongreadContent({ blocks, chapter, allowCopy, navigate, t }: { blocks: ReaderBlock[]; chapter: string; allowCopy: boolean; navigate: (chapter: string) => void; t: TFunction }) {
   return <>{blocks.map((block, index) => {
     if (block.hidden) return null;
+    if (block.type === 'continue' && block.schemaVersion === 1) return <ContinueBlock key={block.id ?? index} blockId={block.id} />;
     if (block.type === 'exercise' && block.schemaVersion === 1) return <ExerciseBlock key={block.id ?? index} block={block} />;
     const value = safeBlock(block);
     if (!value) return <p key={index} role="note">{t('longreadReader.unsupported')}</p>;
