@@ -85,6 +85,13 @@ describe('ChecklistBuilder (real hooks)', () => {
     expect(html).toContain('admin-criteria-row__text');
     expect(html).toContain('Move up');
     expect(html).toContain('Move down');
+    // PR 403: no points column outside the "sum of points" mode, the text is a multi-line field, and
+    // the header has one title per grid column of a row (handle, order, text, scale, weight, required, photo, menu).
+    expect(html).toContain('admin-criteria-table admin-criteria-table--no-points');
+    expect(html).toContain('<textarea class="admin-criteria-row__text"');
+    expect(html).not.toContain('admin-criteria-row__points');
+    const head = html.match(/<div class="admin-criteria-row admin-criteria-row--head"[^>]*>(.*?)<\/div>/)![1]!;
+    expect(head.match(/<span/g)).toHaveLength(8);
   });
 });
 

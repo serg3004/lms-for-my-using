@@ -505,7 +505,7 @@ export function ChecklistBuilder({
               <GroupShell key={group?.id ?? 'ungrouped'} groupId={group?.id ?? null}>{(groupHandle) => (<>
                 <div className="admin-group-card__head">
                   {group && groupHandle && <DragHandle handle={groupHandle} label={t('admin.checklists.dnd.dragGroup', 'Drag group: {{name}}', { name: group.title })} />}
-                  <div>
+                  <div className="admin-group-card__title">
                     {group ? (
                       <input
                         aria-label={t('admin.checklists.groupTitle', 'Group title')}
@@ -533,16 +533,16 @@ export function ChecklistBuilder({
                   </div>
                 </div>
                 {groupedItems.length > 0 && (
-                  <div className="admin-criteria-table" role="table" aria-label={t('admin.checklists.groupsTitle', 'Groups and criteria')}>
+                  <div className={scoringMode === 'sum_points' ? 'admin-criteria-table' : 'admin-criteria-table admin-criteria-table--no-points'} role="table" aria-label={t('admin.checklists.groupsTitle', 'Groups and criteria')}>
                     <div className="admin-criteria-row admin-criteria-row--head" role="row">
                       <span className="admin-criteria-row__order" aria-hidden="true" />
                       <span className="admin-criteria-row__order" aria-hidden="true" />
-                      <span className="admin-criteria-row__text">{t('admin.checklists.field.criterion', 'Criterion')}</span>
-                      <span className="admin-criteria-row__scale">{t('admin.checklists.field.scale', 'Scale')}</span>
-                      {scoringMode === 'sum_points' && <span className="admin-criteria-row__points">{t('admin.checklists.field.points', 'Points')}</span>}
-                      <span className="admin-criteria-row__weight">{t('admin.checklists.field.weight', 'Weight')}</span>
-                      <span className="admin-criteria-row__toggle">{t('admin.checklists.criteriaTable.required', 'Required')}</span>
-                      <span className="admin-criteria-row__toggle">{t('admin.checklists.criteriaTable.photo', 'Photo')}</span>
+                      <span>{t('admin.checklists.field.criterion', 'Criterion')}</span>
+                      <span>{t('admin.checklists.field.scale', 'Scale')}</span>
+                      {scoringMode === 'sum_points' && <span>{t('admin.checklists.field.points', 'Points')}</span>}
+                      <span>{t('admin.checklists.field.weight', 'Weight')}</span>
+                      <span>{t('admin.checklists.criteriaTable.required', 'Required')}</span>
+                      <span>{t('admin.checklists.criteriaTable.photo', 'Photo')}</span>
                       <span className="admin-criteria-row__menu" aria-hidden="true" />
                     </div>
                     <ItemsSortable ids={groupedItems.map((entry) => entry.id)}>
@@ -553,53 +553,65 @@ export function ChecklistBuilder({
                           <button disabled={itemIndex === 0} onClick={() => void moveItemDirection(item.id, 'up')} type="button" aria-label={t('admin.checklists.moveNamedUp', 'Move up: {{name}}', { name: item.text })}>↑</button>
                           <button disabled={itemIndex === groupedItems.length - 1} onClick={() => void moveItemDirection(item.id, 'down')} type="button" aria-label={t('admin.checklists.moveNamedDown', 'Move down: {{name}}', { name: item.text })}>↓</button>
                         </div>
-                        <input
+                        <textarea
                           className="admin-criteria-row__text"
+                          rows={2}
                           value={item.text}
                           onChange={(e) => updateItemLocally(item.id, { text: e.target.value })}
                           onBlur={(e) => void persistItem(item.id, { text: e.target.value })}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
                           aria-label={t('admin.checklists.field.criterion', 'Criterion')}
                         />
-                        <select
-                          className="admin-criteria-row__scale"
-                          value={item.scaleId ?? ''}
-                          onChange={(e) => {
-                            if (e.target.value === CREATE_SCALE_OPTION) {
-                              setScaleCreateForItemId(item.id);
-                              return;
-                            }
-                            void persistItem(item.id, { scaleId: e.target.value || null });
-                          }}
-                          title={describeScaleLevels(scales.find((s) => s.id === item.scaleId)?.levels ?? [])}
-                          aria-label={t('admin.checklists.field.scale', 'Scale')}
-                        >
-                          <option value={CREATE_SCALE_OPTION}>+ {t('admin.checklists.scaleManager.createOption', 'Create scale')}</option>
-                          <option value="">{t('admin.checklists.noScale', 'No scale')}</option>
-                          {scales.filter((s) => s.status === 'active' || s.id === item.scaleId).map((s) => (
-                            <option key={s.id} value={s.id}>{s.name}</option>
-                          ))}
-                        </select>
+                        <div className="admin-criteria-cell">
+                          <span aria-hidden="true">{t('admin.checklists.field.scale', 'Scale')}</span>
+                          <select
+                            className="admin-criteria-row__scale"
+                            value={item.scaleId ?? ''}
+                            onChange={(e) => {
+                              if (e.target.value === CREATE_SCALE_OPTION) {
+                                setScaleCreateForItemId(item.id);
+                                return;
+                              }
+                              void persistItem(item.id, { scaleId: e.target.value || null });
+                            }}
+                            title={describeScaleLevels(scales.find((s) => s.id === item.scaleId)?.levels ?? [])}
+                            aria-label={t('admin.checklists.field.scale', 'Scale')}
+                          >
+                            <option value={CREATE_SCALE_OPTION}>+ {t('admin.checklists.scaleManager.createOption', 'Create scale')}</option>
+                            <option value="">{t('admin.checklists.noScale', 'No scale')}</option>
+                            {scales.filter((s) => s.status === 'active' || s.id === item.scaleId).map((s) => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        </div>
                         {scoringMode === 'sum_points' && (
+                          <div className="admin-criteria-cell">
+                            <span aria-hidden="true">{t('admin.checklists.field.points', 'Points')}</span>
+                            <input
+                              type="number"
+                              className="admin-criteria-row__points"
+                              value={item.points}
+                              onChange={(e) => updateItemLocally(item.id, { points: Number(e.target.value) })}
+                              onBlur={(e) => void persistItem(item.id, { points: Number(e.target.value) })}
+                              aria-label={t('admin.checklists.field.points', 'Points')}
+                            />
+                          </div>
+                        )}
+                        <div className="admin-criteria-cell">
+                          <span aria-hidden="true">{t('admin.checklists.field.weight', 'Weight')}</span>
                           <input
                             type="number"
-                            className="admin-criteria-row__points"
-                            value={item.points}
-                            onChange={(e) => updateItemLocally(item.id, { points: Number(e.target.value) })}
-                            onBlur={(e) => void persistItem(item.id, { points: Number(e.target.value) })}
-                            aria-label={t('admin.checklists.field.points', 'Points')}
+                            className="admin-criteria-row__weight"
+                            min={1}
+                            value={item.weight ?? 1}
+                            onChange={(e) => updateItemLocally(item.id, { weight: Number(e.target.value) })}
+                            onBlur={(e) => void persistItem(item.id, { weight: Number(e.target.value) })}
+                            aria-label={t('admin.checklists.field.weight', 'Weight')}
+                            title={t('admin.checklists.field.weight', 'Weight')}
                           />
-                        )}
-                        <input
-                          type="number"
-                          className="admin-criteria-row__weight"
-                          min={1}
-                          value={item.weight ?? 1}
-                          onChange={(e) => updateItemLocally(item.id, { weight: Number(e.target.value) })}
-                          onBlur={(e) => void persistItem(item.id, { weight: Number(e.target.value) })}
-                          aria-label={t('admin.checklists.field.weight', 'Weight')}
-                          title={t('admin.checklists.field.weight', 'Weight')}
-                        />
-                        <div className="admin-criteria-row__toggle">
+                        </div>
+                        <label className="admin-criteria-cell">
+                          <span aria-hidden="true">{t('admin.checklists.criteriaTable.required', 'Required')}</span>
                           <input
                             className="admin-switch"
                             type="checkbox"
@@ -610,8 +622,9 @@ export function ChecklistBuilder({
                             }}
                             aria-label={t('admin.checklists.field.isRequired', 'Required item')}
                           />
-                        </div>
-                        <div className="admin-criteria-row__toggle">
+                        </label>
+                        <label className="admin-criteria-cell">
+                          <span aria-hidden="true">{t('admin.checklists.criteriaTable.photo', 'Photo')}</span>
                           <input
                             className="admin-switch"
                             type="checkbox"
@@ -622,7 +635,7 @@ export function ChecklistBuilder({
                             }}
                             aria-label={t('admin.checklists.field.photoRequired', 'Photo required')}
                           />
-                        </div>
+                        </label>
                         <Menu
                           align="end"
                           buttonClassName="admin-btn admin-btn--sm"
