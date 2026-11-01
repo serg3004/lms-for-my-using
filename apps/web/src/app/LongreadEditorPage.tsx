@@ -1,3 +1,6 @@
+import { ExerciseEditor } from '../features/longread-exercises/ExerciseEditor.js';
+import { publishLongread } from '../shared/api/longreads.js';
+import { exerciseError } from '../features/longread-exercises/ExerciseRuntime.js';
 import { AttachmentEditor, CoverEditor, ImageFields } from '../features/longread-files/FileEditors.js';
 import type { LongreadImage } from '../shared/api/longreads.js';
 import { ReaderSettings } from '../features/longread-reader/ReaderSettings.js';
@@ -37,7 +40,9 @@ export function LongreadEditorPage() {
 
 function Editor({ initial, title, back, reload }: { initial: LongreadDraft; title: string; back: string; reload: () => void }) {
   const { t } = useTranslation();
-  const editor = useLongreadEditor(initial);
+  const [questionBusy, setQuestionBusy] = useState(false);
+  const editor = useLongreadEditor(initial, questionBusy);
+  const [publishing, setPublishing] = useState(false), [publishMessage, setPublishMessage] = useState('');
   const { chapters } = editor.document;
   const [chapterKey, setChapterKey] = useState(chapters[0]!.key);
   const chapter = chapters.find((item) => item.key === chapterKey) ?? chapters[0]!;
@@ -79,11 +84,16 @@ function Editor({ initial, title, back, reload }: { initial: LongreadDraft; titl
   }}>
     <Link to={back}>← {t('longread.back')}</Link>
     <AdminPageHeader eyebrow={t('longread.editor')} title={title} action={<div className="admin-table-actions lr-toolbar">
+      {action(t(publishing ? 'longreadExercises.sending' : 'longreadExercises.publish'), () => {
+        if (publishing) return; setPublishing(true); setPublishMessage('');
+        void publishLongread(initial.lessonId, editor.revision()).then((result) => setPublishMessage(t('longreadExercises.published', { version: result.version }))).catch((cause) => setPublishMessage(t(exerciseError(cause)))).finally(() => setPublishing(false));
+      }, publishing || questionBusy || editor.dirty || editor.status !== 'saved')}
       {action(t('longreadReader.preview'), () => setPreview(true), editor.dirty || editor.status !== 'saved' || chapter.hidden)}
       {action(t('longread.undo'), editor.undo, !editor.canUndo)}{action(t('longread.redo'), editor.redo, !editor.canRedo)}
       <span role="status" aria-live="polite">{t(`longread.states.${editor.status}`)}</span>
       {editor.status === 'error' && action(t('longread.retry'), editor.retry)}
     </div>} />
+    {publishMessage && <p role="status">{publishMessage}</p>}
     {(editor.status === 'error' || editor.status === 'conflict' || editor.status === 'invalid') && <section className="lr-warning" role="alert">
       <p>{t(`longread.messages.${editor.status}`)}</p>
       {editor.status === 'conflict' && action(t('longread.reload'), () => { if (window.confirm(t('longread.discard'))) reload(); })}
@@ -144,6 +154,7 @@ function Editor({ initial, title, back, reload }: { initial: LongreadDraft; titl
             {action(t('longread.up'), () => moveBlock(block.key, -1), index === 0)}{action(t('longread.down'), () => moveBlock(block.key, 1), index === chapter.blocks.length - 1)}
           </div>
           {!editableBlock(block) ? <p>{t('longread.unknownMessage')}</p>
+            : block.type === 'exercise' ? <ExerciseEditor key={block.key} lessonId={initial.lessonId} content={block.content} onChange={(content) => updateBlock(block.key, (item) => ({ ...item, content }))} ready={!editor.dirty && editor.status === 'saved' && !questionBusy && !publishing} revision={editor.revision} adoptRevision={editor.adoptRevision} onBusy={setQuestionBusy} />
             : block.type === 'audio' ? <AudioEditor lessonId={initial.lessonId} content={block.content} onChange={(content) => updateBlock(block.key, (item) => ({ ...item, content }))} />
             : block.type === 'video' ? <VideoEditor lessonId={initial.lessonId} content={block.content} onChange={(content) => updateBlock(block.key, (item) => ({ ...item, content }))} />
             : block.type === 'embed' ? <EmbedEditor lessonId={initial.lessonId} content={block.content} onChange={(content) => updateBlock(block.key, (item) => ({ ...item, content }))} />

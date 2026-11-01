@@ -1,3 +1,5 @@
+import type { ExerciseStates, ExerciseResult, PublicExerciseQuestion, WriteLongreadQuestion } from '@lms/shared/longread-exercises';
+import type { AssessmentAnswer, QuestionDefinition, QuestionType, QuestionScoringMode } from '@lms/shared/assessment-question-types';
 import { apiRequest } from '../apiClient.js';
 import type { EmbedSource } from '@lms/shared/longread-media';
 
@@ -22,7 +24,7 @@ export const getLongreadDraft = (id: string) => apiRequest<LongreadDraft>(path(i
 export const saveLongreadDraft = (id: string, input: SaveLongread) => apiRequest<LongreadDraft>(path(id), { method: 'PUT', body: JSON.stringify(input) });
 
 
-export type ReaderBlock = { type: string; schemaVersion: number; title?: string | null; hidden?: boolean; content: unknown };
+export type ReaderBlock = { id?: string; question?: PublicExerciseQuestion; type: string; schemaVersion: number; title?: string | null; hidden?: boolean; content: unknown };
 export type ReaderChapter = { title: string; anchor: string; cover?: LongreadImage | null; blocks: ReaderBlock[] };
 export type LongreadReaderDocument = {
   lessonId: string; version: number | null; schemaVersion: number; preview: boolean; draftRevision?: number;
@@ -37,3 +39,15 @@ export type LongreadFile = { id: string; fileName: string; mimeType: string; siz
 export const createLongreadFiles = (id: string, files: { fileName: string; mimeType: string; sizeBytes: number }[]) => apiRequest<LongreadFile[]>(`${path(id)}/files`, { method: 'POST', body: JSON.stringify({ files }) });
 export const getLongreadFile = (id: string, fileId: string, signal?: AbortSignal) => apiRequest<LongreadFile>(`${path(id)}/files/${encodeURIComponent(fileId)}`, { signal });
 export const getLongreadFileUrl = (id: string, fileId: string, version: number | null, signal?: AbortSignal) => apiRequest<{ url: string; expiresIn: number; fileName: string; mimeType: string; sizeBytes: number }>(`${path(id)}/files/${encodeURIComponent(fileId)}/${version === null ? 'preview' : `download?version=${version}`}`, { signal });
+
+export type LongreadBankQuestion = { id: string; assessmentId: string; type: QuestionType; title: string; text: string | null; definition: QuestionDefinition | null;
+  scoringMode: QuestionScoringMode; updatedAt: string; options: { id: string; text: string | null; imageUrl: string | null; isCorrect: boolean; order: number }[] };
+export type LongreadQuestionBank = { id: string; title: string; passingScore: number; maxAttempts: number | null; questions: LongreadBankQuestion[] }[];
+export const getLongreadQuestionBank = (id: string) => apiRequest<LongreadQuestionBank>(`${path(id)}/questions`);
+export const writeLongreadQuestion = (id: string, revision: number, question: WriteLongreadQuestion) => apiRequest<{ questionId: string; revision: number }>(`${path(id)}/questions`, { method: 'POST', body: JSON.stringify({ revision, question }) });
+export const getExerciseStates = (id: string, version: number, signal?: AbortSignal) => apiRequest<ExerciseStates>(`${path(id)}/exercises?version=${version}`, { signal });
+export const submitLongreadExercise = (id: string, blockId: string, input: { version: number; requestId: string; expectedAttempt: number; answer: AssessmentAnswer }) => apiRequest<ExerciseStates & { acceptedAttemptId: string; acceptedResult: ExerciseResult }>(`${path(id)}/exercises/${encodeURIComponent(blockId)}/attempts`, { method: 'POST', body: JSON.stringify(input) });
+export const previewLongreadExercise = (id: string, blockId: string, revision: number, answer: AssessmentAnswer) => apiRequest<ExerciseResult>(`${path(id)}/exercises/${encodeURIComponent(blockId)}/preview`, { method: 'POST', body: JSON.stringify({ revision, answer }) });
+export const finishLongreadTest = (id: string, version: number, assessmentId: string) => apiRequest<{ attemptId: string; state: ExerciseStates }>(`${path(id)}/exercises/finish`, { method: 'POST', body: JSON.stringify({ version, assessmentId }) });
+
+export const publishLongread = (id: string, revision: number) => apiRequest<{ version: number }>(`${path(id)}/publish`, { method: 'POST', body: JSON.stringify({ revision }) });

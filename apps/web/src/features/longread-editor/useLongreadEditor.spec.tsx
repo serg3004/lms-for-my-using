@@ -13,7 +13,7 @@ const draft: LongreadDraft = { lessonId: 'lesson', revision: 1, schemaVersion: 1
 };
 let current: ReturnType<typeof useLongreadEditor>;
 let root: Root, container: HTMLDivElement;
-function Harness() { current = useLongreadEditor(draft); return null; }
+function Harness({ paused = false }: { paused?: boolean }) { current = useLongreadEditor(draft, paused); return null; }
 async function tick() { await act(async () => { vi.advanceTimersByTime(901); }); }
 async function edit(title: string) { await act(async () => current.change((doc) => ({ chapters: [{ ...doc.chapters[0]!, title }] }))); }
 beforeEach(async () => {
@@ -63,4 +63,13 @@ describe('serial longread autosave', () => {
     await act(async () => current.undo()); expect(current.document.chapters[0]!.title).toBe('Original'); expect(current.status).toBe('saved');
     await act(async () => current.redo()); expect(current.document.chapters[0]!.title).toBe(''); expect(current.status).toBe('invalid');
   });
+});
+
+it('pauses autosave during a question-bank write and resumes against its adopted revision without losing edits', async () => {
+  await act(async () => root.render(<Harness paused />)); await edit('Typed while question saved'); await tick(); expect(save).not.toHaveBeenCalled();
+  await act(async () => current.adoptRevision(2));
+  save.mockImplementationOnce(async (_id, input) => ({ ...draft, revision: 3, chapters: [{ ...draft.chapters[0]!, title: input.chapters[0].title }] }));
+  await act(async () => root.render(<Harness />)); await tick();
+  expect(save.mock.calls[0]![1]).toMatchObject({ revision: 2, chapters: [{ title: 'Typed while question saved' }] });
+  expect(current.status).toBe('saved'); expect(current.revision()).toBe(3);
 });

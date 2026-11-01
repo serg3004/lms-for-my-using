@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { exerciseContentSchema } from '@lms/shared/longread-exercises';
 import { audioContentSchema, videoContentSchema, embedContentSchema } from '@lms/shared/longread-media';
 
 /**
@@ -215,6 +216,7 @@ export const imageContentSchema = z.object({
 const attachmentsSchema = z.object({ files: z.array(z.object({ fileId: z.string().uuid(), label: z.string().max(255).optional() }).strict()) }).strict();
 
 const KNOWN_BLOCKS = {
+  exercise: exerciseContentSchema,
   audio: audioContentSchema, video: videoContentSchema, embed: embedContentSchema,
   image: imageContentSchema, attachments: attachmentsSchema,
   paragraph: paragraphSchema,

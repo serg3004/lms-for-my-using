@@ -1,3 +1,4 @@
+import { exerciseReaderServer, exerciseEditorServer } from '../fixtures/longread-exercises.js';
 import { longreadFileServer } from '../fixtures/longread-files.js';
 import { openTypedAssessment } from '../fixtures/assessment-typed-compat.js';
 import { longreadPlaybackServer } from '../fixtures/longread-playback.js';
@@ -1182,4 +1183,19 @@ test('remains usable at 200% browser zoom', async ({ page }) => {
   await expectNoPageOverflow(page);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
   await expect.poll(getRefreshRequests).toBeGreaterThan(0);
+});
+
+for (const width of [375, 1440]) test(`longread exercise reader is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await exerciseReaderServer({ direction: width === 375 ? 'rtl' : 'ltr' }).attach(page);
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `longread-exercise-reader-${width}`, false, { fullPage: false, maxDiffPixels: 3000 });
+  await page.getByRole('region', { name: 'Exercise 4', exact: true }).scrollIntoViewIfNeeded();
+  await expectVisualMatch(page, `longread-exercise-matching-${width}`, false, { fullPage: false, maxDiffPixels: 3000 });
+});
+for (const role of ['admin', 'instructor'] as const) for (const width of [375, 1440]) test(`${role} longread exercise authoring is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await exerciseEditorServer(3).attach(page, { role });
+  await page.getByRole('button', { name: 'Изменить вопрос', exact: true }).click();
+  await page.getByRole('region', { name: 'Редактор вопроса', exact: true }).scrollIntoViewIfNeeded();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `${role}-longread-exercise-editor-${width}`, false, { fullPage: false, maxDiffPixels: 3000 });
 });

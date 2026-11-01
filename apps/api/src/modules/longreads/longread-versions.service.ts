@@ -1,3 +1,7 @@
+import { randomUUID } from 'node:crypto';
+import { frozenAssessmentQuestionSchema } from '../../common/assessment-frozen.js';
+import { captureExerciseQuestions, publicExerciseQuestion } from './longread-exercise-snapshot.js';
+import { stableJson } from '../../common/stable-json.js';
 import { checkLongreadFiles } from './longread-file-references.js';
 import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -45,7 +49,7 @@ export class LongreadVersionsService {
       anchor: chapter.anchor,
       hidden: chapter.hidden,
       ...(chapter.cover ? { cover: chapter.cover as unknown as NonNullable<SnapshotChapter['cover']> } : {}),
-      blocks: chapter.blocks.map((block) => ({ type: block.type, schemaVersion: block.schemaVersion, content: block.content, title: block.title, hidden: block.hidden })),
+      blocks: chapter.blocks.map((block) => ({ ...(block.type === 'exercise' ? { id: block.id } : {}), type: block.type, schemaVersion: block.schemaVersion, content: block.content, title: block.title, hidden: block.hidden })),
     }));
   }
 
@@ -53,8 +57,9 @@ export class LongreadVersionsService {
     await this.longreads.ensureEnabled(organizationId);
     const document = await this.prisma.longreadDocument.findFirst({ where: documentScope(lessonId, organizationId), select: { id: true, settings: true } });
     if (!document) throw new NotFoundException('Longread not found');
-    const snapshot = await this.draftSnapshot(this.prisma, document.id);
-    const reasons = [...checkPublishable(snapshot, readSettings(document.settings)), ...await checkLongreadFiles(this.prisma, document.id, { settings: document.settings, chapters: snapshot }, true)];
+    const captured = await captureExerciseQuestions(this.prisma, lessonId, organizationId, await this.draftSnapshot(this.prisma, document.id));
+    const snapshot = captured.chapters;
+    const reasons = [...captured.reasons, ...checkPublishable(snapshot, readSettings(document.settings)), ...await checkLongreadFiles(this.prisma, document.id, { settings: document.settings, chapters: snapshot }, true)];
     return { ok: reasons.length === 0, reasons };
   }
 
@@ -73,18 +78,18 @@ export class LongreadVersionsService {
       }
       const latest = await tx.longreadRevision.findFirst({ where: { documentId: document.id }, orderBy: { number: 'desc' } });
 
+      const captured = await captureExerciseQuestions(tx, lessonId, organizationId, await this.draftSnapshot(tx, document.id));
+      const snapshot = captured.chapters;
+      const settings = readSettings(document.settings);
+      const reasons = [...captured.reasons, ...checkPublishable(snapshot, settings), ...await checkLongreadFiles(tx, document.id, { settings, chapters: snapshot }, true)];
+      if (reasons.length) throw new UnprocessableEntityException({ message: 'The longread cannot be published', reasons });
       let revision;
       let republished = false;
-      if (latest && latest.sourceDraftRevision === document.draftRevision) {
+      if (latest && latest.sourceDraftRevision === document.draftRevision && stableJson(latest.snapshot) === stableJson(snapshot)) {
         // The draft did not change since the latest version: switching it back on creates no duplicate.
         if (document.publishedRevisionId === latest.id) throw new ConflictException('The draft has no changes since the published version');
         revision = latest;
       } else {
-        const snapshot = await this.draftSnapshot(tx, document.id);
-        const settings = readSettings(document.settings);
-        const reasons = [...checkPublishable(snapshot, settings), ...await checkLongreadFiles(tx, document.id, { settings, chapters: snapshot }, true)];
-        if (reasons.length) throw new UnprocessableEntityException({ message: 'The longread cannot be published', reasons });
-
         const number = document.lastRevisionNumber + 1;
         revision = await tx.longreadRevision.create({
           data: {
@@ -185,12 +190,34 @@ export class LongreadVersionsService {
       }
 
       await tx.longreadChapter.deleteMany({ where: { documentId: found.id } });
+      const restoredQuestions = new Map<string, string>(), restoredAssessments = new Map<string, string>();
+      const lesson = await tx.lesson.findUniqueOrThrow({ where: { id: lessonId, organizationId }, select: { courseId: true } });
       for (const [chapterIndex, chapter] of asSnapshot(revision.snapshot).entries()) {
         const created = await tx.longreadChapter.create({
           data: { organizationId, documentId: found.id, order: chapterIndex, title: chapter.title, anchor: chapter.anchor, hidden: chapter.hidden, ...(chapter.cover ? { cover: chapter.cover } : {}) },
           select: { id: true },
         });
         for (const [blockIndex, block] of chapter.blocks.entries()) {
+          let content = block.content as Prisma.InputJsonObject;
+          if (block.type === 'exercise' && block.question) {
+            const frozen = frozenAssessmentQuestionSchema.parse(block.question);
+            let questionId = restoredQuestions.get(frozen.id);
+            if (!questionId) {
+              let assessmentId = restoredAssessments.get(frozen.assessment.id);
+              if (!assessmentId) {
+                const assessment = await tx.assessment.create({ data: { organizationId, courseId: lesson.courseId, lessonId,
+                  title: frozen.assessment.title, slug: `longread-restored-${randomUUID()}`, passingScore: frozen.assessment.passingScore,
+                  maxAttempts: frozen.assessment.maxAttempts, availableAfterCourseCompletion: false, status: 'draft' } });
+                assessmentId = assessment.id; restoredAssessments.set(frozen.assessment.id, assessmentId);
+              }
+              const question = await tx.assessmentQuestion.create({ data: { organizationId, assessmentId, type: frozen.type,
+                title: frozen.title, text: frozen.text, imageUrl: frozen.imageUrl, points: frozen.points, order: frozen.order,
+                scoringMode: frozen.scoringMode, definition: frozen.definition ?? Prisma.DbNull } });
+              await tx.assessmentAnswerOption.createMany({ data: frozen.options.map((option) => ({ text: option.text, imageUrl: option.imageUrl, isCorrect: option.isCorrect, order: option.order, questionId: question.id, organizationId })) });
+              questionId = question.id; restoredQuestions.set(frozen.id, questionId);
+            }
+            content = { ...content, questionId };
+          }
           await tx.longreadBlock.create({
             data: {
               organizationId,
@@ -198,7 +225,7 @@ export class LongreadVersionsService {
               order: blockIndex,
               type: block.type,
               schemaVersion: block.schemaVersion,
-              content: block.content as Prisma.InputJsonObject,
+              content,
               title: block.title ?? null,
               hidden: block.hidden ?? false,
             },
@@ -270,7 +297,7 @@ export class LongreadVersionsService {
           title: chapter.title,
           anchor: chapter.anchor,
           ...(chapter.cover ? { cover: chapter.cover } : {}),
-          blocks: chapter.blocks.map((block) => ({ type: block.type, schemaVersion: block.schemaVersion, content: block.content, title: block.title, hidden: block.hidden })),
+          blocks: chapter.blocks.map((block) => ({ ...(block.id ? { id: block.id } : {}), type: block.type, schemaVersion: block.schemaVersion, content: block.content, title: block.title, hidden: block.hidden, ...(block.type === 'exercise' && block.question ? { question: publicExerciseQuestion(block.question, `${revision.id}:${userId}:${block.id}`) } : {}) })),
         })),
     };
   }
