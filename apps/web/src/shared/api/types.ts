@@ -423,6 +423,14 @@ export type ChecklistFolder = {
 export type ChecklistFolderList = { folders: ChecklistFolder[]; checklistCount: number };
 export type ChecklistFolderDeleteImpact = { folders: number; checklists: number; movedToDraft: Array<{ id: string; title: string }> };
 
+/** PR 397: per-sheet overrides of the organization module settings; a `null` group means "as in the organization". */
+export type ChecklistModuleSettings = {
+  thresholds: { high: number; low: number } | null;
+  resultColors: { low: string; mid: string; high: string } | null;
+  feedbackVisibility: ChecklistFeedbackVisibility | null;
+  observers: { eligibility: ChecklistObserverEligibility; roles: UserRole[]; userIds: string[] } | null;
+};
+
 export type ChecklistSummary = {
   id: string;
   organizationId: string;
@@ -458,6 +466,9 @@ export type ChecklistSummary = {
   creator?: { id: string; firstName: string; lastName: string } | null;
   // PR 395 -- the folder the sheet lives in (null/absent: the root).
   folderId?: string | null;
+  // PR 397 -- optional because older payloads never carried them (read as no overrides).
+  moduleSettings?: ChecklistModuleSettings & { defaultLocationCapturePolicy?: ChecklistGeolocationPolicy | null };
+  hasModuleOverrides?: boolean;
   createdAt: string;
   updatedAt: string;
   items: ChecklistItemSummary[];

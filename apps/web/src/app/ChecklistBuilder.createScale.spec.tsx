@@ -11,6 +11,7 @@ const api = vi.hoisted(() => ({
   updateChecklistItem: vi.fn(),
   listChecklistItemGroups: vi.fn(),
   listChecklistScales: vi.fn(),
+  getChecklistWorkplaceSettings: vi.fn().mockRejectedValue(new Error('offline')),
   createChecklistScale: vi.fn(),
   createChecklistItem: vi.fn(),
 }));

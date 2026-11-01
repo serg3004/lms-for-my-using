@@ -30,6 +30,7 @@ module.exports = {
     '<rootDir>/src/integration/checklist-pinned.database.spec.ts',
     '<rootDir>/src/integration/checklist-bulk-actions.database.spec.ts',
     '<rootDir>/src/integration/checklist-folders.database.spec.ts',
+    '<rootDir>/src/integration/checklist-settings-overrides.database.spec.ts',
     '<rootDir>/src/integration/checklist-cover.database.spec.ts',
     '<rootDir>/src/integration/checklist-observation-sheet-builder.database.spec.ts',
     '<rootDir>/src/integration/checklist-templates.database.spec.ts',

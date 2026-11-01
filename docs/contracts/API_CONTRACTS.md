@@ -410,6 +410,23 @@ caller cannot see and carries `folderId` on every sheet; `PATCH /checklists/:id`
 `POST /checklists/bulk` accepts the action `move` with `folderId` (required key, `null` = root; skip reason `already_in_folder`). The
 target folder must be visible to the caller; moving a sheet needs the right to edit that sheet. A copy stays in the folder of the original.
 
+PR 397: per-sheet overrides of the organization module settings. A staff-facing sheet (`GET /checklists`, `GET /checklists/:id`, the
+answers of `PATCH`, copy and create-from-template) carries `moduleSettings { thresholds { high, low } | null, resultColors { low, mid,
+high } | null, feedbackVisibility | null, observers { eligibility, roles[], userIds[] } | null, defaultLocationCapturePolicy | null }` and
+`hasModuleOverrides`; a `null` group means "as in the organization" (the raw `*_override` columns are never exposed, and the learner-facing
+instance does not carry them). `PATCH /checklists/:id` accepts `moduleSettings` with any of the first four groups (`null` returns a group to
+the organization, a group is set as a whole: both thresholds, all three `#RRGGBB` colours); geolocation stays the sheet's own
+`defaultLocationCapturePolicy` (`null` = as in the organization). Checks as for the organization: 422 when the low threshold is not below the
+high one, colours strictly `#RRGGBB`, 400 for observers that are not active users of the organization or an empty `selected_users` list.
+Rights: the editor of the sheet changes thresholds, colours and feedback visibility; **only an administrator changes `observers`** (403
+otherwise; resending the stored value is not a change). Readers use one merge, sheet over organization: the session report, PDF and XLSX
+(thresholds and colours), manager analytics (a single-sheet view and the distribution use the sheet's thresholds; averages across sheets are
+compared by percentage and banded by the organization's thresholds), the observer pickers and observer validation (`GET
+/checklist-sessions/participants?role=observer&checklistId=` follows the sheet), the geolocation policy of a session created without an
+explicit one, and what the learner sees of feedback. When an instance completes, its thresholds and colours are frozen into
+`checklist_instances.report_settings`, so a later edit of the organization or sheet never repaints a finished report; instances completed
+before PR 397 follow the current effective settings. A copy and an organization template keep the overrides.
+
 `GET /checklist-sessions` and `GET /checklist-sessions/:id` now return a joined projection instead
 of the bare `ChecklistSession` row: `checklist: {id, title}`, `learner: {id, firstName, lastName,
 email}`, `observer: {id, firstName, lastName, email}`, and `result: {instanceStatus, percentage,

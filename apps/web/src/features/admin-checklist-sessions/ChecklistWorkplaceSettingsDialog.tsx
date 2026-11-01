@@ -73,6 +73,7 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
       {error && <p className="learner-quiz__submit-error" role="alert">{error}</p>}
       {open && settings ? (
         <>
+          <p className="admin-form__hint">{t('admin.checklists.settings.moduleSettingsOrgHint', 'Default values; an individual checklist can override them.')}</p>
           <div className="admin-form__field">
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44 }}>
               <input

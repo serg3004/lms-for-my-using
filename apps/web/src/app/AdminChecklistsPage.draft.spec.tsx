@@ -17,6 +17,7 @@ const api = vi.hoisted(() => ({
   listInstancesForChecklist: vi.fn(),
   listChecklistItemGroups: vi.fn(),
   listChecklistScales: vi.fn(),
+  getChecklistWorkplaceSettings: vi.fn().mockRejectedValue(new Error('offline')),
 }));
 vi.mock('../shared/api/checklists.js', () => api);
 vi.mock('../shared/api/users.js', () => ({ listUsers: vi.fn().mockResolvedValue({ items: [], page: 1, pageSize: 200, total: 0 }) }));
