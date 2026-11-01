@@ -12,7 +12,9 @@ const assetDirectory = new URL('../dist/assets/', import.meta.url);
 // Bumped 88 KiB -> 90 KiB for checklist option rows with popup hints (the headroom was ~14 B).
 // Bumped 90 KiB -> 92 KiB for the checklist folder tree (PR 396): only ~100 B of headroom were left. The tree itself reuses the
 // department-tree rules; the new CSS is the two-column layout, the breadcrumbs and the narrow-screen picker.
-const maximumCssBytes = 92 * 1024;
+// Bumped 92 KiB -> 94 KiB for the checklist criteria grid and drag handles (PR 402/403): the budget had ~280 B left; the shared
+// header/row grid with its card layout needed ~700 B.
+const maximumCssBytes = 94 * 1024;
 
 const cssAssets = (await readdir(assetDirectory)).filter((file) => file.endsWith('.css'));
 

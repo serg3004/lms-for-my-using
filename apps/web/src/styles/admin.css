@@ -1630,6 +1630,7 @@
 
 .admin-group-card__head {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
@@ -1657,24 +1658,38 @@
   color: var(--color-text-muted);
 }
 
-.admin-group-card__actions {
-  display: flex;
-  gap: 6px;
-  flex: none;
+.admin-group-card__title {
+  flex: 1 1 160px;
+  min-width: 0;
 }
 
+.admin-group-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* PR 403: the header and every row share one grid, so the column titles stand over their fields.
+   The editor card is narrow even on wide screens, so the layout follows the table's own width:
+   a grid from 760px, a card (text on top, labelled fields two per line) below. */
 .admin-criteria-table {
   display: flex;
   flex-direction: column;
+  container-type: inline-size;
 }
 
 .admin-criteria-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 24px 24px minmax(0, 1fr) 160px 72px 72px 96px 72px 44px;
   align-items: center;
   gap: 8px;
   padding: 10px 13px;
   border-bottom: 1px solid var(--color-border);
-  font-size: 12.5px;
+  font-size: 13px;
+}
+
+.admin-criteria-table--no-points .admin-criteria-row {
+  grid-template-columns: 24px 24px minmax(0, 1fr) 160px 72px 96px 72px 44px;
 }
 
 .admin-criteria-row:last-child {
@@ -1682,48 +1697,30 @@
 }
 
 .admin-criteria-row--head {
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--color-text-muted);
   background: var(--color-surface-muted);
   text-transform: uppercase;
   letter-spacing: .04em;
+  text-align: center;
 }
 
-/* The header's column labels are full words (unlike the compact toggle switches in each data
-   row below them), so they need to wrap instead of the fixed narrow toggle-column width forcing
-   them to overlap the next column. */
-.admin-criteria-row--head .admin-criteria-row__toggle,
-.admin-criteria-row--head .admin-criteria-row__weight {
-  white-space: normal;
-  overflow-wrap: anywhere;
-  line-height: 1.2;
-  text-align: center;
+.admin-criteria-row--head span:nth-child(3) {
+  text-align: left;
 }
 
 .admin-criteria-row__order {
   display: flex;
   flex-direction: column;
-  flex: none;
-  width: 20px;
 }
 
 .admin-criteria-row__order button {
   border: none;
   background: none;
-  color: var(--color-text-muted);
+  color: var(--color-text);
   cursor: pointer;
   line-height: 1;
   padding: 2px 0;
-}
-
-.admin-drag {
-  flex: none;
-  width: 20px;
-  border: 0;
-  background: none;
-  color: var(--color-text-muted);
-  cursor: grab;
-  touch-action: none;
 }
 
 .admin-criteria-row__order button:disabled {
@@ -1731,73 +1728,115 @@
   cursor: default;
 }
 
+.admin-drag {
+  width: 24px;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: grab;
+  touch-action: none;
+}
+
 .admin-criteria-row__text {
-  flex: 1 1 200px;
   min-width: 0;
-  border: none;
-  background: transparent;
+  width: 100%;
+  min-height: 36px;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 14px;
   font-weight: 600;
-  padding: 4px 0;
+  line-height: 1.35;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: transparent;
+  resize: none;
+  field-sizing: content;
+}
+
+.admin-criteria-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-width: 0;
+}
+
+.admin-criteria-cell > span {
+  display: none;
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+
+.admin-criteria-row__points,
+.admin-criteria-row__weight,
+.admin-criteria-row__scale {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  box-sizing: border-box;
+  font-size: 13px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 4px 6px;
 }
 
 .admin-criteria-row__points,
 .admin-criteria-row__weight {
-  flex: none;
-  width: 44px;
   text-align: center;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 4px;
 }
 
-.admin-criteria-row__scale {
-  flex: none;
-  width: 120px;
-  max-width: 120px;
-  font-size: 12px;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 4px;
-}
-
-.admin-criteria-row__toggle {
-  flex: none;
-  width: 46px;
-  display: flex;
-  justify-content: center;
-}
-
-.admin-criteria-row__menu {
-  flex: none;
-}
-
-@media (max-width: 900px) {
+@container (max-width: 759px) {
   .admin-criteria-row--head {
     display: none;
   }
 
-  .admin-criteria-row {
-    flex-wrap: wrap;
+  .admin-criteria-row,
+  .admin-criteria-table--no-points .admin-criteria-row {
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
   }
 
   .admin-criteria-row__text {
-    flex-basis: 100%;
-    order: -1;
+    grid-column: 1 / -1;
   }
 
-  /* The order arrows are icon-only, so their own content never reaches the 44px minimum touch
-     target (global.css's `@media (max-width: 860px)` rule only forces min-height, not min-width)
-     -- widen them explicitly here instead of shrinking the tap target. The row menu button gets
-     the same treatment globally, in ui.css's `.ds-menu`. */
+  .admin-criteria-cell {
+    grid-column: span 2;
+    align-items: stretch;
+  }
+
+  .admin-criteria-cell > span {
+    display: block;
+  }
+
+  .admin-criteria-row__menu {
+    grid-column: 4;
+    grid-row: 1;
+    justify-self: end;
+  }
+
   .admin-criteria-row__order {
     flex-direction: row;
-    width: auto;
     gap: 4px;
   }
+}
 
+@media (max-width: 860px) {
   .admin-criteria-row__order button,
   .admin-drag {
     min-width: 44px;
+    min-height: 44px;
+  }
+
+  .admin-criteria-row__points,
+  .admin-criteria-row__weight,
+  .admin-criteria-row__scale,
+  .admin-criteria-cell {
+    min-height: 44px;
+  }
+
+  .admin-criteria-cell .admin-switch {
+    min-height: 19px;
   }
 }
 
