@@ -395,7 +395,7 @@ export function ChecklistBuilder({
             <div className="admin-context-fields">
               {contextFields.map((field) => (
                 <div className="admin-context-field-row" key={field.id}>
-                  <label style={{ display: 'grid', gap: 4 }}>
+                  <label className="admin-context-field-row__field">
                     <span>{t('admin.checklists.contextFieldLabel', 'Field label')}</span>
                     <input
                       onBlur={(e) => void persistContextFields(applyContextFieldPatch(contextFields, field.id, { label: e.target.value }))}
@@ -404,7 +404,7 @@ export function ChecklistBuilder({
                       value={field.label}
                     />
                   </label>
-                  <label style={{ display: 'grid', gap: 4 }}>
+                  <label className="admin-context-field-row__field">
                     <span>{t('admin.checklists.contextFieldTypeLabel', 'Field type')}</span>
                     <select
                       onChange={(e) => {
@@ -419,7 +419,7 @@ export function ChecklistBuilder({
                       <option value="date">{t('admin.checklists.contextFieldType.date', 'Date')}</option>
                     </select>
                   </label>
-                  <label className="admin-checklist-item__photo">
+                  <label className="admin-checklist-item__photo admin-context-field-row__required">
                     <input
                       checked={field.required}
                       onChange={(e) => {
@@ -430,6 +430,7 @@ export function ChecklistBuilder({
                     />
                     {t('admin.checklists.contextFieldRequired', 'Required')}
                   </label>
+                  <div className="admin-context-field-row__menu">
                   <Menu
                     align="end"
                     buttonClassName="admin-btn admin-btn--sm"
@@ -439,6 +440,7 @@ export function ChecklistBuilder({
                       {t('admin.checklists.delete', 'Delete')}
                     </button>
                   </Menu>
+                  </div>
                 </div>
               ))}
             </div>
