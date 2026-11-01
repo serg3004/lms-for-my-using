@@ -24,7 +24,7 @@ import { CHECKLIST_SESSION_MESSAGE_NOTIFY_JOB, SESSION_MESSAGE_LIMIT, SESSION_ME
 import { eligibleObserverScope } from './checklist-observer-eligibility.js';
 import { buildSessionReport, type ReportPerson } from './checklist-session-report.js';
 import { exportSessionReportPdf } from './checklist-session-report-pdf-export.js';
-import { resolveResultColors } from './checklist-colors.js';
+import { freezeReportSettings, loadEffectiveSettings, readFrozenReportSettings } from './checklist-settings-overrides.js';
 import { notifySessionChange } from './checklist-session-notifications.js';
 import { ACTIVE_ASSIGNMENT_CONFLICT_MESSAGE, ChecklistsService } from './checklists.service.js';
 import type {
@@ -153,6 +153,8 @@ export type ChecklistSessionViewerContext = {
   isLearnerOnly: boolean;
   observerId?: string;
   feedbackVisibility: 'after_completion' | 'live';
+  /** PR 397: sheets that override the organization's feedback visibility, by checklist id. */
+  feedbackVisibilityBySheet?: ReadonlyMap<string, 'after_completion' | 'live'>;
 };
 
 /**
@@ -170,6 +172,7 @@ export type ChecklistSessionViewerContext = {
 function applyFeedbackVisibility<
   T extends {
     observerId?: string;
+    checklist?: { id: string };
     result: { instanceStatus: string; percentage: number | null; passed: boolean | null; scored: boolean | null; visible: boolean };
     strengths: string | null;
     developmentAreas: string | null;
@@ -178,7 +181,8 @@ function applyFeedbackVisibility<
   },
 >(session: T, viewer: ChecklistSessionViewerContext): T {
   const isObserver = viewer.observerId !== undefined && session.observerId === viewer.observerId;
-  if (isObserver || !viewer.isLearnerOnly || viewer.feedbackVisibility === 'live' || session.result.instanceStatus === 'completed') {
+  const visibility = (session.checklist && viewer.feedbackVisibilityBySheet?.get(session.checklist.id)) ?? viewer.feedbackVisibility;
+  if (isObserver || !viewer.isLearnerOnly || visibility === 'live' || session.result.instanceStatus === 'completed') {
     return session;
   }
   return {
@@ -274,7 +278,7 @@ export class ChecklistSessionService {
    * failure never leaves an orphaned active assignment behind.
    */
   async bulkCreate(organizationId: string, input: BulkCreateChecklistSessionInput, actorId: string, learnerScope: Prisma.UserWhereInput, requireAllLearnersInScope = false) {
-    await this.assertValidObserver(this.prisma, input.observerId, organizationId);
+    await this.assertValidObserver(this.prisma, input.observerId, organizationId, { checklistId: input.checklistId });
     if (input.learnerIds.some((id) => id.toLowerCase() === input.observerId.toLowerCase())) {
       throw new BadRequestException('An employee cannot observe their own session');
     }
@@ -379,7 +383,7 @@ export class ChecklistSessionService {
 
   async importSessions(organizationId: string, file: SessionImportFile | undefined, input: ImportChecklistSessionsInput, actorId: string, learnerScope: Prisma.UserWhereInput) {
     const preview = await this.previewImport(organizationId, file, learnerScope);
-    await this.assertValidObserver(this.prisma, input.observerId, organizationId);
+    await this.assertValidObserver(this.prisma, input.observerId, organizationId, { checklistId: input.checklistId });
     const checklist = await this.prisma.checklist.findFirst({ where: { id: input.checklistId, organizationId, deletedAt: null }, select: { status: true } });
     if (!checklist) throw new NotFoundException('Checklist not found');
     if (checklist.status !== 'published') throw new BadRequestException('Checklist must be published before assignment');
@@ -511,7 +515,7 @@ export class ChecklistSessionService {
       deletedAt: null,
       status: 'active',
       AND: [searchClause, query.role === 'observer'
-        ? { AND: [await eligibleObserverScope(this.prisma, organizationId), ...(ownObserverId ? [{ id: ownObserverId }] : [])] }
+        ? { AND: [await eligibleObserverScope(this.prisma, organizationId, query.checklistId ?? null), ...(ownObserverId ? [{ id: ownObserverId }] : [])] }
         : learnerScope],
     };
 
@@ -696,20 +700,20 @@ export class ChecklistSessionService {
       select: { department: { select: { id: true, name: true } } },
       take: 1,
     } as const;
-    const [extra, settingsRow, revision] = await Promise.all([
+    const [extra, effective, revision] = await Promise.all([
       this.prisma.checklistSession.findFirstOrThrow({
         where: { id: sessionId, organizationId },
         select: {
           instance: {
             select: {
-              totalScore: true, maxScore: true, completedAt: true,
+              totalScore: true, maxScore: true, completedAt: true, reportSettings: true,
               user: { select: { departmentMemberships: primaryDepartment } },
             },
           },
           observer: { select: { departmentMemberships: primaryDepartment } },
         },
       }),
-      this.prisma.checklistWorkplaceSettings.findUnique({ where: { organizationId } }),
+      loadEffectiveSettings(this.prisma, organizationId, masked.checklist.id),
       this.prisma.checklistScoreRevision.findFirst({
         where: { organizationId, instanceId: masked.instanceId },
         orderBy: { createdAt: 'desc' },
@@ -744,11 +748,9 @@ export class ChecklistSessionService {
       observer: withDepartment(masked.observer, extra.observer.departmentMemberships),
       breakdown,
       formula,
-      settings: {
-        highPerformanceThreshold: settingsRow?.highPerformanceThreshold ?? 90,
-        lowThreshold: settingsRow?.lowThreshold ?? null,
-        resultColors: resolveResultColors(settingsRow),
-      },
+      // PR 397: a completed instance keeps the thresholds and colours it was completed with; an older or
+      // unfinished one follows the sheet's current effective settings (sheet override over organization).
+      settings: readFrozenReportSettings(extra.instance.reportSettings) ?? freezeReportSettings(effective),
       visible: masked.result.visible,
       locationCaptures: captures as Array<{ capturePoint: string; status: string; capturedAt: Date; latitude?: number | null; longitude?: number | null; accuracyMeters?: number | null }>,
     });
@@ -800,7 +802,7 @@ export class ChecklistSessionService {
         if (changes.observerId.toLowerCase() === session.observerId.toLowerCase()) {
           throw new BadRequestException('The new observer must be different from the current one');
         }
-        await this.assertValidObserver(tx, changes.observerId, organizationId);
+        await this.assertValidObserver(tx, changes.observerId, organizationId, { instanceId: session.instanceId });
         const employee = await tx.checklistInstance.findFirst({ where: { id: session.instanceId, organizationId, deletedAt: null }, select: { userId: true } });
         if (!employee) throw new NotFoundException('Checklist assignment not found');
         if (employee.userId.toLowerCase() === changes.observerId.toLowerCase()) throw new BadRequestException('An employee cannot observe their own session');
@@ -1450,13 +1452,15 @@ export class ChecklistSessionService {
     },
     notificationOptions: { bulk?: boolean; alreadyNotified?: ReadonlySet<string> } = {},
   ) {
-    await this.assertValidObserver(tx, input.observerId, input.organizationId);
+    await this.assertValidObserver(tx, input.observerId, input.organizationId, { instanceId: input.instanceId });
     const employee = await tx.checklistInstance.findFirst({
       where: { id: input.instanceId, organizationId: input.organizationId, deletedAt: null },
-      select: { userId: true },
+      select: { userId: true, checklistId: true },
     });
     if (!employee) throw new NotFoundException('Checklist assignment not found');
     if (employee.userId.toLowerCase() === input.observerId.toLowerCase()) throw new BadRequestException('An employee cannot observe their own session');
+    // PR 397: without an explicit choice the policy follows the sheet's geolocation setting, else the organization's.
+    const locationCapturePolicy = input.locationCapturePolicy ?? (await loadEffectiveSettings(tx, input.organizationId, employee.checklistId)).defaultGeolocationPolicy;
 
     const created = await tx.checklistSession.create({
       data: {
@@ -1465,7 +1469,7 @@ export class ChecklistSessionService {
         observerId: input.observerId,
         scheduledAt: input.scheduledAt ?? undefined,
         durationMinutes: input.durationMinutes,
-        locationCapturePolicy: input.locationCapturePolicy,
+        locationCapturePolicy,
         timezone: input.timezone,
       },
     });
@@ -1517,11 +1521,20 @@ export class ChecklistSessionService {
     });
   }
 
-  private async assertValidObserver(tx: Prisma.TransactionClient, observerId: string, organizationId: string) {
+  private async assertValidObserver(
+    tx: Prisma.TransactionClient,
+    observerId: string,
+    organizationId: string,
+    sheet: { checklistId?: string; instanceId?: string } = {},
+  ) {
+    // PR 397: the sheet of the session decides whose override applies (resolved from the instance when only that is known).
+    const checklistId = sheet.checklistId
+      ?? (sheet.instanceId ? (await tx.checklistInstance.findFirst({ where: { id: sheet.instanceId, organizationId }, select: { checklistId: true } }))?.checklistId : undefined)
+      ?? null;
     // Check eligibility when choosing/reassigning, never when conducting an existing session.
     const observer = await tx.user.findFirst({
       where: {
-        AND: [{ id: observerId }, await eligibleObserverScope(tx, organizationId)],
+        AND: [{ id: observerId }, await eligibleObserverScope(tx, organizationId, checklistId)],
       },
       select: { id: true },
     });

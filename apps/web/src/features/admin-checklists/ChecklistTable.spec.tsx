@@ -75,6 +75,17 @@ describe('ChecklistTable author and date (PR 393)', () => {
     expect(html).toContain('>—<');
   });
 
+  it('marks a checklist that has its own module settings, and only that one (PR 397)', () => {
+    const rows = [
+      { id: 'c1', title: 'A', status: 'draft', scoringMode: 'sum_points', items: [], createdAt: '2026-10-01T16:47:00.000Z', hasModuleOverrides: true },
+      { id: 'c2', title: 'B', status: 'draft', scoringMode: 'sum_points', items: [], createdAt: '2026-10-02T10:00:00.000Z', hasModuleOverrides: false },
+    ] as unknown as ChecklistSummary[];
+    const html = renderToStaticMarkup(
+      <ChecklistTable onCopy={vi.fn()} onDelete={vi.fn()} onEdit={vi.fn()} onStatusChange={vi.fn()} rows={rows} scoringModeLabels={scoringModeLabels} statusLabels={statusLabels} t={t} />,
+    );
+    expect(html.match(/Own module settings/g)).toHaveLength(1);
+  });
+
   it('creatorName falls back to a dash for a missing or blank author', () => {
     expect(creatorName({ creator: undefined })).toBe('—');
     expect(creatorName({ creator: { id: 'u', firstName: '', lastName: '' } })).toBe('—');

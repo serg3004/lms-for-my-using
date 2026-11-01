@@ -9,6 +9,7 @@ const api = vi.hoisted(() => ({
   updateChecklist: vi.fn(),
   listChecklistItemGroups: vi.fn(),
   listChecklistScales: vi.fn(),
+  getChecklistWorkplaceSettings: vi.fn().mockRejectedValue(new Error('offline')),
 }));
 vi.mock('../shared/api/checklists.js', () => api);
 
@@ -57,5 +58,25 @@ describe('ChecklistBuilder save status (PR 340)', () => {
 
     await act(async () => { setValue(container.querySelector<HTMLInputElement>('#checklist-title')!, 'Касса'); });
     expect(status()).toBe('There are unsaved changes.');
+  });
+
+  it('sends the module-settings overrides with the other settings and counts them as unsaved (PR 397)', async () => {
+    api.updateChecklist.mockResolvedValue(checklist);
+    api.listChecklistItemGroups.mockResolvedValue([]);
+    api.listChecklistScales.mockResolvedValue([]);
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    const t = ((key: string, fallback?: string) => fallback ?? key) as never;
+    await act(async () => {
+      root?.render(<ChecklistBuilder checklist={{ ...checklist, moduleSettings: { thresholds: null, resultColors: null, feedbackVisibility: null, observers: null } }} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale' }} onBack={() => {}} onReload={async () => {}} t={t} />);
+    });
+    const status = () => container.querySelector('p[role="status"]:not([style])')?.textContent;
+    const inherit = [...container.querySelectorAll('label')].find((label) => label.textContent?.includes('Feedback visibility: as in the organization'))!.querySelector('input')!;
+    await act(async () => { inherit.click(); });
+    expect(status()).toBe('There are unsaved changes.');
+    await act(async () => { [...container.querySelectorAll('button')].find((b) => b.textContent === 'Save')?.click(); });
+    expect(api.updateChecklist).toHaveBeenCalledWith('c1', expect.objectContaining({ moduleSettings: { thresholds: null, resultColors: null, feedbackVisibility: 'after_completion', observers: null } }));
+    expect(status()).toBe('All changes are saved.');
   });
 });

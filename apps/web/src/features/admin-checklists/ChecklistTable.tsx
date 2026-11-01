@@ -47,7 +47,12 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
     { key: 'title', label: t('admin.checklists.col.title', 'Title'), priority: 'primary', render: (checklist) => checklist.title },
     { key: 'items', label: t('admin.checklists.col.items', 'Items'), priority: 'secondary', render: (checklist) => checklist.items.length },
     { key: 'access', label: t('admin.checklists.col.access', 'Access'), priority: 'secondary', render: (checklist) => <ChecklistAccessBadge checklist={checklist} t={t} /> },
-    { key: 'scoring', label: t('admin.checklists.col.scoring', 'Scoring'), priority: 'secondary', render: (checklist) => <Badge variant="neutral">{scoringModeLabels[checklist.scoringMode]}</Badge> },
+    { key: 'scoring', label: t('admin.checklists.col.scoring', 'Scoring'), priority: 'secondary', render: (checklist) => (
+      <>
+        <Badge variant="neutral">{scoringModeLabels[checklist.scoringMode]}</Badge>
+        {checklist.hasModuleOverrides && <> <Badge variant="neutral">{t('admin.checklists.moduleSettings.badge', 'Own module settings')}</Badge></>}
+      </>
+    ) },
     ...(folders ? [{ key: 'folder', label: t('admin.checklists.col.folder', 'Folder'), priority: 'secondary' as const, render: (checklist: ChecklistSummary) => folderPathLabel(folders, checklist.folderId) || '—' }] : []),
     { key: 'createdBy', label: t('admin.checklists.col.createdBy', 'Created by'), priority: 'secondary', render: (checklist) => creatorName(checklist) },
     { key: 'createdAt', label: t('admin.checklists.col.createdAt', 'Created'), priority: 'secondary', render: (checklist) => formatDate(checklist.createdAt, undefined, { dateStyle: 'medium', timeStyle: 'short' }) },

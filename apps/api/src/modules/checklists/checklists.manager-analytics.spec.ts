@@ -53,6 +53,7 @@ function createHarness(options: { employees: Employee[]; currentSessions?: Sessi
         departmentMemberships: employee.departmentName === undefined ? [] : [{ department: { id: employee.departmentId ?? `dept-${employee.departmentName}`, name: employee.departmentName } }],
       }))),
     },
+    checklist: { findMany: jest.fn(async () => []) },
     checklistSession: { findMany },
     checklistInstance: { findMany: findSelf },
   } as unknown as PrismaService;

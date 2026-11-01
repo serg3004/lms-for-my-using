@@ -247,6 +247,11 @@ export class ChecklistsController {
     const input = updateChecklistSchema.parse(body);
     if (input.accessMode !== undefined) await this.assertMayChangeAccessMode(checklistId, input.accessMode, request.currentUser!);
     if (input.folderId !== undefined) await this.checklistsService.assertCanPlaceInFolder(input.folderId, request.currentUser!.organizationId, request.currentUser!);
+    if (input.moduleSettings?.observers !== undefined
+      && !rolePolicies.checklistAccessSettingsWrite.some((role) => request.currentUser!.roles.includes(role))
+      && await this.checklistsService.changesSheetObservers(checklistId, request.currentUser!.organizationId, input.moduleSettings.observers)) {
+      throw new ForbiddenException('Only an administrator can change who may observe a checklist');
+    }
     if (input.allowEditByAll !== undefined) await this.checklistsService.assertCanChangeEditAccess(checklistId, request.currentUser!.organizationId, request.currentUser!);
     return this.checklistsService.updateChecklist(checklistId, request.currentUser!.organizationId, input, request.currentUser!.id);
   }
@@ -913,6 +918,11 @@ export class ChecklistsController {
 
   private async sessionViewerContext(user: AuthenticatedRequest['currentUser']): Promise<ChecklistSessionViewerContext> {
     const settings = await this.workplaceSettings.getSettings(user!.organizationId);
-    return { isLearnerOnly: isLearnerOnly(user!.roles), feedbackVisibility: settings.feedbackVisibility, observerId: user!.id };
+    return {
+      isLearnerOnly: isLearnerOnly(user!.roles),
+      feedbackVisibility: settings.feedbackVisibility,
+      feedbackVisibilityBySheet: await this.checklistsService.feedbackVisibilityOverrides(user!.organizationId),
+      observerId: user!.id,
+    };
   }
 }
