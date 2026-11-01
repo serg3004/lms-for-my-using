@@ -1,4 +1,5 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { publicLongreadProgress } from '@lms/shared/longread-progress';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { isLearnerOnly } from '../auth/public.js';
@@ -8,6 +9,7 @@ import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import { CreateProgressInput } from './progress.schemas.js';
 
 const progressSelect = {
+  longreadReadingState: true,
   id: true,
   organizationId: true,
   courseId: true,
@@ -50,7 +52,7 @@ export class ProgressService {
       this.prisma.progress.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: pageSize, select: progressSelect }),
       this.prisma.progress.count({ where }),
     ]);
-    return { items, page, pageSize, total };
+    return { items: items.map(publicLongreadProgress), page, pageSize, total };
   }
 
   async getProgress(progressId: string, actorInput: TeamScopeActor | string, userId?: string) {
@@ -70,7 +72,7 @@ export class ProgressService {
       throw new NotFoundException('Progress not found');
     }
 
-    return progress;
+    return publicLongreadProgress(progress);
   }
 
   async createProgress(input: CreateProgressInput, actor: TeamScopeActor = unrestrictedActor(input.organizationId)) {
@@ -82,7 +84,8 @@ export class ProgressService {
     }
 
     if (input.lessonId) {
-      await this.ensureLessonBelongsToCourse(input.lessonId, input.courseId, input.organizationId);
+      const lesson = await this.ensureLessonBelongsToCourse(input.lessonId, input.courseId, input.organizationId);
+      if (lesson.type === 'longread') throw new BadRequestException('Longread progress is calculated by the longread completion endpoint');
     }
 
     const update = { status: input.status, score: input.score ?? null, completedAt: input.completedAt ?? null };
@@ -91,12 +94,12 @@ export class ProgressService {
       // Upsert on the (courseId, lessonId, userId) unique constraint: a repeat call for the same
       // target (e.g. in_progress -> completed) updates the existing row instead of silently
       // returning the stale one, and the unique index rules out duplicate rows under concurrent calls.
-      return this.prisma.progress.upsert({
+      return publicLongreadProgress(await this.prisma.progress.upsert({
         where: { courseId_lessonId_userId: { courseId: input.courseId, lessonId: input.lessonId, userId: input.userId } },
         create: input,
         update,
         select: progressSelect,
-      });
+      }));
     }
 
     // Prisma cannot model an upsert target backed by a partial unique index. Keep the
@@ -126,7 +129,7 @@ export class ProgressService {
       throw new Error('Course-level progress upsert returned no row');
     }
 
-    return this.prisma.progress.findUniqueOrThrow({ where: { id: row.id }, select: progressSelect });
+    return publicLongreadProgress(await this.prisma.progress.findUniqueOrThrow({ where: { id: row.id }, select: progressSelect }));
   }
 
   private async ensureCourseExists(courseId: string, organizationId: string) {
@@ -191,12 +194,13 @@ export class ProgressService {
         organizationId,
         deletedAt: null,
       },
-      select: { id: true },
+      select: { id: true, type: true },
     });
 
     if (!lesson) {
       throw new NotFoundException('Lesson not found');
     }
+    return lesson;
   }
 
   async getProgressSummary(actorInput: TeamScopeActor | string, period: number) {

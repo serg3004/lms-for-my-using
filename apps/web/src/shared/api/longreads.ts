@@ -1,3 +1,4 @@
+import type { LongreadCompletion } from '@lms/shared/longread-progress';
 import type { ExerciseStates, ExerciseResult, PublicExerciseQuestion, WriteLongreadQuestion } from '@lms/shared/longread-exercises';
 import type { AssessmentAnswer, QuestionDefinition, QuestionType, QuestionScoringMode } from '@lms/shared/assessment-question-types';
 import { apiRequest } from '../apiClient.js';
@@ -27,6 +28,7 @@ export const saveLongreadDraft = (id: string, input: SaveLongread) => apiRequest
 export type ReaderBlock = { id?: string; question?: PublicExerciseQuestion; type: string; schemaVersion: number; title?: string | null; hidden?: boolean; content: unknown };
 export type ReaderChapter = { title: string; anchor: string; cover?: LongreadImage | null; blocks: ReaderBlock[] };
 export type LongreadReaderDocument = {
+  completion?: LongreadCompletion;
   lessonId: string; version: number | null; schemaVersion: number; preview: boolean; draftRevision?: number;
   settings: LongreadDraft['settings']; chapters: ReaderChapter[];
   navigation: { chapter: string; headingIndex: number | null; allowedAnchors: string[]; previousAnchor: string | null; nextAnchor: string | null };
@@ -51,3 +53,5 @@ export const previewLongreadExercise = (id: string, blockId: string, revision: n
 export const finishLongreadTest = (id: string, version: number, assessmentId: string) => apiRequest<{ attemptId: string; state: ExerciseStates }>(`${path(id)}/exercises/finish`, { method: 'POST', body: JSON.stringify({ version, assessmentId }) });
 
 export const publishLongread = (id: string, revision: number) => apiRequest<{ version: number }>(`${path(id)}/publish`, { method: 'POST', body: JSON.stringify({ revision }) });
+
+export const completeLongreadChapter = (id: string, input: { version: number; chapter: string; blockId?: string }) => apiRequest<LongreadReaderDocument>(`${path(id)}/completion`, { method: 'POST', body: JSON.stringify(input) });

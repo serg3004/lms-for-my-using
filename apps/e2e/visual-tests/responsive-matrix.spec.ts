@@ -1,3 +1,4 @@
+import { progressReaderServer, continueEditorServer, openProgressReport } from '../fixtures/longread-progress.js';
 import { exerciseReaderServer, exerciseEditorServer } from '../fixtures/longread-exercises.js';
 import { longreadFileServer } from '../fixtures/longread-files.js';
 import { openTypedAssessment } from '../fixtures/assessment-typed-compat.js';
@@ -1198,4 +1199,19 @@ for (const role of ['admin', 'instructor'] as const) for (const width of [375, 1
   await page.getByRole('region', { name: 'Редактор вопроса', exact: true }).scrollIntoViewIfNeeded();
   await expectNoPageOverflow(page);
   await expectVisualMatch(page, `${role}-longread-exercise-editor-${width}`, false, { fullPage: false, maxDiffPixels: 3000 });
+});
+
+for (const width of [375, 1440]) test(`longread Continue and server progress at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await progressReaderServer({ fileUnavailable: true }).attach(page);
+  await expectNoPageOverflow(page); await expectVisualMatch(page, `longread-progress-reader-${width}`, false, { maxDiffPixels: 3000 });
+});
+for (const role of ['admin', 'instructor'] as const) for (const width of [375, 1440]) test(`${role} longread Continue editor at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await continueEditorServer().attach(page, { role });
+  await page.getByLabel('Условие продолжения', { exact: true }).scrollIntoViewIfNeeded();
+  await expectNoPageOverflow(page); await expectVisualMatch(page, `${role}-longread-continue-editor-${width}`, false, { fullPage: false, maxDiffPixels: 3000 });
+});
+for (const width of [375, 1440]) test(`admin longread progress report at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await openProgressReport(page);
+  await page.getByRole('region', { name: 'Состояние прохождения' }).first().scrollIntoViewIfNeeded();
+  await expectNoPageOverflow(page); await expectVisualMatch(page, `admin-longread-progress-report-${width}`, false, { fullPage: false, maxDiffPixels: 3000 });
 });

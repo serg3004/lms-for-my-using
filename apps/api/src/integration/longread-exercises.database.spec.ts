@@ -1,9 +1,11 @@
 /// <reference types="jest" />
 import { randomUUID } from 'node:crypto';
-import { ConflictException, ForbiddenException, NotFoundException, UnprocessableEntityException, type ExecutionContext } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, UnprocessableEntityException, type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { AssessmentAnswer, QuestionDefinition, QuestionResponse } from '@lms/shared/assessment-question-types';
 import { exerciseContentSchema, writeLongreadQuestionSchema } from '@lms/shared/longread-exercises';
+import { ReportsService } from '../modules/reports/reports.service.js';
+import { ProgressService } from '../modules/progress/progress.service.js';
 import { PrismaService } from '../database/prisma.service.js';
 import { LongreadsService } from '../modules/longreads/longreads.service.js';
 import { LongreadVersionsService } from '../modules/longreads/longread-versions.service.js';
@@ -78,6 +80,7 @@ describe('longread versioned exercises (PR 389) — database', () => {
     await prisma.auditLog.deleteMany({ where }); await prisma.progress.deleteMany({ where }); await prisma.longreadDocument.updateMany({ where, data: { publishedRevisionId: null } }); await prisma.longreadRevision.deleteMany({ where });
     await prisma.longreadBlock.deleteMany({ where }); await prisma.longreadChapter.deleteMany({ where }); await prisma.longreadDocument.deleteMany({ where });
     await prisma.assessmentAnswerOption.deleteMany({ where }); await prisma.assessmentQuestion.deleteMany({ where }); await prisma.assessment.deleteMany({ where });
+    await prisma.courseMaterial.deleteMany({ where });
     await prisma.lesson.deleteMany({ where }); await prisma.assignment.deleteMany({ where }); await prisma.courseInstructor.deleteMany({ where }); await prisma.course.deleteMany({ where });
     await prisma.membership.deleteMany({ where }); await prisma.user.deleteMany({ where }); await prisma.organization.deleteMany({ where: { id: { in: ids } } });
   });
@@ -196,6 +199,7 @@ describe('longread versioned exercises (PR 389) — database', () => {
     await versions.publish(lessonId, org, changed.revision, admin.id);
     await expect(submit(1, 1, good[1], learner, 2)).rejects.toBeInstanceOf(NotFoundException);
     await expect(submit(2, 1, good[2], learner, 2)).rejects.toBeInstanceOf(NotFoundException);
+    await submit(0, 1, good[0], learner, 2); await reader.complete(lessonId, learner, { version: 2, chapter: changed.chapters[0]!.anchor });
     await reader.position(lessonId, learner, { version: 2, chapter: changed.chapters[1]!.anchor, mode: 'navigate' });
     expect((await submit(1, 1, good[1], learner, 2)).acceptedResult.score).toBe(8);
   });
@@ -210,4 +214,106 @@ describe('longread versioned exercises (PR 389) — database', () => {
     expect((await versions.publishCheck(lessonId, org)).reasons).toEqual(expect.arrayContaining([expect.objectContaining({ code: 'question_unavailable' })]));
     await expect(versions.publish(lessonId, org, d.revision, admin.id)).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
+
+  async function progressFixture(options: { mode?: 'free' | 'answered' | 'correct'; seconds?: number; order?: 'free' | 'sequential'; required?: number; fileId?: string } = {}) {
+    const draft = await drafts.getDraft(lessonId, org), source = draft.chapters[0]!.blocks;
+    const keep = (index: number) => { const b = source[index]!; return { id: b.id, type: b.type, schemaVersion: b.schemaVersion, content: b.content }; };
+    const gate = { type: 'continue', schemaVersion: 1, content: { mode: options.mode ?? 'correct', minViewSeconds: options.seconds ?? 0 } };
+    const saved = await drafts.saveDraft(lessonId, org, { revision: draft.revision, settings: { ...draft.settings, readingOrder: options.order ?? 'sequential', requiredChapters: options.required ?? 2 }, chapters: [
+      { id: draft.chapters[0]!.id, title: 'Gated', hidden: false, blocks: [keep(0), gate, keep(1), gate, ...(options.fileId ? [{ type: 'image', schemaVersion: 1, content: { fileId: options.fileId, alt: 'Image', caption: '', width: 100, align: 'center' } }] : [])] },
+      { title: 'Second', hidden: false, blocks: [{ type: 'paragraph', schemaVersion: 1, content: { runs: [{ text: 'Second content' }] } }] },
+      { title: 'Optional', hidden: false, blocks: [{ type: 'paragraph', schemaVersion: 1, content: { runs: [] } }] },
+      { title: 'Hidden', hidden: true, blocks: [keep(2)] },
+    ] }, admin.id);
+    await versions.publish(lessonId, org, saved.revision, admin.id);
+    const chapter = saved.chapters[0]!.anchor, gateA = saved.chapters[0]!.blocks[1]!.id, gateB = saved.chapters[0]!.blocks[3]!.id;
+    const pass = (blockId: string) => reader.complete(lessonId, learner, { version: 2, chapter, blockId });
+    const finishChapter = () => reader.complete(lessonId, learner, { version: 2, chapter });
+    return { chapter, gateA, gateB, pass, finishChapter, saved };
+  }
+  describe('PR 390: Continue and authoritative chapter completion', () => {
+    it('scopes A → Continue A → B → Continue B and never reveals/accepts B before A', async () => {
+      const f = await progressFixture(), first = await reader.read(lessonId, learner);
+      expect(first.chapters[0]!.blocks.map((b) => b.id)).toEqual([blocks[0], f.gateA]);
+      await expect(submit(1, 1, good[1], learner, 2)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(f.pass(f.gateB)).rejects.toBeInstanceOf(UnprocessableEntityException);
+      await submit(0, 1, good[0], learner, 2); const opened = await f.pass(f.gateA);
+      expect(opened.chapters[0]!.blocks).toHaveLength(4);
+      await submit(1, 1, bad[1], learner, 2);
+      const current = await reader.read(lessonId, learner);
+      expect(current.completion.chapters[0]!.gates[0]).toMatchObject({ passed: true, reasons: [] });
+      expect(current.completion.chapters[0]!.gates[1]!.reasons).toContainEqual(expect.objectContaining({ code: 'incorrect' }));
+      await expect(f.pass(f.gateA)).resolves.toBeDefined();
+      await expect(f.pass(f.gateB)).rejects.toBeInstanceOf(UnprocessableEntityException);
+      await submit(1, 2, good[1], learner, 2); await f.pass(f.gateB); expect((await f.finishChapter()).completion.percentage).toBe(50);
+    });
+    it('allows wrong answers in answered mode and free continuation, but still requires mandatory answers for chapter completion', async () => {
+      const f = await progressFixture({ mode: 'answered' }); await submit(0, 1, bad[0], learner, 2); await f.pass(f.gateA); await submit(1, 1, bad[1], learner, 2); await f.pass(f.gateB);
+      expect((await f.finishChapter()).completion.percentage).toBe(50);
+      const secondView = await reader.read(lessonId, second); expect(secondView.completion.completedCount).toBe(0);
+    });
+    it('persists progress once under concurrent clicks/tabs and uses the same projection in admin reports', async () => {
+      const f = await progressFixture({ mode: 'free' }); await reader.read(lessonId, learner);
+      await Promise.all([f.pass(f.gateA), f.pass(f.gateA)]); await f.pass(f.gateB);
+      await expect(f.finishChapter()).rejects.toBeInstanceOf(UnprocessableEntityException);
+      await submit(0, 1, bad[0], learner, 2); await submit(1, 1, bad[1], learner, 2);
+      const [a, b] = await Promise.all([f.finishChapter(), f.finishChapter()]);
+      expect(a.completion).toEqual(b.completion); expect(a.completion.completedCount).toBe(1);
+      const next = f.saved.chapters[1]!.anchor; await reader.position(lessonId, learner, { version: 2, chapter: next, mode: 'navigate' });
+      const done = await reader.complete(lessonId, learner, { version: 2, chapter: next });
+      expect(done.completion).toMatchObject({ percentage: 100, completed: true, requiredCount: 2, completedCount: 2 });
+      const row = await prisma.progress.findFirstOrThrow({ where: { lessonId, userId: learner.id } });
+      const report = await new ProgressService(prisma).getProgress(row.id, admin);
+      expect(report.longread).toEqual(done.completion);
+      expect((await new ReportsService(prisma).getSummary(admin)).progress.find((p) => p.id === row.id)?.longread).toEqual(done.completion); expect(report).toMatchObject({ status: 'completed', score: 100 });
+      await reader.complete(lessonId, learner, { version: 2, chapter: next });
+      expect((await prisma.progress.findUniqueOrThrow({ where: { id: row.id } })).completedAt).toEqual(row.completedAt);
+      await expect(new ProgressService(prisma).createProgress({ organizationId: org, courseId, lessonId, userId: learner.id, status: 'completed' }, learner)).rejects.toBeInstanceOf(BadRequestException);
+    });
+    it('uses the database clock, rejects forged time/completion, and keeps the timer across a reload', async () => {
+      const f = await progressFixture({ mode: 'free', seconds: 60 }); await reader.read(lessonId, learner);
+      await expect(f.pass(f.gateA)).rejects.toBeInstanceOf(UnprocessableEntityException);
+      const row = await prisma.progress.findFirstOrThrow({ where: { lessonId, userId: learner.id } });
+      const state = row.longreadReadingState as unknown as { learning: Record<string, { chapters: Record<string, { enteredAt: string }> }> };
+      const entered = state.learning['2']!.chapters[f.chapter]!.enteredAt;
+      await reader.read(lessonId, learner); expect(((await prisma.progress.findUniqueOrThrow({ where: { id: row.id } })).longreadReadingState as unknown as typeof state).learning['2']!.chapters[f.chapter]!.enteredAt).toBe(entered);
+      state.learning['2']!.chapters[f.chapter]!.enteredAt = new Date(Date.now() - 61_000).toISOString();
+      await prisma.progress.update({ where: { id: row.id }, data: { longreadReadingState: state } }); await expect(f.pass(f.gateA)).resolves.toBeDefined();
+      const request = await guard(learner, controller.completeChapter);
+      expect(() => controller.completeChapter(lessonId, { version: 2, chapter: f.chapter, elapsed: 1_000_000 }, request)).toThrow();
+    });
+    it.each(['free', 'sequential'] as const)('rejects URL/API jumps past required chapters in %s order', async (order) => {
+      const f = await progressFixture({ mode: 'free', order, required: 1 });
+      await expect(reader.read(lessonId, learner, f.saved.chapters[1]!.anchor)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(reader.position(lessonId, learner, { version: 2, chapter: f.saved.chapters[2]!.anchor, mode: 'navigate' })).rejects.toBeInstanceOf(NotFoundException);
+      await submit(0, 1, good[0], learner, 2); await f.pass(f.gateA); await submit(1, 1, good[1], learner, 2); await f.pass(f.gateB); await f.finishChapter();
+      if (order === 'free') await expect(reader.read(lessonId, learner, f.saved.chapters[2]!.anchor)).resolves.toBeDefined();
+      else await expect(reader.read(lessonId, learner, f.saved.chapters[2]!.anchor)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(reader.read(lessonId, learner, f.saved.chapters[3]!.anchor)).rejects.toBeInstanceOf(NotFoundException);
+    });
+    it('reports exhausted attempts and unavailable files separately; later files do not block the first Continue', async () => {
+      const doc = await prisma.longreadDocument.findFirstOrThrow({ where: { lessonId } });
+      const file = await prisma.courseMaterial.create({ data: { organizationId: org, courseId, lessonId, longreadDocumentId: doc.id, title: 'Image', slug: randomUUID(), mimeType: 'image/png', objectKey: randomUUID(), scanStatus: 'available' } });
+      const f = await progressFixture({ fileId: file.id }); await prisma.courseMaterial.update({ where: { id: file.id }, data: { scanStatus: 'rejected' } });
+      await submit(0, 1, good[0], learner, 2); await expect(f.pass(f.gateA)).resolves.toBeDefined();
+      for (let n = 1; n <= 3; n++) await submit(1, n, bad[1], learner, 2);
+      const view = await reader.read(lessonId, learner); expect(view.completion.chapters[0]!.reasons.map((r) => r.code)).toEqual(expect.arrayContaining(['exhausted', 'file_unavailable']));
+      await expect(f.finishChapter()).rejects.toBeInstanceOf(UnprocessableEntityException);
+    });
+    it('retains old completion after republish, isolates versions, and keeps author preview read-only', async () => {
+      const f = await progressFixture({ mode: 'free', required: 1 }); await submit(0, 1, good[0], learner, 2); await f.pass(f.gateA); await submit(1, 1, good[1], learner, 2); await f.pass(f.gateB); const before = await f.finishChapter();
+      const old = await prisma.progress.findFirstOrThrow({ where: { lessonId, userId: learner.id } }), draft = await drafts.getDraft(lessonId, org);
+      await prisma.longreadDocument.update({ where: { lessonId }, data: { draftRevision: { increment: 1 } } }); await versions.publish(lessonId, org, draft.revision + 1, admin.id);
+      expect((await reader.read(lessonId, learner)).completion).toEqual(before.completion); expect((await reader.read(lessonId, second)).completion).toMatchObject({ version: 3, percentage: 0 });
+      const dataBeforePreview = await prisma.progress.findMany({ where: { organizationId: org } });
+      const preview = await reader.preview(lessonId, org); expect(preview.preview).toBe(true);
+      expect(await prisma.progress.findMany({ where: { organizationId: org } })).toEqual(dataBeforePreview);
+      const revision = await prisma.longreadRevision.findFirstOrThrow({ where: { documentId: (await prisma.longreadDocument.findFirstOrThrow({ where: { lessonId } })).id, number: 3 } });
+      await prisma.progress.update({ where: { id: old.id }, data: { longreadRevisionId: revision.id } });
+      expect((await reader.read(lessonId, learner)).completion).toMatchObject({ version: 3, percentage: 0 });
+      const updated = await prisma.progress.findUniqueOrThrow({ where: { id: old.id } });
+      expect((updated.longreadReadingState as unknown as { learning: Record<string, { summary: unknown }> }).learning['2']!.summary).toEqual(before.completion); expect(updated.status).toBe('in_progress');
+    });
+  });
+
 });

@@ -3032,7 +3032,8 @@
       "audio": "音频",
       "video": "视频",
       "embed": "嵌入视频",
-      "exercise": "练习"
+      "exercise": "练习",
+      "continue": "继续"
     },
     "tones": {
       "info": "信息",
@@ -3301,5 +3302,40 @@
       "fill_blank": "填空题",
       "short_answer": "简答题"
     }
+  },
+  "longreadProgress": {
+    "continue": "继续",
+    "continued": "已继续",
+    "mode": "继续条件",
+    "modes": {
+      "free": "自由继续",
+      "answered": "完成上方练习后",
+      "correct": "正确完成上方练习后"
+    },
+    "editorHelp": "此按钮显示下一部分。只检查本章按钮上方可见的练习。完成必修章节后可打开下一章。",
+    "minimumTime": "打开章节后最少等待秒数（0 表示无需等待）",
+    "status": "完成状态",
+    "done": "已完成",
+    "incomplete": "未完成",
+    "summary": "版本 {{version}} · 必修章节：{{completed}} / {{total}} · {{percentage}}%",
+    "completeChapter": "完成章节",
+    "chapterDone": "章节已完成。",
+    "refresh": "刷新检查",
+    "preview": "预览：条件不限制阅读，进度不会保存。",
+    "changed": "版本或章节已更改，请重新打开课程。",
+    "failed": "操作失败。请刷新条件并重试。",
+    "reasons": {
+      "unanswered": "请完成按钮上方的练习。",
+      "incorrect": "存在错误答案，请修改后重新检查。",
+      "exhausted": "尚未记录正确答案，且次数已用完。请联系讲师。",
+      "file_unavailable": "文件不可用或尚未通过检查，请稍后重试。",
+      "time": "尚未达到最短阅读时间，剩余 {{count}} 秒。",
+      "locked": "请先完成前面的必修章节。",
+      "continue_required": "请通过本章中的“继续”按钮。"
+    },
+    "requiredHelp": "前 N 个可见章节为必修；0 表示全部。隐藏章节不计入。",
+    "versionLabel": "长文版本",
+    "lesson": "课时",
+    "chapters": "章节状态"
   }
 }

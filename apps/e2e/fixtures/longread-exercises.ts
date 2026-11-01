@@ -38,7 +38,7 @@ export function exerciseReaderServer({ direction = 'ltr' as 'ltr' | 'rtl', previ
       const result: ExerciseResult = { answer, score: good ? 8 : 0, maxScore: 8, percentage: good ? 100 : 0, passed: !!good, isCorrect: !!good, ...(index === 0 ? { correctOptionIds: [questions[0]!.options[0]!.id] } : {}) };
       if (preview) return route.fulfill({ json: { ...result, preview: true } });
       const item = state.exercises[index]!; item.attemptsUsed++; item.remaining--; item.nextAttempt++; item.lastResult = { ...result, attempt: item.attemptsUsed, attemptId: uuid(1000 + index * 10 + item.attemptsUsed) };
-      state.tests[0]!.requiredRemaining = state.exercises.filter((v) => !v.attemptsUsed).length;
+      if (state.tests[0]) state.tests[0].requiredRemaining = state.exercises.filter((v) => !v.attemptsUsed).length;
       return route.fulfill({ json: { ...state, acceptedAttemptId: item.lastResult.attemptId, acceptedResult: item.lastResult } });
     });
     if (preview) await page.route('**/api/v1/**/longread/preview?*', async (route) => {

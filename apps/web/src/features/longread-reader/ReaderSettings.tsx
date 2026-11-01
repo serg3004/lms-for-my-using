@@ -9,7 +9,7 @@ export function ReaderSettings({ settings, onChange }: { settings: Settings; onC
       <div><label htmlFor="lr-reading-order">{t('longreadReader.order')}</label><select id="lr-reading-order" value={settings.readingOrder} onChange={(event) => onChange({ readingOrder: event.target.value as Settings['readingOrder'] })}>
         <option value="free">{t('longreadReader.free')}</option><option value="sequential">{t('longreadReader.sequential')}</option>
       </select></div>
-      <div><label htmlFor="lr-required-chapters">{t('longreadReader.requiredSetting')}</label><input id="lr-required-chapters" type="number" min={0} max={200} value={settings.requiredChapters} onChange={(event) => onChange({ requiredChapters: Number(event.target.value) })} /></div>
+      <div><label htmlFor="lr-required-chapters">{t('longreadReader.requiredSetting')}</label><input id="lr-required-chapters" type="number" min={0} max={200} aria-describedby="lr-required-help" value={settings.requiredChapters} onChange={(event) => onChange({ requiredChapters: Number(event.target.value) })} /><p id="lr-required-help">{t('longreadProgress.requiredHelp')}</p></div>
       <div><label htmlFor="lr-toc">{t('longreadReader.contents')}</label><select id="lr-toc" value={settings.tableOfContents} onChange={(event) => onChange({ tableOfContents: event.target.value as Settings['tableOfContents'] })}>
         <option value="expanded">{t('longreadReader.expanded')}</option><option value="collapsed">{t('longreadReader.collapsed')}</option><option value="off">{t('longreadReader.off')}</option>
       </select></div>

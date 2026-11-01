@@ -99,3 +99,14 @@ describe('buildAssessmentResultsExportRows', () => {
     expect(buildAssessmentResultsExportRows([], users, t)).toEqual([['Learner', 'Score', 'Status', 'Date']]);
   });
 });
+
+it('exports longread version and per-chapter blocking state while retaining the ordinary report columns', () => {
+  const longread = { version: 2, completed: false, percentage: 50, requiredCount: 2, completedCount: 1, chapters: [
+    { anchor: 'first', title: 'First', required: true, completedAt: '2026-11-01T00:00:00Z', accessible: true, reasons: [], gates: [] },
+    { anchor: 'second', title: 'Second', required: true, completedAt: null, accessible: true, reasons: [{ code: 'file_unavailable' as const }], gates: [] },
+  ] };
+  const item = { id: 'progress', courseId: 'course-1', userId: 'user-1', status: 'in_progress', score: 50, completedAt: null, lesson: { id: 'lesson', title: 'Longread' }, longread };
+  const rows = buildProgressExportRows(courses, users, [item], ((key: string) => key) as never);
+  expect(rows[0]).toHaveLength(8); expect(rows[1]?.slice(0, 6)).toEqual(['Ann', 'Safety training', '50%', '50%', 'Longread', '2']);
+  expect(rows[1]?.[7]).toContain('Second: longreadProgress.incomplete (longreadProgress.reasons.file_unavailable)');
+});

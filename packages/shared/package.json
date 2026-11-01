@@ -33,6 +33,11 @@
       "types": "./src/longread-exercises.ts",
       "development": "./src/longread-exercises.ts",
       "import": "./dist/longread-exercises.js"
+    },
+    "./longread-progress": {
+      "types": "./src/longread-progress.ts",
+      "development": "./src/longread-progress.ts",
+      "import": "./dist/longread-progress.js"
     }
   },
   "scripts": {

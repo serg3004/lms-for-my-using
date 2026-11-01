@@ -296,3 +296,12 @@ submit and finish use `assessmentAttemptsCreate`. Every learner operation rechec
 version, organization flag and current course entitlement before taking the user's progress lock. No new role or
 permission is introduced. Component attempts are excluded from generic results and certificate eligibility; final
 attempts retain existing own-result, instructor/course and manager/team access rules.
+
+### Longread Continue and completion (PR 390)
+
+`POST /lessons/:id/longread/completion` uses `lessonsRead` and the lesson course scope, like reader/position access.
+The actor is always the authenticated user; payload cannot supply another user or progress values. Current course
+entitlement and pinned publication are rechecked. Locked/hidden chapters and later Continue IDs cannot bypass earlier
+requirements. All roles are refused direct longread lesson writes through `POST /progress`. Existing progress/report
+read permissions and team/course filters apply to the server-written version/chapter summary. Author preview retains
+`lessonsCreate` scope and performs no learning-record writes.
