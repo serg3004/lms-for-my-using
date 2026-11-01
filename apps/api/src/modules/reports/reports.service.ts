@@ -1,3 +1,4 @@
+import { publicLongreadProgress } from '@lms/shared/longread-progress';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 
@@ -72,6 +73,8 @@ export class ReportsService {
           orderBy: [{ updatedAt: 'desc' }, { id: 'asc' }],
           take: REPORTS_LIST_LIMIT,
           select: {
+            longreadReadingState: true,
+            lesson: { select: { id: true, title: true } },
             id: true,
             status: true,
             score: true,
@@ -112,7 +115,7 @@ export class ReportsService {
       ]);
 
       return {
-        progress,
+        progress: progress.map(publicLongreadProgress),
         certificates,
         overdueAssignments,
         counts: {

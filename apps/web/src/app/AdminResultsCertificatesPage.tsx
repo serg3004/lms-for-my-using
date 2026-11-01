@@ -1,3 +1,5 @@
+import type { LongreadCompletion } from '@lms/shared/longread-progress';
+import { CompletionStatus } from '../features/longread-progress/CompletionRuntime.js';
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -12,7 +14,7 @@ import type { PaginatedResponse } from '../shared/api/types.js';
 type Course = { id: string; organizationId: string; title: string };
 type User = { id: string; email: string; name: string | null };
 type Assessment = { id: string; courseId: string; title: string; passingScore: number; status: string };
-type Progress = { id: string; courseId: string; userId: string; status: string; score: number | null; completedAt: string | null };
+type Progress = { lesson?: { id: string; title: string } | null; longread?: LongreadCompletion; id: string; courseId: string; userId: string; status: string; score: number | null; completedAt: string | null };
 type Certificate = { id: string; courseId: string; userId: string; issuedAt: string; status: string };
 type AssessmentResult = { id: string; assessmentId: string; userId: string; score: number; maxScore: number; percentage: number; passed: boolean; completedAt: string | null };
 type ReportUser = { id: string; firstName: string; lastName: string; email: string };
@@ -54,7 +56,7 @@ export function findUserEmail(users: User[], userId: string) {
 }
 
 export function progressPercent(progress: Progress) {
-  return progress.status === 'completed' ? 100 : (progress.score ?? 0);
+  return progress.longread?.percentage ?? (progress.status === 'completed' ? 100 : (progress.score ?? 0));
 }
 
 export function serializeCsv(rows: string[][]) {
@@ -68,11 +70,14 @@ export function buildProgressExportRows(courses: Course[], users: User[], progre
     t('admin.results.col.progress', 'Progress'),
     t('admin.results.col.score', 'Score'),
   ];
+  const withLongreads = progressItems.some((progress) => !!progress.longread);
+  if (withLongreads) header.push(t('longreadProgress.lesson'), t('longreadProgress.versionLabel'), t('longreadProgress.status'), t('longreadProgress.chapters'));
   const rows = progressItems.map((progress) => [
     findUserLabel(users, progress.userId),
     findCourseTitle(courses, progress.courseId),
     `${progressPercent(progress)}%`,
     progress.score != null ? `${progress.score}%` : '',
+    ...(withLongreads ? [progress.lesson?.title ?? '', progress.longread ? String(progress.longread.version) : '', progress.longread ? t(progress.longread.completed ? 'longreadProgress.done' : 'longreadProgress.incomplete') : '', progress.longread?.chapters.map((chapter) => `${chapter.title ?? chapter.anchor}: ${t(chapter.completedAt ? 'longreadProgress.done' : 'longreadProgress.incomplete')}${chapter.reasons.length ? ` (${[...new Set(chapter.reasons.map((reason) => t(`longreadProgress.reasons.${reason.code}`, { count: reason.remainingSeconds ?? 0 })))].join('; ')})` : ''}`).join(' | ') ?? ''] : []),
   ]);
   return [header, ...rows];
 }
@@ -317,7 +322,7 @@ export function AdminResultsCertificatesPage() {
               </>
             ),
           },
-          { key: 'course', label: t('admin.results.col.course', 'Course'), priority: 'secondary', render: (p) => findCourseTitle(loadState.data.courses, p.courseId) },
+          { key: 'course', label: t('admin.results.col.course', 'Course'), priority: 'secondary', render: (p) => <>{findCourseTitle(loadState.data.courses, p.courseId)}{p.longread && p.lesson && <p>{p.lesson.title}</p>}</> },
           {
             key: 'progress',
             priority: 'primary',
@@ -337,7 +342,7 @@ export function AdminResultsCertificatesPage() {
             label: t('admin.results.col.score', 'Score'),
             render: (p) =>
               p.score != null ? (
-                <StatusBadge tone={p.score >= 70 ? 'success' : 'danger'}>{`${p.score}%`}</StatusBadge>
+                <StatusBadge tone={p.longread ? 'neutral' : p.score >= 70 ? 'success' : 'danger'}>{`${p.score}%`}</StatusBadge>
               ) : (
                 <StatusBadge>—</StatusBadge>
               ),
@@ -348,6 +353,11 @@ export function AdminResultsCertificatesPage() {
         responsiveDetails={{ label: t('courses.details'), expandLabel: (p) => `${t('courses.details')}: ${findUserLabel(loadState.data.users, p.userId)}`, collapseLabel: (p) => `${t('courses.details')}: ${findUserLabel(loadState.data.users, p.userId)}` }}
         emptyMessage={t('admin.results.noProgress', 'No progress records found.')}
       />
+
+      {loadState.data.progressItems.filter((item) => !!item.longread).map((item) => <details key={item.id} data-longread-progress className="admin-card" style={{ marginBlock: 16, minWidth: 0 }}>
+        <summary style={{ minHeight: 44, overflowWrap: 'anywhere', whiteSpace: 'normal' }}>{findUserLabel(loadState.data.users, item.userId)} · {findCourseTitle(loadState.data.courses, item.courseId)} · {item.lesson?.title ?? ''} · {t('longreadProgress.versionLabel')} {item.longread!.version}</summary>
+        <CompletionStatus completion={item.longread!} report />
+      </details>)}
 
       <section className="admin-results-reports">
         <AdminCard>

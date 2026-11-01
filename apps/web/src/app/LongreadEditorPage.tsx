@@ -1,3 +1,4 @@
+import { ContinueEditor } from '../features/longread-progress/ContinueEditor.js';
 import { ExerciseEditor } from '../features/longread-exercises/ExerciseEditor.js';
 import { publishLongread } from '../shared/api/longreads.js';
 import { exerciseError } from '../features/longread-exercises/ExerciseRuntime.js';
@@ -154,6 +155,7 @@ function Editor({ initial, title, back, reload }: { initial: LongreadDraft; titl
             {action(t('longread.up'), () => moveBlock(block.key, -1), index === 0)}{action(t('longread.down'), () => moveBlock(block.key, 1), index === chapter.blocks.length - 1)}
           </div>
           {!editableBlock(block) ? <p>{t('longread.unknownMessage')}</p>
+            : block.type === 'continue' ? <ContinueEditor content={block.content} onChange={(content) => updateBlock(block.key, (item) => ({ ...item, content }))} />
             : block.type === 'exercise' ? <ExerciseEditor key={block.key} lessonId={initial.lessonId} content={block.content} onChange={(content) => updateBlock(block.key, (item) => ({ ...item, content }))} ready={!editor.dirty && editor.status === 'saved' && !questionBusy && !publishing} revision={editor.revision} adoptRevision={editor.adoptRevision} onBusy={setQuestionBusy} />
             : block.type === 'audio' ? <AudioEditor lessonId={initial.lessonId} content={block.content} onChange={(content) => updateBlock(block.key, (item) => ({ ...item, content }))} />
             : block.type === 'video' ? <VideoEditor lessonId={initial.lessonId} content={block.content} onChange={(content) => updateBlock(block.key, (item) => ({ ...item, content }))} />

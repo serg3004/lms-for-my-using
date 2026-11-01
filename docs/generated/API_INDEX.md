@@ -197,6 +197,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/lessons/{id}/longread` | `Longreads` | `bearer` |
 | `PUT` | `/api/v1/lessons/{id}/longread` | `Longreads` | `bearer` |
 | `POST` | `/api/v1/lessons/{id}/longread/chapters/{chapterId}/duplicate` | `Longreads` | `bearer` |
+| `POST` | `/api/v1/lessons/{id}/longread/completion` | `Longreads` | `bearer` |
 | `POST` | `/api/v1/lessons/{id}/longread/embed/resolve` | `Longreads` | `bearer` |
 | `GET` | `/api/v1/lessons/{id}/longread/exercises` | `Longreads` | `bearer` |
 | `POST` | `/api/v1/lessons/{id}/longread/exercises/finish` | `Longreads` | `bearer` |

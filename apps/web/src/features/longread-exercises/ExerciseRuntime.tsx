@@ -1,3 +1,4 @@
+import { useCompletion } from '../longread-progress/CompletionRuntime.js';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ExerciseStates, ExerciseResult } from '@lms/shared/longread-exercises';
@@ -20,21 +21,22 @@ export function exerciseError(cause: unknown): string {
   return 'longreadExercises.requestFailed';
 }
 export function ExerciseRuntime({ data, children }: { data: LongreadReaderDocument; children: ReactNode }) {
-  const { t } = useTranslation();
+  const { t } = useTranslation(), completion = useCompletion();
   const session = useOptionalSession(), userId = session?.currentUser?.id ?? null;
   const enabled = data.chapters.some((chapter) => chapter.blocks.some((block) => block.type === 'exercise' && !block.hidden));
+  const scopeKey = data.chapters.flatMap((c) => c.blocks.filter((b) => b.type === 'exercise').map((b) => b.id)).join(',');
   const [state, setState] = useState<ExerciseStates | null>(null), [loading, setLoading] = useState(false), [error, setError] = useState('');
   const [finishing, setFinishing] = useState<string | null>(null), [finishError, setFinishError] = useState('');
   const active = useRef(true), finishInFlight = useRef(false), reads = useRef(0);
   useEffect(() => { active.current = true; return () => { active.current = false; }; }, []);
   const reload = useCallback(async () => {
-    if (!enabled || data.preview || data.version === null) return;
+    if (!enabled || !scopeKey || data.preview || data.version === null) return;
     const current = ++reads.current;
     setLoading(true); setError('');
     try { const next = await getExerciseStates(data.lessonId, data.version); if (active.current && current === reads.current) setState(next); }
     catch (cause) { if (active.current && current === reads.current) setError(exerciseError(cause)); }
     finally { if (active.current && current === reads.current) setLoading(false); }
-  }, [enabled, data.lessonId, data.version, data.preview]);
+  }, [enabled, scopeKey, data.lessonId, data.version, data.preview]);
   useEffect(() => { void reload(); }, [reload, data.navigation.chapter]);
   const value: Runtime = { lessonId: data.lessonId, version: data.version, preview: data.preview, userId, state, loading, error, reload,
     submit: async (blockId, requestId, expectedAttempt, answer) => {
@@ -42,6 +44,7 @@ export function ExerciseRuntime({ data, children }: { data: LongreadReaderDocume
       if (data.version === null) throw new Error('No published version');
       const next = await submitLongreadExercise(data.lessonId, blockId, { version: data.version, requestId, expectedAttempt, answer });
       if (active.current) { reads.current++; setLoading(false); setState(next); setError(''); }
+      await completion?.refresh();
       return next.acceptedResult;
     } };
   return <Context.Provider value={value}>

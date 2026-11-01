@@ -151,6 +151,7 @@ describe('longread files, scan pipeline, immutable references and live download 
     const view = await reader.read(lessonId, learner); expect(view.chapters[1]!.cover).toBeNull(); expect(JSON.stringify(view)).not.toContain(hidden);
     await expect(files.url(lessonId, second, learner, false, 1)).rejects.toThrow(NotFoundException);
     await expect(files.url(lessonId, hidden, learner, false, 1)).rejects.toThrow(NotFoundException);
+    await reader.complete(lessonId, learner, { version: 1, chapter: view.chapters[0]!.anchor });
     await reader.position(lessonId, learner, { version: 1, chapter: view.chapters[1]!.anchor, mode: 'navigate' });
     await expect(files.url(lessonId, second, learner, false, 1)).resolves.toHaveProperty('url');
     await expect(files.url(lessonId, second, learner, false, 99)).rejects.toThrow(NotFoundException);

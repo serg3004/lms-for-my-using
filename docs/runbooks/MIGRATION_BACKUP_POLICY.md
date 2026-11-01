@@ -710,3 +710,15 @@ rollback must retain/backport these filters (attempts/results, manager/progress 
 the new API with the feature disabled. New component rows are learning records, not disposable rollback data. As with
 other production migrations, take and verify the required live backup before deployment; local test success does not
 constitute production backup/restore evidence.
+
+### Longread chapter completion (PR 390)
+
+No DDL migration: the existing `progress.longread_reading_state` JSONB gains a version-keyed `learning` map with chapter
+entry/completion timestamps, accepted Continue IDs and checked summaries. Existing bookmarks and historical version
+entries are retained. PostgreSQL timestamps and the existing progress row lock govern minimum time and idempotency.
+Deploy the API/shared package before the web client; older reader responses remain supported by the new client.
+
+Functional rollback disables `longreadEnabled` while preserving JSON, versions and attempts. Do not remove `learning`
+entries or synthesize completion from the cursor frontier. An older position writer would discard new JSON fields:
+keep the feature disabled before rolling back such an API, or retain the version-aware writer and the guard refusing
+generic longread progress writes. The existing PR 389 attempt/result filters remain required as documented above.

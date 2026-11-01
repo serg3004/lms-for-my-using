@@ -1,3 +1,4 @@
+import { progressReaderServer, continueEditorServer, openProgressReport } from '../fixtures/longread-progress.js';
 import { exerciseReaderServer, exerciseEditorServer } from '../fixtures/longread-exercises.js';
 import { longreadFileServer } from '../fixtures/longread-files.js';
 import { openTypedAssessment } from '../fixtures/assessment-typed-compat.js';
@@ -429,4 +430,17 @@ for (const role of ['admin', 'instructor'] as const) for (const width of [375, 1
   await page.setViewportSize({ width, height: 900 }); await exerciseEditorServer(3).attach(page, { role });
   await page.getByRole('button', { name: 'Изменить вопрос', exact: true }).click();
   await auditAccessibility(page, testInfo, 'longread-exercise-editor');
+});
+
+for (const width of [375, 1440]) test(`longread Continue accessibility at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 }); await progressReaderServer({ fileUnavailable: true }).attach(page);
+  await auditAccessibility(page, testInfo, 'longread-progress-reader');
+});
+for (const role of ['admin', 'instructor'] as const) for (const width of [375, 1440]) test(`${role} longread Continue editor accessibility at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 }); await continueEditorServer().attach(page, { role });
+  await auditAccessibility(page, testInfo, 'longread-continue-editor');
+});
+for (const width of [375, 1440]) test(`admin longread progress report accessibility at ${width}px`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 900 }); await openProgressReport(page);
+  await auditAccessibility(page, testInfo, 'longread-progress-report');
 });

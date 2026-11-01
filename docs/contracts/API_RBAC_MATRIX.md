@@ -296,3 +296,16 @@ submit and finish use `assessmentAttemptsCreate`. Every learner operation rechec
 version, organization flag and current course entitlement before taking the user's progress lock. No new role or
 permission is introduced. Component attempts are excluded from generic results and certificate eligibility; final
 attempts retain existing own-result, instructor/course and manager/team access rules.
+
+### Longread Continue and completion (PR 390)
+
+`POST /lessons/:id/longread/completion` uses `lessonsRead` and the lesson course scope, like reader/position access.
+The actor is always the authenticated user; payload cannot supply another user or progress values. Current course
+entitlement and pinned publication are rechecked. Locked/hidden chapters and later Continue IDs cannot bypass earlier
+requirements. All roles are refused direct longread lesson writes through `POST /progress`. Existing progress/report
+read permissions and team/course filters apply to the server-written version/chapter summary. Author preview retains
+`lessonsCreate` scope and performs no learning-record writes.
+
+### Longread acceptance guard (PR 391)
+
+`apps/e2e/tests/longread-acceptance.spec.ts` exercises the real HTTP guards and PostgreSQL: learners cannot read the draft, a foreign organization receives 404, and a disabled `longreadEnabled` hides the document. Publication rejects an unready attachment; invalid content and stale draft revisions do not modify the saved draft. The versioned learner result is checked after a second publication. The automated/owner acceptance boundary is documented in [LONGREAD_ACCEPTANCE.md](../quality/LONGREAD_ACCEPTANCE.md). No permissions are added by this test-only change.

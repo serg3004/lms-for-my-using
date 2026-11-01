@@ -1,3 +1,4 @@
+import { longreadCompletionInputSchema } from '@lms/shared/longread-progress';
 import { LongreadExercisesService } from './longread-exercises.service.js';
 import { LongreadQuestionBankService } from './longread-question-bank.service.js';
 import { writeLongreadQuestionSchema, finishLongreadTestSchema } from '@lms/shared/longread-exercises';
@@ -169,6 +170,13 @@ export class LongreadsController {
   @CourseScope('param', 'id', 'lesson')
   saveReadingPosition(@Param('id', ParseUUIDPipe) lessonId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     return this.reader.position(lessonId, request.currentUser!, longreadPositionSchema.parse(body));
+  }
+
+  @Post('lessons/:id/longread/completion')
+  @Roles(...rolePolicies.lessonsRead)
+  @CourseScope('param', 'id', 'lesson')
+  completeChapter(@Param('id', ParseUUIDPipe) lessonId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.reader.complete(lessonId, request.currentUser!, longreadCompletionInputSchema.parse(body));
   }
 
   @Get('lessons/:id/longread/preview')
