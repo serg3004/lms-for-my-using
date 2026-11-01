@@ -305,3 +305,7 @@ entitlement and pinned publication are rechecked. Locked/hidden chapters and lat
 requirements. All roles are refused direct longread lesson writes through `POST /progress`. Existing progress/report
 read permissions and team/course filters apply to the server-written version/chapter summary. Author preview retains
 `lessonsCreate` scope and performs no learning-record writes.
+
+### Longread acceptance guard (PR 391)
+
+`apps/e2e/tests/longread-acceptance.spec.ts` exercises the real HTTP guards and PostgreSQL: learners cannot read the draft, a foreign organization receives 404, and a disabled `longreadEnabled` hides the document. Publication rejects an unready attachment; invalid content and stale draft revisions do not modify the saved draft. The versioned learner result is checked after a second publication. The automated/owner acceptance boundary is documented in [LONGREAD_ACCEPTANCE.md](../quality/LONGREAD_ACCEPTANCE.md). No permissions are added by this test-only change.

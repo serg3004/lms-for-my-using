@@ -69,6 +69,7 @@ Root `docs/` is not a writable backlog. Old trackers and the frozen development 
 - API semantics: [`contracts/API_CONTRACTS.md`](./contracts/API_CONTRACTS.md)
 - RBAC semantics: [`contracts/API_RBAC_MATRIX.md`](./contracts/API_RBAC_MATRIX.md)
 - checklist module rights, owner's reference table (22 actions × 5 roles; pinned to the code by a test): [`product/future/CHECKLIST_ROLE_PERMISSIONS_TABLE.md`](./product/future/CHECKLIST_ROLE_PERMISSIONS_TABLE.md)
+- longread automated acceptance and owner verification: [`quality/LONGREAD_ACCEPTANCE.md`](./quality/LONGREAD_ACCEPTANCE.md)
 - longread lesson type plan (PR 381–392): [`product/future/LONGREAD_LESSON_TYPE_PLAN.md`](./product/future/LONGREAD_LESSON_TYPE_PLAN.md)
 - release readiness checklist and code-quality plan (note for future work, nothing implemented): [`product/future/RELEASE_READINESS_CHECKLIST.md`](./product/future/RELEASE_READINESS_CHECKLIST.md)
 - terminology conflicts: [`contracts/GLOSSARY.md`](./contracts/GLOSSARY.md)
