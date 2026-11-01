@@ -60,6 +60,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `PATCH` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}/photo` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}/photo` | `Checklists` | `bearer` |
+| `GET` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}/photo/file` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}/review` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}/skip` | `Checklists` | `bearer` |
 | `PATCH` | `/api/v1/checklist-item-groups/{id}` | `Checklists` | `bearer` |
@@ -133,6 +134,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/checklists/{id}/cover` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklists/{id}/cover` | `Checklists` | `bearer` |
 | `DELETE` | `/api/v1/checklists/{id}/cover` | `Checklists` | `bearer` |
+| `GET` | `/api/v1/checklists/{id}/cover/file` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklists/{id}/start` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/courses` | `Courses` | `bearer` |
 | `POST` | `/api/v1/courses` | `Courses` | `bearer` |
