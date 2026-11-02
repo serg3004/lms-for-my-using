@@ -677,6 +677,15 @@ export class ChecklistsController {
       throw error;
     }
   }
+  // PR 406б: the explicit "Finish the check" of a self-filled sheet (a session is completed through its own route).
+  @Post('checklist-instances/:instanceId/finish')
+  @Roles(...rolePolicies.checklistItemResultsWrite)
+  async finishInstance(@Param('instanceId') instanceId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const isPrivileged = !isLearnerOnly(user.roles);
+    if (isPrivileged) await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
+    return this.checklistsService.finishInstance(instanceId, user.organizationId, user.id, isPrivileged);
+  }
   // PR 406а: same access rules as the upload above; only while the sheet is still writable.
   @Delete('checklist-instances/:instanceId/items/:itemId/photo')
   @Roles(...rolePolicies.checklistItemResultsWrite, ...rolePolicies.checklistSessionsRunOwn)

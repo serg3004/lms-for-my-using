@@ -5,7 +5,7 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint, validateChecklistPhoto } from '../shared/checklistPhoto.js';
-import { listFreeChecklists, listMyChecklistInstances, removeChecklistItemPhoto, startFreeChecklist, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
+import { finishChecklistInstance, listFreeChecklists, listMyChecklistInstances, removeChecklistItemPhoto, startFreeChecklist, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
 import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary, FreeChecklistSummary } from '../shared/api/types.js';
 import { ChecklistCover } from '../shared/ChecklistCover.js';
 import { ChecklistAccessBadge } from '../shared/checklistAccess.js';
@@ -13,12 +13,14 @@ import { PinnedChecklistTiles } from './PinnedChecklistTiles.js';
 import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { ChecklistPhotoProof } from './ChecklistPhotoProof.js';
+import { ChecklistFinishBar } from './ChecklistFinishBar.js';
 import {
   checklistResultToAnswer,
   checklistItemLevels,
   localizeChecklistScaleError,
   getRequiredChecklistProgress,
   isChecklistAnswerComplete,
+  isChecklistRequirementSatisfied,
 } from './checklistCompletion.js';
 import { ChecklistDeadlineMeta } from './ChecklistDeadlineMeta.js';
 import { LearnerChecklistSessions } from './LearnerChecklistSessions.js';
@@ -273,6 +275,18 @@ function ChecklistTaking({
       setSubmitting(null);
     }
   }
+  const missingTitles = checklist.items
+    .filter((item) => !isChecklistRequirementSatisfied(item, checklist.scoringMode, checklistResultToAnswer(resultFor(item.id))))
+    .map((item) => item.text);
+  async function finish() {
+    setError(null);
+    try {
+      await finishChecklistInstance(instance.id);
+      await onUpdated();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : t('checklists.finishError', 'Unable to finish the check.'));
+    }
+  }
   async function removePhoto(item: ChecklistItemSummary) {
     setError(null);
     setSubmitting(item.id);
@@ -386,6 +400,7 @@ function ChecklistTaking({
           );
         })}
       </div>
+      {editable && <ChecklistFinishBar requiresReview={checklist.requiresReview === true} missing={missingTitles} onFinish={finish} t={t} />}
       {instance.status === 'completed' && (
         <div
           style={{

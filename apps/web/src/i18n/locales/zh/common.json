@@ -2746,7 +2746,14 @@
     "all": {
       "title": "我的全部清单",
       "hint": "已分配的清单和自由清单在同一列表中。"
-    }
+    },
+    "finishCheck": "完成检查",
+    "sendForReview": "提交审核",
+    "finishMissing": "尚未作答：",
+    "finishConfirm": "完成后无法更改答案。",
+    "finishConfirmReview": "答案将提交给讲师，之后无法更改。",
+    "finishError": "无法完成检查。",
+    "finishCancel": "取消"
   },
   "checklistReview": {
     "title": "检查清单审核",

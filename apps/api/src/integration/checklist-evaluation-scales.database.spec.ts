@@ -285,7 +285,9 @@ describe('checklist evaluation scales (PR 293) — database', () => {
     await checklistsService.submitItemResult(instance.id, b.id, organizationId, learnerId, false, { comment: 'Still a No' });
     expect(await prisma.checklistItemResult.findUniqueOrThrow({ where: { instanceId_itemId: { instanceId: instance.id, itemId: b.id } } })).toMatchObject({ points: 0, scaleLevel: 7, answerState: 'answered' });
     expect(await checklistsService.computeInstanceScore(instance.id, organizationId)).toMatchObject({ totalScore: 80, maxScore: 110, percentage: 73 });
-    expect(await checklistsService.submitItemResult(instance.id, guard.id, organizationId, learnerId, false, { checked: true })).toMatchObject({ status: 'submitted', percentage: 73 });
+    // PR 406б: the last answer no longer finishes a self-filled sheet; the person does
+    expect(await checklistsService.submitItemResult(instance.id, guard.id, organizationId, learnerId, false, { checked: true })).toMatchObject({ status: 'in_progress' });
+    expect(await checklistsService.finishInstance(instance.id, organizationId, learnerId, false)).toMatchObject({ status: 'submitted', percentage: 73 });
   });
 
   it('PR 358: new criteria default to the tenant Yes/No scale; explicit null retains legacy scoring', async () => {
@@ -300,7 +302,8 @@ describe('checklist evaluation scales (PR 293) — database', () => {
     expect(instance.maxScore).toBe(110);
     const no = await checklistsService.submitItemResult(instance.id, item.id, organizationId, learnerId, false, { scaleLevel: 1 });
     expect(no.status).toBe('in_progress');
-    const completed = await checklistsService.submitItemResult(instance.id, legacy.id, organizationId, learnerId, false, { checked: true });
+    await checklistsService.submitItemResult(instance.id, legacy.id, organizationId, learnerId, false, { checked: true });
+    const completed = await checklistsService.finishInstance(instance.id, organizationId, learnerId, false);
     expect(completed).toMatchObject({ status: 'completed', totalScore: 10, maxScore: 110, percentage: 9 });
   });
 

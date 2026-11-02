@@ -149,7 +149,7 @@ describe('checklist assignment snapshots — database', () => {
     });
     expect(oldView.checklist.items).toHaveLength(1);
 
-    const completed = await service.submitItemResult(
+    await service.submitItemResult(
       original.id,
       itemId,
       organizationId,
@@ -157,6 +157,7 @@ describe('checklist assignment snapshots — database', () => {
       false,
       { checked: true },
     );
+    const completed = await service.finishInstance(original.id, organizationId, learnerId, false);
     expect(completed.status).toBe('completed');
     expect(completed.totalScore).toBe(10);
     expect(completed.maxScore).toBe(10);
@@ -191,9 +192,11 @@ describe('checklist assignment snapshots — database', () => {
     expect(oldView.checklist.itemGroups).toMatchObject([{ id: group.id, title: 'Original group', order: 0 }]);
     expect(oldView.checklist.items[0]).toMatchObject({ id: itemId, groupId: group.id });
     await service.submitItemResult(original.id, itemId, organizationId, learnerId, false, { checked: true });
+    await service.finishInstance(original.id, organizationId, learnerId, false);
     const next = await service.assignChecklist(checklistId, organizationId, { userId: learnerId }, assignerId);
     expect((await service.getInstance(next.id, organizationId)).checklist.itemGroups).toMatchObject([{ id: group.id, title: 'Renamed group', order: 5 }]);
     await service.submitItemResult(next.id, itemId, organizationId, learnerId, false, { checked: true });
+    await service.finishInstance(next.id, organizationId, learnerId, false);
 
     await prisma.checklistItemGroup.delete({ where: { id: group.id } });
     expect((await service.getInstance(original.id, organizationId)).checklist.itemGroups).toMatchObject([{ id: group.id, title: 'Original group' }]);

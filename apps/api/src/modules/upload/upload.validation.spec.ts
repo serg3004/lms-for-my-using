@@ -197,3 +197,22 @@ describe('ZIP archive bomb detection', () => {
     expect(() => validateUploadFile(file)).not.toThrow();
   });
 });
+
+// Owner check 2026-11-02: a 1.2 MB PNG cover failed while a small JPEG worked. The API accepts every
+// allowed picture format up to the 8 MB limit; the failure was the web proxy's 1 MB body limit.
+describe('picture formats accepted by the API up to the upload limit', () => {
+  const header: Record<string, Buffer> = {
+    'image/jpeg': Buffer.from([0xff, 0xd8, 0xff, 0xe0]),
+    'image/png': Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    'image/gif': Buffer.from('GIF89a', 'ascii'),
+    'image/webp': Buffer.concat([Buffer.from('RIFF', 'ascii'), Buffer.alloc(4), Buffer.from('WEBP', 'ascii')]),
+  };
+  it.each(Object.keys(header))('accepts a 1.3 MB %s with a Cyrillic file name', (mimetype) => {
+    const buffer = Buffer.concat([header[mimetype]!, Buffer.alloc(1_300_000)]);
+    expect(() => validateUploadFile(createFile({ originalname: 'Логотип проверки рабочего места.png', mimetype, buffer }))).not.toThrow();
+  });
+  it('accepts a picture just under the 8 MB limit', () => {
+    const buffer = Buffer.concat([header['image/png']!, Buffer.alloc(8 * 1024 * 1024 - 100)]);
+    expect(() => validateUploadFile(createFile({ originalname: 'big.png', mimetype: 'image/png', buffer }))).not.toThrow();
+  });
+});

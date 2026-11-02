@@ -138,7 +138,8 @@ function createHarness({
   const prisma = {
     checklistInstance: {
       findFirst: jest.fn(async () => ({ ...instance })),
-      findFirstOrThrow: jest.fn(async () => ({ checklistId, status: instance.status })),
+      // PR 406б: these cases cover the completion rules shared with observer sessions, which complete on the last answer
+      findFirstOrThrow: jest.fn(async () => ({ checklistId, status: instance.status, session: { id: 'session-1' } })),
       update: jest.fn(async ({ data }: { data: InstancePatch }) => {
         Object.assign(instance, data, { updatedAt: new Date() });
         return { ...instance, checklist: { ...checklist, items }, results: results.map((entry) => ({ ...entry })) };

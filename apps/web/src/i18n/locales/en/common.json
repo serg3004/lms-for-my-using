@@ -2746,7 +2746,14 @@
     "all": {
       "title": "All my checklists",
       "hint": "Assigned checklists and free ones in one list."
-    }
+    },
+    "finishCheck": "Finish the check",
+    "sendForReview": "Send for review",
+    "finishMissing": "Not answered yet:",
+    "finishConfirm": "After finishing, the answers cannot be changed.",
+    "finishConfirmReview": "The answers will go to your instructor and cannot be changed afterwards.",
+    "finishError": "Unable to finish the check.",
+    "finishCancel": "Cancel"
   },
   "checklistReview": {
     "loadError": "Unable to load pending reviews.",

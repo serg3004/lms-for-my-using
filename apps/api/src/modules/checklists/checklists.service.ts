@@ -2787,6 +2787,44 @@ export class ChecklistsService {
   }
 
   /**
+   * PR 406б: the explicit "Finish the check" of a self-filled sheet. Only the executor (or a privileged role)
+   * may finish, only while the sheet is open, and only when every required criterion has an answer; the
+   * missing ones are returned in a 409 so the screen can list them. A sheet with `requiresReview` goes to
+   * review ("Send for review") instead of completed.
+   */
+  async finishInstance(instanceId: string, organizationId: string, requesterId: string, isPrivileged: boolean) {
+    const instance = await this.prisma.checklistInstance.findFirst({
+      where: { id: instanceId, organizationId },
+      select: { id: true, status: true, userId: true, checklistId: true, templateSnapshot: true, snapshotVersion: true, session: { select: { id: true } } },
+    });
+    if (!instance) throw new NotFoundException('Checklist instance not found');
+    if (instance.userId !== requesterId && !isPrivileged) throw new ForbiddenException('Only the executor can finish this check');
+    if (instance.session) throw new BadRequestException('A session is finished by completing the session');
+    if (instance.status !== 'assigned' && instance.status !== 'in_progress') throw new ConflictException('The check is already finished');
+
+    const checklist = await this.resolveRuntimeChecklist(instance, organizationId);
+    const results = await this.prisma.checklistItemResult.findMany({
+      where: { instanceId },
+      select: { itemId: true, checked: true, scaleLevel: true, points: true, photoObjectKey: true, reviewStatus: true, answerState: true },
+    });
+    const byItem = new Map<string, CompletionResult>(results.map((result) => [result.itemId, result]));
+    const missing = checklist.items.filter((item) => !this.isItemSatisfied(checklist.scoringMode, item, byItem.get(item.id))).map((item) => item.id);
+    if (missing.length > 0) throw new ConflictException({ message: 'Required criteria are not answered', missingItemIds: missing });
+
+    const updated = await this.recomputeInstance(instanceId, organizationId, { finish: true });
+    await this.auditLog.record({
+      organizationId,
+      actorId: requesterId,
+      action: 'checklist_instance.finished',
+      targetType: 'checklist_instance',
+      targetId: instanceId,
+      summary: 'Finished the check',
+      metadata: { status: updated.status },
+    });
+    return updated;
+  }
+
+  /**
    * PR 330: called when an observer completes a session on a checklist whose frozen snapshot has
    * `allowFinishIncomplete`. Every criterion still without an answer is recorded as skipped (the
    * same persisted `answerState='skipped'` row auto-skip writes, so scoring v1 leaves it out of
@@ -2838,11 +2876,12 @@ export class ChecklistsService {
     });
   }
 
-  private async recomputeInstance(instanceId: string, organizationId: string, options: { skipAllUnanswered?: boolean } = {}) {
+  private async recomputeInstance(instanceId: string, organizationId: string, options: { skipAllUnanswered?: boolean; finish?: boolean } = {}) {
     const instance = await this.prisma.checklistInstance.findFirstOrThrow({
       where: { id: instanceId, organizationId },
       select: {
         checklistId: true,
+        session: { select: { id: true } },
         status: true,
         dueAt: true,
         templateSnapshot: true,
@@ -2929,7 +2968,13 @@ export class ChecklistsService {
     let submittedAt: Date | undefined;
     let completedAt: Date | undefined;
 
-    if (allRequirementsSatisfied && checklist.requiresReview && reviewableResults.length === 0) {
+    // PR 406б: a self-filled sheet (no observer session) is finished by the person pressing "Finish the check",
+    // not by the last answer. A session is finished by its own completion, so it keeps the automatic rule.
+    const holdForFinish = instance.session == null && options.finish !== true && (status === 'assigned' || status === 'in_progress');
+
+    if (holdForFinish) {
+      if (status === 'assigned' && (allRequirementsSatisfied || resultByItemId.size > 0)) status = 'in_progress';
+    } else if (allRequirementsSatisfied && checklist.requiresReview && reviewableResults.length === 0) {
       status = 'completed';
       completedAt = now;
     } else if (
