@@ -31,4 +31,13 @@ test.describe('checklist picture is served by the API (PR 400)', () => {
     const config = readFileSync(new URL('../../../infra/nginx/security-headers.conf', import.meta.url), 'utf8');
     expect(config).toContain("img-src 'self' data: blob: https:");
   });
+
+  test('the web proxy lets uploads through up to the API limit (a 1.2 MB PNG used to get 413)', async () => {
+    const config = readFileSync(new URL('../../../infra/nginx/nginx.conf', import.meta.url), 'utf8');
+    const api = config.slice(config.indexOf('location /api/'));
+    const limit = /client_max_body_size\s+(\d+)m;/.exec(api.slice(0, api.indexOf('}')));
+    expect(limit, 'the /api/ location must set client_max_body_size').not.toBeNull();
+    // MAX_BUFFERED_UPLOAD_SIZE_BYTES is 8 MB; the proxy must not be stricter than the API.
+    expect(Number(limit![1])).toBeGreaterThanOrEqual(8);
+  });
 });
