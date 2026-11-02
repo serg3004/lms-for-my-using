@@ -3422,6 +3422,7 @@
     "deleteSet": "Delete “{{name}}”? A set used by a checklist cannot be deleted.",
     "archivedSet": "This answer set is archived. Make a copy to edit it.",
     "usedSetWarning": "Changes apply to sessions that have not started. Started sessions keep their frozen answers.",
-    "requiredFields": "Fill in and save the required feedback fields."
+    "requiredFields": "Fill in and save the required feedback fields.",
+    "item": "Item {{number}}"
   }
 }

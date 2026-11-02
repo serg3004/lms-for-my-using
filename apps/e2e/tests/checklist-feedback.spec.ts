@@ -67,6 +67,10 @@ test('answer-set creation, failed save keeps the draft, keyboard ordering, archi
   await page.getByLabel('Название ответа 2', { exact: true }).fill('Нет');
   await page.getByRole('button', { name: 'Элемент 2 вверх', exact: true }).focus(); await page.keyboard.press('Enter');
   await expect(page.getByLabel('Название ответа 1', { exact: true })).toHaveValue('Нет');
+  const handle = page.getByRole('button', { name: 'Перетащить элемент 2', exact: true });
+  await handle.focus(); await page.keyboard.press('Space'); await expect(handle).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('ArrowUp'); await expect(page.getByRole('status').filter({ hasText: '«Элемент 2» над «Элемент 1».' })).toBeVisible();
+  await page.keyboard.press('Space'); await expect(page.getByLabel('Название ответа 1', { exact: true })).toHaveValue('Да');
   server.fail(500); await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Не удалось сохранить');
   await expect(page.getByLabel('Название набора ответов', { exact: true })).toHaveValue('Согласование');

@@ -3422,6 +3422,7 @@
     "deleteSet": "删除“{{name}}”？检查表正在使用的答案集无法删除。",
     "archivedSet": "此答案集已归档。请创建副本以进行编辑。",
     "usedSetWarning": "更改适用于尚未开始的会话。已开始的会话保留其答案快照。",
-    "requiredFields": "请填写并保存必填的反馈字段。"
+    "requiredFields": "请填写并保存必填的反馈字段。",
+    "item": "第{{number}}项"
   }
 }
