@@ -6,6 +6,8 @@ import { AuditLogService } from '../audit-log/public.js';
 import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, UploadService } from '../upload/public.js';
 import { withResolvedLevelColors } from './checklist-colors.js';
 import { ChecklistScaleService } from './checklist-scale.service.js';
+import { ChecklistAnswerSetService } from './checklist-answer-set.service.js';
+import { parseFeedbackLayout, pickAnswerSets, type FeedbackAnswerSetSnapshot, type FeedbackLayout } from './checklist-feedback-layout.js';
 import { performanceBand, type ManagerPerformanceBand } from './checklist-performance-band.js';
 import { managerExportRows, employeeExportRows, exportLocale, MAX_EXPORT_ROWS, serializeReportCsv, viewEmployees } from './checklist-report-csv.js';
 import { ChecklistOrgTemplates } from './checklist-org-templates.js';
@@ -117,6 +119,7 @@ const checklistSelect = {
   forbidGalleryPhotos: true,
   feedbackEnabled: true,
   feedbackRequired: true,
+  feedbackLayout: true,
   allowSkipAll: true,
   accessMode: true,
   pinned: true,
@@ -273,6 +276,10 @@ type ChecklistRuntime = {
   // PR 368 -- optional too: older snapshots read as feedback on, optional, no sheet-level skip.
   feedbackEnabled?: boolean;
   feedbackRequired?: boolean;
+  // PR 405 -- optional: older snapshots read as the classic three text fields. The answer sets are the
+  // options of the choice fields as they were when the instance was assigned.
+  feedbackLayout?: FeedbackLayout | null;
+  feedbackAnswerSets?: Record<string, FeedbackAnswerSetSnapshot>;
   allowSkipAll?: boolean;
   itemGroups?: ChecklistSnapshotItemGroup[];
   items: ChecklistSnapshotItem[];
@@ -309,6 +316,7 @@ export class ChecklistsService {
     private readonly uploadService: UploadService,
     private readonly auditLog: AuditLogService = new AuditLogService(prisma),
     private readonly scaleService: ChecklistScaleService = new ChecklistScaleService(prisma, auditLog),
+    private readonly answerSetService: ChecklistAnswerSetService = new ChecklistAnswerSetService(prisma, auditLog),
   ) {
     // Plain helpers, not providers: built here so Nest does not try to inject them.
     this.resultDeletion = new ChecklistResultDeletion(prisma, auditLog);
@@ -566,8 +574,10 @@ export class ChecklistsService {
 
   async createChecklist(input: CreateChecklistInput, createdBy: string) {
     assertFeedbackSettingsConsistent(input.feedbackEnabled ?? true, input.feedbackRequired ?? false);
+    const { feedbackLayout, ...rest } = input;
+    await this.answerSetService.assertLayoutReferences(input.organizationId, feedbackLayout ?? null, null);
     const created = await this.prisma.checklist.create({
-      data: { ...input, createdBy },
+      data: { ...rest, ...(feedbackLayout ? { feedbackLayout } : {}), createdBy },
       select: checklistWithItemsSelect,
     });
 
@@ -586,7 +596,7 @@ export class ChecklistsService {
   async updateChecklist(checklistId: string, organizationId: string, input: UpdateChecklistInput, actorId: string | null = null) {
     const checklist = await this.prisma.checklist.findFirst({
       where: { id: checklistId, organizationId, deletedAt: null },
-      select: { id: true, scoringMode: true, scaleLevels: true, accessMode: true, status: true, pinned: true, feedbackEnabled: true, feedbackRequired: true },
+      select: { id: true, scoringMode: true, scaleLevels: true, accessMode: true, status: true, pinned: true, feedbackEnabled: true, feedbackRequired: true, feedbackLayout: true },
     });
 
     if (!checklist) {
@@ -605,8 +615,11 @@ export class ChecklistsService {
       );
     }
 
-    const { scaleLevels, contextFields, moduleSettings, ...rest } = input;
+    const { scaleLevels, contextFields, moduleSettings, feedbackLayout, ...rest } = input;
     delete rest.pinned;
+    if (feedbackLayout !== undefined) {
+      await this.answerSetService.assertLayoutReferences(organizationId, feedbackLayout, parseFeedbackLayout(checklist.feedbackLayout));
+    }
     if (moduleSettings?.observers) await assertObserversBelongToOrganization(this.prisma, organizationId, moduleSettings.observers.userIds);
 
     const updated = await this.updateWithPinLimit(checklistId, organizationId, pinned, {
@@ -618,6 +631,9 @@ export class ChecklistsService {
         : {}),
       ...(contextFields !== undefined
         ? { contextFields: contextFields === null ? Prisma.JsonNull : contextFields }
+        : {}),
+      ...(feedbackLayout !== undefined
+        ? { feedbackLayout: feedbackLayout === null ? Prisma.JsonNull : (feedbackLayout as unknown as Prisma.InputJsonValue) }
         : {}),
     });
 
@@ -703,6 +719,7 @@ export class ChecklistsService {
           forbidGalleryPhotos: source.forbidGalleryPhotos,
           feedbackEnabled: source.feedbackEnabled,
           feedbackRequired: source.feedbackRequired,
+          feedbackLayout: source.feedbackLayout ?? undefined,
           allowSkipAll: source.allowSkipAll,
           // PR 366: only an administrator's copy of a free checklist stays free.
           accessMode: keepFreeAccess ? source.accessMode : 'assigned',
@@ -1218,7 +1235,7 @@ export class ChecklistsService {
       },
     });
     const itemsWithScale = await this.attachItemScales(db, organizationId, items);
-    const runtimeChecklist = this.toRuntimeChecklist(checklist, itemsWithScale);
+    const runtimeChecklist = await this.withFeedbackAnswerSets(this.toRuntimeChecklist(checklist, itemsWithScale), organizationId);
     const snapshot = this.buildTemplateSnapshot(runtimeChecklist);
 
     const createInstance = async (transaction: Prisma.TransactionClient | PrismaService) => {
@@ -1339,7 +1356,7 @@ export class ChecklistsService {
       select: { id: true, checklistId: true, order: true, text: true, points: true, isRequired: true, photoRequired: true, weight: true, allowSkip: true, autoSkipUnanswered: true, scaleId: true, groupId: true },
     });
     const itemsWithScale = await this.attachItemScales(this.prisma, organizationId, items);
-    const runtimeChecklist = this.toRuntimeChecklist(checklist, itemsWithScale);
+    const runtimeChecklist = await this.withFeedbackAnswerSets(this.toRuntimeChecklist(checklist, itemsWithScale), organizationId);
     const snapshot = this.buildTemplateSnapshot(runtimeChecklist) as unknown as Prisma.InputJsonValue;
     const dueAt = input.dueAt ? new Date(input.dueAt) : undefined;
 
@@ -2431,6 +2448,7 @@ export class ChecklistsService {
       forbidGalleryPhotos?: boolean;
       feedbackEnabled?: boolean;
       feedbackRequired?: boolean;
+      feedbackLayout?: Prisma.JsonValue | null;
       allowSkipAll?: boolean;
       itemGroups?: ChecklistSnapshotItemGroup[];
     },
@@ -2453,10 +2471,18 @@ export class ChecklistsService {
       forbidGalleryPhotos: checklist.forbidGalleryPhotos,
       feedbackEnabled: checklist.feedbackEnabled,
       feedbackRequired: checklist.feedbackRequired,
+      feedbackLayout: parseFeedbackLayout(checklist.feedbackLayout),
       allowSkipAll: checklist.allowSkipAll,
       itemGroups: checklist.itemGroups?.map((group) => ({ ...group })),
       items: items.map((item) => ({ ...item })),
     };
+  }
+
+  /** PR 405: freezes the options of the answer sets the feedback layout points at into the runtime checklist. */
+  private async withFeedbackAnswerSets(runtime: ChecklistRuntime, organizationId: string): Promise<ChecklistRuntime> {
+    const layout = runtime.feedbackLayout ?? null;
+    if (!layout) return { ...runtime, feedbackAnswerSets: {} };
+    return { ...runtime, feedbackAnswerSets: pickAnswerSets(layout, await this.answerSetService.loadForLayout(organizationId, layout)) };
   }
 
   private buildTemplateSnapshot(checklist: ChecklistRuntime): ChecklistTemplateSnapshot {
@@ -2582,6 +2608,8 @@ export class ChecklistsService {
           forbidGalleryPhotos: snapshot.checklist.forbidGalleryPhotos ?? false,
           feedbackEnabled: snapshot.checklist.feedbackEnabled ?? true,
           feedbackRequired: snapshot.checklist.feedbackRequired ?? false,
+          feedbackLayout: snapshot.checklist.feedbackLayout ?? null,
+          feedbackAnswerSets: snapshot.checklist.feedbackAnswerSets ?? {},
           allowSkipAll: snapshot.checklist.allowSkipAll ?? false,
         }
       : instance.checklist;
@@ -2746,9 +2774,7 @@ export class ChecklistsService {
     const snapshot = this.parseTemplateSnapshot(instance.templateSnapshot);
     if (!snapshot) return;
     const scaled = snapshot.checklist.items.filter((item) => item.scaleId);
-    if (scaled.length === 0) return;
-
-    const fresh = await this.attachItemScales(this.prisma, organizationId, scaled as (ChecklistSnapshotItem & { scaleId: string })[]);
+    const fresh = scaled.length === 0 ? [] : await this.attachItemScales(this.prisma, organizationId, scaled as (ChecklistSnapshotItem & { scaleId: string })[]);
     const freshById = new Map(fresh.map((item) => [item.id, item.scale]));
     let changed = false;
     const items = snapshot.checklist.items.map((item) => {
@@ -2757,11 +2783,19 @@ export class ChecklistsService {
       changed = true;
       return { ...item, scale };
     });
+
+    // PR 405: answer sets follow the same rule -- an edit reaches sessions that have not started yet.
+    const layout = snapshot.checklist.feedbackLayout ?? null;
+    const frozenSets = snapshot.checklist.feedbackAnswerSets ?? {};
+    const freshSets = layout ? pickAnswerSets(layout, await this.answerSetService.loadForLayout(organizationId, layout)) : frozenSets;
+    // A deleted set keeps its frozen copy.
+    const feedbackAnswerSets = { ...frozenSets, ...freshSets };
+    if (JSON.stringify(feedbackAnswerSets) !== JSON.stringify(frozenSets)) changed = true;
     if (!changed) return;
 
     await this.prisma.checklistInstance.update({
       where: { id: instanceId },
-      data: { templateSnapshot: { ...snapshot, checklist: { ...snapshot.checklist, items } } as unknown as Prisma.InputJsonValue },
+      data: { templateSnapshot: { ...snapshot, checklist: { ...snapshot.checklist, items, feedbackAnswerSets } } as unknown as Prisma.InputJsonValue },
     });
   }
 

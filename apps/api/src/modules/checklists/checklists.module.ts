@@ -6,6 +6,7 @@ import { ChecklistDeadlineWorker } from './checklist-deadline.worker.js';
 import { ChecklistFoldersController } from './checklist-folders.controller.js';
 import { ChecklistFoldersService } from './checklist-folders.service.js';
 import { ChecklistReviewAccessService } from './checklist-review-access.service.js';
+import { ChecklistAnswerSetService } from './checklist-answer-set.service.js';
 import { ChecklistScaleService } from './checklist-scale.service.js';
 import { ChecklistSessionReminderDelivery } from './checklist-session-reminder-delivery.js';
 import { ChecklistSessionReminderWorker } from './checklist-session-reminder.worker.js';
@@ -23,6 +24,7 @@ import { ChecklistsService } from './checklists.service.js';
     ChecklistWorkplaceSettingsService,
     ChecklistSessionService,
     ChecklistScaleService,
+    ChecklistAnswerSetService,
     ChecklistDeadlineWorker,
     ChecklistSessionReminderDelivery,
     ChecklistSessionReminderWorker,

@@ -3,6 +3,7 @@ import type { ChecklistGeolocationPolicy, ChecklistPreSessionVisibility, Prisma 
 
 import type { PrismaService } from '../../database/prisma.service.js';
 import type { AuditLogService } from '../audit-log/public.js';
+import { collectAnswerSetIds, dropMissingAnswerSets, parseFeedbackLayout } from './checklist-feedback-layout.js';
 import { overridesToColumns, presentOverrides, type ModuleSettingsOverridesView } from './checklist-settings-overrides.js';
 
 export const MAX_ORG_TEMPLATES = 100;
@@ -25,6 +26,8 @@ export type ChecklistTemplatePayload = {
   // PR 368: templates saved before it have no such keys and read as the defaults.
   feedbackEnabled?: boolean;
   feedbackRequired?: boolean;
+  // PR 405: configurable feedback section; templates saved before it have none (= the classic three fields).
+  feedbackLayout?: Prisma.JsonValue | null;
   allowSkipAll?: boolean;
   // PR 397: per-sheet module-settings overrides; templates saved before it have none (= as in the organization).
   moduleSettings?: ModuleSettingsOverridesView;
@@ -65,6 +68,7 @@ export class ChecklistOrgTemplates {
       forbidGalleryPhotos: source.forbidGalleryPhotos,
       feedbackEnabled: source.feedbackEnabled,
       feedbackRequired: source.feedbackRequired,
+      feedbackLayout: (source.feedbackLayout as Prisma.JsonValue | null) ?? null,
       allowSkipAll: source.allowSkipAll,
       moduleSettings: presentOverrides(source),
       groups: source.itemGroups.map((group) => ({ title: group.title, order: group.order })),
@@ -126,6 +130,14 @@ export class ChecklistOrgTemplates {
       scaleIds.length ? (await this.prisma.checklistScale.findMany({ where: { organizationId, id: { in: scaleIds } }, select: { id: true } })).map((scale) => scale.id) : [],
     );
 
+    // PR 405: answer sets deleted since the template was saved drop their choice fields.
+    const savedLayout = parseFeedbackLayout(payload.feedbackLayout);
+    const savedSetIds = collectAnswerSetIds(savedLayout);
+    const liveSetIds = new Set(
+      savedSetIds.length ? (await this.prisma.checklistAnswerSet.findMany({ where: { organizationId, id: { in: savedSetIds } }, select: { id: true } })).map((set) => set.id) : [],
+    );
+    const feedbackLayout = savedLayout ? dropMissingAnswerSets(savedLayout, liveSetIds) : null;
+
     const checklistId = await this.prisma.$transaction(async (tx) => {
       const created = await tx.checklist.create({
         data: {
@@ -137,7 +149,9 @@ export class ChecklistOrgTemplates {
           defaultLocationCapturePolicy: payload.defaultLocationCapturePolicy,
           preSessionVisibility: payload.preSessionVisibility,
           allowFinishIncomplete: payload.allowFinishIncomplete, forbidGalleryPhotos: payload.forbidGalleryPhotos,
-          feedbackEnabled: payload.feedbackEnabled ?? true, feedbackRequired: payload.feedbackRequired ?? false, allowSkipAll: payload.allowSkipAll ?? false,
+          feedbackEnabled: payload.feedbackEnabled ?? true, feedbackRequired: payload.feedbackRequired ?? false,
+          ...(feedbackLayout ? { feedbackLayout: feedbackLayout as unknown as Prisma.InputJsonValue } : {}),
+          allowSkipAll: payload.allowSkipAll ?? false,
           ...(payload.moduleSettings ? overridesToColumns({ thresholds: payload.moduleSettings.thresholds, resultColors: payload.moduleSettings.resultColors, feedbackVisibility: payload.moduleSettings.feedbackVisibility, observers: payload.moduleSettings.observers }) as Prisma.ChecklistUncheckedCreateInput : {}),
           createdBy: actorId,
         },
