@@ -8,10 +8,11 @@ import { AdminPageHeader, AdminPageLayout, ChecklistsTabs, ConfirmDialog, type A
 import { ObserverPageLayout } from '../shared/observerLayout.js';
 import { ObserverSessionsNav } from './ObserverSessionsNav.js';
 import { ChecklistBuilder } from '../features/admin-checklists/ChecklistBuilder.js';
+import { ChecklistCreateMenu } from '../features/admin-checklists/ChecklistCreateMenu.js';
 import { ChecklistTemplateDialog } from '../features/admin-checklists/ChecklistTemplateDialog.js';
 import { ChecklistBulkBar, bulkDeleteMessage, bulkResultSummary } from '../features/admin-checklists/ChecklistBulkBar.js';
 import { FolderDialog, MoveToFolderDialog, type FolderDialogTarget } from '../features/admin-checklists/FolderDialogs.js';
-import { deleteImpactMessage, folderErrorMessage, folderPath, libraryContents, resolveSelectedFolder } from '../features/admin-checklists/folders.js';
+import { canAddSubfolder, deleteImpactMessage, folderErrorMessage, folderPath, libraryContents, resolveSelectedFolder } from '../features/admin-checklists/folders.js';
 import { ChecklistTable } from '../features/admin-checklists/ChecklistTable.js';
 import { CHECKLIST_STATUSES, filterChecklists, isUntouchedDraft } from '../features/admin-checklists/domain.js';
 import { Button, PageState, SearchInput, Toolbar, type DataTableSort } from '../shared/ui.js';
@@ -163,8 +164,8 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
     if (!target) return;
     try {
       if (target.kind === 'create') {
-        const created = await createChecklistFolder({ name: values.name, parentId: target.parent?.id ?? null, visibleToStaff: values.visibleToStaff });
-        selectFolder(created.id);
+        // PR 409: the new folder appears as a row of the open folder; the user stays where they are.
+        await createChecklistFolder({ name: values.name, parentId: target.parent?.id ?? null, visibleToStaff: values.visibleToStaff });
       } else {
         await updateChecklistFolder(target.folder.id, { name: values.name, visibleToStaff: values.visibleToStaff });
       }
@@ -238,6 +239,26 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
       setDeleteTarget(null);
     }
   }
+  /** PR 409: "+ Create > Checklist": the draft is created straight in the open folder and opened in the editor. */
+  async function createInOpenFolder() {
+    setStatusError(null);
+    try {
+      const created = await createChecklist(currentUser!.organizationId, {
+        title: newChecklistTitle,
+        scoringMode: 'sum_points',
+        passThreshold: 80,
+        requiresReview: false,
+        folderId: selectedFolderId,
+      });
+      freshDraftId.current = created.id;
+      await load();
+      setSelectedId(created.id);
+    } catch (error) {
+      setStatusError(error instanceof ApiClientError && error.status === 404
+        ? t('admin.checklists.folders.errorGone', 'The folder no longer exists or is not available to you. Refresh the page.')
+        : error instanceof ApiClientError ? error.message : t('admin.checklists.createError', 'Unable to create the checklist.'));
+    }
+  }
   if (loadState.status === 'loading') {
     return <main className="admin-state"><PageState message={t('admin.checklists.loading', 'Loading checklists...')} variant="loading" /></main>;
   }
@@ -308,25 +329,12 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
           <Button variant="secondary" type="button" onClick={() => setTemplatesOpen(true)}>
             {t('admin.checklists.templates.open', 'From template')}
           </Button>
-          <Button
-            variant="primary"
-            type="button"
-            onClick={async () => {
-              const created = await createChecklist(currentUser!.organizationId, {
-                title: newChecklistTitle,
-                scoringMode: 'sum_points',
-                passThreshold: 80,
-                requiresReview: false,
-              });
-              freshDraftId.current = created.id;
-              // A sheet created while a folder is open starts in that folder.
-              if (selectedFolderId) await updateChecklist(created.id, { folderId: selectedFolderId });
-              await load();
-              setSelectedId(created.id);
-            }}
-          >
-            + {t('admin.checklists.create', 'Create checklist')}
-          </Button>
+          <ChecklistCreateMenu
+            canCreateFolder={canAddSubfolder(folders, selectedFolderId)}
+            onCreateFolder={() => setFolderDialog({ kind: 'create', parent: selectedFolder })}
+            onCreateChecklist={() => void createInOpenFolder()}
+            t={t}
+          />
           </div>
         }
       />
@@ -355,7 +363,6 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
             left={<SearchInput value={search} onChange={changeSearch} placeholder={t('admin.checklists.searchPlaceholder', 'Find checklist')} />}
             right={
               <>
-                <Button onClick={() => setFolderDialog({ kind: 'create', parent: selectedFolder })} type="button" variant="secondary">{t('admin.checklists.folders.new', 'New folder')}</Button>
                 <select aria-label={t('admin.checklists.allStatuses', 'All statuses')} className="admin-status-select" value={statusFilter} onChange={(e) => changeStatusFilter(e.target.value as 'all' | ChecklistStatus)}>
                   <option value="all">{t('admin.checklists.allStatuses', 'All statuses')}</option>
                   {CHECKLIST_STATUSES.map((status) => (
@@ -417,6 +424,7 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
       />
       <ChecklistTemplateDialog
         open={templatesOpen}
+        folderId={selectedFolderId}
         locale={(i18n.language ?? 'en').slice(0, 2)}
         onClose={() => setTemplatesOpen(false)}
         onCreated={(created) => { setTemplatesOpen(false); void load().then(() => setSelectedId(created.id)); }}

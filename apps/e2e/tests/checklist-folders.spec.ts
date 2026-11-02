@@ -19,6 +19,14 @@ async function mockApi(page: Page, state: { folders: ReturnType<typeof folder>[]
     if (path === '/auth/me') return route.fulfill({ json: { id: 'admin', organizationId: 'org', email: 'admin@example.invalid', firstName: 'Ada', lastName: 'Admin', roles: ['admin'], status: 'active', locale: 'ru', timezone: 'UTC' } });
     if (path.endsWith('/theme')) return route.fulfill({ json: { themeSettings: {} } });
     if (path === '/checklists' && method === 'GET') return route.fulfill({ json: state.sheets });
+    if (path === '/checklists' && method === 'POST') {
+      const body = request.postDataJSON() as { title: string; folderId?: string | null };
+      calls.push({ method, path, body });
+      const created = sheet(`new-${state.sheets.length + 1}`, body.title, body.folderId ?? null);
+      state.sheets.push(created);
+      return route.fulfill({ json: created });
+    }
+    if (path === '/checklist-scales' || path.endsWith('/groups')) return route.fulfill({ json: [] });
     if (path === '/checklist-folders' && method === 'GET') {
       const direct = (id: string) => state.sheets.filter((item) => item.folderId === id).length;
       return route.fulfill({ json: { checklistCount: state.sheets.length, folders: state.folders.map((item) => ({ ...item, checklistCount: direct(item.id), totalChecklistCount: direct(item.id) })) } });
@@ -125,11 +133,15 @@ test.describe('Checklist library: one list of folders and checklists (PR 408)', 
 
     // Create a subfolder of the open folder.
     await page.getByRole('row', { name: /Магазин/ }).getByRole('button', { name: 'Открыть папку: Магазин' }).click();
-    await page.getByRole('button', { name: 'Новая папка' }).click();
+    await page.getByRole('button', { name: 'Создать', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Папку…' }).click();
     const dialog = page.getByRole('dialog');
-    await expect(dialog.getByRole('heading', { name: 'Новая подпапка в «Магазин»' })).toBeVisible();
+    await expect(dialog.getByRole('heading', { name: 'Создать папку' })).toBeVisible();
+    await expect(dialog).toContainText('Папка будет создана в «Магазин».');
     await dialog.getByLabel('Название папки').fill('Подсобка');
-    await dialog.getByRole('button', { name: 'Сохранить' }).click();
+    await dialog.getByRole('button', { name: 'Создать', exact: true }).click();
+    await expect(page.getByRole('row', { name: /Подсобка/ })).toBeVisible();
+    await expect(page).toHaveURL(/folder=shop/);
     expect(calls.find((call) => call.path === '/checklist-folders' && call.method === 'POST')?.body).toEqual({ name: 'Подсобка', parentId: 'shop', visibleToStaff: false });
 
     // Move a sheet to a folder from the row menu.
@@ -151,6 +163,57 @@ test.describe('Checklist library: one list of folders and checklists (PR 408)', 
     await confirm.getByRole('button', { name: 'Удалить' }).click();
     await expect.poll(() => calls.some((call) => call.method === 'DELETE' && call.path === '/checklist-folders/shop')).toBe(true);
     await expect(page.getByRole('row', { name: /Магазин/ })).toHaveCount(0);
+  });
+
+  test('"+ Создать" makes a folder, then a checklist inside it, and the checklist lands in that folder', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const calls: { method: string; path: string; body: unknown }[] = [];
+    await mockApi(page, { folders: [], sheets: [] }, calls);
+    await page.goto('/admin/checklists');
+    const createButton = page.getByRole('button', { name: 'Создать', exact: true });
+    await expect(createButton).toBeVisible();
+
+    // The menu is keyboard operable and closes on Escape.
+    await createButton.click();
+    await expect(page.getByRole('menuitem', { name: 'Папку…' })).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('menuitem', { name: 'Чек-лист' })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('menu')).toHaveCount(0);
+
+    // A folder is created in a small dialog and appears as a row; the user stays at the root.
+    await createButton.click();
+    await page.getByRole('menuitem', { name: 'Папку…' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toContainText('верхнем уровне');
+    await dialog.getByLabel('Название папки').fill('Новая смена');
+    await dialog.getByRole('button', { name: 'Отмена' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await createButton.click();
+    await page.getByRole('menuitem', { name: 'Папку…' }).click();
+    await page.getByRole('dialog').getByLabel('Название папки').fill('Новая смена');
+    await page.getByRole('dialog').getByRole('button', { name: 'Создать', exact: true }).click();
+    await expect(page.getByRole('row', { name: /Новая смена/ })).toBeVisible();
+    expect(calls.filter((call) => call.path === '/checklist-folders' && call.method === 'POST')).toHaveLength(1);
+
+    // Open it and create a checklist: the request names the open folder and the editor opens.
+    await page.getByRole('button', { name: 'Открыть папку: Новая смена' }).click();
+    await createButton.click();
+    await page.getByRole('menuitem', { name: 'Чек-лист' }).click();
+    await expect.poll(() => calls.find((call) => call.path === '/checklists' && call.method === 'POST')?.body).toMatchObject({ folderId: 'folder-1' });
+    await expect(page.getByRole('button', { name: /Назад|Все чек-листы/ }).first()).toBeVisible();
+  });
+
+  test('on the fifth level the folder item is disabled and says why', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const chain = ['l1', 'l2', 'l3', 'l4', 'l5'].map((id, index) => folder(id, index === 0 ? null : `l${index}`, `Уровень ${index + 1}`, true));
+    await mockApi(page, { folders: chain, sheets: [] }, []);
+    await page.goto('/admin/checklists?folder=l5');
+    await page.getByRole('button', { name: 'Создать', exact: true }).click();
+    const item = page.getByRole('menuitem', { name: 'Папку…' });
+    await expect(item).toBeDisabled();
+    await expect(page.getByRole('menu')).toContainText('не больше 5 уровней');
+    await expect(page.getByRole('menuitem', { name: 'Чек-лист' })).toBeEnabled();
   });
 
   test('an empty folder says so, and on a narrow screen nothing overflows', async ({ page }) => {

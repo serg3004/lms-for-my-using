@@ -1664,6 +1664,8 @@
 .ds-menu__content { position: absolute; z-index: 100; top: calc(100% + 6px); min-width: 180px; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 4px; background: var(--color-surface); box-shadow: var(--shadow-card); transform-origin: top; animation: ds-popover-enter var(--motion-duration-fast) var(--motion-ease-productive); }
 .ds-menu__content--start { left: 0; }
 .ds-menu__content--end { right: 0; }
+.ds-menu__hint { margin: 0; padding: 2px 12px 8px; max-width: 260px; color: var(--color-text-muted); font-size: 12.5px; line-height: 1.4; }
+.ds-menu__content [role^='menuitem']:disabled { opacity: 0.5; cursor: not-allowed; }
 .ds-menu__content [role^='menuitem'] { display: block; width: 100%; min-height: 44px; border: 0; border-radius: var(--radius-sm); padding: 9px 12px; background: transparent; color: var(--color-text); text-align: left; text-decoration: none; cursor: pointer; }
 .ds-menu__content [role^='menuitem']:hover,
 .ds-menu__content [role^='menuitem']:focus-visible { outline: 2px solid var(--color-primary); outline-offset: -2px; background: var(--color-surface-muted); }

@@ -45,6 +45,8 @@ export function createChecklist(
     passThreshold: number;
     scaleLevels?: unknown;
     requiresReview: boolean;
+    /** PR 409: the open folder; absent or null creates the sheet at the root. */
+    folderId?: string | null;
   },
 ) {
   return apiRequest<ChecklistSummary>('/checklists', {
@@ -70,8 +72,8 @@ export function listChecklistTemplates(locale: string) {
   return apiRequest<{ items: ChecklistTemplateSummary[] }>(`/checklist-templates?locale=${encodeURIComponent(locale)}`);
 }
 
-export function createChecklistFromTemplate(templateKey: string, locale: string) {
-  return apiRequest<ChecklistSummary>('/checklists/from-template', { method: 'POST', body: JSON.stringify({ templateKey, locale }) });
+export function createChecklistFromTemplate(templateKey: string, locale: string, folderId?: string | null) {
+  return apiRequest<ChecklistSummary>('/checklists/from-template', { method: 'POST', body: JSON.stringify({ templateKey, locale, ...(folderId ? { folderId } : {}) }) });
 }
 
 // ---- PR 367: organization templates (administrator manages, builders use) ----
@@ -93,8 +95,8 @@ export function deleteChecklistOrgTemplate(templateId: string) {
   return apiRequest<{ id: string }>(`/checklist-org-templates/${encodeURIComponent(templateId)}`, { method: 'DELETE' });
 }
 
-export function createChecklistFromOrgTemplate(templateId: string) {
-  return apiRequest<ChecklistSummary>('/checklists/from-org-template', { method: 'POST', body: JSON.stringify({ templateId }) });
+export function createChecklistFromOrgTemplate(templateId: string, folderId?: string | null) {
+  return apiRequest<ChecklistSummary>('/checklists/from-org-template', { method: 'POST', body: JSON.stringify({ templateId, ...(folderId ? { folderId } : {}) }) });
 }
 
 // ---- PR 367: administrator-only deletion of finished results ----

@@ -993,11 +993,8 @@
         "closed": "Closed folder: visible only to its creator and administrators",
         "actions": "Folder actions: {{name}}",
         "rename": "Rename",
-        "newSub": "New subfolder",
         "delete": "Delete",
         "editTitle": "Folder settings",
-        "newSubTitle": "New subfolder in \"{{name}}\"",
-        "newTitle": "New folder",
         "name": "Folder name",
         "visibleToStaff": "Visible to all roles except the learner",
         "visibleHint": "Without the flag the folder is visible only to its creator and administrators. A learner never sees folders.",
@@ -1006,7 +1003,6 @@
         "moveHere": "Move",
         "moveOpen": "Move to folder…",
         "crumbs": "Folder path",
-        "new": "New folder",
         "deleteTitle": "Delete folder",
         "deleteConfirm": "Delete the folder \"{{name}}\" with everything inside? Folders: {{folders}}, checklists to be deleted: {{checklists}}. Completed results are kept. This cannot be undone.",
         "deleteMoved": "Checklists with assignments in progress are not deleted but moved to drafts at the root: {{titles}}.",
@@ -1026,7 +1022,11 @@
         "empty": "This folder is empty. Create a folder or a checklist.",
         "staleFolder": "The folder is hidden or deleted. Showing the root.",
         "searchResults": "Search results across the whole library: {{count}}",
-        "notFound": "Nothing found."
+        "notFound": "Nothing found.",
+        "createTitle": "Create folder",
+        "createIn": "The folder will be created in \"{{name}}\".",
+        "createInRoot": "The folder will be created at the top level (All checklists).",
+        "createSubmit": "Create"
       },
       "bulk": {
         "selectAll": "Select all checklists",
@@ -1680,7 +1680,14 @@
         "usedBy": "Checklists using this scale",
         "readOnly": "You can view scales here. Editing is available to administrators and managers.",
         "archiveConfirm": "Archive this scale? It will be hidden when selecting scales for new checklists. Existing checklists and sessions keep working."
-      }
+      },
+      "createMenu": {
+        "label": "Create",
+        "folder": "Folder…",
+        "checklist": "Checklist",
+        "depthHint": "The deepest level: folders can be nested at most 5 levels deep."
+      },
+      "createError": "Unable to create the checklist."
     },
     "orgTools": {
       "cardTitle": "Organization structure import",

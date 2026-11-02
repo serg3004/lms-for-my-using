@@ -28,13 +28,13 @@ afterEach(async () => {
   vi.clearAllMocks();
 });
 
-async function mount(onCreated = vi.fn()) {
+async function mount(folderId?: string | null, onCreated = vi.fn()) {
   api.listChecklistTemplates.mockResolvedValue({ items: templates });
   const container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
   await act(async () => {
-    root?.render(<ChecklistTemplateDialog open locale="ru" onClose={() => {}} onCreated={onCreated} t={i18n.t.bind(i18n)} />);
+    root?.render(<ChecklistTemplateDialog open locale="ru" folderId={folderId} onClose={() => {}} onCreated={onCreated} t={i18n.t.bind(i18n)} />);
   });
   return { container, onCreated };
 }
@@ -53,8 +53,15 @@ describe('ChecklistTemplateDialog (PR 341)', () => {
     const { container, onCreated } = await mount();
     const use = container.querySelector<HTMLButtonElement>('li button');
     await act(async () => { use?.click(); });
-    expect(api.createChecklistFromTemplate).toHaveBeenCalledWith('consultant-assessment', 'ru');
+    expect(api.createChecklistFromTemplate).toHaveBeenCalledWith('consultant-assessment', 'ru', undefined);
     expect(onCreated).toHaveBeenCalledWith(created);
+  });
+
+  it('creates the checklist in the open folder (PR 409)', async () => {
+    api.createChecklistFromTemplate.mockResolvedValue({ id: 'new-2' });
+    const { container } = await mount('folder-1');
+    await act(async () => { container.querySelector<HTMLButtonElement>('li button')?.click(); });
+    expect(api.createChecklistFromTemplate).toHaveBeenCalledWith('consultant-assessment', 'ru', 'folder-1');
   });
 
   it('shows an error and does not hand anything back when creation fails', async () => {
