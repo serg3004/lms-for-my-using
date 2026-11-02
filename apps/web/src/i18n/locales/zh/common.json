@@ -989,7 +989,6 @@
       "searchPlaceholder": "搜索检查清单",
       "allStatuses": "所有状态",
       "folders": {
-        "treeLabel": "检查清单文件夹",
         "all": "全部检查清单",
         "closed": "私有文件夹：仅创建者和管理员可见",
         "actions": "文件夹操作：{{name}}",
@@ -1006,7 +1005,6 @@
         "moveTitle": "将 {{count}} 个检查清单移到文件夹",
         "moveHere": "移动",
         "moveOpen": "移到文件夹…",
-        "pick": "文件夹",
         "crumbs": "文件夹路径",
         "new": "新建文件夹",
         "deleteTitle": "删除文件夹",
@@ -1017,7 +1015,18 @@
         "errorForbidden": "只有文件夹的创建者或管理员可以修改。",
         "errorDepth": "文件夹最多嵌套 5 层。",
         "errorCycle": "不能将文件夹移入自身或其子文件夹。",
-        "errorGeneric": "文件夹操作失败，请重试。"
+        "errorGeneric": "文件夹操作失败，请重试。",
+        "typeFolder": "文件夹",
+        "typeChecklist": "检查表",
+        "open": "打开",
+        "openFolder": "打开文件夹：{{name}}",
+        "renameFolder": "重命名文件夹",
+        "moveFolderTitle": "移动文件夹“{{name}}”",
+        "contents": "文件夹：{{folders}}，检查表：{{sheets}}",
+        "empty": "此文件夹暂时为空。请创建文件夹或检查表。",
+        "staleFolder": "该文件夹已被隐藏或删除，已显示根目录。",
+        "searchResults": "整个库的搜索结果：{{count}}",
+        "notFound": "未找到任何内容。"
       },
       "bulk": {
         "selectAll": "选择全部检查清单",
@@ -1045,7 +1054,9 @@
         "createdBy": "创建人",
         "createdAt": "创建时间",
         "status": "状态",
-        "access": "访问方式"
+        "access": "访问方式",
+        "type": "类型",
+        "assignments": "任务分配"
       },
       "edit": "编辑",
       "delete": "删除",

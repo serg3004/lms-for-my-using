@@ -16,4 +16,17 @@ describe('ChecklistsService.listChecklists (PR 393)', () => {
     expect(args.select.createdAt).toBe(true);
     expect(args.orderBy).toEqual({ createdAt: 'desc' });
   });
+  it('adds the live assignments count of each sheet for the library screen (PR 408)', async () => {
+    const row = { id: 'c1', title: 'A', folderId: null, items: [], moduleSettings: undefined, _count: { instances: 3 } };
+    const findMany = jest.fn<(args: unknown) => Promise<unknown[]>>(async () => [row]);
+    const prisma = { checklist: { findMany } } as unknown as PrismaService;
+    const service = new ChecklistsService(prisma, {} as never, {} as never, {} as never);
+
+    const rows = await service.listChecklists('org-1') as Array<Record<string, unknown>>;
+
+    const args = findMany.mock.calls[0]?.[0] as { select: { _count: unknown } };
+    expect(args.select._count).toEqual({ select: { instances: { where: { status: { in: ['assigned', 'in_progress', 'submitted'] }, deletedAt: null } } } });
+    expect(rows[0]?.['assignmentCount']).toBe(3);
+    expect(rows[0]).not.toHaveProperty('_count');
+  });
 });

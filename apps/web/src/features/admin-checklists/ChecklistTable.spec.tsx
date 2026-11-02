@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import type { TFunction } from 'i18next';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { ChecklistStatus, ChecklistSummary } from '../../shared/api/types.js';
+import type { ChecklistFolder, ChecklistStatus, ChecklistSummary } from '../../shared/api/types.js';
 import { ChecklistTable, creatorName } from './ChecklistTable.js';
 import { checklistStatusAction } from './domain.js';
 
@@ -90,5 +90,53 @@ describe('ChecklistTable author and date (PR 393)', () => {
     expect(creatorName({ creator: undefined })).toBe('—');
     expect(creatorName({ creator: { id: 'u', firstName: '', lastName: '' } })).toBe('—');
     expect(creatorName({ creator: { id: 'u', firstName: 'Анна', lastName: '' } })).toBe('Анна');
+  });
+});
+
+describe('ChecklistTable library rows (PR 408)', () => {
+  const folder = (id: string, name: string, extra: Partial<ChecklistFolder> = {}): ChecklistFolder => ({
+    id, parentId: null, name, visibleToStaff: true, createdBy: 'u', createdAt: '2026-10-01T10:00:00.000Z', canManage: true, checklistCount: 0, totalChecklistCount: 0,
+    creator: { id: 'u', firstName: 'Анна', lastName: 'Орлова' }, ...extra,
+  });
+  const sheet = (id: string, title: string, folderId: string | null, assignmentCount = 0) => ({ id, title, status: 'draft', scoringMode: 'sum_points', items: [], createdAt: '2026-10-02T10:00:00.000Z', folderId, assignmentCount }) as unknown as ChecklistSummary;
+  const folders = [folder('a', 'Магазин'), folder('b', 'Касса', { parentId: 'a', visibleToStaff: false, canManage: false }), folder('c', 'Склад')];
+  const sheets = [sheet('s1', 'Открытие смены', 'b', 2), sheet('s2', 'Уборка', 'a', 3), sheet('s3', 'Без папки', null)];
+  const tFill = ((key: string, fallback?: string | Record<string, unknown>, options?: Record<string, unknown>) => {
+    const text = typeof fallback === 'string' ? fallback : key;
+    return text.replace(/\{\{(\w+)\}\}/g, (_match, name: string) => String(options?.[name] ?? ''));
+  }) as unknown as TFunction;
+  const renderLibrary = (extra: Partial<React.ComponentProps<typeof ChecklistTable>> = {}) => renderToStaticMarkup(
+    <ChecklistTable childFolders={[folders[0]!, folders[2]!]} allSheets={sheets} folders={folders} rows={[sheets[2]!]} onCopy={vi.fn()} onDelete={vi.fn()} onEdit={vi.fn()} onStatusChange={vi.fn()}
+      onOpenFolder={vi.fn()} onRenameFolder={vi.fn()} scoringModeLabels={scoringModeLabels} statusLabels={statusLabels} t={tFill} {...extra} />,
+  );
+
+  it('puts the folders above the checklists with type, contents and the assignments of the folder with its subfolders', () => {
+    const html = renderLibrary();
+    expect(html.indexOf('Магазин')).toBeLessThan(html.indexOf('Склад'));
+    expect(html.indexOf('Склад')).toBeLessThan(html.indexOf('Без папки'));
+    expect(html).toContain('>Type<');
+    expect(html).toContain('>Assignments<');
+    expect(html).toContain('>Folder<');
+    expect(html).toContain('Folders: 1, checklists: 1');
+    // Магазин: its own sheet (3) plus the sheet of the subfolder Касса (2).
+    expect(html).toContain('>5<');
+    expect(html).toContain('aria-label="Open folder: Магазин"');
+  });
+
+  it('shows the folder path column only in search mode, and a closed folder with a lock', () => {
+    expect(renderLibrary()).not.toContain('>Folder</th>');
+    const searching = renderLibrary({ showFolderPath: true, childFolders: [], rows: [sheets[0]!] });
+    expect(searching).toContain('Магазин / Касса');
+    expect(renderLibrary({ childFolders: [folders[1]!] })).toContain('Closed folder');
+  });
+
+  it('offers no selection checkbox on a folder row, only on checklists', () => {
+    const html = renderLibrary({ selectedKeys: new Set<string>(), onSelectionChange: vi.fn() });
+    expect(html.match(/type="checkbox"/g)).toHaveLength(1 + 3);
+    expect(html.match(/disabled=""/g)).toHaveLength(2);
+  });
+
+  it('says the folder is empty with the given message', () => {
+    expect(renderLibrary({ childFolders: [], rows: [], emptyMessage: 'This folder is empty.' })).toContain('This folder is empty.');
   });
 });

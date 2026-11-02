@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ApiClientError } from '../../shared/apiClient.js';
 import type { ChecklistFolder } from '../../shared/api/types.js';
-import { ancestorIds, canAddSubfolder, deleteImpactMessage, folderErrorMessage, folderPathLabel, folderRows, resolveSelectedFolder, sheetsInFolder } from './folders.js';
+import { ancestorIds, canAddSubfolder, deleteImpactMessage, folderErrorMessage, folderPathLabel, folderRows, folderAndDescendantIds, folderAssignmentTotal, folderDirectCounts, libraryContents, resolveSelectedFolder } from './folders.js';
 
 const t = ((key: string, fallbackOrOptions?: string | Record<string, unknown>, options?: Record<string, unknown>) => {
   const fallback = typeof fallbackOrOptions === 'string' ? fallbackOrOptions : key;
@@ -47,10 +47,24 @@ describe('checklist folder helpers (PR 396)', () => {
     expect(resolveSelectedFolder(tree, null)).toBeNull();
   });
 
-  it('shows everything for the root and only the direct sheets of a folder', () => {
-    const sheets = [{ id: '1', folderId: 'a' }, { id: '2', folderId: 'b' }, { id: '3', folderId: null }, { id: '4' }];
-    expect(sheetsInFolder(sheets, null)).toHaveLength(4);
-    expect(sheetsInFolder(sheets, 'a').map((sheet) => sheet.id)).toEqual(['1']);
+  it('shows only the direct subfolders and sheets of the open folder, folders sorted by name (PR 408)', () => {
+    const sheets = [{ id: '1', folderId: 'a' }, { id: '2', folderId: 'b' }, { id: '3', folderId: null }, { id: '4' }, { id: '5', folderId: 'hidden' }];
+    const root = libraryContents(tree, sheets, null);
+    expect(root.folders.map(({ id }) => id)).toEqual(['a', 'c']);
+    expect(root.sheets.map(({ id }) => id)).toEqual(['3', '4', '5']);
+    const shop = libraryContents(tree, sheets, 'a');
+    expect(shop.folders.map(({ id }) => id)).toEqual(['b']);
+    expect(shop.sheets.map(({ id }) => id)).toEqual(['1']);
+    expect(libraryContents(tree, sheets, 'c')).toEqual({ folders: [], sheets: [] });
+  });
+
+  it('counts the folder contents and the live assignments with subfolders (PR 408)', () => {
+    const sheets = [{ folderId: 'a', assignmentCount: 2 }, { folderId: 'b', assignmentCount: 3 }, { folderId: 'd' }, { folderId: 'c', assignmentCount: 7 }, { folderId: null, assignmentCount: 1 }];
+    expect([...folderAndDescendantIds(tree, 'a')].sort()).toEqual(['a', 'b', 'd']);
+    expect(folderAssignmentTotal(tree, sheets, 'a')).toBe(5);
+    expect(folderAssignmentTotal(tree, sheets, 'c')).toBe(7);
+    expect(folderDirectCounts(tree, sheets, 'a')).toEqual({ folders: 1, sheets: 1 });
+    expect(folderDirectCounts(tree, sheets, 'b')).toEqual({ folders: 1, sheets: 1 });
   });
 
   it('states what a folder deletion removes and names the sheets that become drafts', () => {

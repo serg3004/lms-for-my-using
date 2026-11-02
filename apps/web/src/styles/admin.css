@@ -2299,13 +2299,9 @@
 .admin-heading-tip { display: flex; align-items: center; gap: 6px; }
 @media (max-width: 860px) { .admin-help__btn { width: 44px; height: 44px; } .admin-help__tip { top: calc(100% + 4px); left: 0; transform: none; width: min(280px, calc(100vw - 48px)); } }
 
-/* PR 396: folder tree beside the checklist list. The tree reuses the department-tree rules; below 860px it
-   gives way to a folder picker above the table. */
-.checklist-folders { display: grid; grid-template-columns: minmax(200px, 260px) minmax(0, 1fr); gap: var(--space-4); align-items: start; }
-.checklist-folders__picker { display: none; }
+/* PR 408: one library list (folders above checklists) with a path above it; the folder tree beside the list is gone. */
+.checklist-library { min-width: 0; }
 .checklist-folders__crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 var(--space-3); padding: 0; list-style: none; }
-@media (max-width: 860px) {
-  .checklist-folders { display: block; }
-  .checklist-folders__aside { display: none; }
-  .checklist-folders__picker { display: block; width: 100%; margin-bottom: var(--space-3); }
-}
+.checklist-library__folder { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.checklist-library__open { border: 0; background: transparent; padding: 0; min-height: 44px; font: inherit; font-weight: 600; color: var(--color-primary); text-align: start; cursor: pointer; overflow-wrap: anywhere; }
+.checklist-library__open:hover { text-decoration: underline; }

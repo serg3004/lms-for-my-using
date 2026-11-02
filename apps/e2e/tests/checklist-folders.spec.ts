@@ -4,6 +4,7 @@ import { expect, test, type Page } from '@playwright/test';
 const sheet = (id: string, title: string, folderId: string | null) => ({
   id, organizationId: 'org', title, description: null, status: 'draft', scoringMode: 'sum_points', passThreshold: 80, scaleLevels: null, requiresReview: false,
   createdBy: 'admin', creator: { id: 'admin', firstName: 'Ada', lastName: 'Admin' }, folderId, createdAt: '2026-10-01T16:47:00.000Z', updatedAt: '2026-10-01T16:47:00.000Z',
+  assignmentCount: id === 's1' ? 2 : 0,
   items: [{ id: `${id}-item`, checklistId: id, order: 1, text: 'Criterion', points: 10, isRequired: true, photoRequired: false }],
 });
 const folder = (id: string, parentId: string | null, name: string, visibleToStaff = false) => ({
@@ -30,6 +31,12 @@ async function mockApi(page: Page, state: { folders: ReturnType<typeof folder>[]
       return route.fulfill({ json: created });
     }
     if (/^\/checklist-folders\/[^/]+\/delete-impact$/.test(path)) return route.fulfill({ json: { folders: 2, checklists: 1, movedToDraft: [] } });
+    if (/^\/checklist-folders\/[^/]+$/.test(path) && method === 'PATCH') {
+      const body = request.postDataJSON() as { name?: string; parentId?: string | null };
+      calls.push({ method, path, body });
+      state.folders = state.folders.map((item) => (path.endsWith(`/${item.id}`) ? { ...item, ...(body.name !== undefined ? { name: body.name } : {}), ...(body.parentId !== undefined ? { parentId: body.parentId } : {}) } : item));
+      return route.fulfill({ json: state.folders.find((item) => path.endsWith(`/${item.id}`)) });
+    }
     if (/^\/checklist-folders\/[^/]+$/.test(path) && method === 'DELETE') {
       calls.push({ method, path, body: null });
       state.folders = state.folders.filter((item) => !path.endsWith(`/${item.id}`) && item.parentId !== path.split('/').at(-1));
@@ -45,52 +52,88 @@ async function mockApi(page: Page, state: { folders: ReturnType<typeof folder>[]
   });
 }
 
-test.describe('Checklist folders on the list screen (PR 396)', () => {
-  test('shows the tree, filters by folder through the URL, creates, moves and deletes', async ({ page }) => {
+test.describe('Checklist library: one list of folders and checklists (PR 408)', () => {
+  test('opens folders from the list, shows the path, searches the whole library, renames, moves and deletes', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
     const calls: { method: string; path: string; body: unknown }[] = [];
     const state = {
-      folders: [folder('shop', null, 'Магазин', true), folder('till', 'shop', 'Касса')],
+      folders: [folder('shop', null, 'Магазин', true), folder('till', 'shop', 'Касса'), folder('store', null, 'Склад')],
       sheets: [sheet('s1', 'Открытие смены', 'till'), sheet('s2', 'Уборка зала', 'shop'), sheet('s3', 'Без папки', null)],
     };
     await mockApi(page, state, calls);
     await page.goto('/admin/checklists');
 
-    const tree = page.getByRole('tree', { name: 'Папки чек-листов' });
-    await expect(tree.getByRole('treeitem', { name: /Все листы/ })).toBeVisible();
-    await expect(tree.getByRole('treeitem', { name: /Касса/ })).toBeVisible();
-    await expect(page.getByText('Открытие смены')).toBeVisible();
-    await expect(page.getByText('Без папки')).toBeVisible();
-    // A closed folder carries a lock with a text label.
-    await expect(tree.getByRole('img', { name: /Закрытая папка/ })).toHaveCount(1);
+    // There is no tree on the left: the root shows its folders above its checklists in one list.
+    await expect(page.getByRole('tree')).toHaveCount(0);
+    const table = page.getByRole('table');
+    const rows = table.getByRole('row');
+    await expect(rows.nth(1)).toContainText('Магазин');
+    await expect(rows.nth(2)).toContainText('Склад');
+    await expect(rows.nth(3)).toContainText('Без папки');
+    await expect(page.getByText('Открытие смены')).toHaveCount(0);
+    // A closed folder carries a lock with a text label; the assignments of a folder include its subfolders.
+    await expect(table.getByRole('img', { name: /Закрытая папка/ })).toHaveCount(1);
+    await expect(page.getByRole('row', { name: /Склад/ }).getByRole('cell', { name: '0', exact: true })).toBeVisible();
+    await expect(page.getByRole('row', { name: /Магазин/ }).getByRole('cell', { name: '2', exact: true })).toBeVisible();
 
-    // Selecting a folder filters the list, shows the breadcrumbs and keeps the choice in the address.
-    await tree.getByRole('treeitem', { name: /Касса/ }).click();
-    await expect(page).toHaveURL(/folder=till/);
+    // Opening a folder shows its subfolders and checklists, the path and the address.
+    await table.getByRole('button', { name: 'Открыть папку: Магазин' }).click();
+    await expect(page).toHaveURL(/folder=shop/);
+    await expect(page.getByRole('row', { name: /Касса/ })).toBeVisible();
+    await expect(page.getByText('Уборка зала')).toBeVisible();
+    await expect(page.getByText('Без папки')).toHaveCount(0);
+    const crumbs = page.getByRole('navigation', { name: 'Путь к папке' });
+    await expect(crumbs.getByRole('button', { name: 'Все листы' })).toBeVisible();
+    await expect(crumbs.getByText('Магазин')).toHaveAttribute('aria-current', 'page');
+    await table.getByRole('button', { name: 'Открыть папку: Касса' }).click();
     await expect(page.getByText('Открытие смены')).toBeVisible();
-    await expect(page.getByText('Уборка зала')).toHaveCount(0);
-    await expect(page.getByRole('navigation', { name: 'Путь к папке' }).getByRole('button', { name: 'Магазин' })).toBeVisible();
+    await crumbs.getByRole('button', { name: 'Магазин' }).click();
+    await expect(page).toHaveURL(/folder=shop/);
+    await page.goBack();
     await page.reload();
     await expect(page.getByText('Открытие смены')).toBeVisible();
-    await expect(page.getByText('Без папки')).toHaveCount(0);
 
-    // A folder id that does not exist falls back to all checklists.
+    // A folder id that does not exist opens the root and says so.
     await page.goto('/admin/checklists?folder=missing');
+    await expect(page.getByText('Папка скрыта или удалена. Показан корень.')).toBeVisible();
     await expect(page.getByText('Без папки')).toBeVisible();
 
+    // The search covers the whole library and adds the folder path.
+    await page.getByPlaceholder('Найти чек-лист').fill('смены');
+    await expect(page.getByRole('row', { name: /Открытие смены/ })).toContainText('Магазин / Касса');
+    await expect(page.getByText('Без папки')).toHaveCount(0);
+    await page.getByPlaceholder('Найти чек-лист').fill('');
+
+    // Rename a folder from its row menu.
+    await page.getByRole('row', { name: /Склад/ }).getByRole('button', { name: /Действия с папкой: Склад/ }).click();
+    await page.getByRole('menuitem', { name: 'Переименовать папку' }).click();
+    await page.getByRole('dialog').getByLabel('Название папки').fill('Основной склад');
+    await page.getByRole('dialog').getByRole('button', { name: 'Сохранить' }).click();
+    await expect(page.getByRole('row', { name: /Основной склад/ })).toBeVisible();
+    expect(calls.find((call) => call.method === 'PATCH')?.body).toEqual({ name: 'Основной склад', visibleToStaff: false });
+
+    // Move a folder into another one (it and its subfolders are not offered as targets).
+    await page.getByRole('row', { name: /Основной склад/ }).getByRole('button', { name: /Действия с папкой/ }).click();
+    await page.getByRole('menuitem', { name: 'Переместить в папку…' }).click();
+    const move = page.getByRole('dialog');
+    await expect(move.getByRole('heading', { name: 'Переместить папку «Основной склад»' })).toBeVisible();
+    await expect(move.getByRole('radio', { name: 'Основной склад' })).toHaveCount(0);
+    await move.getByRole('radio', { name: 'Магазин' }).check();
+    await move.getByRole('button', { name: 'Переместить' }).click();
+    await expect(page.getByRole('row', { name: /Основной склад/ })).toHaveCount(0);
+    expect(calls.filter((call) => call.method === 'PATCH').at(-1)?.body).toEqual({ parentId: 'shop' });
+
     // Create a subfolder of the open folder.
-    await tree.getByRole('treeitem', { name: /Магазин/ }).click();
+    await page.getByRole('row', { name: /Магазин/ }).getByRole('button', { name: 'Открыть папку: Магазин' }).click();
     await page.getByRole('button', { name: 'Новая папка' }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('heading', { name: 'Новая подпапка в «Магазин»' })).toBeVisible();
-    await dialog.getByLabel('Название папки').fill('Склад');
-    await dialog.getByLabel('Видна всем ролям, кроме обучающегося').check();
+    await dialog.getByLabel('Название папки').fill('Подсобка');
     await dialog.getByRole('button', { name: 'Сохранить' }).click();
-    await expect(tree.getByRole('treeitem', { name: /Склад/ })).toBeVisible();
-    expect(calls.find((call) => call.path === '/checklist-folders' && call.method === 'POST')?.body).toEqual({ name: 'Склад', parentId: 'shop', visibleToStaff: true });
+    expect(calls.find((call) => call.path === '/checklist-folders' && call.method === 'POST')?.body).toEqual({ name: 'Подсобка', parentId: 'shop', visibleToStaff: false });
 
     // Move a sheet to a folder from the row menu.
-    await tree.getByRole('treeitem', { name: /Все листы/ }).click();
+    await page.getByRole('navigation', { name: 'Путь к папке' }).getByRole('button', { name: 'Все листы' }).click();
     const row = page.getByRole('row', { name: /Без папки/ });
     await row.getByRole('button', { name: 'Действия' }).click();
     await page.getByRole('menuitem', { name: 'Переместить в папку…' }).click();
@@ -100,23 +143,23 @@ test.describe('Checklist folders on the list screen (PR 396)', () => {
     expect(calls.find((call) => call.path === '/checklists/bulk')?.body).toEqual({ action: 'move', ids: ['s3'], folderId: 'till' });
 
     // Deleting a folder first states what goes with it.
-    await tree.getByRole('treeitem', { name: /Магазин/ }).getByRole('button', { name: /Действия с папкой: Магазин/ }).click();
+    await page.getByRole('row', { name: /Магазин/ }).getByRole('button', { name: /Действия с папкой: Магазин/ }).click();
     await page.getByRole('menuitem', { name: 'Удалить' }).click();
     const confirm = page.getByRole('dialog');
     await expect(confirm).toContainText('Папок: 2');
     await expect(confirm).toContainText('чек-листов к удалению: 1');
     await confirm.getByRole('button', { name: 'Удалить' }).click();
     await expect.poll(() => calls.some((call) => call.method === 'DELETE' && call.path === '/checklist-folders/shop')).toBe(true);
-    await expect(tree.getByRole('treeitem', { name: /Магазин/ })).toHaveCount(0);
+    await expect(page.getByRole('row', { name: /Магазин/ })).toHaveCount(0);
   });
 
-  test('on a narrow screen the tree gives way to a folder picker and nothing overflows', async ({ page }) => {
+  test('an empty folder says so, and on a narrow screen nothing overflows', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 900 });
-    await mockApi(page, { folders: [folder('shop', null, 'Магазин', true), folder('till', 'shop', 'Касса')], sheets: [sheet('s1', 'Открытие смены', 'till')] }, []);
+    await mockApi(page, { folders: [folder('shop', null, 'Магазин', true), folder('till', 'shop', 'Касса')], sheets: [sheet('s1', 'Открытие смены', 'shop')] }, []);
+    await page.goto('/admin/checklists?folder=till');
+    await expect(page.getByText('В папке пока пусто. Создайте папку или чек-лист.')).toBeVisible();
     await page.goto('/admin/checklists');
-    await expect(page.getByRole('tree')).toBeHidden();
-    await page.getByRole('combobox', { name: 'Папка' }).selectOption('till');
-    await expect(page).toHaveURL(/folder=till/);
+    await expect(page.getByRole('tree')).toHaveCount(0);
     const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
     expect(result.violations.filter(({ impact }) => ['critical', 'serious', 'moderate'].includes(impact ?? ''))).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
