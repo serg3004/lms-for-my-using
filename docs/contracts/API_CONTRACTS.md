@@ -396,7 +396,7 @@ because of active assignments turns the sheet into a draft instead). One audit r
 PR 395: checklist folders (organization-wide tree, up to 5 levels, the root folder is level 1; `checklistsRead` roles read,
 `checklistsCreate` roles write, and a learner never has access). `GET /checklist-folders` returns
 `{ folders[], checklistCount }`; each folder is `{ id, parentId, name, visibleToStaff, createdBy, createdAt, canManage,
-checklistCount, totalChecklistCount }` (direct sheets and sheets of the whole subtree; `checklistCount` of the response is the
+creator, checklistCount, childFolderCount, totalChecklistCount }` (direct sheets, visible direct subfolders and sheets of the visible subtree; `checklistCount` of the response is the
 number of sheets the caller can see). `POST /checklist-folders` `{ name, parentId?, visibleToStaff? }` and `PATCH
 /checklist-folders/:id` `{ name?, parentId?, visibleToStaff? }` (rename, move, open to staff) answer 400 for a depth over 5 or a
 move into itself or a descendant, 409 for a name already used by a sibling (compared case-insensitively), 404 for a missing,
@@ -409,6 +409,28 @@ into a draft and moved to the root (`movedToDraft`). One audit record per operat
 caller cannot see and carries `folderId` on every sheet; `PATCH /checklists/:id` accepts `folderId` (uuid, or `null` for the root) and
 `POST /checklists/bulk` accepts the action `move` with `folderId` (required key, `null` = root; skip reason `already_in_folder`). The
 target folder must be visible to the caller; moving a sheet needs the right to edit that sheet. A copy stays in the folder of the original.
+
+PR 407 extends the folder library without DDL or new roles:
+
+- `creator` is `{ id, firstName, lastName } | null`; deleted (including soft-deleted) or unnamed authors read as null.
+  Folder counts exclude deleted content and invisible descendants; subtree counts also reveal no hidden sheets.
+- `POST /checklists`, `POST /checklists/from-template` and `POST /checklists/from-org-template` accept optional
+  `folderId` (UUID or null). Absent/null creates at root. A foreign, deleted or invisible folder answers 404 before a
+  sheet is written. Placement only needs visibility, matching moving a sheet; it does not grant folder management.
+- `GET /checklists?search=` trims a title substring (at most 200 characters), searches case-insensitively across
+  visible folders and combines with `status`. Each row adds `folderPath: [{ id, name }]` from root to direct folder,
+  or `[]` at root. Hidden/deleted folders and sheets and other tenants never enter search results.
+- `POST /checklist-folders/bulk` accepts `{ ids: UUID[1..100], action: 'move' | 'delete', parentId?: UUID | null }`.
+  Move requires an explicit `parentId`; null means root. Its target must be visible and manageable (same as single
+  folder moves): missing/foreign/invisible answers 404, a visible non-manageable target 403, before any change.
+  Each unique source is checked independently; results stay in input order:
+  `{ action, done, skipped, results: [{ id, result: 'done' } | { id, result: 'skipped', reason }] }`.
+  Reasons: `not_found` (including foreign/hidden/deleted), `forbidden`, `name_conflict`, `too_deep`, `cycle`,
+  `already_in_folder`, `covered_by_parent` (selected descendant already removed with its parent).
+  A delete adds `summary: { folders, checklists, movedToDraft: [{ id, title }] }`, with cascaded deletions counted once.
+  Assigned sheets survive as unpinned root drafts, as for single deletion. One audit entry per request:
+  `checklist.folder_bulk_move` or `checklist.folder_bulk_delete`; no per-item audit duplicates.
+  A client sending a mixed sheet/folder selection uses the existing sheet bulk endpoint first, then folder bulk.
 
 PR 397: per-sheet overrides of the organization module settings. A staff-facing sheet (`GET /checklists`, `GET /checklists/:id`, the
 answers of `PATCH`, copy and create-from-template) carries `moduleSettings { thresholds { high, low } | null, resultColors { low, mid,

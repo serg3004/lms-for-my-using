@@ -348,28 +348,45 @@ export class ChecklistsService {
   createOrgTemplate(organizationId: string, input: Parameters<ChecklistOrgTemplates['create']>[1], actorId: string) { return this.orgTemplates.create(organizationId, input, actorId); }
   updateOrgTemplate(templateId: string, organizationId: string, input: Parameters<ChecklistOrgTemplates['update']>[2], actorId: string) { return this.orgTemplates.update(templateId, organizationId, input, actorId); }
   deleteOrgTemplate(templateId: string, organizationId: string, actorId: string) { return this.orgTemplates.remove(templateId, organizationId, actorId); }
-  async createFromOrgTemplate(templateId: string, organizationId: string, actorId: string) {
-    const checklistId = await this.orgTemplates.createChecklist(templateId, organizationId, actorId);
+  async createFromOrgTemplate(templateId: string, organizationId: string, actorId: string, folderId?: string | null) {
+    await this.assertCreationFolder(folderId, organizationId, actorId);
+    const checklistId = await this.orgTemplates.createChecklist(templateId, organizationId, actorId, folderId);
     return presentStaffChecklist(await this.prisma.checklist.findFirstOrThrow({ where: { id: checklistId, organizationId }, select: staffChecklistSelect }));
   }
 
   // ---- Templates ----
 
-  async listChecklists(organizationId: string, status?: ChecklistListQuery['status'], actor?: FolderActor) {
+  async listChecklists(organizationId: string, status?: ChecklistListQuery['status'], actor?: FolderActor, search?: string) {
     // PR 395: sheets of a folder the actor may not see are left out of the list (assignments, sessions and reports are not affected).
-    const hiddenFolderIds = actor && !actor.roles.includes('admin') ? await this.hiddenFolderIds(organizationId, actor) : [];
+    const folders = actor ? await this.prisma.checklistFolder.findMany({ where: { organizationId, deletedAt: null }, select: { id: true, parentId: true, name: true, createdBy: true, visibleToStaff: true } }) : [];
+    const visible = actor ? visibleFolderIds(folders, actor) : null;
     const rows = await this.prisma.checklist.findMany({
       where: {
         organizationId,
         deletedAt: null,
         ...(status ? { status } : {}),
-        ...(hiddenFolderIds.length > 0 ? { OR: [{ folderId: null }, { folderId: { notIn: hiddenFolderIds } }] } : {}),
+        ...(visible ? { OR: [{ folderId: null }, { folderId: { in: [...visible] } }] } : {}),
+        ...(search?.trim() ? { title: { contains: search.trim(), mode: 'insensitive' as const } } : {}),
       },
       orderBy: { createdAt: 'desc' },
       // PR 393: the list shows who created the sheet; a deleted author reads as null (creator relation is SetNull).
       select: { ...staffChecklistSelect, creator: { select: { id: true, firstName: true, lastName: true } } },
     });
-    return rows.map((row) => presentStaffChecklist(row));
+    const byId = new Map(folders.map((folder) => [folder.id, folder]));
+    return rows.map((row) => {
+      const folderPath: Array<{ id: string; name: string }> = [];
+      const seen = new Set<string>();
+      for (let folder = row.folderId ? byId.get(row.folderId) : undefined; folder && !seen.has(folder.id); folder = folder.parentId ? byId.get(folder.parentId) : undefined) {
+        seen.add(folder.id); folderPath.unshift({ id: folder.id, name: folder.name });
+      }
+      return { ...presentStaffChecklist(row), folderPath };
+    });
+  }
+
+  private async assertCreationFolder(folderId: string | null | undefined, organizationId: string, actorId: string) {
+    if (!folderId) return;
+    const memberships = await this.prisma.membership.findMany({ where: { organizationId, userId: actorId }, select: { role: true } });
+    await this.assertCanPlaceInFolder(folderId, organizationId, { id: actorId, roles: memberships.map(({ role }) => role) });
   }
 
   /** PR 395: the target folder of a move (null = root) must exist in the organization and be visible to the actor. */
@@ -573,6 +590,7 @@ export class ChecklistsService {
   }
 
   async createChecklist(input: CreateChecklistInput, createdBy: string) {
+    await this.assertCreationFolder(input.folderId, input.organizationId, createdBy);
     assertFeedbackSettingsConsistent(input.feedbackEnabled ?? true, input.feedbackRequired ?? false);
     const { feedbackLayout, ...rest } = input;
     await this.answerSetService.assertLayoutReferences(input.organizationId, feedbackLayout ?? null, null);
@@ -801,7 +819,8 @@ export class ChecklistsService {
    * PR 341: creates a draft from a built-in template (checklist-templates.ts). Same shape as a copy:
    * one transaction, always a draft, nothing shared with other checklists afterwards.
    */
-  async createFromTemplate(templateKey: string, locale: string | undefined, organizationId: string, actorId: string) {
+  async createFromTemplate(templateKey: string, locale: string | undefined, organizationId: string, actorId: string, folderId?: string | null) {
+    await this.assertCreationFolder(folderId, organizationId, actorId);
     const template = findTemplate(templateKey);
     if (!template) {
       throw new NotFoundException('Checklist template not found');
@@ -821,6 +840,7 @@ export class ChecklistsService {
           scaleLevels: rendered.scaleLevels ?? undefined,
           contextFields: rendered.contextFields,
           createdBy: actorId,
+          folderId,
         },
         select: { id: true },
       });

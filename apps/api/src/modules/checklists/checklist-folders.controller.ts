@@ -2,7 +2,7 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Req, 
 import { AuthGuard, RolesGuard, Roles, rolePolicies } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
 import { ChecklistFoldersService } from './checklist-folders.service.js';
-import { createChecklistFolderSchema, updateChecklistFolderSchema } from './checklists.schemas.js';
+import { bulkChecklistFolderSchema, createChecklistFolderSchema, updateChecklistFolderSchema } from './checklists.schemas.js';
 
 /** PR 395: checklist folders. Same roles as the checklists themselves; the service decides per folder who sees and who manages it. */
 @Controller()
@@ -20,6 +20,12 @@ export class ChecklistFoldersController {
   @Roles(...rolePolicies.checklistsCreate)
   create(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     return this.folders.create(request.currentUser!.organizationId, request.currentUser!, createChecklistFolderSchema.parse(body));
+  }
+
+  @Post('checklist-folders/bulk')
+  @Roles(...rolePolicies.checklistsCreate)
+  bulk(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.folders.bulk(request.currentUser!.organizationId, request.currentUser!, bulkChecklistFolderSchema.parse(body));
   }
 
   @Patch('checklist-folders/:id')
