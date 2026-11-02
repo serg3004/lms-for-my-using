@@ -5,14 +5,14 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint, validateChecklistPhoto } from '../shared/checklistPhoto.js';
-import { getChecklistItemPhotoBlob, listFreeChecklists, listMyChecklistInstances, startFreeChecklist, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
+import { listFreeChecklists, listMyChecklistInstances, removeChecklistItemPhoto, startFreeChecklist, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
 import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary, FreeChecklistSummary } from '../shared/api/types.js';
 import { ChecklistCover } from '../shared/ChecklistCover.js';
 import { ChecklistAccessBadge } from '../shared/checklistAccess.js';
 import { PinnedChecklistTiles } from './PinnedChecklistTiles.js';
 import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
-import { useProtectedImage } from '../shared/useProtectedImage.js';
+import { ChecklistPhotoProof } from './ChecklistPhotoProof.js';
 import {
   checklistResultToAnswer,
   checklistItemLevels,
@@ -273,6 +273,18 @@ function ChecklistTaking({
       setSubmitting(null);
     }
   }
+  async function removePhoto(item: ChecklistItemSummary) {
+    setError(null);
+    setSubmitting(item.id);
+    try {
+      await removeChecklistItemPhoto(instance.id, item.id);
+      await onUpdated();
+    } catch (err) {
+      setError(err instanceof ApiClientError ? err.message : t('checklists.photoRemoveError', 'Unable to remove this photo.'));
+    } finally {
+      setSubmitting(null);
+    }
+  }
   return (
     <div>
       <button type="button" onClick={onBack} style={{ border: 'none', background: 'none', color: COLORS.primary, fontWeight: 600, cursor: 'pointer', padding: 0, marginBottom: 16 }}>
@@ -342,7 +354,6 @@ function ChecklistTaking({
                         minWidth: 90,
                       }}
                     >
-                      <strong style={{ display: 'block', fontSize: 14 }}>{level.points}</strong>
                       <span style={{ color: result?.scaleLevel === level.level ? COLORS.text : COLORS.muted }}>{level.label}</span>
                     </button>
                   ))}
@@ -356,7 +367,6 @@ function ChecklistTaking({
                     onChange={(e) => void submit(item, { checked: e.target.checked })}
                   />
                   {t('checklists.markDone', 'Done')}
-                  {checklist.scoringMode === 'sum_points' ? ` (${item.points} ${t('checklists.points', 'pts')})` : ''}
                 </label>
               )}
               {item.photoRequired && (
@@ -368,6 +378,7 @@ function ChecklistTaking({
                   editable={editable}
                   busy={submitting === item.id}
                   onSelectFile={(file) => void uploadPhoto(item, file)}
+                  onRemove={() => void removePhoto(item)}
                   t={t}
                 />
               )}
@@ -406,6 +417,7 @@ function PhotoAttachment({
   editable,
   busy,
   onSelectFile,
+  onRemove,
   t,
 }: {
   instanceId: string;
@@ -415,13 +427,11 @@ function PhotoAttachment({
   editable: boolean;
   busy: boolean;
   onSelectFile: (file: File) => void;
+  onRemove: () => void;
   t: TFunction;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const attached = Boolean(result?.photoFileName);
-  // PR 400: the photo is fetched with the session and shown through a blob: URL.
-  const preview = useProtectedImage(attached ? () => getChecklistItemPhotoBlob(instanceId, item.id) : null, attached ? `${instanceId}:${item.id}:${result?.photoFileName ?? ''}` : null);
-  const previewUrl = preview.url;
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = '';
@@ -440,29 +450,15 @@ function PhotoAttachment({
         style={{ display: 'none' }}
       />
       {attached ? (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {previewUrl ? (
-            <img
-              src={previewUrl}
-              alt={result?.photoFileName ?? ''}
-              style={{ width: 44, height: 44, borderRadius: 10, objectFit: 'cover', border: `1px solid ${COLORS.border}`, flexShrink: 0 }}
-            />
-          ) : (
-            <div style={{ width: 44, height: 44, borderRadius: 10, background: COLORS.successSoft, color: COLORS.success, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✓</div>
-          )}
-          <div style={{ fontSize: 11.5, color: COLORS.muted }}>
-            <strong style={{ display: 'block', color: COLORS.success, fontSize: 12 }}>{t('checklists.photoAttached', 'Photo attached')}</strong>
-            {result?.photoFileName}
-          </div>
-          <button
-            type="button"
-            disabled={!canAct}
-            onClick={() => inputRef.current?.click()}
-            style={{ marginLeft: 'auto', border: 'none', background: 'none', color: COLORS.primary, fontSize: 11.5, cursor: canAct ? 'pointer' : 'default', padding: 0 }}
-          >
-            {t('checklists.photoReplace', 'Replace')}
-          </button>
-        </div>
+        <ChecklistPhotoProof
+          instanceId={instanceId}
+          itemId={item.id}
+          fileName={result?.photoFileName ?? ''}
+          canChange={canAct}
+          onReplace={() => inputRef.current?.click()}
+          onRemove={onRemove}
+          t={t}
+        />
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button

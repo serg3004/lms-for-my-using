@@ -340,6 +340,14 @@ export async function getChecklistItemPhotoBlob(instanceId: string, itemId: stri
   return (await apiDownloadRequest(`/checklist-instances/${encodeURIComponent(instanceId)}/items/${encodeURIComponent(itemId)}/photo/file`)).blob;
 }
 
+/** PR 406а: removes the photo of one criterion while the sheet is still open; the answer stays. */
+export function removeChecklistItemPhoto(instanceId: string, itemId: string) {
+  return apiRequest<ChecklistInstanceSummary>(
+    `/checklist-instances/${encodeURIComponent(instanceId)}/items/${encodeURIComponent(itemId)}/photo`,
+    { method: 'DELETE' },
+  );
+}
+
 export function reviewChecklistItemResult(
   instanceId: string,
   itemId: string,
