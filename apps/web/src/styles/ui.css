@@ -2501,3 +2501,4 @@
 .learner-profile__actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
 .learner-profile__actions [role="alert"] { color: var(--color-danger); }
 @media (max-width: 600px) { .learner-profile__identity { grid-template-columns: 1fr; } }
+.ds-data-table__batch-hint { flex-basis: 100%; color: var(--color-text-muted); font-size: 12.5px; }

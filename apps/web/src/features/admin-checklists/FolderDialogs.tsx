@@ -73,12 +73,13 @@ export function FolderDialog({ target, onClose, onSubmit, t }: {
 }
 
 /** "Move to folder…": the root and the tree as a list of choices. */
-export function MoveToFolderDialog({ open, count, folders, currentFolderId, folderName, excludeFolderId, onClose, onMove, t }: {
+export function MoveToFolderDialog({ open, count, folders, currentFolderId, title, excludeFolderIds, onClose, onMove, t }: {
   open: boolean;
   count: number;
-  /** PR 408: moving one folder: its name goes into the title and it (with everything below it) cannot be a target. */
-  folderName?: string;
-  excludeFolderId?: string | null;
+  /** PR 408/410: replaces the default "Move N checklist(s)" title (folders are being moved too). */
+  title?: string;
+  /** The moved folders: neither they nor anything below them can be the target. */
+  excludeFolderIds?: readonly string[];
   folders: ChecklistFolder[];
   /** Preselected: the folder all the moved sheets share, or null (root). */
   currentFolderId: string | null;
@@ -89,12 +90,12 @@ export function MoveToFolderDialog({ open, count, folders, currentFolderId, fold
   const titleId = useId();
   const [choice, setChoice] = useState<string | null>(currentFolderId);
   useEffect(() => { if (open) setChoice(currentFolderId); }, [open, currentFolderId]);
-  const blocked = excludeFolderId ? folderAndDescendantIds(folders, excludeFolderId) : null;
-  const rows = folderRows(folders, 'all').filter(({ folder }) => !blocked?.has(folder.id));
+  const blocked = new Set((excludeFolderIds ?? []).flatMap((id) => [...folderAndDescendantIds(folders, id)]));
+  const rows = folderRows(folders, 'all').filter(({ folder }) => !blocked.has(folder.id));
 
   return (
     <Dialog labelledBy={titleId} onClose={onClose} open={open}>
-      <h2 id={titleId}>{folderName ? t('admin.checklists.folders.moveFolderTitle', 'Move the folder "{{name}}"', { name: folderName }) : t('admin.checklists.folders.moveTitle', 'Move {{count}} checklist(s) to a folder', { count })}</h2>
+      <h2 id={titleId}>{title ?? t('admin.checklists.folders.moveTitle', 'Move {{count}} checklist(s) to a folder', { count })}</h2>
       <div role="radiogroup" aria-labelledby={titleId}>
         <label className="admin-checkbox-field">
           <input checked={choice === null} name={`${titleId}-folder`} onChange={() => setChoice(null)} type="radio" />

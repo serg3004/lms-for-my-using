@@ -7,6 +7,7 @@ import type {
   ChecklistBulkAction,
   ChecklistBulkResult,
   ChecklistFolder,
+  ChecklistFolderBulkResult,
   ChecklistFolderDeleteImpact,
   ChecklistFolderList,
   ChecklistAnalyticsQuery,
@@ -131,6 +132,11 @@ export function bulkChecklistAction(action: ChecklistBulkAction, ids: string[], 
 export async function listChecklistFolders(): Promise<ChecklistFolderList> {
   const response = await apiRequest<Partial<ChecklistFolderList> | null>('/checklist-folders');
   return { folders: Array.isArray(response?.folders) ? response.folders : [], checklistCount: response?.checklistCount ?? 0 };
+}
+
+/** PR 410: moves (to `parentId`, null = the root) or deletes several folders in one request; partial success. */
+export function bulkChecklistFolderAction(action: 'move' | 'delete', ids: string[], parentId?: string | null) {
+  return apiRequest<ChecklistFolderBulkResult>('/checklist-folders/bulk', { method: 'POST', body: JSON.stringify({ action, ids, ...(action === 'move' ? { parentId: parentId ?? null } : {}) }) });
 }
 
 export function createChecklistFolder(input: { name: string; parentId?: string | null; visibleToStaff?: boolean }) {

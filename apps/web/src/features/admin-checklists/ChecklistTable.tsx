@@ -34,10 +34,11 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
   // PR 396: with folders the table shows the folder path and the row menu offers "Move to folder".
   folders?: ChecklistFolder[];
   onMove?: (checklist: ChecklistSummary) => void;
-  // PR 394: row selection with a batch-actions bar; omitted -> the table has no checkboxes. Folder rows are not selectable here (PR 410).
+  // PR 394/410: row selection (folders and checklists) with a batch-actions bar; omitted -> the table has no checkboxes.
   selectedKeys?: ReadonlySet<string>;
   onSelectionChange?: (selectedKeys: Set<string>) => void;
-  batchActions?: (selected: ChecklistSummary[]) => ReactNode;
+  /** PR 410: folders are selectable too; the bar gets the selected checklists and folders separately. */
+  batchActions?: (selected: { sheets: ChecklistSummary[]; folders: ChecklistFolder[] }) => ReactNode;
   // PR 408: the subfolders of the open folder are shown above the checklists; `allSheets` feeds their counters.
   childFolders?: ChecklistFolder[];
   allSheets?: ChecklistSummary[];
@@ -161,12 +162,14 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
     selection={selectedKeys && onSelectionChange ? {
       selectedKeys,
       onChange: onSelectionChange,
-      isRowSelectable: (row) => row.kind === 'sheet',
       selectedLabel: (count) => t('common.selectedCount', { count }),
-      selectAllLabel: t('admin.checklists.bulk.selectAll', 'Select all checklists'),
-      rowLabel: (row) => row.kind === 'sheet' ? t('admin.checklists.bulk.selectRow', 'Select checklist: {{title}}', { title: row.checklist.title }) : row.folder.name,
+      selectAllLabel: t('admin.checklists.bulk.selectAllRows', 'Select all folders and checklists in this folder'),
+      rowLabel: (row) => row.kind === 'sheet' ? t('admin.checklists.bulk.selectRow', 'Select checklist: {{title}}', { title: row.checklist.title }) : t('admin.checklists.bulk.selectFolderRow', 'Select folder: {{name}}', { name: row.folder.name }),
     } : undefined}
-    batchActions={batchActions ? (selectedRows: LibraryRow[]) => batchActions(selectedRows.flatMap((row) => (row.kind === 'sheet' ? [row.checklist] : []))) : undefined}
+    batchActions={batchActions ? (selectedRows: LibraryRow[]) => batchActions({
+      sheets: selectedRows.flatMap((row) => (row.kind === 'sheet' ? [row.checklist] : [])),
+      folders: selectedRows.flatMap((row) => (row.kind === 'folder' ? [row.folder] : [])),
+    }) : undefined}
     sort={sort} onSortChange={onSortChange}
     keyExtractor={(row) => row.key} emptyMessage={emptyMessage ?? t('admin.checklists.empty', 'No checklists found.')}
     responsiveDetails={{
