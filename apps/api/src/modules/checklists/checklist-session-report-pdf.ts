@@ -122,10 +122,11 @@ class ReportPainter {
   }
 
   private section(title: string) {
-    this.ensureSpace(34);
+    const height = Math.max(20, this.measure(title, CONTENT_WIDTH, { weight: 700, size: 13 }) + 4);
+    this.ensureSpace(height + 14);
     this.y += 8;
     this.text(title, PAGE.margin, CONTENT_WIDTH, { weight: 700, size: 13 });
-    this.y += 20;
+    this.y += height;
     this.doc.moveTo(PAGE.margin, this.y - 4).lineTo(PAGE.margin + CONTENT_WIDTH, this.y - 4).lineWidth(0.6).strokeColor(TRACK).stroke();
   }
 
@@ -350,8 +351,8 @@ class ReportPainter {
       for (const row of rows) {
         this.ensureSpace(24);
         const indent = row.depth * 10;
-        if (row.kind === 'section') { this.text(row.title, PAGE.margin + indent, CONTENT_WIDTH - indent, { weight: 700, size: 10 }); this.y += 16; }
-        else { this.text(row.title, PAGE.margin + indent, CONTENT_WIDTH - indent, { weight: 700, size: 9, color: MUTED }); this.y += 13; this.paragraph(row.value || '—', { size: 10 }, PAGE.margin + indent, CONTENT_WIDTH - indent); }
+        if (row.kind === 'section') this.paragraph(row.title, { weight: 700, size: 10 }, PAGE.margin + indent, CONTENT_WIDTH - indent);
+        else { this.paragraph(row.title, { weight: 700, size: 9, color: MUTED }, PAGE.margin + indent, CONTENT_WIDTH - indent); this.paragraph(row.value || '—', { size: 10 }, PAGE.margin + indent, CONTENT_WIDTH - indent); }
       }
       return;
     }

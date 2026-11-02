@@ -289,7 +289,8 @@ export function ConductScreen({
   // server records the unanswered criteria as skipped.
   const allowFinishIncomplete = checklist.allowFinishIncomplete === true;
   const feedbackFilled = session.feedback && isCustomFeedback(session.feedback.layout) ? !firstMissingRequiredFeedback(session.feedback.layout, readFeedbackAnswers(session)) : Boolean(session.strengths?.trim() && session.developmentAreas?.trim());
-  const canComplete = canCompleteSession(session.status, allowFinishIncomplete, completedRequired, requiredCount) && (session.feedback && isCustomFeedback(session.feedback.layout) ? feedbackFilled : !feedbackRequired || feedbackFilled);
+  const feedbackSaved = !session.feedback || !isCustomFeedback(session.feedback.layout) || JSON.stringify(feedbackDraft.answers ?? {}) === JSON.stringify(readFeedbackAnswers(session));
+  const canComplete = feedbackSaved && canCompleteSession(session.status, allowFinishIncomplete, completedRequired, requiredCount) && (session.feedback && isCustomFeedback(session.feedback.layout) ? feedbackFilled : !feedbackRequired || feedbackFilled);
   const contextComplete = contextFields.every((field) => !field.required || Boolean(contextValues[field.id]?.trim()));
 
   async function saveContextAndContinue(nextIndex: number) {
@@ -477,7 +478,7 @@ export function ConductScreen({
 
               {!canComplete && isLastStep && (
                 <p style={{ color: COLORS.muted, fontSize: 12.5, marginTop: 10 }}>
-                  {session.feedback && isCustomFeedback(session.feedback.layout) && !feedbackFilled
+                  {!feedbackSaved ? t('checklistSessions.conduct.saveFeedback') : session.feedback && isCustomFeedback(session.feedback.layout) && !feedbackFilled
                     ? t('feedbackBuilder.requiredFields')
                     : feedbackRequired && !feedbackFilled
                     ? t('checklistSessions.conduct.feedbackRequiredHint', 'Save the strengths and development areas before completing.')

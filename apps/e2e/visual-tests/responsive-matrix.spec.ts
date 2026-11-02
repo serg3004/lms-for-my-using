@@ -1229,5 +1229,17 @@ for (const width of [375, 1440]) for (const screen of ['builder', 'answer-set', 
   if (screen === 'builder') await openFeedbackBuilder(page);
   else if (screen === 'answer-set') await answerSetServer().attach(page, '/readiness');
   else await openFeedbackConduct(page);
-  await expectNoPageOverflow(page); await expectVisualMatch(page, `checklist-feedback-${screen}-${width}`, false, { maxDiffPixels: 3000 });
+  await expectNoPageOverflow(page);
+  if (screen === 'builder') await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  if (screen === 'builder' && width > 860) {
+    // The admin shell scrolls inside main; fullPage would reset it and capture the sheet header.
+    await page.locator('.admin-feedback-block').evaluate((element) => element.scrollIntoView({ block: 'start' }));
+    await expectVisualMatch(page, `checklist-feedback-${screen}-${width}`, true, { fullPage: false, maxDiffPixels: 3000 });
+    await page.getByRole('combobox', { name: 'Режим выбора', exact: true }).scrollIntoViewIfNeeded();
+    await expectVisualMatch(page, `checklist-feedback-builder-details-${width}`, true, { fullPage: false, maxDiffPixels: 3000 });
+  } else {
+    // A full-page capture must start at the top, otherwise Chromium paints hidden fixed skip links mid-page.
+    if (screen === 'builder') await page.evaluate(() => window.scrollTo(0, 0));
+    await expectVisualMatch(page, `checklist-feedback-${screen}-${width}`, false, { maxDiffPixels: 3000 });
+  }
 });

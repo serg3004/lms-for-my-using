@@ -42,16 +42,19 @@ test('observer autosaves custom answers, cannot complete before required fields 
   const data = await openFeedbackConduct(page);
   const complete = page.getByRole('button', { name: 'Завершить', exact: true });
   await expect(complete).toBeDisabled();
-  await page.getByLabel('Рекомендация *', { exact: true }).fill('Повторить завтра');
+  await page.getByRole('textbox', { name: 'Рекомендация *', exact: true }).fill('Повторить завтра');
   await expect.poll(() => data.saves.length).toBe(1);
   await expect(complete).toBeDisabled();
   await page.getByRole('checkbox', { name: /Готов Работает самостоятельно/ }).check();
   await expect(complete).toBeEnabled();
   expect(data.session.feedbackAnswers).toEqual({ note: 'Повторить завтра', verdict: ['ready'] });
+  await page.getByRole('textbox', { name: 'Рекомендация *', exact: true }).fill('Повторить завтра и послезавтра');
+  await expect(complete).toBeDisabled();
+  await expect(complete).toBeEnabled();
   await complete.click();
   await page.goto('/instructor/checklists/sessions/all/scale-session');
   const feedback = page.getByRole('region', { name: 'План развития', exact: true });
-  await expect(feedback).toContainText('Повторить завтра');
+  await expect(feedback).toContainText('Повторить завтра и послезавтра');
   await expect(feedback).toContainText('Готов — Работает самостоятельно');
 });
 
