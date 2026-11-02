@@ -53,6 +53,8 @@ test('a stable chapter hash opens the chapter and browser back restores navigati
   const server = longreadReaderServer(); await server.attach(page, { hash: '#chapter=practice' });
   await expect(page.getByRole('heading', { name: 'Практическая часть', exact: true })).toBeVisible();
   await page.getByLabel('Главы', { exact: true }).selectOption('finish'); await expect.poll(() => server.cursor().chapter).toBe('finish');
+  // The server cursor moves before the page pushes its history entry; going back too early leaves the reader.
+  await expect.poll(() => new URL(page.url()).hash).toContain('chapter=finish');
   await page.goBack(); await expect(page.getByRole('heading', { name: 'Практическая часть', exact: true })).toBeVisible();
   await expect.poll(() => server.cursor().chapter).toBe('practice');
 });
