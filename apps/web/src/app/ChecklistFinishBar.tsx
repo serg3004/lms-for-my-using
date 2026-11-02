@@ -48,7 +48,7 @@ export function ChecklistFinishBar({ requiresReview, missing, onFinish, t }: Pro
           ? t('checklists.finishConfirmReview', 'The answers will go to your instructor and cannot be changed afterwards.')
           : t('checklists.finishConfirm', 'After finishing, the answers cannot be changed.')}</p>}
         confirmLabel={label}
-        cancelLabel={t('common.cancel', 'Cancel')}
+        cancelLabel={t('checklists.finishCancel', 'Cancel')}
         busy={busy}
         onConfirm={() => void confirm()}
         onCancel={() => setConfirming(false)}

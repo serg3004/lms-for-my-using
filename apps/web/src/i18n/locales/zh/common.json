@@ -2752,7 +2752,8 @@
     "finishMissing": "尚未作答：",
     "finishConfirm": "完成后无法更改答案。",
     "finishConfirmReview": "答案将提交给讲师，之后无法更改。",
-    "finishError": "无法完成检查。"
+    "finishError": "无法完成检查。",
+    "finishCancel": "取消"
   },
   "checklistReview": {
     "title": "检查清单审核",
