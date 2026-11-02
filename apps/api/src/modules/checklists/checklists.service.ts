@@ -2260,6 +2260,45 @@ export class ChecklistsService {
     return updated;
   }
 
+  /**
+   * PR 406а: removes the photo of one criterion while the sheet can still be edited. The answer stays;
+   * a required photo that is gone puts the criterion (and, if it was finished, the sheet) back to
+   * "not complete" through the normal recompute. The stored object is deleted after the row is cleared.
+   */
+  async removeItemPhoto(instanceId: string, itemId: string, organizationId: string, requesterId: string, isPrivileged: boolean) {
+    const instance = await this.prisma.checklistInstance.findFirst({
+      where: { id: instanceId, organizationId, deletedAt: null },
+      select: { id: true, userId: true, status: true, dueAt: true, session: { select: { observerId: true, deletedAt: true } } },
+    });
+    if (!instance) throw new NotFoundException('Checklist assignment not found');
+
+    await this.assertWritableInstance(instance, organizationId, requesterId, isPrivileged, new Date());
+
+    const existing = await this.prisma.checklistItemResult.findUnique({
+      where: { instanceId_itemId: { instanceId, itemId } },
+      select: { photoObjectKey: true, photoFileName: true },
+    });
+    if (!existing?.photoObjectKey) throw new NotFoundException('No photo attached to this item');
+
+    await this.prisma.checklistItemResult.update({
+      where: { instanceId_itemId: { instanceId, itemId } },
+      data: { photoObjectKey: null, photoFileName: null, photoMimeType: null, photoSizeBytes: null },
+    });
+    await this.uploadService.deleteObject(existing.photoObjectKey).catch(() => undefined);
+
+    const updated = await this.recomputeInstance(instanceId, organizationId);
+    await this.auditLog.record({
+      organizationId,
+      actorId: requesterId,
+      action: 'checklist_evidence.removed',
+      targetType: 'checklist_instance',
+      targetId: instanceId,
+      summary: 'Removed a checklist item photo',
+      metadata: { itemId },
+    });
+    return updated;
+  }
+
   async getItemPhotoDownload(
     instanceId: string,
     itemId: string,

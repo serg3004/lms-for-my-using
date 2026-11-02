@@ -5,7 +5,8 @@ import type { TFunction } from 'i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { uploadChecklistItemPhotoWithProgress } from '../shared/apiClient.js';
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint, validateChecklistPhoto } from '../shared/checklistPhoto.js';
-import { getChecklistInstance, skipChecklistItem, submitChecklistItemResult } from '../shared/api/checklists.js';
+import { getChecklistInstance, removeChecklistItemPhoto, skipChecklistItem, submitChecklistItemResult } from '../shared/api/checklists.js';
+import { ChecklistPhotoProof } from './ChecklistPhotoProof.js';
 import {
   captureChecklistSessionLocation,
   getConductChecklistSession,
@@ -695,7 +696,7 @@ function CriterionCard({
                 cursor: canAct ? 'pointer' : 'default',
               }}
             >
-              {level.label} ({level.score})
+              {level.label}
             </button>
           ))}
         </div>
@@ -815,7 +816,8 @@ function PhotoAttachment({
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<number | null>(null);
 
-  // Deliberately never renders an `<img>` thumbnail (neither the already-uploaded photo fetched
+  // PR 406а: no thumbnail here either; the picture opens in a dialog on request (ChecklistPhotoProof).
+  // (Earlier note: deliberately never renders an `<img>` thumbnail (neither the already-uploaded photo fetched
   // back from the API nor a local-file blob: preview): every value this component could put into
   // an `<img src>` -- a signed URL fetched from our API, and even a same-origin blob: URL created
   // via URL.createObjectURL() and gated on an explicit protocol check -- still tripped CodeQL's
@@ -848,26 +850,37 @@ function PhotoAttachment({
   const canAct = editable && !busy && progress === null;
   const hintId = useId();
 
+  async function removePhoto() {
+    onUploadingChange(true);
+    try {
+      onUploaded(await removeChecklistItemPhoto(instanceId, item.id));
+    } catch (err) {
+      onError(err instanceof ApiClientError ? err.message : t('checklists.photoRemoveError', 'Unable to remove this photo.'));
+    } finally {
+      onUploadingChange(false);
+    }
+  }
+
   return (
     <div style={{ marginTop: 12 }}>
       <input ref={inputRef} type="file" accept={CHECKLIST_PHOTO_ACCEPT} {...(cameraOnly ? { capture: 'environment' as const } : {})} onChange={(e) => void handleChange(e)} disabled={!canAct} style={{ display: 'none' }} />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <div
-          style={{
-            width: 44, height: 44, borderRadius: 10, background: COLORS.soft, color: COLORS.muted,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}
-        >
-          {attached ? '✓' : '+'}
-        </div>
+      {attached && progress === null ? (
+        <ChecklistPhotoProof
+          instanceId={instanceId}
+          itemId={item.id}
+          fileName={result?.photoFileName ?? ''}
+          canChange={canAct}
+          onReplace={() => inputRef.current?.click()}
+          onRemove={() => void removePhoto()}
+          t={t}
+        />
+      ) : (
         <Button type="button" size="sm" variant="secondary" disabled={!canAct} aria-describedby={hintId} onClick={() => inputRef.current?.click()} style={{ minHeight: 44 }}>
           {progress !== null
             ? t('checklistSessions.conduct.photoUploading', 'Uploading... {{progress}}%', { progress })
-            : attached
-              ? t('checklists.photoReplace', 'Replace')
-              : t('checklists.photoAttach', 'Attach photo')}
+            : t('checklists.photoAttach', 'Attach photo')}
         </Button>
-      </div>
+      )}
       <p id={hintId} style={{ fontSize: 12, color: COLORS.muted, margin: '6px 0 0' }}>{checklistPhotoHint(cameraOnly, t)}</p>
     </div>
   );

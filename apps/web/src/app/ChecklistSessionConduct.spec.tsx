@@ -313,6 +313,9 @@ describe('ConductScreen (real hooks)', () => {
     );
     expect(html).toContain('Rate the greeting');
     expect(html).toContain('Great');
+    // PR 406а: the person filling a sheet never sees points on the answer buttons
+    expect(html).not.toContain('Great (10)');
+    expect(html).not.toContain('(10)');
     expect(html).toContain('Criterion {{index}} / {{total}}');
     expect(html).not.toContain('Structured feedback');
     expect(html).not.toContain('Past sessions');

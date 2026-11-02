@@ -82,7 +82,8 @@ export type AuditLogAction =
   // reviewer reviewing it) is deliberately NOT audited here -- see API_CONTRACTS.md's "Privacy,
   // retention, audit" section for why.
   | 'checklist_location.accessed'
-  | 'checklist_evidence.accessed';
+  | 'checklist_evidence.accessed'
+  | 'checklist_evidence.removed';
 
 export type RecordAuditLogInput = {
   organizationId: string;

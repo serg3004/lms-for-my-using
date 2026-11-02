@@ -718,6 +718,15 @@ key, which changes with every replaced photo); a matching `If-None-Match` is 304
 object or an object over `MAX_BUFFERED_UPLOAD_SIZE_BYTES` is 404. The web client uses these routes and shows
 the bytes through a `blob:` URL; the signed-URL routes stay for API clients and are not used by the page.
 
+PR 406а: `DELETE /checklist-instances/:instanceId/items/:itemId/photo` removes the photo of a criterion while
+the instance is open. Same roles and writability rules as `POST .../photo` (the executor, the assigned
+observer of a session, privileged roles; another tenant's instance, a completed instance or a foreign user is
+rejected like for an answer write). The answer itself stays; the four photo columns are cleared, the storage
+object is deleted best-effort, the instance is recomputed (a required photo makes the criterion unanswered
+again) and the updated instance is returned. A criterion without a photo is 404. Audit action
+`checklist_evidence.removed` with the item id in the metadata. People who fill a sheet never see points on
+answer buttons; points stay in results, reports, PDF and analytics.
+
 **Who may edit a checklist (PR 362в)** (same create/update routes): `allowEditByAll` (boolean; `false` by
 default for a new checklist, `true` for every checklist that existed before). When it is `false`, only the
 creator and an `admin` may `PATCH`/`DELETE` the checklist, upload or remove its cover, and create, change or

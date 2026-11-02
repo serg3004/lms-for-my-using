@@ -677,6 +677,25 @@ export class ChecklistsController {
       throw error;
     }
   }
+  // PR 406а: same access rules as the upload above; only while the sheet is still writable.
+  @Delete('checklist-instances/:instanceId/items/:itemId/photo')
+  @Roles(...rolePolicies.checklistItemResultsWrite, ...rolePolicies.checklistSessionsRunOwn)
+  async removeItemPhoto(
+    @Param('instanceId') instanceId: string,
+    @Param('itemId') itemId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const user = request.currentUser!;
+    const isObserver = await this.reviewAccess.isAssignedObserver(user, instanceId);
+    if (!isObserver && !rolePolicies.checklistItemResultsWrite.some((role) => user.roles.includes(role))) {
+      throw new NotFoundException('Checklist assignment not found');
+    }
+    const isPrivileged = isObserver || !isLearnerOnly(user.roles);
+    if (isPrivileged && !isObserver) {
+      await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
+    }
+    return this.checklistsService.removeItemPhoto(instanceId, itemId, user.organizationId, user.id, isPrivileged);
+  }
   @Get('checklist-instances/:instanceId/items/:itemId/photo')
   @Roles(...rolePolicies.checklistInstancesRead)
   async getItemPhoto(

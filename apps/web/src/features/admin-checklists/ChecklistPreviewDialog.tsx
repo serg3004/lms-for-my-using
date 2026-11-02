@@ -133,7 +133,7 @@ function PreviewCriterion({ item, number, answer, levels, scoringMode, allowSkip
       {options.map((level) => <label key={level.level} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, cursor: 'pointer' }}>
         <input type="radio" style={{ width: 'auto', flex: 'none' }} name={id} checked={!answer?.skipped && (levels ? answer?.scaleLevel === level.level : answer?.answered === true && answer.checked === (level.level === 1))}
           onChange={() => onChange(levels ? { scaleLevel: level.level, skipped: false, answered: true } : { checked: level.level === 1, skipped: false, answered: true })} />
-        <span style={{ flex: 1 }}>{level.label}</span><small style={{ color: 'var(--color-text-muted)' }}>{t('checklistPreview.points', '{{points}} pts', { points: level.points })}</small>
+        <span style={{ flex: 1 }}>{level.label}</span>
       </label>)}
     </div>
     {allowSkip && <Button type="button" size="sm" variant="ghost" aria-pressed={answer?.skipped === true}
