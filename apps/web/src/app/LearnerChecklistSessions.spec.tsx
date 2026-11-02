@@ -287,3 +287,14 @@ describe('LearnerSessionDetail with a loaded instance', () => {
     expect(html).toContain('Done well');
   });
 });
+
+it.each([false, true])('PR 405: custom snapshot feedback respects learner visibility (%s)', (visible) => {
+  reactMocks.useState.mockImplementation((initialState: unknown) => [initialState, vi.fn()]);
+  const html = renderToStaticMarkup(<LearnerSessionDetail session={makeSession({
+    status: 'completed', result: { instanceStatus: 'completed', percentage: 90, passed: true, scored: true, visible },
+    feedback: { layout: { title: 'Development plan', fields: [], sections: [{ id: 's', title: 'Next shift', sections: [], fields: [{ id: 'f', title: 'Readiness', kind: 'choice', required: false, answerSetId: 'set' }] }] }, answerSets: { set: { id: 'set', name: 'Old name', options: [{ id: 'yes', name: 'Ready', description: 'Works independently' }] } } },
+    feedbackAnswers: { f: ['yes'] },
+  })} onBack={vi.fn()} t={t} />);
+  if (visible) { expect(html).toContain('Development plan'); expect(html).toContain('Next shift'); expect(html).toContain('Ready — Works independently'); }
+  else { expect(html).not.toContain('Development plan'); expect(html).not.toContain('Works independently'); }
+});

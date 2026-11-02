@@ -1,3 +1,4 @@
+import { answerSetServer, openFeedbackBuilder, openFeedbackConduct } from '../fixtures/checklist-feedback.js';
 import { scaleLibraryServer } from '../fixtures/scale-library.js';
 import { progressReaderServer, continueEditorServer, openProgressReport } from '../fixtures/longread-progress.js';
 import { exerciseReaderServer, exerciseEditorServer } from '../fixtures/longread-exercises.js';
@@ -1221,4 +1222,24 @@ for (const width of [375, 1440]) test(`admin longread progress report at ${width
 for (const width of [375, 1440]) for (const screen of ['list', 'detail'] as const) test(`scale library ${screen} at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height }); await scaleLibraryServer().attach(page, screen === 'detail' ? '/quality' : '');
   await expectNoPageOverflow(page); await expectVisualMatch(page, `scale-library-${screen}-${width}`, false, { fullPage: screen === 'detail', maxDiffPixels: 3000 });
+});
+
+for (const width of [375, 1440]) for (const screen of ['builder', 'answer-set', 'conduct'] as const) test(`configurable feedback ${screen} at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await page.clock.setFixedTime(new Date('2026-01-01T00:05:00Z'));
+  if (screen === 'builder') await openFeedbackBuilder(page);
+  else if (screen === 'answer-set') await answerSetServer().attach(page, '/readiness');
+  else await openFeedbackConduct(page);
+  await expectNoPageOverflow(page);
+  if (screen === 'builder') await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  if (screen === 'builder' && width > 860) {
+    // The admin shell scrolls inside main; fullPage would reset it and capture the sheet header.
+    await page.locator('.admin-feedback-block').evaluate((element) => element.scrollIntoView({ block: 'start' }));
+    await expectVisualMatch(page, `checklist-feedback-${screen}-${width}`, true, { fullPage: false, maxDiffPixels: 3000 });
+    await page.getByRole('combobox', { name: 'Режим выбора', exact: true }).scrollIntoViewIfNeeded();
+    await expectVisualMatch(page, `checklist-feedback-builder-details-${width}`, true, { fullPage: false, maxDiffPixels: 3000 });
+  } else {
+    // A full-page capture must start at the top, otherwise Chromium paints hidden fixed skip links mid-page.
+    if (screen === 'builder') await page.evaluate(() => window.scrollTo(0, 0));
+    await expectVisualMatch(page, `checklist-feedback-${screen}-${width}`, false, { maxDiffPixels: 3000 });
+  }
 });

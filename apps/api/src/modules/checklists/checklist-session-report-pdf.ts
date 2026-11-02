@@ -1,3 +1,4 @@
+import { feedbackRows, isCustomFeedback } from '@lms/shared/checklist-feedback';
 import PDFDocument from 'pdfkit';
 
 import type { HighlightStyle } from './checklist-colors.js';
@@ -121,10 +122,11 @@ class ReportPainter {
   }
 
   private section(title: string) {
-    this.ensureSpace(34);
+    const height = Math.max(20, this.measure(title, CONTENT_WIDTH, { weight: 700, size: 13 }) + 4);
+    this.ensureSpace(height + 14);
     this.y += 8;
     this.text(title, PAGE.margin, CONTENT_WIDTH, { weight: 700, size: 13 });
-    this.y += 20;
+    this.y += height;
     this.doc.moveTo(PAGE.margin, this.y - 4).lineTo(PAGE.margin + CONTENT_WIDTH, this.y - 4).lineWidth(0.6).strokeColor(TRACK).stroke();
   }
 
@@ -340,7 +342,21 @@ class ReportPainter {
   }
 
   private feedback() {
-    if (!this.report.visible || !this.report.feedback) return;
+    if (!this.report.visible) return;
+    const form = this.report.feedbackForm;
+    if (form && isCustomFeedback(form.layout)) {
+      const rows = feedbackRows(form, form.answers, this.labels);
+      if (!rows.some((row) => row.kind === 'field' && row.value)) return;
+      this.section(form.layout.title || this.labels.feedback);
+      for (const row of rows) {
+        this.ensureSpace(24);
+        const indent = row.depth * 10;
+        if (row.kind === 'section') this.paragraph(row.title, { weight: 700, size: 10 }, PAGE.margin + indent, CONTENT_WIDTH - indent);
+        else { this.paragraph(row.title, { weight: 700, size: 9, color: MUTED }, PAGE.margin + indent, CONTENT_WIDTH - indent); this.paragraph(row.value || '—', { size: 10 }, PAGE.margin + indent, CONTENT_WIDTH - indent); }
+      }
+      return;
+    }
+    if (!this.report.feedback) return;
     const { strengths, developmentAreas, comment } = this.report.feedback;
     const blocks: Array<[string, string | null]> = [
       [this.labels.strengths, strengths], [this.labels.developmentAreas, developmentAreas], [this.labels.nextSteps, comment],

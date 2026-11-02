@@ -18,6 +18,11 @@
 - an older API build ignores the new columns and table, so the forward migration may run before the API deploy and can be left in place on rollback;
 - no special backup beyond the general policy is needed. No new environment variable.
 
+PR 405 UI/report completion adds an optional root `title` inside existing layout JSON; it needs no additional DDL.
+Deploy the additive migration above before the web/API release. Keep legacy columns and JSON data on rollback;
+rolling the UI back hides custom controls but must not remove saved layouts or answers. Existing default forms and
+legacy report columns continue to read through the compatibility layer.
+
 ## Checklist settings overrides migration (PR 397)
 
 `20261031140000_checklist_settings_overrides` is additive and backward-compatible:

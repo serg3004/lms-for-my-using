@@ -1,3 +1,4 @@
+import { readFeedbackAnswers, isCustomFeedback, firstMissingRequiredFeedback } from '@lms/shared/checklist-feedback';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import type { TFunction } from 'i18next';
@@ -222,7 +223,7 @@ export function ConductScreen({
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [hideAnswered, setHideAnswered] = useState(false);
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
-  const [feedbackDraft, setFeedbackDraft] = useState<FeedbackDraft>({ strengths: session.strengths ?? '', developmentAreas: session.developmentAreas ?? '', nextSteps: session.nextSteps ?? '' });
+  const [feedbackDraft, setFeedbackDraft] = useState<FeedbackDraft>({ strengths: session.strengths ?? '', developmentAreas: session.developmentAreas ?? '', nextSteps: session.nextSteps ?? '', answers: readFeedbackAnswers(session) });
   const overviewId = useId();
   const stepHeading = useRef<HTMLParagraphElement>(null);
   const focusStep = useRef(false);
@@ -230,8 +231,8 @@ export function ConductScreen({
     if (!overviewOpen && focusStep.current) { stepHeading.current?.focus(); focusStep.current = false; }
   }, [stepIndex, overviewOpen]);
   useEffect(() => {
-    setFeedbackDraft({ strengths: session.strengths ?? '', developmentAreas: session.developmentAreas ?? '', nextSteps: session.nextSteps ?? '' });
-  }, [session.strengths, session.developmentAreas, session.nextSteps]);
+    setFeedbackDraft({ strengths: session.strengths ?? '', developmentAreas: session.developmentAreas ?? '', nextSteps: session.nextSteps ?? '', answers: readFeedbackAnswers({ feedbackAnswers: session.feedbackAnswers, strengths: session.strengths, developmentAreas: session.developmentAreas, nextSteps: session.nextSteps }) });
+  }, [session.strengths, session.developmentAreas, session.nextSteps, session.feedbackAnswers]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
@@ -287,8 +288,9 @@ export function ConductScreen({
   // PR 330: on a checklist that allows finishing incomplete the client doesn't block Complete; the
   // server records the unanswered criteria as skipped.
   const allowFinishIncomplete = checklist.allowFinishIncomplete === true;
-  const feedbackFilled = Boolean(session.strengths?.trim() && session.developmentAreas?.trim());
-  const canComplete = canCompleteSession(session.status, allowFinishIncomplete, completedRequired, requiredCount) && (!feedbackRequired || feedbackFilled);
+  const feedbackFilled = session.feedback && isCustomFeedback(session.feedback.layout) ? !firstMissingRequiredFeedback(session.feedback.layout, readFeedbackAnswers(session)) : Boolean(session.strengths?.trim() && session.developmentAreas?.trim());
+  const feedbackSaved = !session.feedback || !isCustomFeedback(session.feedback.layout) || JSON.stringify(feedbackDraft.answers ?? {}) === JSON.stringify(readFeedbackAnswers(session));
+  const canComplete = feedbackSaved && canCompleteSession(session.status, allowFinishIncomplete, completedRequired, requiredCount) && (session.feedback && isCustomFeedback(session.feedback.layout) ? feedbackFilled : !feedbackRequired || feedbackFilled);
   const contextComplete = contextFields.every((field) => !field.required || Boolean(contextValues[field.id]?.trim()));
 
   async function saveContextAndContinue(nextIndex: number) {
@@ -476,7 +478,9 @@ export function ConductScreen({
 
               {!canComplete && isLastStep && (
                 <p style={{ color: COLORS.muted, fontSize: 12.5, marginTop: 10 }}>
-                  {feedbackRequired && !feedbackFilled
+                  {!feedbackSaved ? t('checklistSessions.conduct.saveFeedback') : session.feedback && isCustomFeedback(session.feedback.layout) && !feedbackFilled
+                    ? t('feedbackBuilder.requiredFields')
+                    : feedbackRequired && !feedbackFilled
                     ? t('checklistSessions.conduct.feedbackRequiredHint', 'Save the strengths and development areas before completing.')
                     : t('checklistSessions.conduct.incompleteHint', 'All required criteria must be answered before completing.')}
                 </p>
@@ -896,28 +900,39 @@ function StructuredFeedback({
 
   useEffect(() => { onBusyChange(saving); }, [saving, onBusyChange]);
 
-  const dirty = strengths !== (session.strengths ?? '') || developmentAreas !== (session.developmentAreas ?? '') || nextSteps !== (session.nextSteps ?? '');
+  const custom = isCustomFeedback(session.feedback?.layout);
+  const dirty = custom ? JSON.stringify(draft.answers ?? {}) !== JSON.stringify(readFeedbackAnswers(session)) : strengths !== (session.strengths ?? '') || developmentAreas !== (session.developmentAreas ?? '') || nextSteps !== (session.nextSteps ?? '');
+  const automaticAttempt = useRef('');
+  const saveRef = useRef<() => Promise<void>>(() => Promise.resolve());
+  useEffect(() => {
+    const signature = JSON.stringify([session.version, draft.answers]);
+    if (!custom || !dirty || busy || saving || signature === automaticAttempt.current) return;
+    const timer = window.setTimeout(() => { automaticAttempt.current = signature; void saveRef.current(); }, 800);
+    return () => clearTimeout(timer);
+  }, [custom, dirty, busy, saving, session.version, draft.answers]);
 
   async function save() {
     await runMutation(
       async () => {
-        const updated = await submitChecklistSessionFeedback(session.id, { strengths, developmentAreas, nextSteps, version: session.version });
+        const updated = await submitChecklistSessionFeedback(session.id, custom ? { answers: draft.answers ?? {}, version: session.version } : { strengths, developmentAreas, nextSteps, version: session.version });
         onSaved(updated);
       },
       { setBusy: setSaving, setError: (message) => setError(localizeChecklistScaleError(message, t)), onConflict, fallbackMessage: t('checklistSessions.conduct.saveError', 'Unable to save.') },
     );
   }
 
+  saveRef.current = save;
+
   return (
     <div style={{ marginTop: 20 }}>
-      <h3 style={{ fontSize: 14, color: COLORS.text, margin: '0 0 10px' }}>{t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')}</h3>
+      <h3 style={{ fontSize: 14, color: COLORS.text, margin: '0 0 10px' }}>{session.feedback?.layout.title || t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')}</h3>
       {error && (
         <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 12.5 }}>
           {error}
         </p>
       )}
       <div style={{ display: 'grid', gap: 10 }}>
-        <FeedbackFields draft={draft} disabled={busy || saving} onDraftChange={onDraftChange} t={t} />
+        <FeedbackFields config={session.feedback} draft={draft} disabled={busy || saving} onDraftChange={onDraftChange} t={t} />
         <Button type="button" size="sm" disabled={busy || saving || !dirty} onClick={() => void save()} style={{ minHeight: 44 }}>
           {t('checklistSessions.conduct.saveFeedback', 'Save feedback')}
         </Button>

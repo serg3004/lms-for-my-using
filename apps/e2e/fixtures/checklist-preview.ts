@@ -30,7 +30,7 @@ export function previewSheet(): ChecklistSummary {
   };
 }
 
-export async function openPreviewBuilder(page: Page, sheet = previewSheet(), locale = 'ru') {
+export async function openPreviewBuilder(page: Page, sheet = previewSheet(), locale = 'ru', answerSets: unknown[] = []) {
   await page.route('**/api/v1/**', (route) => {
     const path = new URL(route.request().url()).pathname.replace('/api/v1', '');
     if (route.request().method() !== 'GET') return route.fulfill({ status: 405, json: { message: 'Read-only preview fixture' } });
@@ -43,6 +43,7 @@ export async function openPreviewBuilder(page: Page, sheet = previewSheet(), loc
     if (path === '/checklists') return route.fulfill({ json: [sheet] });
     if (path === `/checklists/${sheet.id}`) return route.fulfill({ json: sheet });
     if (path.endsWith('/groups')) return route.fulfill({ json: sheet.itemGroups ?? [] });
+    if (path === '/checklist-answer-sets') return route.fulfill({ json: answerSets });
     if (path === '/checklist-scales') return route.fulfill({ json: [] });
     return route.fulfill({ json: { items: [], total: 0, page: 1, pageSize: 20 } });
   });

@@ -1,6 +1,8 @@
 import { lazy } from 'react';
 import { Route } from 'react-router-dom';
 
+const ChecklistAnswerSetsPage = lazy(() => import('../ChecklistAnswerSetsPage.js').then((m) => ({ default: m.ChecklistAnswerSetsPage })));
+
 const ChecklistScalesPage = lazy(() => import('../ChecklistScalesPage.js').then((m) => ({ default: m.ChecklistScalesPage })));
 
 const LongreadEditorPage = lazy(() => import('../LongreadEditorPage.js').then((m) => ({ default: m.LongreadEditorPage })));
@@ -31,6 +33,8 @@ const AdminChecklistAnalyticsPage = lazy(() => import('../AdminChecklistAnalytic
 
 export function AdminRoutes() {
   return <>
+    <Route path="/admin/checklists/answer-sets" element={<ChecklistAnswerSetsPage />} />
+    <Route path="/admin/checklists/answer-sets/:setId" element={<ChecklistAnswerSetsPage />} />
     <Route path="/admin/checklists/scales" element={<ChecklistScalesPage />} />
     <Route path="/admin/checklists/scales/:scaleId" element={<ChecklistScalesPage />} />
     <Route path="/admin" element={<AdminDashboardPage />} />

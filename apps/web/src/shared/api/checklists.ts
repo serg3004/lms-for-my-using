@@ -1,3 +1,5 @@
+import type { FeedbackAnswerOption } from '@lms/shared/checklist-feedback';
+import type { ChecklistAnswerSet } from './types.js';
 import { apiDownloadRequest, apiRequest, uploadChecklistItemPhotoWithProgress } from '../apiClient.js';
 
 import type {
@@ -395,3 +397,10 @@ export async function getChecklistCoverBlob(checklistId: string) {
 export function getChecklistCoverUrl(checklistId: string) {
   return apiRequest<{ url: string; expiresIn: number }>(`/checklists/${encodeURIComponent(checklistId)}/cover`);
 }
+
+export const listChecklistAnswerSets = () => apiRequest<ChecklistAnswerSet[]>('/checklist-answer-sets');
+export const getChecklistAnswerSet = (id: string) => apiRequest<ChecklistAnswerSet>(`/checklist-answer-sets/${encodeURIComponent(id)}`);
+export const saveChecklistAnswerSet = (id: string | null, value: { name: string; options: FeedbackAnswerOption[] }) => apiRequest<ChecklistAnswerSet>(id ? `/checklist-answer-sets/${encodeURIComponent(id)}` : '/checklist-answer-sets', { method: id ? 'PATCH' : 'POST', body: JSON.stringify(value) });
+export const copyChecklistAnswerSet = (id: string, name: string) => apiRequest<ChecklistAnswerSet>(`/checklist-answer-sets/${encodeURIComponent(id)}/copy`, { method: 'POST', body: JSON.stringify({ name }) });
+export const archiveChecklistAnswerSet = (id: string) => apiRequest<ChecklistAnswerSet>(`/checklist-answer-sets/${encodeURIComponent(id)}/archive`, { method: 'POST' });
+export const deleteChecklistAnswerSet = (id: string) => apiRequest<void>(`/checklist-answer-sets/${encodeURIComponent(id)}`, { method: 'DELETE' });

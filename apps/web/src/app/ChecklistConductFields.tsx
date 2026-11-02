@@ -1,8 +1,11 @@
+import type { FeedbackAnswers, FeedbackConfig } from '@lms/shared/checklist-feedback';
+import { isCustomFeedback } from '@lms/shared/checklist-feedback';
+import { FeedbackFields as ConfiguredFeedbackFields } from '../features/checklist-feedback/FeedbackFields.js';
 import type { TFunction } from 'i18next';
 import type { ContextField } from '../shared/api/types.js';
 import { Textarea } from '../shared/ui.js';
 
-export type FeedbackDraft = { strengths: string; developmentAreas: string; nextSteps: string };
+export type FeedbackDraft = { answers?: FeedbackAnswers; strengths: string; developmentAreas: string; nextSteps: string };
 
 export function ContextFields({
   fields,
@@ -60,9 +63,11 @@ export function CriterionHeading({ text, required, t }: { text: string; required
   </>;
 }
 
-export function FeedbackFields({ draft, disabled = false, onDraftChange, t }: {
+export function FeedbackFields({ draft, disabled = false, onDraftChange, t, config }: {
+  config?: FeedbackConfig | null;
   draft: FeedbackDraft; disabled?: boolean; onDraftChange: (draft: FeedbackDraft) => void; t: TFunction;
 }) {
+  if (config && isCustomFeedback(config.layout)) return <ConfiguredFeedbackFields config={config} answers={draft.answers ?? {}} disabled={disabled} onChange={(answers) => onDraftChange({ ...draft, answers })} t={t} />;
   return <>
         <Textarea
           label={t('checklistSessions.conduct.strengths', 'Strengths')}

@@ -121,7 +121,8 @@ test.describe('Checklist editor: drag-and-drop of groups and criteria (PR 402)',
     await criterion(page, 'a').getByRole('button', { name: /Перетащить критерий/ }).focus();
     await page.keyboard.press('Space');
     await page.keyboard.press('ArrowDown');
-    await expect(page.locator('[id^="DndLiveRegion"]')).toContainText('«Критерий a» над «Критерий b».');
+    // Feedback has its own sorting contexts; assert the criterion announcement among their live regions.
+    await expect(page.locator('[id^="DndLiveRegion"]').filter({ hasText: '«Критерий a» над «Критерий b».' })).toHaveCount(1);
     await page.keyboard.press('Space');
     await expect.poll(() => state.layouts.length).toBe(1);
     expect((state.layouts[0]!.groups as Array<{ id: string; itemIds: string[] }>)[0]!.itemIds).toEqual(['b', 'a']);

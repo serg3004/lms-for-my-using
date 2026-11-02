@@ -1,3 +1,4 @@
+import type { FeedbackLayout, FeedbackConfig, FeedbackAnswers, FeedbackAnswersPatch, FeedbackAnswerOption } from '@lms/shared/checklist-feedback';
 import type { QuestionDefinition, QuestionResponse, PublicQuestionDefinition } from '@lms/shared/assessment-question-types';
 import type { UserRole } from '@lms/shared/types/api';
 
@@ -433,6 +434,7 @@ export type ChecklistModuleSettings = {
 };
 
 export type ChecklistSummary = {
+  feedbackLayout?: FeedbackLayout | null;
   id: string;
   organizationId: string;
   title: string;
@@ -666,6 +668,8 @@ export type ChecklistSessionSummary = {
   overdue: boolean;
   // Structured feedback (PR 297) -- session-level, optional since it's only filled in once the
   // observer starts recording it.
+  feedback?: FeedbackConfig | null;
+  feedbackAnswers?: FeedbackAnswers | null;
   strengths: string | null;
   developmentAreas: string | null;
   nextSteps: string | null;
@@ -736,6 +740,7 @@ export type ChecklistSessionReport = {
     score: number | null; maxScore: number | null; levelLabel: string | null; comment: string | null;
     photo: { fileName: string | null } | null; reviewStatus: string | null; color: ChecklistReportHighlight | null;
   }>;
+  feedbackForm?: (FeedbackConfig & { answers: FeedbackAnswers }) | null;
   feedback: null | { strengths: string | null; developmentAreas: string | null; comment: string | null };
   location: { policy: ChecklistGeolocationPolicy; captures: Array<{ capturePoint: string; status: string; capturedAt: string }> };
 };
@@ -827,6 +832,8 @@ export type ChecklistSession = {
   locationCapturePolicy: ChecklistGeolocationPolicy;
   timezone: string;
   overdue: boolean;
+  feedback?: FeedbackConfig | null;
+  feedbackAnswers?: FeedbackAnswers | null;
   strengths: string | null;
   developmentAreas: string | null;
   nextSteps: string | null;
@@ -849,6 +856,7 @@ export type MarkChecklistSessionObserverUnavailableInput = {
 // progress; `version` is required for the same optimistic-concurrency contract as every other
 // session mutation.
 export type SubmitChecklistSessionFeedbackInput = {
+  answers?: FeedbackAnswersPatch;
   strengths?: string | null;
   developmentAreas?: string | null;
   nextSteps?: string | null;
@@ -945,3 +953,5 @@ export type ChecklistSessionSummaryExport = {
     merges: { startRow: number; startColumn: number; endRow: number; endColumn: number }[];
   };
 };
+
+export type ChecklistAnswerSet = { id: string; organizationId: string; name: string; status: 'active' | 'archived'; options: FeedbackAnswerOption[]; createdBy: string | null; createdAt: string; usageCount: number; usedByChecklists: { id: string; title: string }[]; inUse: boolean };

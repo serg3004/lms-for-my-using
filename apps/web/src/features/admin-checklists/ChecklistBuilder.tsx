@@ -1,3 +1,5 @@
+import type { FeedbackLayout } from '@lms/shared/checklist-feedback';
+import { FeedbackBuilder } from '../checklist-feedback/FeedbackBuilder.js';
 import { useEffect, useState } from 'react';
 import { verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useOptionalSession } from '../../shared/session.js';
@@ -98,6 +100,7 @@ export function ChecklistBuilder({
   const [requiresReview, setRequiresReview] = useState(checklist.requiresReview);
   const [allowFinishIncomplete, setAllowFinishIncomplete] = useState(checklist.allowFinishIncomplete ?? false);
   const [forbidGalleryPhotos, setForbidGalleryPhotos] = useState(checklist.forbidGalleryPhotos ?? false);
+  const [feedbackLayout, setFeedbackLayout] = useState<FeedbackLayout | null>(checklist.feedbackLayout ?? null);
   const [feedbackEnabled, setFeedbackEnabled] = useState(checklist.feedbackEnabled ?? true);
   const [feedbackRequired, setFeedbackRequired] = useState(checklist.feedbackRequired ?? false);
   const [allowSkipAll, setAllowSkipAll] = useState(checklist.allowSkipAll ?? false);
@@ -131,7 +134,7 @@ export function ChecklistBuilder({
     title: checklist.title, description: checklist.description ?? '', scoringMode: checklist.scoringMode, passThreshold: checklist.passThreshold,
     requiresReview: checklist.requiresReview, scaleLevels: checklist.scaleLevels ?? createDefaultScale(t), defaultLocationCapturePolicy: checklist.defaultLocationCapturePolicy ?? '',
     preSessionVisibility: checklist.preSessionVisibility ?? 'structure_only', allowFinishIncomplete: checklist.allowFinishIncomplete ?? false, forbidGalleryPhotos: checklist.forbidGalleryPhotos ?? false,
-    feedbackEnabled: checklist.feedbackEnabled ?? true, feedbackRequired: checklist.feedbackRequired ?? false, allowSkipAll: checklist.allowSkipAll ?? false,
+    feedbackLayout: checklist.feedbackLayout ?? null, feedbackEnabled: checklist.feedbackEnabled ?? true, feedbackRequired: checklist.feedbackRequired ?? false, allowSkipAll: checklist.allowSkipAll ?? false,
     accessMode: checklist.accessMode ?? 'assigned', pinned: (checklist.accessMode ?? 'assigned') === 'free' && (checklist.pinned ?? false),
     allowEditByAll: canManageEditAccess ? (checklist.allowEditByAll ?? true) : undefined,
     moduleSettings: storedModuleSettings,
@@ -157,7 +160,7 @@ export function ChecklistBuilder({
     listChecklistItemGroups(checklist.id).then(setItemGroups).catch(() => setItemGroups([]));
     listChecklistScales().then(setScales).catch(() => setScales([]));
   }, [checklist.id]);
-  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, feedbackEnabled, feedbackRequired, allowSkipAll, accessMode, pinned, allowEditByAll: canManageEditAccess ? allowEditByAll : undefined, moduleSettings });
+  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, feedbackLayout, feedbackEnabled, feedbackRequired, allowSkipAll, accessMode, pinned, allowEditByAll: canManageEditAccess ? allowEditByAll : undefined, moduleSettings });
   const hasUnsavedChanges = JSON.stringify(settingsPayload) !== savedSnapshot;
   async function saveSettings() {
     setSaveState({ status: 'saving' });
@@ -422,7 +425,7 @@ export function ChecklistBuilder({
               disabled={!canEdit}
               onChange={(on) => { setFeedbackEnabled(on); if (!on) setFeedbackRequired(false); }}
             />
-            {feedbackEnabled && (
+            {feedbackEnabled && !feedbackLayout && (
               <ChecklistCheckboxOption
                 label={t('admin.checklists.field.feedbackRequired', 'Feedback is required')}
                 hint={t('admin.checklists.feedbackRequiredHint', 'A session cannot be completed until strengths and development areas are filled in. Applies to sessions assigned after you save.')}
@@ -658,17 +661,7 @@ export function ChecklistBuilder({
             </SortableContext>
             </DndContext>
           </ChecklistItemsEditor>
-          {feedbackEnabled && (
-            <section className="admin-card admin-feedback-block" aria-labelledby="checklist-feedback-title">
-              <h3 id="checklist-feedback-title">{t('admin.checklists.feedbackSectionTitle', 'Feedback')}</h3>
-              <p className="admin-form__hint">{t('admin.checklists.feedbackSectionHint', 'Feedback is left at the end of the observation.')}</p>
-              <ul>
-                <li>{t('checklistSessions.conduct.strengths', 'Strengths')}{feedbackRequired ? ' *' : ''}</li>
-                <li>{t('checklistSessions.conduct.developmentAreas', 'Development areas')}{feedbackRequired ? ' *' : ''}</li>
-                <li>{t('checklistSessions.conduct.nextSteps', 'Comment')}</li>
-              </ul>
-            </section>
-          )}
+          {feedbackEnabled && <fieldset disabled={!canEdit} style={{ border: 0, padding: 0, minWidth: 0 }}><legend className="ui-visually-hidden">{t('admin.checklists.feedbackSectionTitle')}</legend><FeedbackBuilder value={feedbackLayout} onChange={setFeedbackLayout} required={feedbackRequired} /></fieldset>}
         </div>
         <div className="admin-builder__column">
           <ChecklistSettingsForm>
@@ -865,6 +858,7 @@ export function ChecklistBuilder({
           scoringMode={scoringMode}
           scaleLevels={scaleLevels}
           passThreshold={passThreshold}
+          feedbackLayout={feedbackLayout}
           feedbackEnabled={feedbackEnabled}
           feedbackRequired={feedbackRequired}
           allowSkipAll={allowSkipAll}

@@ -1,3 +1,5 @@
+import { collectFeedbackFields, isCustomFeedback, firstMissingRequiredFeedback, type FeedbackLayout, type FeedbackAnswerSetSnapshot } from '@lms/shared/checklist-feedback';
+import { listChecklistAnswerSets } from '../../shared/api/checklists.js';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { ContextFields, CriterionHeading, FeedbackFields, type FeedbackDraft } from '../../app/ChecklistConductFields.js';
@@ -11,6 +13,7 @@ type PreviewProps = {
   title: string; description: string; items: ChecklistItemSummary[]; groups: ChecklistItemGroup[];
   contextFields: ContextField[]; scoringMode: ChecklistScoringMode; scaleLevels: ChecklistScaleLevel[];
   passThreshold: number; feedbackEnabled: boolean; feedbackRequired: boolean; allowSkipAll: boolean;
+  feedbackLayout?: FeedbackLayout | null;
   cameraOnly: boolean; onClose: () => void; t: TFunction;
 };
 
@@ -26,6 +29,9 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
   const [answers, setAnswers] = useState<Record<string, PreviewAnswer>>({});
   const [values, setValues] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState<FeedbackDraft>(emptyFeedback);
+  const [answerSets, setAnswerSets] = useState<Record<string, FeedbackAnswerSetSnapshot>>({});
+  useEffect(() => { if (!props.feedbackLayout || !collectFeedbackFields(props.feedbackLayout).some((field) => field.kind === 'choice')) return; let active = true; void listChecklistAnswerSets().then((sets) => { if (active && Array.isArray(sets)) setAnswerSets(Object.fromEntries(sets.map((set) => [set.id, set]))); }).catch(() => {}); return () => { active = false; }; }, [props.feedbackLayout]);
+  const config = props.feedbackLayout ? { layout: props.feedbackLayout, answerSets } : null;
   const [resetKey, setResetKey] = useState(0);
   useEffect(() => {
     const returnFocus = document.activeElement as HTMLElement | null;
@@ -43,7 +49,7 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
 
   const result = computePreviewResult(items, scoringMode, scaleLevels, passThreshold, answers, allowSkipAll, true);
   const complete = result.allAnswered && contextFields.every((field) => !field.required || values[field.id]?.trim())
-    && (!feedbackEnabled || !feedbackRequired || Boolean(feedback.strengths.trim() && feedback.developmentAreas.trim()));
+    && (!feedbackEnabled || (isCustomFeedback(props.feedbackLayout) ? !firstMissingRequiredFeedback(props.feedbackLayout!, feedback.answers ?? {}) : !feedbackRequired || Boolean(feedback.strengths.trim() && feedback.developmentAreas.trim())));
   const updateAnswer = (id: string, patch: PreviewAnswer) => setAnswers((previous) => ({ ...previous, [id]: { ...previous[id], ...patch } }));
   function reset() {
     setAnswers({}); setValues({}); setFeedback(emptyFeedback); setResetKey((key) => key + 1);
@@ -89,9 +95,9 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
           ))}
         </div>
         {feedbackEnabled && <section aria-label={t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')}>
-          <h3>{t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')}</h3>
+          <h3>{props.feedbackLayout?.title || t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')}</h3>
           {feedbackRequired && <p className="admin-form__hint">{t('checklistPreview.feedbackRequired', 'Strengths and development areas are required.')}</p>}
-          <div style={{ display: 'grid', gap: 10 }}><FeedbackFields draft={feedback} onDraftChange={setFeedback} t={t} /></div>
+          <div style={{ display: 'grid', gap: 10 }}><FeedbackFields config={config} draft={feedback} onDraftChange={setFeedback} t={t} /></div>
         </section>}
         <footer>
           <div role="status" className={complete && result.passed ? 'admin-preview-result admin-preview-result--pass' : 'admin-preview-result'}>
