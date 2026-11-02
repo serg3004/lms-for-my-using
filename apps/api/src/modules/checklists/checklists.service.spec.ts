@@ -120,7 +120,8 @@ function createFakePrisma() {
       findFirstOrThrow: async ({ where }: { where: Record<string, unknown> }) => {
         const found = instances.find((i) => i.id === where['id']);
         if (!found) throw new Error('not found');
-        return found;
+        // PR 406б: these cases cover the completion rules shared with observer sessions, which complete on the last answer
+        return { ...found, session: { id: 'session-1' } };
       },
       findMany: async ({ where }: { where: Record<string, unknown> }) =>
         instances.filter((i) => (where['userId'] === undefined || i.userId === where['userId']) && (where['status'] === undefined || i.status === where['status'])),

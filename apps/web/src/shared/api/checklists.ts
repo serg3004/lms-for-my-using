@@ -307,6 +307,11 @@ export function getChecklistInstance(instanceId: string) {
   return apiRequest<ChecklistInstanceSummary>(`/checklist-instances/${encodeURIComponent(instanceId)}`);
 }
 
+/** PR 406б: the explicit "Finish the check" of a self-filled sheet. */
+export function finishChecklistInstance(instanceId: string) {
+  return apiRequest<ChecklistInstanceSummary>(`/checklist-instances/${encodeURIComponent(instanceId)}/finish`, { method: 'POST' });
+}
+
 export function submitChecklistItemResult(
   instanceId: string,
   itemId: string,

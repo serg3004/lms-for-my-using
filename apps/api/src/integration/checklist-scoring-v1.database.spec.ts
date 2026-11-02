@@ -108,7 +108,8 @@ describe('checklist scoring v1 (skip/weight/geolocation) — database', () => {
     const instance = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerId }, observerId);
 
     await checklistsService.skipItem(instance.id, itemA.id, organizationId, learnerId, false, {});
-    const afterFirstAnswer = await checklistsService.submitItemResult(instance.id, itemB.id, organizationId, learnerId, false, { checked: true });
+    await checklistsService.submitItemResult(instance.id, itemB.id, organizationId, learnerId, false, { checked: true });
+    const afterFirstAnswer = await checklistsService.finishInstance(instance.id, organizationId, learnerId, false);
 
     // Item A is excluded entirely -- 10/10 from item B, not 10/20.
     expect(afterFirstAnswer.percentage).toBe(100);
@@ -157,7 +158,8 @@ describe('checklist scoring v1 (skip/weight/geolocation) — database', () => {
 
     const instance = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerId }, observerId);
     // heavy: weight 3, checked -> earns 30, contributes 30 to max; optional never answered -> auto-skipped.
-    const result = await checklistsService.submitItemResult(instance.id, heavy.id, organizationId, learnerId, false, { checked: true });
+    await checklistsService.submitItemResult(instance.id, heavy.id, organizationId, learnerId, false, { checked: true });
+    const result = await checklistsService.finishInstance(instance.id, organizationId, learnerId, false);
 
     expect(result.percentage).toBe(100);
     expect(result.status).toBe('completed');

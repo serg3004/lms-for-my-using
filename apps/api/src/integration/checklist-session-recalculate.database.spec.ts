@@ -90,6 +90,7 @@ describe('checklist session recalculate (PR 300) — database', () => {
   async function completeInstanceAndSession() {
     const instance = await checklistsService.assignChecklist(checklistId, organizationId, { userId: learnerId }, observerId);
     await checklistsService.submitItemResult(instance.id, itemId, organizationId, learnerId, false, { checked: true });
+    await checklistsService.finishInstance(instance.id, organizationId, learnerId, false);
     const session = await sessionService.create(organizationId, { instanceId: instance.id, observerId }, observerId);
     return { instanceId: instance.id, sessionId: session.id };
   }

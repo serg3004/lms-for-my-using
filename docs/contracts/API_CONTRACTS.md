@@ -727,6 +727,15 @@ again) and the updated instance is returned. A criterion without a photo is 404.
 `checklist_evidence.removed` with the item id in the metadata. People who fill a sheet never see points on
 answer buttons; points stay in results, reports, PDF and analytics.
 
+PR 406б: `POST /checklist-instances/:instanceId/finish` is the explicit end of a self-filled sheet (an
+instance without an observer session). The last answer no longer completes such an instance: it stays
+`in_progress` until the executor (or a privileged role that can access the instance) calls finish. Allowed
+only while the status is `assigned` or `in_progress` (otherwise 409 "already finished"); a session instance is
+400 (it is completed through its session). When a required criterion is unanswered the answer is 409 with
+`missingItemIds`. A sheet with `requiresReview` goes to `submitted` ("Send for review"), otherwise to
+`completed` with the score, report settings and `completedAt` frozen as before. Another user is 403, another
+tenant 404. Audit action `checklist_instance.finished`. Observer sessions keep the automatic rule.
+
 **Who may edit a checklist (PR 362в)** (same create/update routes): `allowEditByAll` (boolean; `false` by
 default for a new checklist, `true` for every checklist that existed before). When it is `false`, only the
 creator and an `admin` may `PATCH`/`DELETE` the checklist, upload or remove its cover, and create, change or

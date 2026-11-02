@@ -135,6 +135,8 @@ never grants them, library access, review rights, score recalculation or analyti
 Existing instance detail and photo reads admit the assigned observer. Item answer/skip/photo writes
 check the linked session's observer in the service for every role; mentor gains these operations
 only on assigned observed instances. Reviewer and standalone-assignment rules remain separate.
+
+PR 406б: `POST /checklist-instances/:instanceId/finish` uses the same roles as item answer writes (`checklistItemResultsWrite`) and finishes a self-filled instance for its executor; privileged roles pass the reviewer access check. Observer sessions are not finished through it.
 New creation (single/bulk/repeat) and reassignment reject employee = observer; existing rows are
 not rewritten. Start/completion audit event names and actors are unchanged.
 

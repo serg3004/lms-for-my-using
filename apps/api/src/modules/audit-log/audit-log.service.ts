@@ -83,7 +83,8 @@ export type AuditLogAction =
   // retention, audit" section for why.
   | 'checklist_location.accessed'
   | 'checklist_evidence.accessed'
-  | 'checklist_evidence.removed';
+  | 'checklist_evidence.removed'
+  | 'checklist_instance.finished';
 
 export type RecordAuditLogInput = {
   organizationId: string;
