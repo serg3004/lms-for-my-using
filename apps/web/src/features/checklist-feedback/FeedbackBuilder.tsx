@@ -49,8 +49,8 @@ export function FeedbackBuilder({ value, onChange, required }: { value: Feedback
       {depth < 3 && <Button type="button" variant="secondary" disabled={sectionCount(layout.sections) >= 30} onClick={() => container(parentId, (current) => ({ ...current, sections: [...current.sections, newSection()] }))}>+ {t(depth ? 'feedbackBuilder.addSubsection' : 'feedbackBuilder.addSection')}</Button>}
     </div>;
   }
-  return <section className="admin-card admin-feedback-block" aria-label={t('admin.checklists.feedbackSectionTitle')}>
-    <h3>{t('admin.checklists.feedbackSectionTitle')}</h3>
+  return <section className="admin-card admin-feedback-block" aria-labelledby="checklist-feedback-title">
+    <h3 id="checklist-feedback-title">{t('admin.checklists.feedbackSectionTitle')}</h3>
     <Input label={t('feedbackBuilder.title')} maxLength={255} value={layout.title ?? t('admin.checklists.feedbackSectionTitle')} onChange={(event) => onChange({ ...layout, title: event.target.value })} />
     {failed && <div role="alert">{t('feedbackBuilder.loadError')} <Button type="button" onClick={() => setRetry((value) => value + 1)}>{t('longread.retry')}</Button></div>}
     {render(layout, null, 0)}
