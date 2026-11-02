@@ -42,4 +42,40 @@ describe('ChecklistHelpTip', () => {
     act(() => (host.querySelector('button') as HTMLButtonElement).click());
     expect(onChange).toHaveBeenCalledTimes(1);
   });
+  it('keeps at most one hint open: opening another closes the first', () => {
+    const { host } = mount(<div><ChecklistHelpTip name="A">a</ChecklistHelpTip><ChecklistHelpTip name="B">b</ChecklistHelpTip></div>);
+    const [first, second] = Array.from(host.querySelectorAll('button')) as HTMLButtonElement[];
+    act(() => first.click());
+    expect(first.getAttribute('aria-expanded')).toBe('true');
+    act(() => second.click());
+    expect(second.getAttribute('aria-expanded')).toBe('true');
+    expect(first.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('opens on hovering the icon, but not on clicking a checkbox or hovering its row', () => {
+    const { host } = mount(<ChecklistCheckboxOption label="Skip" hint="Hint" checked={false} onChange={() => undefined} />);
+    const button = host.querySelector('button') as HTMLButtonElement;
+    const row = host.querySelector('.admin-option') as HTMLElement;
+    act(() => { row.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); });
+    act(() => (host.querySelector('input') as HTMLInputElement).click());
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    act(() => { button.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); });
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  it('closes after the pointer leaves the icon, and a second click closes a pinned hint', () => {
+    vi.useFakeTimers();
+    try {
+      const { host } = mount(<ChecklistHelpTip name="Skip">Hint</ChecklistHelpTip>);
+      const button = host.querySelector('button') as HTMLButtonElement;
+      act(() => { button.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); });
+      expect(button.getAttribute('aria-expanded')).toBe('true');
+      act(() => { button.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: document.body })); });
+      act(() => { vi.advanceTimersByTime(300); });
+      expect(button.getAttribute('aria-expanded')).toBe('false');
+      act(() => button.click());
+      act(() => button.click());
+      expect(button.getAttribute('aria-expanded')).toBe('false');
+    } finally { vi.useRealTimers(); }
+  });
 });

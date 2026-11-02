@@ -2293,13 +2293,11 @@
 .admin-help__icon { display: grid; place-items: center; width: 20px; height: 20px; border: 1px solid var(--color-border); border-radius: 50%; font-size: 12px; font-weight: 600; background: var(--color-surface); }
 .admin-help__btn:hover .admin-help__icon,
 .admin-help--open .admin-help__icon { border-color: var(--color-primary); color: var(--color-primary); }
-.admin-help__tip { position: absolute; z-index: 20; top: calc(100% + 4px); right: 0; display: none; width: min(280px, 70vw); padding: 9px 11px; border-radius: var(--radius-sm); background: var(--color-text); color: var(--color-surface); font-size: 12.5px; line-height: 1.45; box-shadow: var(--shadow-card); }
-.admin-help--open .admin-help__tip,
-.admin-help:hover .admin-help__tip,
-.admin-option:hover .admin-help__tip,
-.admin-option:focus-within .admin-help__tip { display: block; }
+.admin-help__tip { position: absolute; z-index: 20; top: 50%; left: calc(100% + 6px); transform: translateY(-50%); display: none; width: min(280px, 70vw); padding: 9px 11px; border-radius: var(--radius-sm); background: var(--color-text); color: var(--color-surface); font-size: 12.5px; line-height: 1.45; box-shadow: var(--shadow-card); }
+/* PR 412: the hint is shown only by the "?" itself (script state), never by hovering or focusing the whole row. */
+.admin-help--open .admin-help__tip { display: block; }
 .admin-heading-tip { display: flex; align-items: center; gap: 6px; }
-@media (max-width: 860px) { .admin-help__btn { width: 44px; height: 44px; } }
+@media (max-width: 860px) { .admin-help__btn { width: 44px; height: 44px; } .admin-help__tip { top: calc(100% + 4px); left: 0; transform: none; width: min(280px, calc(100vw - 48px)); } }
 
 /* PR 396: folder tree beside the checklist list. The tree reuses the department-tree rules; below 860px it
    gives way to a folder picker above the table. */
