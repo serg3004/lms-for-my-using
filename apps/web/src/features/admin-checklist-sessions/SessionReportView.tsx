@@ -1,3 +1,5 @@
+import { isCustomFeedback } from '@lms/shared/checklist-feedback';
+import { FeedbackReadOnly } from '../checklist-feedback/FeedbackFields.js';
 import type { ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 
@@ -222,7 +224,7 @@ export function ReportSummary({ report, t }: { report: Report; t: TFunction }) {
             <p style={{ ...muted, margin: '0 0 12px' }}>{t('admin.checklists.report.notFinished', 'The session is not finished yet: the result is not final.')}</p>
           )}
           <ReportTotal summary={report.summary} t={t} />
-          {report.feedback && <ReportFeedback feedback={report.feedback} t={t} />}
+          {report.feedbackForm && isCustomFeedback(report.feedbackForm.layout) ? <div className="admin-card"><FeedbackReadOnly config={report.feedbackForm} answers={report.feedbackForm.answers} t={t} /></div> : report.feedback && <ReportFeedback feedback={report.feedback} t={t} />}
           <ReportGroups groups={report.groups} t={t} />
         </>
       )}

@@ -38,6 +38,11 @@
       "types": "./src/longread-progress.ts",
       "development": "./src/longread-progress.ts",
       "import": "./dist/longread-progress.js"
+    },
+    "./checklist-feedback": {
+      "types": "./src/checklist-feedback.ts",
+      "development": "./src/checklist-feedback.ts",
+      "import": "./dist/checklist-feedback.js"
     }
   },
   "scripts": {

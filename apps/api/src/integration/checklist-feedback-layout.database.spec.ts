@@ -75,6 +75,7 @@ describe('checklist feedback layout and answer sets — database', () => {
       await prisma.checklistItemResult.deleteMany({ where });
       await prisma.checklistInstance.deleteMany({ where });
       await prisma.checklistItem.deleteMany({ where });
+      await prisma.checklistTemplate.deleteMany({ where });
       await prisma.checklist.deleteMany({ where });
       await prisma.checklistAnswerSet.deleteMany({ where });
       await prisma.membership.deleteMany({ where });
@@ -154,6 +155,22 @@ describe('checklist feedback layout and answer sets — database', () => {
     const refreshed = (await prisma.checklistInstance.findUniqueOrThrow({ where: { id: instanceId } })).templateSnapshot as typeof stored;
     expect(refreshed.checklist.feedbackAnswerSets[set.id]?.options).toEqual([{ id: 'only', name: 'Only', description: null }]);
     expect(refreshed.checklist.feedbackLayout.sections).toHaveLength(1);
+  });
+
+  it('preserves the custom root title through sheet copies, organization templates and the started session', async () => {
+    const set = await answerSets.create(organizationId, { name: 'Readiness', options }, adminId);
+    const layout = { ...layoutFor(set.id), title: 'Development plan' };
+    const { checklistId, sessionId } = await assign(layout);
+    const copied = await checklists.copyChecklist(checklistId, organizationId, adminId);
+    expect(copied.feedbackLayout).toEqual(layout);
+    const template = await checklists.createOrgTemplate(organizationId, { sourceChecklistId: checklistId }, adminId);
+    const fromTemplate = await checklists.createFromOrgTemplate(template.id, organizationId, adminId);
+    expect(fromTemplate.feedbackLayout).toEqual(layout);
+    await answerSets.update(set.id, organizationId, { options: [{ id: 'changed', name: 'Changed' }] }, adminId);
+    await checklists.updateChecklist(checklistId, organizationId, { feedbackLayout: { ...layout, title: 'Changed title' } }, adminId);
+    const projected = await sessions.get(sessionId, organizationId, {}, { userId: observerId, roles: ['instructor'] });
+    expect(projected.feedback?.layout.title).toBe('Development plan');
+    expect(projected.feedback?.answerSets[set.id]?.options).toEqual(options);
   });
 
   it('records answers against the frozen layout, mirrors built-in fields and gates completion on required fields', async () => {

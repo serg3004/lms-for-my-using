@@ -1,3 +1,5 @@
+import { isCustomFeedback } from '@lms/shared/checklist-feedback';
+import { FeedbackReadOnly } from '../features/checklist-feedback/FeedbackFields.js';
 import { useState, type CSSProperties } from 'react';
 import type { TFunction } from 'i18next';
 import { getChecklistInstance } from '../shared/api/checklists.js';
@@ -35,7 +37,7 @@ function findResultForItem(results: ChecklistInstanceSummary['results'], itemId:
  */
 function latestFeedbackSession(sessions: ChecklistSessionSummary[]): ChecklistSessionSummary | null {
   const candidates = sessions.filter(
-    (session) => session.status === 'completed' && session.result.visible && (session.strengths || session.developmentAreas),
+    (session) => session.status === 'completed' && session.result.visible && (session.strengths || session.developmentAreas || Object.keys(session.feedbackAnswers ?? {}).length > 0),
   );
   if (candidates.length === 0) return null;
   return candidates.reduce((latest, session) => (new Date(session.updatedAt) > new Date(latest.updatedAt) ? session : latest));
@@ -156,7 +158,7 @@ export function LearnerChecklistSessions({ t, linkedSessionId, onLinkedSessionBa
           </table>
         </div>
       )}
-      {feedbackSession && (
+      {feedbackSession?.feedback && isCustomFeedback(feedbackSession.feedback.layout) ? <FeedbackReadOnly config={feedbackSession.feedback} answers={feedbackSession.feedbackAnswers ?? {}} t={t} /> : feedbackSession && (
         <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 15, marginTop: 12, background: COLORS.surface }}>
           <strong style={{ fontSize: 13 }}>{t('checklistSessions.learner.previousFeedback', 'Previous feedback')}</strong>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginTop: 10 }}>
@@ -276,7 +278,7 @@ export function LearnerSessionDetail({ session, onBack, t }: { session: Checklis
               {t('checklistSessions.learner.notScored', 'Not scored (all skipped)')}
             </div>
           )}
-          {(session.strengths || session.developmentAreas || session.nextSteps) && (
+          {session.feedback && isCustomFeedback(session.feedback.layout) ? <FeedbackReadOnly config={session.feedback} answers={session.feedbackAnswers ?? {}} t={t} /> : (session.strengths || session.developmentAreas || session.nextSteps) && (
             <div style={{ marginTop: 20, display: 'grid', gap: 10 }}>
               <h3 style={{ color: COLORS.text, fontSize: 14, margin: 0 }}>{t('checklistSessions.learner.feedbackTitle', 'Feedback from your observer')}</h3>
               {session.strengths && (

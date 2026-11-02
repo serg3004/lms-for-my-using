@@ -1171,7 +1171,7 @@ model Checklist {
   feedbackEnabled              Boolean                       @default(true) @map("feedback_enabled")
   feedbackRequired             Boolean                       @default(false) @map("feedback_required")
   allowSkipAll                 Boolean                       @default(false) @map("allow_skip_all")
-  // PR 405a: configurable "Feedback" section (sections, sub-sections, text/choice fields). Null =
+  // PR 405: configurable "Feedback" section (optional root title, sections, text/choice fields). Null =
   // the built-in three fields (strengths, development areas, next steps). Frozen into the instance
   // snapshot together with the answer sets it references.
   feedbackLayout               Json?                         @map("feedback_layout")

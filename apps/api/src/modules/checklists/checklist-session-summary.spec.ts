@@ -78,3 +78,11 @@ describe('session summary table (PR 373)', () => {
     }
   });
 });
+
+it('PR 405: custom feedback survives the styled summary rows and CSV with frozen labels', () => {
+  const data = report(); if (!data.visible) throw new Error('Expected a visible report');
+  data.feedbackForm = { layout: { title: 'Custom coaching', fields: [{ id: 'note', title: 'Advice', kind: 'text', required: true }], sections: [{ id: 's', title: 'Practice plan', fields: [{ id: 'f', kind: 'choice', title: 'Outcome', required: false, answerSetId: 'set' }], sections: [] }] }, answerSets: { set: { id: 'set', name: 'Outcome', options: [{ id: 'good', name: 'Ready', description: 'Independent work' }] } }, answers: { note: 'Keep practicing', f: ['good'] } };
+  const table = buildSessionSummary([data], 'en'); const text = JSON.stringify(table.rows);
+  for (const value of ['Custom coaching', 'Advice', 'Keep practicing', 'Practice plan', 'Outcome', 'Ready — Independent work']) expect(text).toContain(value);
+  expect(serializeReportCsv(table.rows)).toContain('Ready — Independent work');
+});

@@ -11,36 +11,8 @@ import { z } from 'zod';
  * answer sets from the instance snapshot only, so editing a sheet or an answer set later never
  * changes an assigned instance.
  */
-export const FEEDBACK_MAX_DEPTH = 3;
-export const FEEDBACK_MAX_SECTIONS = 30;
-export const FEEDBACK_MAX_FIELDS = 30;
-export const FEEDBACK_TEXT_MAX_LENGTH = 4000;
-export const FEEDBACK_BUILTIN_IDS = ['strengths', 'developmentAreas', 'nextSteps'] as const;
-export type FeedbackBuiltinId = (typeof FEEDBACK_BUILTIN_IDS)[number];
-
-export type FeedbackFieldDef = {
-  id: string;
-  kind: 'text' | 'choice';
-  /** Empty only for built-in fields: the client shows the localized default title. */
-  title: string;
-  required: boolean;
-  builtin?: FeedbackBuiltinId;
-  answerSetId?: string;
-  multiple?: boolean;
-};
-export type FeedbackSectionDef = {
-  id: string;
-  title: string;
-  fields: FeedbackFieldDef[];
-  sections: FeedbackSectionDef[];
-};
-export type FeedbackLayout = { fields: FeedbackFieldDef[]; sections: FeedbackSectionDef[] };
-export type FeedbackAnswerOption = { id: string; name: string; description: string | null };
-export type FeedbackAnswerSetSnapshot = { id: string; name: string; options: FeedbackAnswerOption[] };
-export type FeedbackAnswerValue = string | string[];
-export type FeedbackAnswers = Record<string, FeedbackAnswerValue>;
-/** Input patch: `null` clears an answer. */
-export type FeedbackAnswersPatch = Record<string, FeedbackAnswerValue | null>;
+import { FEEDBACK_MAX_DEPTH, FEEDBACK_MAX_SECTIONS, FEEDBACK_MAX_FIELDS, FEEDBACK_TEXT_MAX_LENGTH, FEEDBACK_BUILTIN_IDS, defaultFeedbackLayout, collectFeedbackFields, type FeedbackFieldDef, type FeedbackSectionDef, type FeedbackLayout, type FeedbackAnswers, type FeedbackAnswersPatch, type FeedbackAnswerSetSnapshot, type FeedbackBuiltinId, type FeedbackAnswerOption } from '@lms/shared/checklist-feedback';
+export * from '@lms/shared/checklist-feedback';
 
 const idSchema = z.string().regex(/^[A-Za-z0-9_-]{1,64}$/, 'Invalid id');
 
@@ -84,6 +56,7 @@ const feedbackSectionSchema: z.ZodType<FeedbackSectionDef> = z.lazy(() =>
 
 export const feedbackLayoutSchema: z.ZodType<FeedbackLayout> = z
   .object({
+    title: z.string().trim().max(255).optional(),
     fields: z.array(feedbackFieldSchema).max(FEEDBACK_MAX_FIELDS).default([]),
     sections: z.array(feedbackSectionSchema).max(FEEDBACK_MAX_SECTIONS).default([]),
   })
@@ -117,18 +90,6 @@ export const feedbackLayoutSchema: z.ZodType<FeedbackLayout> = z
   }) as z.ZodType<FeedbackLayout>;
 
 /** The layout of a sheet that never configured one: the three classic text fields. */
-export function defaultFeedbackLayout(feedbackRequired: boolean): FeedbackLayout {
-  return {
-    fields: [
-      { id: 'strengths', kind: 'text', title: '', required: feedbackRequired, builtin: 'strengths' },
-      { id: 'developmentAreas', kind: 'text', title: '', required: feedbackRequired, builtin: 'developmentAreas' },
-      { id: 'nextSteps', kind: 'text', title: '', required: false, builtin: 'nextSteps' },
-    ],
-    sections: [],
-  };
-}
-
-/** Defensive read of a stored layout; anything that no longer parses is treated as "no layout". */
 export function parseFeedbackLayout(value: unknown): FeedbackLayout | null {
   if (value == null) return null;
   const parsed = feedbackLayoutSchema.safeParse(value);
@@ -145,46 +106,12 @@ export function effectiveFeedbackLayout(checklist: { feedbackEnabled?: boolean; 
 }
 
 /** Depth-first, document order: root fields, then each section's fields and sub-sections. */
-export function collectFeedbackFields(layout: FeedbackLayout): FeedbackFieldDef[] {
-  const result = [...layout.fields];
-  const visit = (sections: FeedbackSectionDef[]) => {
-    for (const section of sections) {
-      result.push(...section.fields);
-      visit(section.sections);
-    }
-  };
-  visit(layout.sections);
-  return result;
-}
-
 export function collectAnswerSetIds(layout: FeedbackLayout | null): string[] {
   if (!layout) return [];
   return [...new Set(collectFeedbackFields(layout).flatMap((field) => (field.answerSetId ? [field.answerSetId] : [])))];
 }
 
 /** Current answers of a session: the JSON column, or the legacy three columns for an old row. */
-export function readFeedbackAnswers(session: {
-  feedbackAnswers?: unknown;
-  strengths?: string | null;
-  developmentAreas?: string | null;
-  nextSteps?: string | null;
-}): FeedbackAnswers {
-  const stored = session.feedbackAnswers;
-  if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
-    const answers: FeedbackAnswers = {};
-    for (const [key, value] of Object.entries(stored as Record<string, unknown>)) {
-      if (typeof value === 'string') answers[key] = value;
-      else if (Array.isArray(value) && value.every((entry) => typeof entry === 'string')) answers[key] = value as string[];
-    }
-    return answers;
-  }
-  const answers: FeedbackAnswers = {};
-  if (session.strengths) answers.strengths = session.strengths;
-  if (session.developmentAreas) answers.developmentAreas = session.developmentAreas;
-  if (session.nextSteps) answers.nextSteps = session.nextSteps;
-  return answers;
-}
-
 /**
  * Checks a patch against the layout and the answer sets frozen with the instance. Returns the
  * values to store (trimmed text; `null` = remove). Unknown fields, wrong value kinds and unknown or
@@ -232,17 +159,6 @@ export function applyFeedbackPatch(current: FeedbackAnswers, patch: FeedbackAnsw
 }
 
 /** First required field (document order) that has no answer; `null` when the section is complete. */
-export function firstMissingRequiredFeedback(layout: FeedbackLayout | null, answers: FeedbackAnswers): FeedbackFieldDef | null {
-  if (!layout) return null;
-  for (const field of collectFeedbackFields(layout)) {
-    if (!field.required) continue;
-    const value = answers[field.id];
-    const filled = typeof value === 'string' ? value.trim() !== '' : Array.isArray(value) && value.length > 0;
-    if (!filled) return field;
-  }
-  return null;
-}
-
 /** Built-in fields stay mirrored into the legacy columns, which old readers (reports, exports) still use. */
 export function legacyFeedbackColumns(answers: FeedbackAnswers) {
   const text = (id: FeedbackBuiltinId) => (typeof answers[id] === 'string' ? (answers[id] as string) : null);
@@ -286,6 +202,6 @@ export function dropMissingAnswerSets(layout: FeedbackLayout, existingSetIds: Re
   const keepField = (field: FeedbackFieldDef) => field.kind === 'text' || (field.answerSetId !== undefined && existingSetIds.has(field.answerSetId));
   const clean = (sections: FeedbackSectionDef[]): FeedbackSectionDef[] =>
     sections.map((section) => ({ ...section, fields: section.fields.filter(keepField), sections: clean(section.sections) }));
-  const result: FeedbackLayout = { fields: layout.fields.filter(keepField), sections: clean(layout.sections) };
+  const result: FeedbackLayout = { ...layout, fields: layout.fields.filter(keepField), sections: clean(layout.sections) };
   return collectFeedbackFields(result).length === 0 ? null : result;
 }

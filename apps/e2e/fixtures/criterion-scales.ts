@@ -55,7 +55,7 @@ export async function installCriterionScaleMocks(page: Page, role: 'learner' | '
     }
     return route.fulfill({ json: { items: [], total: 0, page: 1, pageSize: 50 } });
   });
-  return { writes, instance };
+  return { writes, instance, session, checklist };
 }
 
 export async function openCriterionScalePage(page: Page, role: 'learner' | 'instructor') {

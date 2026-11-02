@@ -1,3 +1,4 @@
+import { feedbackRows, isCustomFeedback, defaultFeedbackLayout } from '@lms/shared/checklist-feedback';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 
 import { exportLocale, MAX_EXPORT_ROWS, type ReportCell } from './checklist-report-csv.js';
@@ -124,7 +125,21 @@ export function buildSessionSummary(reports: ChecklistSessionReport[], locale: R
         return [row.state === 'skipped' ? label.skipped : row.state === 'unanswered' ? label.unanswered : '', row.levelLabel, row.comment].filter(Boolean).join('\n');
       }));
     }
-    if (observations.some((report) => report.feedback)) {
+    if (observations.some((report) => report.feedbackForm && isCustomFeedback(report.feedbackForm.layout))) {
+      const projected = observations.map((report) => {
+        const form = report.feedbackForm ?? { layout: defaultFeedbackLayout(false), answerSets: {} };
+        const rows = feedbackRows(form, report.feedbackForm?.answers ?? { strengths: report.feedback?.strengths ?? '', developmentAreas: report.feedback?.developmentAreas ?? '', nextSteps: report.feedback?.comment ?? '' }, { strengths: label.strengths, developmentAreas: label.development, nextSteps: label.comment });
+        return { title: form.layout.title || label.feedback, rows };
+      });
+      for (const title of new Set(projected.map((value) => value.title))) {
+        section(title);
+        const unique = new Map(projected.filter((value) => value.title === title).flatMap((value) => value.rows).map((row) => [JSON.stringify([row.id, row.title, row.path]), row]));
+        for (const [key, row] of unique) {
+          if (row.kind === 'section') section(row.title);
+          else detail('  '.repeat(row.depth) + row.title, projected.map((value) => value.title === title ? value.rows.find((candidate) => JSON.stringify([candidate.id, candidate.title, candidate.path]) === key)?.value || '—' : '—'));
+        }
+      }
+    } else if (observations.some((report) => report.feedback)) {
       section(label.feedback);
       detail(label.strengths, observations.map((report) => report.feedback?.strengths ?? '—'));
       detail(label.development, observations.map((report) => report.feedback?.developmentAreas ?? '—'));

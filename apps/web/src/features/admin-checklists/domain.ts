@@ -1,3 +1,4 @@
+import type { FeedbackLayout } from '@lms/shared/checklist-feedback';
 import type { TFunction } from 'i18next';
 import type {
   ChecklistAnswerState,
@@ -74,6 +75,7 @@ export function buildChecklistSettingsPayload(form: {
   /** PR 368 -- optional so older callers keep the defaults (feedback on, optional, no sheet-level skip). */
   feedbackEnabled?: boolean;
   feedbackRequired?: boolean;
+  feedbackLayout?: FeedbackLayout | null;
   allowSkipAll?: boolean;
   accessMode: ChecklistAccessMode;
   pinned: boolean;
@@ -94,6 +96,7 @@ export function buildChecklistSettingsPayload(form: {
     allowFinishIncomplete: form.allowFinishIncomplete,
     forbidGalleryPhotos: form.forbidGalleryPhotos,
     feedbackEnabled: form.feedbackEnabled ?? true,
+    ...(form.feedbackLayout !== undefined ? { feedbackLayout: form.feedbackLayout } : {}),
     // A required feedback section only exists while the section is shown.
     feedbackRequired: (form.feedbackEnabled ?? true) && (form.feedbackRequired ?? false),
     allowSkipAll: form.allowSkipAll ?? false,

@@ -41,3 +41,17 @@ describe('summary XLSX (PR 373)', () => {
     sheet.eachRow((row) => row.eachCell((cell) => { expect(cell.formula).toBeUndefined(); expect(cell.hyperlink).toBeUndefined(); }));
   });
 });
+
+it('PR 405: custom feedback headings and frozen answer descriptions survive a real XLSX round trip', async () => {
+  const table = await loadTable();
+  const header = table.rows.length + 1;
+  table.rows.push(['Development plan', '', '', ''], ['Practice / Next shift', '', '', ''], ['Readiness', 'Ready — Independent work', 'Practice — Needs support', '']);
+  table.layout.headerRows.push(header, header + 1);
+  const workbook = await buildSummaryWorkbook(table), loaded = new Workbook();
+  await loaded.xlsx.load(await workbook.xlsx.writeBuffer());
+  const sheet = loaded.worksheets[0]!;
+  expect(sheet.getCell(`A${header}`).value).toBe('Development plan');
+  expect(sheet.getCell(`A${header + 1}`).font.bold).toBe(true);
+  expect(sheet.getCell(`B${header + 2}`).value).toBe('Ready — Independent work');
+  expect(sheet.getCell(`C${header + 2}`).value).toBe('Practice — Needs support');
+});

@@ -1,3 +1,4 @@
+import { LibrarySwitch } from '../features/checklist-feedback/LibrarySwitch.js';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -63,6 +64,7 @@ export function ChecklistScalesPage({ observer = false }: { observer?: boolean }
   const matching = scales.filter((item) => item.name.toLocaleLowerCase(i18n.language).includes(search.trim().toLocaleLowerCase(i18n.language))).sort((a, b) => a.name.localeCompare(b.name, i18n.language) * (descending ? -1 : 1));
   return shell(<>
     {observer ? <ObserverSessionsNav current="scales" /> : <ChecklistsTabs current="scales" />}
+    <LibrarySwitch base={base.replace(/\/scales$/, '')} current="scales" />
     <nav aria-label={t('admin.checklists.scaleLibrary.breadcrumbs')} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBlock: 16 }}>
       <Link to={observer ? roles.includes('instructor') ? '/instructor/checklists/library' : '/mentor/library' : '/admin/checklists'}>{t('admin.checklists.title')}</Link><span aria-hidden="true">/</span>
       {scaleId ? <><Link to={base}>{title}</Link><span aria-hidden="true">/</span><span aria-current="page" style={{ overflowWrap: 'anywhere' }}>{selectedTitle}</span></> : <span aria-current="page">{title}</span>}

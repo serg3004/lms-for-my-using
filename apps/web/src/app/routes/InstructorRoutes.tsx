@@ -3,6 +3,8 @@ import { Navigate, Outlet, Route, useParams } from 'react-router-dom';
 
 import { NotFoundPage } from '../NotFoundPage.js';
 
+const ChecklistAnswerSetsPage = lazy(() => import('../ChecklistAnswerSetsPage.js').then((m) => ({ default: m.ChecklistAnswerSetsPage })));
+
 const ChecklistScalesPage = lazy(() => import('../ChecklistScalesPage.js').then((m) => ({ default: m.ChecklistScalesPage })));
 
 const LongreadEditorPage = lazy(() => import('../LongreadEditorPage.js').then((m) => ({ default: m.LongreadEditorPage })));
@@ -26,6 +28,8 @@ function ConductSessionRoute() { const { sessionId } = useParams(); return sessi
 export function InstructorRoutes() {
   return (
     <Route path="/instructor" element={<Outlet />}>
+      <Route path="checklists/answer-sets" element={<ChecklistAnswerSetsPage observer />} />
+      <Route path="checklists/answer-sets/:setId" element={<ChecklistAnswerSetsPage observer />} />
       <Route path="checklists/scales" element={<ChecklistScalesPage observer />} />
       <Route path="checklists/scales/:scaleId" element={<ChecklistScalesPage observer />} />
       <Route index element={<Navigate replace to="/instructor/dashboard" />} />

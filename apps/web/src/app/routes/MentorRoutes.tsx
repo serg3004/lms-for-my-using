@@ -1,6 +1,8 @@
 import { lazy } from 'react';
 import { Outlet, Route } from 'react-router-dom';
 
+const ChecklistAnswerSetsPage = lazy(() => import('../ChecklistAnswerSetsPage.js').then((m) => ({ default: m.ChecklistAnswerSetsPage })));
+
 const ChecklistScalesPage = lazy(() => import('../ChecklistScalesPage.js').then((m) => ({ default: m.ChecklistScalesPage })));
 
 const MentorChecklistReviewsPage = lazy(() => import('../MentorChecklistReviewsPage.js').then((m) => ({ default: m.MentorChecklistReviewsPage })));
@@ -12,6 +14,8 @@ const AnalyticsPage = lazy(() => import('../ObserverChecklistAnalyticsPage.js').
 export function MentorRoutes() {
   return (
     <Route path="/mentor" element={<Outlet />}>
+      <Route path="answer-sets" element={<ChecklistAnswerSetsPage observer />} />
+      <Route path="answer-sets/:setId" element={<ChecklistAnswerSetsPage observer />} />
       <Route path="scales" element={<ChecklistScalesPage observer />} />
       <Route path="scales/:scaleId" element={<ChecklistScalesPage observer />} />
       <Route index element={<MentorChecklistReviewsPage />} />

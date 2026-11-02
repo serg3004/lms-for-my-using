@@ -140,3 +140,11 @@ describe('renderSessionReportPdf (PR 372)', () => {
     expect(text).toContain('Skipped');
   });
 });
+
+it('PR 405: PDF renders frozen custom sections, choices and descriptions', async () => {
+  const data = report([row('c', null, 'Criterion', 1, 1)]);
+  if (!data.visible) throw new Error('Expected a visible report');
+  data.feedbackForm = { layout: { title: 'Custom coaching', fields: [], sections: [{ id: 's', title: 'Practice plan', sections: [], fields: [{ id: 'f', kind: 'choice', title: 'Outcome', required: true, answerSetId: 'set' }] }] }, answerSets: { set: { id: 'set', name: 'Outcome', options: [{ id: 'good', name: 'Ready', description: 'Independent work' }] } }, answers: { f: ['good'] } };
+  const trace: string[] = []; await renderSessionReportPdf(data, { locale: 'en', photos: [], omittedPhotos: 0, trace });
+  expect(trace.join('\n')).toContain('Custom coaching'); expect(trace.join('\n')).toContain('Practice plan'); expect(trace.join('\n')).toContain('Ready — Independent work');
+});

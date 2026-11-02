@@ -572,7 +572,7 @@ share `ScaleEditor`: 255-character name, ordered levels, scores and colours, com
 The page adds a live preview, usage links, archive/delete confirmation and server-error recovery;
 a failed save retains the draft. Successful saves navigate to a freshly loaded list with a status
 message. The existing builder reloads scale choices when opened or after dialog changes; archive
-filters still apply. The Answer Sets switch remains hidden until PR 405 supplies that feature.
+filters still apply. The Answer Sets switch opens the separate reusable feedback-answer library (PR 405).
 
 Snapshot integration: at assignment time (`ChecklistsService.assignChecklist`/
 `bulkAssignChecklist`, and the legacy pre-snapshot fallback path), every item's `scaleId` is
@@ -617,7 +617,7 @@ themselves.
 
 The «Обратная связь» section of a sheet is configurable. `Checklist.feedbackLayout` (JSON, `null` = the classic three text fields
 `strengths`, `developmentAreas`, `nextSteps`) is set through `feedbackLayout` on `POST /checklists` and `PATCH /checklists/:id`
-(`null` resets to the classic fields). Shape: `{ fields: Field[], sections: Section[] }`, a section is
+(`null` resets to the classic fields). Shape: `{ title?: string, fields: Field[], sections: Section[] }` (root title up to 255 characters; absent = localized Feedback heading), a section is
 `{ id, title, fields, sections }` nested at most 3 levels, a field is `{ id, kind: 'text' | 'choice', title, required, answerSetId?, multiple?, builtin? }`.
 Ids are `[A-Za-z0-9_-]{1,64}` and unique in the layout; at most 30 fields and 30 sections; a `choice` field needs `answerSetId`; an untitled
 field is allowed only for a built-in field (`id` equal to `builtin`), whose title the client localizes. Every referenced answer set must belong to the
@@ -639,7 +639,17 @@ classic keys are still mirrored into `strengths` / `developmentAreas` / `nextSte
 layout (`422`); a sheet without a layout keeps the PR 368 rule (strengths and development areas when `feedbackRequired`). Session detail adds
 `feedback: { layout, answerSets } | null`, the report adds `feedbackForm: { layout, answerSets, answers } | null` next to the legacy `feedback`. The
 learner mask hides `feedbackAnswers` together with the classic fields. Copying a sheet and saving/using an organization template carry the layout; a template
-drops choice fields whose answer set has been deleted since. PDF, XLSX/CSV and the screens read the same data in PR 405б/405в.
+drops choice fields whose answer set has been deleted since. PDF, XLSX/CSV and the screens render sections and answers from this frozen data, including choice names and descriptions; exported rows distinguish fields with different section paths. Default layouts retain the classic export shape.
+
+**Authoring and reading.** The sheet editor provides an editable root heading, text/choice fields, per-field requiredness,
+sections nested up to three levels, sibling drag ordering with keyboard/button alternatives, deletion and reset to defaults.
+The old global feedback-required toggle applies to the default layout; a custom layout uses each field's required flag.
+The Answer Sets switch under Evaluation Scales opens `/admin/checklists/answer-sets`,
+`/instructor/checklists/answer-sets` or `/mentor/answer-sets`; `/new` and `/:setId` provide standalone editors.
+Archived sets are read-only (copy to edit); failed saves retain the draft. The preview uses the current draft and never submits answers.
+The observer saves custom answers after 800 ms idle or with Save feedback; optimistic versions and explicit retry on failure remain.
+Completion stays blocked until mandatory answers are saved. Session reports, PDF, CSV/XLSX and the learner's permitted result
+view use the snapshot layout and option descriptions; user-authored labels are never translated, defaults support RU/EN/KK/ZH.
 
 ## Checklist observation-sheet builder (PR 296)
 
