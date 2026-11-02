@@ -1,6 +1,8 @@
 /// <reference types="jest" />
 
 import { randomUUID } from 'node:crypto';
+import type { UserRole } from '@prisma/client';
+import { createChecklistSchema } from '../modules/checklists/checklists.schemas.js';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../database/prisma.service.js';
@@ -43,6 +45,7 @@ describe('checklist folders (PR 395) — database', () => {
   }
   async function makeActor(org: string, roles: string[]): Promise<Actor> {
     const user = await prisma.user.create({ data: { organizationId: org, email: `${randomUUID()}@example.test`, passwordHash: 'not-used', firstName: 'Folder', lastName: 'User' } });
+    await prisma.membership.createMany({ data: roles.map((role) => ({ organizationId: org, userId: user.id, role: role as UserRole })) });
     return { id: user.id, roles };
   }
   async function makeSheet(folderId: string | null, createdBy: string, title = `Sheet ${randomUUID()}`) {
@@ -72,9 +75,11 @@ describe('checklist folders (PR 395) — database', () => {
     await prisma.auditLog.deleteMany({ where: { organizationId: { in: ids } } });
     await prisma.checklistInstance.deleteMany({ where: { organizationId: { in: ids } } });
     await prisma.checklistItem.deleteMany({ where: { organizationId: { in: ids } } });
+    await prisma.checklistTemplate.deleteMany({ where: { organizationId: { in: ids } } });
     await prisma.checklist.deleteMany({ where: { organizationId: { in: ids } } });
     await prisma.checklistFolder.updateMany({ where: { organizationId: { in: ids } }, data: { parentId: null } });
     await prisma.checklistFolder.deleteMany({ where: { organizationId: { in: ids } } });
+    await prisma.membership.deleteMany({ where: { organizationId: { in: ids } } });
     await prisma.user.deleteMany({ where: { organizationId: { in: ids } } });
     await prisma.organization.deleteMany({ where: { id: { in: ids } } });
   });
@@ -215,4 +220,99 @@ describe('checklist folders (PR 395) — database', () => {
     expect(await prisma.checklistInstance.count({ where: { checklistId: deep.id, status: 'completed' } })).toBe(1);
     expect(await prisma.auditLog.count({ where: { organizationId, action: 'checklist.folder_deleted' } })).toBe(1);
   });
+
+  it('PR 407: returns author and visible direct counts, without leaking private subfolders or their sheets', async () => {
+    const parent = await folders.create(organizationId, admin, { name: 'Public', visibleToStaff: true });
+    const open = await folders.create(organizationId, admin, { name: 'Open', parentId: parent.id, visibleToStaff: true });
+    const hidden = await folders.create(organizationId, admin, { name: 'Hidden', parentId: parent.id });
+    const removed = await folders.create(organizationId, admin, { name: 'Removed', parentId: parent.id, visibleToStaff: true });
+    await prisma.checklistFolder.update({ where: { id: removed.id }, data: { deletedAt: new Date() } });
+    await makeSheet(parent.id, admin.id); await makeSheet(open.id, admin.id); await makeSheet(hidden.id, admin.id); await makeSheet(removed.id, admin.id);
+    const staff = await folders.list(organizationId, colleague);
+    expect(staff.folders.find(({ id }) => id === parent.id)).toMatchObject({ creator: { id: admin.id, firstName: 'Folder', lastName: 'User' }, checklistCount: 1, childFolderCount: 1, totalChecklistCount: 2 });
+    expect(staff.checklistCount).toBe(2);
+    expect((await folders.list(organizationId, admin)).folders.find(({ id }) => id === parent.id)?.childFolderCount).toBe(2);
+    await prisma.user.update({ where: { id: admin.id }, data: { firstName: '', lastName: '' } });
+    expect((await folders.list(organizationId, colleague)).folders.find(({ id }) => id === parent.id)?.creator).toBeNull();
+    await prisma.user.update({ where: { id: admin.id }, data: { firstName: 'Deleted', deletedAt: new Date() } });
+    expect((await folders.list(organizationId, colleague)).folders.find(({ id }) => id === parent.id)?.creator).toBeNull();
+  });
+
+  it('PR 407: creates ordinary, catalog-template and organization-template sheets in visible folders only', async () => {
+    const visible = await folders.create(organizationId, admin, { name: 'Open', visibleToStaff: true });
+    const hidden = await folders.create(organizationId, admin, { name: 'Closed' });
+    const foreign = await folders.create(foreignOrganizationId, admin, { name: 'Foreign' });
+    const source = await makeSheet(null, admin.id);
+    const template = await checklists.createOrgTemplate(organizationId, { sourceChecklistId: source.id }, admin.id);
+    const factories = [
+      (folderId?: string | null) => checklists.createChecklist(createChecklistSchema.parse({ organizationId, title: 'New', folderId }), colleague.id),
+      (folderId?: string | null) => checklists.createFromTemplate('shift-opening', 'ru', organizationId, colleague.id, folderId),
+      (folderId?: string | null) => checklists.createFromOrgTemplate(template.id, organizationId, colleague.id, folderId),
+    ];
+    for (const create of factories) {
+      expect(await create(visible.id)).toMatchObject({ folderId: visible.id });
+      expect(await create()).toMatchObject({ folderId: null });
+      for (const denied of [hidden.id, foreign.id, randomUUID()]) {
+        const before = await prisma.checklist.count({ where: { organizationId } });
+        await expect(create(denied)).rejects.toBeInstanceOf(NotFoundException);
+        expect(await prisma.checklist.count({ where: { organizationId } })).toBe(before);
+      }
+    }
+  });
+
+  it('PR 407: searches across visible folders with ordered folder paths, status and soft-delete filtering', async () => {
+    const parent = await folders.create(organizationId, admin, { name: 'Training', visibleToStaff: true });
+    const child = await folders.create(organizationId, admin, { name: 'Safety', parentId: parent.id, visibleToStaff: true });
+    const hidden = await folders.create(organizationId, admin, { name: 'Private' });
+    const root = await makeSheet(null, admin.id, 'Safety briefing');
+    const nested = await makeSheet(child.id, admin.id, 'SAFETY practice');
+    const privateSheet = await makeSheet(hidden.id, admin.id, 'Safety hidden');
+    const removed = await makeSheet(child.id, admin.id, 'Safety removed');
+    await prisma.checklist.update({ where: { id: removed.id }, data: { deletedAt: new Date() } });
+    await prisma.checklist.create({ data: { organizationId: foreignOrganizationId, title: 'Safety foreign' } });
+    const rows = await checklists.listChecklists(organizationId, 'published', colleague, '  safety  ');
+    expect(rows.map(({ id }) => id).sort()).toEqual([root.id, nested.id].sort());
+    expect(rows.find(({ id }) => id === nested.id)?.folderPath).toEqual([{ id: parent.id, name: 'Training' }, { id: child.id, name: 'Safety' }]);
+    expect(rows.find(({ id }) => id === root.id)?.folderPath).toEqual([]);
+    expect(await checklists.listChecklists(organizationId, 'draft', colleague, 'safety')).toEqual([]);
+    await prisma.checklistFolder.update({ where: { id: child.id }, data: { deletedAt: new Date() } });
+    expect((await checklists.listChecklists(organizationId, undefined, admin, 'safety')).map(({ id }) => id).sort()).toEqual([root.id, privateSheet.id].sort());
+  });
+
+  it('PR 407: bulk move gives per-folder reasons and one audit record, with the single-folder target permissions', async () => {
+    const destination = await folders.create(organizationId, author, { name: 'Destination' });
+    const good = await folders.create(organizationId, author, { name: 'Good' });
+    const conflict = await folders.create(organizationId, author, { name: 'Conflict' });
+    await folders.create(organizationId, author, { name: 'CONFLICT', parentId: destination.id });
+    const other = await folders.create(organizationId, colleague, { name: 'Others', visibleToStaff: true });
+    const foreign = await folders.create(foreignOrganizationId, admin, { name: 'Foreign' });
+    const result = await folders.bulk(organizationId, author, { action: 'move', ids: [good.id, conflict.id, other.id, foreign.id, good.id, destination.id], parentId: destination.id });
+    expect(result).toMatchObject({ done: 1, skipped: 4, results: [
+      { id: good.id, result: 'done' }, { id: conflict.id, reason: 'name_conflict' }, { id: other.id, reason: 'forbidden' }, { id: foreign.id, reason: 'not_found' }, { id: destination.id, reason: 'cycle' },
+    ] });
+    expect(await prisma.auditLog.count({ where: { organizationId, action: 'checklist.folder_bulk_move' } })).toBe(1);
+    expect(await prisma.auditLog.count({ where: { organizationId, action: 'checklist.folder_updated' } })).toBe(0);
+    await expect(folders.bulk(organizationId, author, { action: 'move', ids: [conflict.id], parentId: foreign.id })).rejects.toBeInstanceOf(NotFoundException);
+    await expect(folders.bulk(organizationId, author, { action: 'move', ids: [conflict.id], parentId: other.id })).rejects.toBeInstanceOf(ForbiddenException);
+    const deep = await chain(author, 5, 'Deep');
+    expect(await folders.bulk(organizationId, author, { action: 'move', ids: [conflict.id], parentId: deep[4] })).toMatchObject({ done: 0, results: [{ reason: 'too_deep' }] });
+    expect(await folders.bulk(organizationId, author, { action: 'move', ids: [deep[0]!], parentId: deep[4] })).toMatchObject({ results: [{ reason: 'cycle' }] });
+  });
+
+  it('PR 407: bulk delete counts overlapping subtrees once, preserves assigned sheets and records one audit', async () => {
+    const parent = await folders.create(organizationId, author, { name: 'Parent' });
+    const child = await folders.create(organizationId, author, { name: 'Child', parentId: parent.id });
+    const plain = await makeSheet(child.id, author.id);
+    const busy = await makeSheet(child.id, author.id);
+    await prisma.checklistInstance.create({ data: { organizationId, checklistId: busy.id, userId: learner.id, assignedBy: admin.id, status: 'assigned' } });
+    const foreign = await folders.create(foreignOrganizationId, admin, { name: 'Foreign' });
+    const result = await folders.bulk(organizationId, author, { action: 'delete', ids: [child.id, parent.id, foreign.id] });
+    expect(result).toMatchObject({ done: 1, skipped: 2, results: [{ id: child.id, reason: 'covered_by_parent' }, { id: parent.id, result: 'done' }, { id: foreign.id, reason: 'not_found' }], summary: { folders: 2, checklists: 1, movedToDraft: [{ id: busy.id }] } });
+    expect(await prisma.checklist.findUnique({ where: { id: plain.id } })).toMatchObject({ deletedAt: expect.any(Date) });
+    expect(await prisma.checklist.findUnique({ where: { id: busy.id } })).toMatchObject({ deletedAt: null, status: 'draft', folderId: null });
+    expect(await folders.list(organizationId, author)).toMatchObject({ folders: [], checklistCount: 1 });
+    expect(await prisma.auditLog.count({ where: { organizationId, action: 'checklist.folder_bulk_delete' } })).toBe(1);
+    expect(await prisma.auditLog.count({ where: { organizationId, action: 'checklist.folder_deleted' } })).toBe(0);
+  });
+
 });

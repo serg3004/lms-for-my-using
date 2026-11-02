@@ -120,7 +120,7 @@ export class ChecklistOrgTemplates {
   }
 
   /** A new draft from the template: one transaction, nothing shared with the template afterwards. */
-  async createChecklist(templateId: string, organizationId: string, actorId: string) {
+  async createChecklist(templateId: string, organizationId: string, actorId: string, folderId?: string | null) {
     const template = await this.prisma.checklistTemplate.findFirst({ where: { id: templateId, organizationId, deletedAt: null } });
     if (!template) throw new NotFoundException('Checklist template not found');
     const payload = template.payload as unknown as ChecklistTemplatePayload;
@@ -153,7 +153,7 @@ export class ChecklistOrgTemplates {
           ...(feedbackLayout ? { feedbackLayout: feedbackLayout as unknown as Prisma.InputJsonValue } : {}),
           allowSkipAll: payload.allowSkipAll ?? false,
           ...(payload.moduleSettings ? overridesToColumns({ thresholds: payload.moduleSettings.thresholds, resultColors: payload.moduleSettings.resultColors, feedbackVisibility: payload.moduleSettings.feedbackVisibility, observers: payload.moduleSettings.observers }) as Prisma.ChecklistUncheckedCreateInput : {}),
-          createdBy: actorId,
+          createdBy: actorId, folderId,
         },
         select: { id: true },
       });

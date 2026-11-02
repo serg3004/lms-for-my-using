@@ -126,8 +126,8 @@ export class ChecklistsController {
   @Get('checklists')
   @Roles(...rolePolicies.checklistsRead)
   listChecklists(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
-    const { status } = checklistListQuerySchema.parse(rawQuery);
-    return this.checklistsService.listChecklists(request.currentUser!.organizationId, status, request.currentUser!);
+    const { status, search } = checklistListQuerySchema.parse(rawQuery);
+    return this.checklistsService.listChecklists(request.currentUser!.organizationId, status, request.currentUser!, search);
   }
 
   @Get('checklists/analytics')
@@ -181,7 +181,7 @@ export class ChecklistsController {
   @Roles(...rolePolicies.checklistsCreate)
   createChecklistFromTemplate(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = createChecklistFromTemplateSchema.parse(body);
-    return this.checklistsService.createFromTemplate(input.templateKey, input.locale, request.currentUser!.organizationId, request.currentUser!.id);
+    return this.checklistsService.createFromTemplate(input.templateKey, input.locale, request.currentUser!.organizationId, request.currentUser!.id, input.folderId);
   }
 
   // PR 367: organization templates. Everyone who builds sheets reads and starts from them; only an administrator changes them.
@@ -213,7 +213,8 @@ export class ChecklistsController {
   @Roles(...rolePolicies.checklistsCreate)
   async createChecklistFromOrgTemplate(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
-    return this.checklistsService.createFromOrgTemplate(createChecklistFromOrgTemplateSchema.parse(body).templateId, user.organizationId, user.id);
+    const input = createChecklistFromOrgTemplateSchema.parse(body);
+    return this.checklistsService.createFromOrgTemplate(input.templateId, user.organizationId, user.id, input.folderId);
   }
 
   // PR 367: administrator-only deletion of finished results (soft, with a reason) and their restore.

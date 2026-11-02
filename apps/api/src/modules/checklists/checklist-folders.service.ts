@@ -14,10 +14,10 @@ import {
   visibleFolderIds,
   type FolderActor,
 } from './checklist-folder-tree.js';
-import type { CreateChecklistFolderInput, UpdateChecklistFolderInput } from './checklists.schemas.js';
+import type { BulkChecklistFolderInput, CreateChecklistFolderInput, UpdateChecklistFolderInput } from './checklists.schemas.js';
 
 const ACTIVE_INSTANCE_STATUSES = ['assigned', 'in_progress', 'submitted'] as const;
-const folderSelect = { id: true, parentId: true, name: true, visibleToStaff: true, createdBy: true, createdAt: true } as const;
+const folderSelect = { id: true, parentId: true, name: true, visibleToStaff: true, createdBy: true, createdAt: true, creator: { select: { id: true, firstName: true, lastName: true, deletedAt: true } } } as const;
 
 /** What deleting a folder removes; shown to the user before they confirm and returned after the deletion. */
 export type FolderDeleteImpact = {
@@ -45,7 +45,7 @@ export class ChecklistFoldersService {
     const visible = visibleFolderIds(all, actor);
     const counts = await this.prisma.checklist.groupBy({
       by: ['folderId'],
-      where: { organizationId, deletedAt: null },
+      where: { organizationId, deletedAt: null, OR: [{ folderId: null }, { folderId: { in: [...visible] } }] },
       _count: { _all: true },
     });
     const direct = new Map(counts.map((row) => [row.folderId, row._count._all]));
@@ -53,12 +53,13 @@ export class ChecklistFoldersService {
       .filter((folder) => visible.has(folder.id))
       .map((folder) => ({
         ...folder,
+        creator: presentCreator(folder.creator),
         canManage: canManageFolder(folder, actor),
+        childFolderCount: all.filter((child) => child.parentId === folder.id && visible.has(child.id)).length,
         checklistCount: direct.get(folder.id) ?? 0,
-        totalChecklistCount: subtreeIds(folder.id, all).reduce((sum, id) => sum + (direct.get(id) ?? 0), 0),
+        totalChecklistCount: subtreeIds(folder.id, all).filter((id) => visible.has(id)).reduce((sum, id) => sum + (direct.get(id) ?? 0), 0),
       }));
-    const hidden = new Set(all.filter((folder) => !visible.has(folder.id)).map((folder) => folder.id));
-    const checklistCount = counts.filter((row) => row.folderId === null || !hidden.has(row.folderId)).reduce((sum, row) => sum + row._count._all, 0);
+    const checklistCount = counts.reduce((sum, row) => sum + row._count._all, 0);
     return { folders, checklistCount };
   }
 
@@ -76,10 +77,10 @@ export class ChecklistFoldersService {
       select: folderSelect,
     });
     await this.auditLog.record({ organizationId, actorId: actor.id, action: 'checklist.folder_created', targetType: 'checklist_folder', targetId: created.id, summary: `Created checklist folder ${created.name}` });
-    return { ...created, canManage: true, checklistCount: 0, totalChecklistCount: 0 };
+    return { ...created, creator: presentCreator(created.creator), canManage: true, checklistCount: 0, childFolderCount: 0, totalChecklistCount: 0 };
   }
 
-  async update(folderId: string, organizationId: string, actor: FolderActor, input: UpdateChecklistFolderInput) {
+  async update(folderId: string, organizationId: string, actor: FolderActor, input: UpdateChecklistFolderInput, audit = true) {
     const all = await this.loadAll(organizationId);
     const folder = this.requireVisible(folderId, all, actor);
     this.requireManage(folder, actor);
@@ -92,7 +93,7 @@ export class ChecklistFoldersService {
         const target = this.requireVisible(nextParentId, all, actor);
         this.requireManage(target, actor);
         // Not into itself and not into one of its own descendants.
-        if (subtreeIds(folderId, all).includes(nextParentId)) throw new BadRequestException('A folder cannot be moved into itself or into one of its subfolders');
+        if (subtreeIds(folderId, all).includes(nextParentId)) throw new FolderMoveException('cycle', 'A folder cannot be moved into itself or into one of its subfolders');
         if (folderDepth(nextParentId, byId) + subtreeHeight(folderId, all) > MAX_FOLDER_DEPTH) throw this.tooDeep();
       }
     }
@@ -107,8 +108,8 @@ export class ChecklistFoldersService {
       },
       select: folderSelect,
     });
-    await this.auditLog.record({ organizationId, actorId: actor.id, action: 'checklist.folder_updated', targetType: 'checklist_folder', targetId: folderId, summary: `Updated checklist folder ${updated.name}`, metadata: { fields: Object.keys(input) } });
-    return { ...updated, canManage: true };
+    if (audit) await this.auditLog.record({ organizationId, actorId: actor.id, action: 'checklist.folder_updated', targetType: 'checklist_folder', targetId: folderId, summary: `Updated checklist folder ${updated.name}`, metadata: { fields: Object.keys(input) } });
+    return { ...updated, creator: presentCreator(updated.creator), canManage: true };
   }
 
   /** What `remove` would do, without changing anything. */
@@ -120,7 +121,7 @@ export class ChecklistFoldersService {
   }
 
   /** Deletes the folder with every subfolder and sheet inside; sheets with active assignments become drafts at the root. */
-  async remove(folderId: string, organizationId: string, actor: FolderActor): Promise<FolderDeleteImpact> {
+  async remove(folderId: string, organizationId: string, actor: FolderActor, audit = true): Promise<FolderDeleteImpact> {
     const all = await this.loadAll(organizationId);
     const folder = this.requireVisible(folderId, all, actor);
     this.requireManage(folder, actor);
@@ -140,7 +141,7 @@ export class ChecklistFoldersService {
       return impact.summary;
     });
 
-    await this.auditLog.record({
+    if (audit) await this.auditLog.record({
       organizationId,
       actorId: actor.id,
       action: 'checklist.folder_deleted',
@@ -150,6 +151,43 @@ export class ChecklistFoldersService {
       metadata: { folders: summary.folders, checklists: summary.checklists, movedToDraft: summary.movedToDraft.length },
     });
     return summary;
+  }
+
+  /** One audit entry for the request; overlapping deletions are counted only once. */
+  async bulk(organizationId: string, actor: FolderActor, input: BulkChecklistFolderInput) {
+    if (!input.ids.length || input.ids.length > 100) throw new BadRequestException('Select between 1 and 100 folders');
+    if (input.action === 'move' && input.parentId === undefined) throw new BadRequestException('parentId is required for move');
+    const all = await this.loadAll(organizationId);
+    if (input.action === 'move' && input.parentId) this.requireManage(this.requireVisible(input.parentId, all, actor), actor);
+    const ids = [...new Set(input.ids)];
+    const ordered = input.action === 'delete' ? [...ids].sort((a, b) => folderDepth(a, indexFolders(all)) - folderDepth(b, indexFolders(all))) : ids;
+    const results = new Map<string, FolderBulkOutcome>();
+    const deleted = new Set<string>();
+    const summary: FolderDeleteImpact = { folders: 0, checklists: 0, movedToDraft: [] };
+    for (const id of ordered) {
+      try {
+        const folder = this.requireVisible(id, all, actor);
+        this.requireManage(folder, actor);
+        if (deleted.has(id)) { results.set(id, { id, result: 'skipped', reason: 'covered_by_parent' }); continue; }
+        if (input.action === 'move') {
+          if (folder.parentId === input.parentId) { results.set(id, { id, result: 'skipped', reason: 'already_in_folder' }); continue; }
+          await this.update(id, organizationId, actor, { parentId: input.parentId }, false);
+        } else {
+          const impact = await this.remove(id, organizationId, actor, false);
+          summary.folders += impact.folders; summary.checklists += impact.checklists; summary.movedToDraft.push(...impact.movedToDraft);
+          subtreeIds(id, all).forEach((descendant) => deleted.add(descendant));
+        }
+        results.set(id, { id, result: 'done' });
+      } catch (error) {
+        const reason = error instanceof NotFoundException ? 'not_found' : error instanceof ForbiddenException ? 'forbidden' : error instanceof ConflictException ? 'name_conflict' : error instanceof FolderMoveException ? error.reason : null;
+        if (!reason) throw error;
+        results.set(id, { id, result: 'skipped', reason });
+      }
+    }
+    const outcomes = ids.map((id) => results.get(id)!);
+    const done = outcomes.filter((outcome) => outcome.result === 'done').length;
+    await this.auditLog.record({ organizationId, actorId: actor.id, action: `checklist.folder_bulk_${input.action}`, targetType: 'checklist_folder', targetId: null, summary: `Bulk ${input.action}: ${done} folders`, metadata: { ids, done, skipped: ids.length - done, ...(input.action === 'delete' ? { folders: summary.folders, checklists: summary.checklists, movedToDraft: summary.movedToDraft.length } : {}) } });
+    return { action: input.action, done, skipped: ids.length - done, results: outcomes, ...(input.action === 'delete' ? { summary } : {}) };
   }
 
   private async computeImpact(folderIds: string[], organizationId: string, db: Pick<PrismaService, 'checklist' | 'checklistInstance'> = this.prisma) {
@@ -196,6 +234,15 @@ export class ChecklistFoldersService {
   }
 
   private tooDeep() {
-    return new BadRequestException(`Folders can be nested at most ${MAX_FOLDER_DEPTH} levels deep`);
+    return new FolderMoveException('too_deep', `Folders can be nested at most ${MAX_FOLDER_DEPTH} levels deep`);
   }
+}
+
+type FolderBulkOutcome = { id: string; result: 'done' } | { id: string; result: 'skipped'; reason: 'not_found' | 'forbidden' | 'name_conflict' | 'too_deep' | 'cycle' | 'already_in_folder' | 'covered_by_parent' };
+class FolderMoveException extends BadRequestException {
+  constructor(readonly reason: 'cycle' | 'too_deep', message: string) { super(message); }
+}
+
+function presentCreator(creator: { id: string; firstName: string; lastName: string; deletedAt: Date | null } | null) {
+  return creator && !creator.deletedAt && (creator.firstName.trim() || creator.lastName.trim()) ? { id: creator.id, firstName: creator.firstName, lastName: creator.lastName } : null;
 }
