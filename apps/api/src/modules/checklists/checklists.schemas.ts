@@ -40,6 +40,7 @@ export type ScaleLevel = z.infer<typeof scaleLevelSchema>;
 
 export const checklistListQuerySchema = z.object({
   status: checklistStatusSchema.optional(),
+  search: z.string().trim().max(200).optional(),
 });
 export type ChecklistListQuery = z.infer<typeof checklistListQuerySchema>;
 
@@ -68,9 +69,18 @@ export const updateChecklistFolderSchema = z
   .refine((input) => Object.keys(input).length > 0, { message: 'Nothing to change' });
 export type UpdateChecklistFolderInput = z.infer<typeof updateChecklistFolderSchema>;
 
+/** PR 407: partial success with the same per-folder access and tree rules as single operations. */
+export const bulkChecklistFolderSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(100),
+  action: z.enum(['move', 'delete']),
+  parentId: z.string().uuid().nullable().optional(),
+}).strict().refine((input) => input.action !== 'move' || input.parentId !== undefined, { message: 'parentId is required for move', path: ['parentId'] });
+export type BulkChecklistFolderInput = z.infer<typeof bulkChecklistFolderSchema>;
+
 export const createChecklistSchema = z.object({
   organizationId: z.string().uuid(),
   title: z.string().trim().min(1).max(200),
+  folderId: z.string().uuid().nullable().optional(),
   description: z.string().trim().max(2000).optional(),
   scoringMode: checklistScoringModeSchema.default('sum_points'),
   passThreshold: z.number().int().min(0).max(100).default(80),
@@ -97,6 +107,7 @@ export const checklistTemplatesQuerySchema = z.object({
 
 export const createChecklistFromTemplateSchema = z.object({
   templateKey: z.string().trim().min(1).max(80),
+  folderId: z.string().uuid().nullable().optional(),
   locale: z.string().trim().max(10).optional(),
 });
 
@@ -111,7 +122,7 @@ export const updateChecklistOrgTemplateSchema = z
   .object({ title: z.string().trim().min(1).max(200), description: z.string().trim().max(2000).nullable() })
   .partial()
   .refine((input) => Object.keys(input).length > 0, { message: 'Nothing to update' });
-export const createChecklistFromOrgTemplateSchema = z.object({ templateId: z.string().uuid() });
+export const createChecklistFromOrgTemplateSchema = z.object({ templateId: z.string().uuid(), folderId: z.string().uuid().nullable().optional() });
 
 // PR 397: per-sheet overrides of the organization module settings. `null` returns a group to "as in the
 // organization"; the geolocation group is the sheet's own `defaultLocationCapturePolicy` (null = inherit).
