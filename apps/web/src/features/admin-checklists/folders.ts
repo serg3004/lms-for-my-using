@@ -54,9 +54,36 @@ export function resolveSelectedFolder(folders: readonly ChecklistFolder[], reque
   return requested && folders.some((folder) => folder.id === requested) ? requested : null;
 }
 
-/** Sheets shown for the selection: everything for "all checklists", otherwise the sheets directly in the folder. */
-export function sheetsInFolder<T extends { folderId?: string | null }>(sheets: readonly T[], folderId: string | null): T[] {
-  return folderId === null ? [...sheets] : sheets.filter((sheet) => (sheet.folderId ?? null) === folderId);
+/** PR 408: what the open folder shows: its direct subfolders (by name) and its direct sheets. A folder or sheet whose parent is not visible is shown at the root. */
+export function libraryContents<S extends { folderId?: string | null }>(folders: readonly ChecklistFolder[], sheets: readonly S[], openFolderId: string | null): { folders: ChecklistFolder[]; sheets: S[] } {
+  const ids = new Set(folders.map((folder) => folder.id));
+  const parentOf = (folder: ChecklistFolder) => (folder.parentId !== null && ids.has(folder.parentId) ? folder.parentId : null);
+  const sheetFolder = (sheet: S) => (sheet.folderId && ids.has(sheet.folderId) ? sheet.folderId : null);
+  return {
+    folders: folders.filter((folder) => parentOf(folder) === openFolderId).sort((a, b) => a.name.localeCompare(b.name)),
+    sheets: sheets.filter((sheet) => sheetFolder(sheet) === openFolderId),
+  };
+}
+
+/** The folder and everything below it (the folder itself first). */
+export function folderAndDescendantIds(folders: readonly ChecklistFolder[], folderId: string): Set<string> {
+  const result = new Set<string>([folderId]);
+  for (let added = true; added;) {
+    added = false;
+    for (const folder of folders) if (folder.parentId && result.has(folder.parentId) && !result.has(folder.id)) { result.add(folder.id); added = true; }
+  }
+  return result;
+}
+
+/** PR 408: live assignments of every sheet in the folder, subfolders included. */
+export function folderAssignmentTotal(folders: readonly ChecklistFolder[], sheets: ReadonlyArray<{ folderId?: string | null; assignmentCount?: number }>, folderId: string): number {
+  const inside = folderAndDescendantIds(folders, folderId);
+  return sheets.reduce((sum, sheet) => sum + (sheet.folderId && inside.has(sheet.folderId) ? sheet.assignmentCount ?? 0 : 0), 0);
+}
+
+/** PR 408: the number of subfolders plus sheets directly inside a folder, for the "Items" column. */
+export function folderDirectCounts(folders: readonly ChecklistFolder[], sheets: ReadonlyArray<{ folderId?: string | null }>, folderId: string) {
+  return { folders: folders.filter((folder) => folder.parentId === folderId).length, sheets: sheets.filter((sheet) => sheet.folderId === folderId).length };
 }
 
 /** A new subfolder is possible only while the parent leaves room below the depth limit. */

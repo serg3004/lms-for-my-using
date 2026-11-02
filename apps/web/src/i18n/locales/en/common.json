@@ -989,7 +989,6 @@
       "searchPlaceholder": "Find checklist",
       "allStatuses": "All statuses",
       "folders": {
-        "treeLabel": "Checklist folders",
         "all": "All checklists",
         "closed": "Closed folder: visible only to its creator and administrators",
         "actions": "Folder actions: {{name}}",
@@ -1006,7 +1005,6 @@
         "moveTitle": "Move {{count}} checklist(s) to a folder",
         "moveHere": "Move",
         "moveOpen": "Move to folder…",
-        "pick": "Folder",
         "crumbs": "Folder path",
         "new": "New folder",
         "deleteTitle": "Delete folder",
@@ -1017,7 +1015,18 @@
         "errorForbidden": "Only the creator of the folder or an administrator can change it.",
         "errorDepth": "Folders can be nested at most 5 levels deep.",
         "errorCycle": "A folder cannot be moved into itself or into one of its subfolders.",
-        "errorGeneric": "The folder action failed. Try again."
+        "errorGeneric": "The folder action failed. Try again.",
+        "typeFolder": "Folder",
+        "typeChecklist": "Checklist",
+        "open": "Open",
+        "openFolder": "Open folder: {{name}}",
+        "renameFolder": "Rename folder",
+        "moveFolderTitle": "Move the folder \"{{name}}\"",
+        "contents": "Folders: {{folders}}, checklists: {{sheets}}",
+        "empty": "This folder is empty. Create a folder or a checklist.",
+        "staleFolder": "The folder is hidden or deleted. Showing the root.",
+        "searchResults": "Search results across the whole library: {{count}}",
+        "notFound": "Nothing found."
       },
       "bulk": {
         "selectAll": "Select all checklists",
@@ -1045,7 +1054,9 @@
         "createdBy": "Created by",
         "createdAt": "Created",
         "status": "Status",
-        "access": "Access"
+        "access": "Access",
+        "type": "Type",
+        "assignments": "Assignments"
       },
       "edit": "Edit",
       "delete": "Delete",

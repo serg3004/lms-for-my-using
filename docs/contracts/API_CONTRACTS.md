@@ -420,6 +420,8 @@ PR 407 extends the folder library without DDL or new roles:
 - `GET /checklists?search=` trims a title substring (at most 200 characters), searches case-insensitively across
   visible folders and combines with `status`. Each row adds `folderPath: [{ id, name }]` from root to direct folder,
   or `[]` at root. Hidden/deleted folders and sheets and other tenants never enter search results.
+  Each row also carries `assignmentCount` (PR 408): the number of live assignments of the sheet (status `assigned`,
+  `in_progress` or `submitted`, not deleted); the library screen shows it in the "Assignments" column and sums it per folder.
 - `POST /checklist-folders/bulk` accepts `{ ids: UUID[1..100], action: 'move' | 'delete', parentId?: UUID | null }`.
   Move requires an explicit `parentId`; null means root. Its target must be visible and manageable (same as single
   folder moves): missing/foreign/invisible answers 404, a visible non-manageable target 403, before any change.

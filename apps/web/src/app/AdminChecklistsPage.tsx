@@ -10,12 +10,11 @@ import { ObserverSessionsNav } from './ObserverSessionsNav.js';
 import { ChecklistBuilder } from '../features/admin-checklists/ChecklistBuilder.js';
 import { ChecklistTemplateDialog } from '../features/admin-checklists/ChecklistTemplateDialog.js';
 import { ChecklistBulkBar, bulkDeleteMessage, bulkResultSummary } from '../features/admin-checklists/ChecklistBulkBar.js';
-import { ALL_FOLDERS, FolderTree } from '../features/admin-checklists/FolderTree.js';
 import { FolderDialog, MoveToFolderDialog, type FolderDialogTarget } from '../features/admin-checklists/FolderDialogs.js';
-import { deleteImpactMessage, folderErrorMessage, folderPath, resolveSelectedFolder, sheetsInFolder } from '../features/admin-checklists/folders.js';
+import { deleteImpactMessage, folderErrorMessage, folderPath, libraryContents, resolveSelectedFolder } from '../features/admin-checklists/folders.js';
 import { ChecklistTable } from '../features/admin-checklists/ChecklistTable.js';
 import { CHECKLIST_STATUSES, filterChecklists, isUntouchedDraft } from '../features/admin-checklists/domain.js';
-import { Button, PageState, SearchInput, Toolbar } from '../shared/ui.js';
+import { Button, PageState, SearchInput, Toolbar, type DataTableSort } from '../shared/ui.js';
 import {
   bulkChecklistAction,
   copyChecklist,
@@ -110,10 +109,13 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
     if (loadState.data.checklists.some((checklist) => checklist.id === target)) setSelectedId(target);
     const next = new URLSearchParams(searchParams); next.delete('checklistId'); setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams, loadState]);
-  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set());
+  // Without a chosen sort, folders go by name and checklists keep the server order (newest first).
+  const [sort, setSort] = useState<DataTableSort | undefined>(undefined);
   const [folderDialog, setFolderDialog] = useState<FolderDialogTarget | null>(null);
   const [folderDelete, setFolderDelete] = useState<{ folder: ChecklistFolder; message: string } | null>(null);
   const [moveTargets, setMoveTargets] = useState<ChecklistSummary[] | null>(null);
+  // PR 408: moving one folder through its row menu.
+  const [moveFolder, setMoveFolder] = useState<ChecklistFolder | null>(null);
   // Refreshes a single checklist in place (no full-list reload, no loading flash) — used after
   // an edit made from inside the builder, where a full reload would remount it mid-edit.
   const refreshChecklist = useCallback(async (id: string) => {
@@ -152,7 +154,8 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
     const next = new URLSearchParams(searchParams);
     if (folderId) next.set('folder', folderId);
     else next.delete('folder');
-    setSearchParams(next, { replace: true });
+    // PR 408: every level is a history entry, so the browser's Back button goes one folder up.
+    setSearchParams(next);
     setSelectedKeys(new Set());
   }
   async function submitFolder(values: { name: string; visibleToStaff: boolean }) {
@@ -161,7 +164,6 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
     try {
       if (target.kind === 'create') {
         const created = await createChecklistFolder({ name: values.name, parentId: target.parent?.id ?? null, visibleToStaff: values.visibleToStaff });
-        if (target.parent) setCollapsedIds((ids) => { const next = new Set(ids); next.delete(target.parent!.id); return next; });
         selectFolder(created.id);
       } else {
         await updateChecklistFolder(target.folder.id, { name: values.name, visibleToStaff: values.visibleToStaff });
@@ -187,6 +189,15 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
     try {
       await deleteChecklistFolder(target.folder.id);
       setSelectedKeys(new Set());
+      await load();
+    } catch (error) {
+      setStatusError(folderErrorMessage(error, t));
+    }
+  }
+  async function moveFolderTo(folder: ChecklistFolder, parentId: string | null) {
+    setStatusError(null);
+    try {
+      await updateChecklistFolder(folder.id, { parentId });
       await load();
     } catch (error) {
       setStatusError(folderErrorMessage(error, t));
@@ -265,11 +276,27 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
     );
   }
   const folders = loadState.data.folders ?? [];
-  const selectedFolderId = resolveSelectedFolder(folders, searchParams.get('folder'));
+  const requestedFolder = searchParams.get('folder');
+  const selectedFolderId = resolveSelectedFolder(folders, requestedFolder);
   const selectedFolder = folders.find((folder) => folder.id === selectedFolderId) ?? null;
-  const expandedIds = new Set(folders.map((folder) => folder.id).filter((id) => !collapsedIds.has(id)));
-  const filtered = filterChecklists(sheetsInFolder(loadState.data.checklists, selectedFolderId), search, statusFilter);
+  // A link to a folder that is gone or hidden opens the root and says so (the address is cleaned up once).
+  const staleFolder = requestedFolder !== null && selectedFolderId === null;
+  const searching = search.trim().length > 0;
+  const contents = libraryContents(folders, loadState.data.checklists, selectedFolderId);
+  // PR 408: with a search text the whole library is searched and shown flat (with the folder path); otherwise only the open folder.
+  const sheetPool = searching ? loadState.data.checklists : contents.sheets;
+  const direction = sort?.direction === 'descending' ? -1 : 1;
+  const filteredSheets = filterChecklists(sheetPool, search, statusFilter);
+  const sortedSheets = !sort ? filteredSheets : [...filteredSheets].sort((a, b) => sort.key === 'createdAt'
+    ? direction * a.createdAt.localeCompare(b.createdAt)
+    : direction * a.title.localeCompare(b.title));
+  const shownFolders = searching ? [] : [...contents.folders].sort((a, b) => sort?.key === 'createdAt'
+    ? direction * a.createdAt.localeCompare(b.createdAt)
+    : direction * a.name.localeCompare(b.name));
   const crumbs = folderPath(folders, selectedFolderId);
+  const emptyMessage = searching
+    ? t('admin.checklists.folders.notFound', 'Nothing found.')
+    : t('admin.checklists.folders.empty', 'This folder is empty. Create a folder or a checklist.');
   return shell(
     <>
       <AdminPageHeader
@@ -310,26 +337,9 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
           <button type="button" className="admin-inline-banner__close" aria-label={t('admin.checklists.close', 'Close')} onClick={() => setStatusError(null)}>×</button>
         </div>
       )}
-      <div className="checklist-folders">
-        <aside aria-label={t('admin.checklists.folders.treeLabel', 'Checklist folders')} className="admin-section-card checklist-folders__aside">
-          <FolderTree
-            expandedIds={expandedIds}
-            folders={folders}
-            onCreateSubfolder={(folder) => setFolderDialog({ kind: 'create', parent: folder })}
-            onDelete={(folder) => void requestFolderDelete(folder)}
-            onEdit={(folder) => setFolderDialog({ kind: 'edit', folder })}
-            onSelect={selectFolder}
-            onToggle={(id) => setCollapsedIds((ids) => { const next = new Set(ids); if (next.has(id)) next.delete(id); else next.add(id); return next; })}
-            selectedId={selectedFolderId}
-            t={t}
-            totalCount={loadState.data.folderTotal ?? loadState.data.checklists.length}
-          />
-        </aside>
+      <div className="checklist-library">
         <div className="checklist-folders__main">
-          <select aria-label={t('admin.checklists.folders.pick', 'Folder')} className="admin-status-select checklist-folders__picker" onChange={(e) => selectFolder(e.target.value === ALL_FOLDERS ? null : e.target.value)} value={selectedFolderId ?? ALL_FOLDERS}>
-            <option value={ALL_FOLDERS}>{t('admin.checklists.folders.all', 'All checklists')}</option>
-            {folders.map((folder) => <option key={folder.id} value={folder.id}>{folderPath(folders, folder.id).map((part) => part.name).join(' / ')}</option>)}
-          </select>
+          {staleFolder && <div className="ui-state admin-inline-banner" role="status"><p>{t('admin.checklists.folders.staleFolder', 'The folder is hidden or deleted. Showing the root.')}</p></div>}
           <nav aria-label={t('admin.checklists.folders.crumbs', 'Folder path')}>
             <ol className="checklist-folders__crumbs">
               <li>{crumbs.length === 0 ? <b aria-current="page">{t('admin.checklists.folders.all', 'All checklists')}</b> : <button className="ds-button ds-button--secondary ds-button--sm" onClick={() => selectFolder(null)} type="button">{t('admin.checklists.folders.all', 'All checklists')}</button>}</li>
@@ -365,9 +375,11 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
               </div>
             );
           })()}
-          <ChecklistTable rows={filtered} statusLabels={statusLabels} scoringModeLabels={scoringModeLabels} folders={folders}
+          <ChecklistTable rows={sortedSheets} childFolders={shownFolders} allSheets={loadState.data.checklists} showFolderPath={searching} statusLabels={statusLabels} scoringModeLabels={scoringModeLabels} folders={folders}
             onStatusChange={updateStatus} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} onDelete={setDeleteTarget} onMove={(checklist) => setMoveTargets([checklist])}
             selectedKeys={selectedKeys} onSelectionChange={setSelectedKeys}
+            onOpenFolder={(folder) => selectFolder(folder.id)} onRenameFolder={(folder) => setFolderDialog({ kind: 'edit', folder })} onMoveFolder={setMoveFolder} onDeleteFolder={(folder) => void requestFolderDelete(folder)}
+            sort={sort} onSortChange={setSort} emptyMessage={emptyMessage}
             batchActions={(selected) => <ChecklistBulkBar selected={selected} busy={bulkBusy} onAction={requestBulk} onMove={setMoveTargets} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} t={t} />}
             t={t} />
         </div>
@@ -380,6 +392,17 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
         onClose={() => setMoveTargets(null)}
         onMove={(folderId) => { const targets = moveTargets ?? []; setMoveTargets(null); void runBulk('move', targets, folderId); }}
         open={moveTargets !== null}
+        t={t}
+      />
+      <MoveToFolderDialog
+        count={1}
+        folderName={moveFolder?.name}
+        excludeFolderId={moveFolder?.id ?? null}
+        currentFolderId={moveFolder?.parentId ?? null}
+        folders={folders}
+        onClose={() => setMoveFolder(null)}
+        onMove={(parentId) => { const target = moveFolder; setMoveFolder(null); if (target) void moveFolderTo(target, parentId); }}
+        open={moveFolder !== null}
         t={t}
       />
       <ConfirmDialog

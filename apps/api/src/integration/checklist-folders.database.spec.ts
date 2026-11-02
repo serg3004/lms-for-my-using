@@ -279,6 +279,19 @@ describe('checklist folders (PR 395) — database', () => {
     expect((await checklists.listChecklists(organizationId, undefined, admin, 'safety')).map(({ id }) => id).sort()).toEqual([root.id, privateSheet.id].sort());
   });
 
+  it('PR 408: the list carries the live assignments count of each sheet (completed and deleted ones do not count)', async () => {
+    const sheet = await makeSheet(null, admin.id, 'Counted sheet');
+    const quiet = await makeSheet(null, admin.id, 'Quiet sheet');
+    const base = { organizationId, checklistId: sheet.id, userId: colleague.id };
+    await prisma.checklistInstance.createMany({ data: [
+      { ...base, status: 'assigned' }, { ...base, status: 'in_progress' }, { ...base, status: 'submitted' },
+      { ...base, status: 'completed' }, { ...base, status: 'assigned', deletedAt: new Date() },
+    ] });
+    const rows = await checklists.listChecklists(organizationId, undefined, admin);
+    expect(rows.find(({ id }) => id === sheet.id)?.assignmentCount).toBe(3);
+    expect(rows.find(({ id }) => id === quiet.id)?.assignmentCount).toBe(0);
+  });
+
   it('PR 407: bulk move gives per-folder reasons and one audit record, with the single-folder target permissions', async () => {
     const destination = await folders.create(organizationId, author, { name: 'Destination' });
     const good = await folders.create(organizationId, author, { name: 'Good' });

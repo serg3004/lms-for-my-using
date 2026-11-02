@@ -48,6 +48,24 @@ test.describe('Checklist module settings block (PR 397)', () => {
     expect(saved[0]!['moduleSettings']).toEqual({ thresholds: { high: 70, low: 40 }, resultColors: null, feedbackVisibility: null, observers: null });
   });
 
+  // PR 412: the hint opens only from its "?" and never overlaps another one.
+  test('shows one hint at a time and a checkbox click or row hover does not open a hint', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await openEditor(page, []);
+    const visibleTips = page.locator('.admin-help__tip:visible');
+    const thresholds = page.getByRole('checkbox', { name: 'Пороги результата: как в организации' });
+    await thresholds.hover();
+    await thresholds.uncheck();
+    await expect(visibleTips).toHaveCount(0);
+    const buttons = page.locator('[data-testid="checklist-module-settings"] .admin-help__btn');
+    await buttons.nth(0).click();
+    await expect(visibleTips).toHaveCount(1);
+    await buttons.nth(1).click();
+    await expect(visibleTips).toHaveCount(1);
+    await page.keyboard.press('Escape');
+    await expect(visibleTips).toHaveCount(0);
+  });
+
   for (const width of [375, 1280]) {
     test(`has no blocking axe violations and no horizontal overflow at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });

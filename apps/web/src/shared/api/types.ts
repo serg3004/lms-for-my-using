@@ -421,6 +421,9 @@ export type ChecklistFolder = {
   canManage: boolean;
   checklistCount: number;
   totalChecklistCount: number;
+  /** PR 407: author and the number of direct subfolders visible to the caller; optional for older cached responses. */
+  creator?: { id: string; firstName: string; lastName: string } | null;
+  childFolderCount?: number;
 };
 export type ChecklistFolderList = { folders: ChecklistFolder[]; checklistCount: number };
 export type ChecklistFolderDeleteImpact = { folders: number; checklists: number; movedToDraft: Array<{ id: string; title: string }> };
@@ -469,6 +472,9 @@ export type ChecklistSummary = {
   creator?: { id: string; firstName: string; lastName: string } | null;
   // PR 395 -- the folder the sheet lives in (null/absent: the root).
   folderId?: string | null;
+  // PR 407/408 -- only `GET /checklists` carries them: the folder path from the root and the live assignments count.
+  folderPath?: Array<{ id: string; name: string }>;
+  assignmentCount?: number;
   // PR 397 -- optional because older payloads never carried them (read as no overrides).
   moduleSettings?: ChecklistModuleSettings & { defaultLocationCapturePolicy?: ChecklistGeolocationPolicy | null };
   hasModuleOverrides?: boolean;

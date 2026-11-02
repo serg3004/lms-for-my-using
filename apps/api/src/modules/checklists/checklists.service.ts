@@ -370,7 +370,12 @@ export class ChecklistsService {
       },
       orderBy: { createdAt: 'desc' },
       // PR 393: the list shows who created the sheet; a deleted author reads as null (creator relation is SetNull).
-      select: { ...staffChecklistSelect, creator: { select: { id: true, firstName: true, lastName: true } } },
+      // PR 408: `assignmentCount` is the number of live assignments of the sheet (assigned, in progress or submitted).
+      select: {
+        ...staffChecklistSelect,
+        creator: { select: { id: true, firstName: true, lastName: true } },
+        _count: { select: { instances: { where: { status: { in: ['assigned', 'in_progress', 'submitted'] }, deletedAt: null } } } },
+      },
     });
     const byId = new Map(folders.map((folder) => [folder.id, folder]));
     return rows.map((row) => {
@@ -379,7 +384,8 @@ export class ChecklistsService {
       for (let folder = row.folderId ? byId.get(row.folderId) : undefined; folder && !seen.has(folder.id); folder = folder.parentId ? byId.get(folder.parentId) : undefined) {
         seen.add(folder.id); folderPath.unshift({ id: folder.id, name: folder.name });
       }
-      return { ...presentStaffChecklist(row), folderPath };
+      const { _count: counts, ...sheet } = row;
+      return { ...presentStaffChecklist(sheet), folderPath, assignmentCount: counts?.instances ?? 0 };
     });
   }
 
