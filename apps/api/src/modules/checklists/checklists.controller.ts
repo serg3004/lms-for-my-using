@@ -8,6 +8,7 @@ import { isLearnerOnly, OrganizationScope, OrganizationScopeGuard, Roles, rolePo
 import { RolesGuard } from '../auth/public.js';
 import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, UploadService, validateUploadFile } from '../upload/public.js';
 import { ChecklistReviewAccessService } from './checklist-review-access.service.js';
+import { ChecklistAnswerSetService } from './checklist-answer-set.service.js';
 import { ChecklistScaleService } from './checklist-scale.service.js';
 import { ChecklistSessionService } from './checklist-session.service.js';
 import type { ChecklistSessionAction, ChecklistSessionViewerContext } from './checklist-session.service.js';
@@ -32,7 +33,10 @@ import {
   checklistSessionParticipantsQuerySchema,
   createChecklistItemGroupSchema,
   createChecklistItemSchema,
+  copyChecklistAnswerSetSchema,
   copyChecklistScaleSchema,
+  createChecklistAnswerSetSchema,
+  updateChecklistAnswerSetSchema,
   createChecklistScaleSchema,
   createChecklistSchema,
   createChecklistSessionSchema,
@@ -95,6 +99,7 @@ export class ChecklistsController {
     private readonly workplaceSettings: ChecklistWorkplaceSettingsService,
     private readonly sessions: ChecklistSessionService,
     private readonly scales: ChecklistScaleService,
+    private readonly answerSets: ChecklistAnswerSetService,
   ) {}
 
   // ---- Workplace-training settings (docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md) ----
@@ -452,6 +457,53 @@ export class ChecklistsController {
   async deleteScale(@Param('id') scaleId: string, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     await this.scales.remove(scaleId, user.organizationId, user.id);
+  }
+
+  // ---- Answer sets for the feedback section (PR 405) ----
+  @Get('checklist-answer-sets')
+  @Roles(...rolePolicies.checklistsRead)
+  listAnswerSets(@Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.answerSets.list(user.organizationId, user.roles.includes('admin'));
+  }
+  @Get('checklist-answer-sets/:id')
+  @Roles(...rolePolicies.checklistsRead)
+  getAnswerSet(@Param('id') answerSetId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.answerSets.get(answerSetId, user.organizationId, user.roles.includes('admin'));
+  }
+  @Post('checklist-answer-sets')
+  @Roles(...rolePolicies.checklistsCreate)
+  createAnswerSet(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = createChecklistAnswerSetSchema.parse(body);
+    const user = request.currentUser!;
+    return this.answerSets.create(user.organizationId, input, user.id);
+  }
+  @Patch('checklist-answer-sets/:id')
+  @Roles(...rolePolicies.checklistsCreate)
+  updateAnswerSet(@Param('id') answerSetId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = updateChecklistAnswerSetSchema.parse(body);
+    const user = request.currentUser!;
+    return this.answerSets.update(answerSetId, user.organizationId, input, user.id);
+  }
+  @Post('checklist-answer-sets/:id/copy')
+  @Roles(...rolePolicies.checklistsCreate)
+  copyAnswerSet(@Param('id') answerSetId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = copyChecklistAnswerSetSchema.parse(body ?? {});
+    const user = request.currentUser!;
+    return this.answerSets.copy(answerSetId, user.organizationId, input.name, user.id);
+  }
+  @Post('checklist-answer-sets/:id/archive')
+  @Roles(...rolePolicies.checklistsCreate)
+  archiveAnswerSet(@Param('id') answerSetId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.answerSets.archive(answerSetId, user.organizationId, user.id);
+  }
+  @Delete('checklist-answer-sets/:id')
+  @Roles(...rolePolicies.checklistsCreate)
+  async deleteAnswerSet(@Param('id') answerSetId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    await this.answerSets.remove(answerSetId, user.organizationId, user.id);
   }
 
   // ---- Assignment / instances ----

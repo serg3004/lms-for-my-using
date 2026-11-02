@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { UserRole } from '@prisma/client';
 
 import { HIGHLIGHT_COLOR_PATTERN, normalizeHighlightColor } from './checklist-colors.js';
+import { answerOptionSchema, feedbackLayoutSchema, FEEDBACK_TEXT_MAX_LENGTH } from './checklist-feedback-layout.js';
 
 // PR 369б: free colour choice, but only a strict #RRGGBB value is ever stored (no CSS injection).
 const highlightColorSchema = z.string().regex(HIGHLIGHT_COLOR_PATTERN, 'color must be #RRGGBB').transform(normalizeHighlightColor);
@@ -82,6 +83,8 @@ export const createChecklistSchema = z.object({
   forbidGalleryPhotos: z.boolean().default(false),
   feedbackEnabled: z.boolean().default(true),
   feedbackRequired: z.boolean().default(false),
+  // PR 405: configurable feedback section; absent/null = the classic three text fields.
+  feedbackLayout: feedbackLayoutSchema.nullable().optional(),
   allowSkipAll: z.boolean().default(false),
   accessMode: checklistAccessModeSchema.default('assigned'),
   allowEditByAll: z.boolean().default(false),
@@ -144,6 +147,7 @@ export const updateChecklistSchema = z
     forbidGalleryPhotos: z.boolean(),
     feedbackEnabled: z.boolean(),
     feedbackRequired: z.boolean(),
+    feedbackLayout: feedbackLayoutSchema.nullable(),
     allowSkipAll: z.boolean(),
     accessMode: checklistAccessModeSchema,
     pinned: z.boolean(),
@@ -414,6 +418,14 @@ export const submitChecklistSessionFeedbackSchema = z
     strengths: z.string().trim().max(4000).nullable().optional(),
     developmentAreas: z.string().trim().max(4000).nullable().optional(),
     nextSteps: z.string().trim().max(4000).nullable().optional(),
+    // PR 405: answers by field id of the sheet's feedback layout -- text, or option ids of a choice field.
+    answers: z
+      .record(
+        z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+        z.union([z.string().max(FEEDBACK_TEXT_MAX_LENGTH), z.array(z.string().max(64)).max(100)]).nullable(),
+      )
+      .refine((answers) => Object.keys(answers).length <= 100, 'Too many answers')
+      .optional(),
     version: z.number().int().min(1),
   })
   .strict();
@@ -612,3 +624,19 @@ export const checklistSessionSummaryQuerySchema = z.object({
   format: z.enum(['csv', 'xlsx']).default('xlsx'),
 }).strict();
 export type ChecklistSessionSummaryQuery = z.infer<typeof checklistSessionSummaryQuerySchema>;
+
+// ---- PR 405: reusable answer sets for choice fields of the feedback section ----
+// Not scales: options carry a name and an optional description only (no score, no colour).
+const answerOptionsSchema = z
+  .array(answerOptionSchema)
+  .min(1)
+  .max(50)
+  .refine((options) => new Set(options.map((option) => option.id)).size === options.length, 'Option ids must be unique');
+export const createChecklistAnswerSetSchema = z.object({ name: z.string().trim().min(1).max(255), options: answerOptionsSchema }).strict();
+export type CreateChecklistAnswerSetInput = z.infer<typeof createChecklistAnswerSetSchema>;
+export const updateChecklistAnswerSetSchema = z
+  .object({ name: z.string().trim().min(1).max(255), options: answerOptionsSchema })
+  .partial()
+  .strict();
+export type UpdateChecklistAnswerSetInput = z.infer<typeof updateChecklistAnswerSetSchema>;
+export const copyChecklistAnswerSetSchema = z.object({ name: z.string().trim().min(1).max(255).optional() }).strict();

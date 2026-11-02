@@ -613,6 +613,34 @@ No new role policies -- `checklist-scales` routes reuse `checklistsRead` (list/g
 CRUD, since managing the scale library is the same class of action as managing checklists
 themselves.
 
+## Checklist feedback section and answer sets (PR 405)
+
+The «Обратная связь» section of a sheet is configurable. `Checklist.feedbackLayout` (JSON, `null` = the classic three text fields
+`strengths`, `developmentAreas`, `nextSteps`) is set through `feedbackLayout` on `POST /checklists` and `PATCH /checklists/:id`
+(`null` resets to the classic fields). Shape: `{ fields: Field[], sections: Section[] }`, a section is
+`{ id, title, fields, sections }` nested at most 3 levels, a field is `{ id, kind: 'text' | 'choice', title, required, answerSetId?, multiple?, builtin? }`.
+Ids are `[A-Za-z0-9_-]{1,64}` and unique in the layout; at most 30 fields and 30 sections; a `choice` field needs `answerSetId`; an untitled
+field is allowed only for a built-in field (`id` equal to `builtin`), whose title the client localizes. Every referenced answer set must belong to the
+organization and be active (a sheet may keep an archived set it already used); otherwise `400`.
+
+**Answer sets** (`GET/POST /checklist-answer-sets`, `GET/PATCH/DELETE /checklist-answer-sets/:id`, `POST /checklist-answer-sets/:id/archive`,
+`POST /checklist-answer-sets/:id/copy`) are a separate library, not scales: `{ name, options: [{ id, name, description }] }` with 1-50 options and no
+scores or colours. Responses add `inUse`, `usageCount` and `usedByChecklists` (sheet titles for administrators only; everyone else gets `[]`).
+Edits and archiving are allowed while sheets use the set (a started or finished session keeps its snapshot copy; a session that has not started yet picks
+up the edit, like scales in PR 369); `DELETE` (204) is refused with `409` while a sheet's layout references the set. Reads reuse
+`checklistsRead`, writes `checklistsCreate`; audit actions `checklist_answer_set.created|updated|archived|deleted|copied`.
+
+**Snapshot and answers.** Assigning freezes `feedbackLayout` and the used answer sets (`feedbackAnswerSets`) into the instance snapshot; a snapshot made
+before PR 405 reads as the classic fields (required only when `feedbackRequired`). `PATCH /checklist-sessions/:id/feedback` accepts, besides the
+three classic keys, `answers: { [fieldId]: string | string[] | null }` (text, or option ids of a choice field; `null` or an empty list clears),
+validated against the frozen layout: unknown field, wrong value kind, text over 4000 characters, an unknown option or several options for a single choice
+field answer `400`; any answer while the section is off also answers `400`. The stored `feedbackAnswers` (JSON by field id) is returned on the session; the
+classic keys are still mirrored into `strengths` / `developmentAreas` / `nextSteps`. Completing a session requires every `required` field of the frozen
+layout (`422`); a sheet without a layout keeps the PR 368 rule (strengths and development areas when `feedbackRequired`). Session detail adds
+`feedback: { layout, answerSets } | null`, the report adds `feedbackForm: { layout, answerSets, answers } | null` next to the legacy `feedback`. The
+learner mask hides `feedbackAnswers` together with the classic fields. Copying a sheet and saving/using an organization template carry the layout; a template
+drops choice fields whose answer set has been deleted since. PDF, XLSX/CSV and the screens read the same data in PR 405б/405в.
+
 ## Checklist observation-sheet builder (PR 296)
 
 Backend for the admin "Observation Sheet Builder" screen -- criterion grouping, an observer-filled
