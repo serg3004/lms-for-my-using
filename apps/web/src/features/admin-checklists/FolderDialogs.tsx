@@ -46,14 +46,13 @@ export function FolderDialog({ target, onClose, onSubmit, t }: {
 
   const title = !target ? '' : target.kind === 'edit'
     ? t('admin.checklists.folders.editTitle', 'Folder settings')
-    : target.parent
-      ? t('admin.checklists.folders.newSubTitle', 'New subfolder in "{{name}}"', { name: target.parent.name })
-      : t('admin.checklists.folders.newTitle', 'New folder');
+    : t('admin.checklists.folders.createTitle', 'Create folder');
 
   return (
     <Dialog initialFocusRef={nameRef} labelledBy={titleId} onClose={onClose} open={target !== null}>
       <form onSubmit={(event) => void submit(event)}>
         <h2 id={titleId}>{title}</h2>
+        {target?.kind === 'create' && <p className="admin-form__hint">{target.parent ? t('admin.checklists.folders.createIn', 'The folder will be created in "{{name}}".', { name: target.parent.name }) : t('admin.checklists.folders.createInRoot', 'The folder will be created at the top level (All checklists).')}</p>}
         {error && <p className="learner-quiz__submit-error" role="alert">{error}</p>}
         <div className="admin-form__field">
           <label htmlFor={`${titleId}-name`}>{t('admin.checklists.folders.name', 'Folder name')}</label>
@@ -66,7 +65,7 @@ export function FolderDialog({ target, onClose, onSubmit, t }: {
         <p className="admin-form__hint">{t('admin.checklists.folders.visibleHint', 'Without the flag the folder is visible only to its creator and administrators. A learner never sees folders.')}</p>
         <div className="ds-dialog__actions">
           <Button onClick={onClose} type="button" variant="secondary">{t('admin.checklists.cancel', 'Cancel')}</Button>
-          <Button disabled={busy || !name.trim()} type="submit" variant="primary">{t('admin.checklists.folders.save', 'Save')}</Button>
+          <Button disabled={busy || !name.trim()} type="submit" variant="primary">{target?.kind === 'create' ? t('admin.checklists.folders.createSubmit', 'Create') : t('admin.checklists.folders.save', 'Save')}</Button>
         </div>
       </form>
     </Dialog>

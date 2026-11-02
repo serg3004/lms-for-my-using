@@ -43,7 +43,7 @@ describe('organization templates in the template dialog (PR 367)', () => {
     expect(button('Переименовать')).toBeUndefined();
     expect(button('Удалить')).toBeUndefined();
     await act(async () => button('Использовать')!.click());
-    expect(mocks.fromOrg).toHaveBeenCalledWith('t1');
+    expect(mocks.fromOrg).toHaveBeenCalledWith('t1', undefined);
     expect(onCreated).toHaveBeenCalledWith({ id: 'new' });
   });
 

@@ -993,11 +993,8 @@
         "closed": "私有文件夹：仅创建者和管理员可见",
         "actions": "文件夹操作：{{name}}",
         "rename": "重命名",
-        "newSub": "新建子文件夹",
         "delete": "删除",
         "editTitle": "文件夹设置",
-        "newSubTitle": "在“{{name}}”中新建子文件夹",
-        "newTitle": "新建文件夹",
         "name": "文件夹名称",
         "visibleToStaff": "除学员外所有角色可见",
         "visibleHint": "未勾选时，文件夹仅创建者和管理员可见。学员永远看不到文件夹。",
@@ -1006,7 +1003,6 @@
         "moveHere": "移动",
         "moveOpen": "移到文件夹…",
         "crumbs": "文件夹路径",
-        "new": "新建文件夹",
         "deleteTitle": "删除文件夹",
         "deleteConfirm": "删除文件夹“{{name}}”及其全部内容？文件夹：{{folders}}，将删除的检查清单：{{checklists}}。已完成的结果会保留。此操作无法撤销。",
         "deleteMoved": "有进行中分配的检查清单不会被删除，而是转为草稿并移到根目录：{{titles}}。",
@@ -1026,7 +1022,11 @@
         "empty": "此文件夹暂时为空。请创建文件夹或检查表。",
         "staleFolder": "该文件夹已被隐藏或删除，已显示根目录。",
         "searchResults": "整个库的搜索结果：{{count}}",
-        "notFound": "未找到任何内容。"
+        "notFound": "未找到任何内容。",
+        "createTitle": "创建文件夹",
+        "createIn": "文件夹将创建在“{{name}}”中。",
+        "createInRoot": "文件夹将创建在顶层（全部检查表）。",
+        "createSubmit": "创建"
       },
       "bulk": {
         "selectAll": "选择全部检查清单",
@@ -1680,7 +1680,14 @@
         "usedBy": "使用此量表的检查表",
         "readOnly": "您可以在此查看量表。仅管理员和经理可以编辑。",
         "archiveConfirm": "归档此量表？创建新检查表时将不再显示该量表。现有检查表和会话将继续正常工作。"
-      }
+      },
+      "createMenu": {
+        "label": "创建",
+        "folder": "文件夹…",
+        "checklist": "检查表",
+        "depthHint": "已是最深一层：文件夹最多嵌套 5 层。"
+      },
+      "createError": "无法创建检查表。"
     },
     "orgTools": {
       "cardTitle": "组织架构导入",

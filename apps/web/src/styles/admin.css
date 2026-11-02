@@ -2301,6 +2301,7 @@
 
 /* PR 408: one library list (folders above checklists) with a path above it; the folder tree beside the list is gone. */
 .checklist-library { min-width: 0; }
+.checklist-create-button { min-height: 44px; }
 .checklist-folders__crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 var(--space-3); padding: 0; list-style: none; }
 .checklist-library__folder { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .checklist-library__open { border: 0; background: transparent; padding: 0; min-height: 44px; font: inherit; font-weight: 600; color: var(--color-primary); text-align: start; cursor: pointer; overflow-wrap: anywhere; }

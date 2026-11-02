@@ -60,7 +60,10 @@ async function openNewDraft(fresh: ReturnType<typeof draft>) {
   document.body.appendChild(container);
   root = createRoot(container);
   await act(async () => { root?.render(<MemoryRouter><AdminChecklistsPage /></MemoryRouter>); });
-  const create = [...container.querySelectorAll('button')].find((b) => b.textContent?.includes('Создать чек-лист'));
+  // PR 409: "+ Создать" opens a menu; the checklist is its second item.
+  const menu = [...container.querySelectorAll('button')].find((b) => b.getAttribute('aria-haspopup') === 'menu' && b.textContent?.includes('Создать'));
+  await act(async () => { menu?.click(); });
+  const create = [...container.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) => item.textContent === 'Чек-лист');
   await act(async () => { create?.click(); });
   return container;
 }

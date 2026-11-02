@@ -16,10 +16,12 @@ import type { ChecklistSummary } from '../../shared/api/types.js';
 import { Button, Dialog } from '../../shared/ui.js';
 
 /** PR 341: "Create from template" -- built-in starter sheets in the interface language. PR 367: plus the organization's own templates; only an administrator renames or deletes them. */
-export function ChecklistTemplateDialog({ open, locale, onClose, onCreated, t }: {
+export function ChecklistTemplateDialog({ open, locale, folderId, onClose, onCreated, t }: {
   open: boolean;
   locale: string;
   onClose: () => void;
+  /** PR 409: the open folder the new sheet is created in (null/absent: the root). */
+  folderId?: string | null;
   onCreated: (checklist: ChecklistSummary) => void;
   t: TFunction;
 }) {
@@ -47,7 +49,7 @@ export function ChecklistTemplateDialog({ open, locale, onClose, onCreated, t }:
     setError(null);
     setBusyKey(template.id);
     try {
-      onCreated(await createChecklistFromOrgTemplate(template.id));
+      onCreated(await createChecklistFromOrgTemplate(template.id, folderId));
     } catch (e) {
       setError(e instanceof ApiClientError ? e.message : t('admin.checklists.templates.createError', 'Unable to create a checklist from the template.'));
     } finally {
@@ -81,7 +83,7 @@ export function ChecklistTemplateDialog({ open, locale, onClose, onCreated, t }:
     setError(null);
     setBusyKey(template.key);
     try {
-      onCreated(await createChecklistFromTemplate(template.key, locale));
+      onCreated(await createChecklistFromTemplate(template.key, locale, folderId));
     } catch (e) {
       setError(e instanceof ApiClientError ? e.message : t('admin.checklists.templates.createError', 'Unable to create a checklist from the template.'));
     } finally {
