@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { Badge, Button, DataTable, Menu, type BadgeVariant, type Column, type DataTableSort } from '../../shared/ui.js';
 import type { ChecklistFolder, ChecklistScoringMode, ChecklistStatus, ChecklistSummary } from '../../shared/api/types.js';
@@ -6,6 +6,7 @@ import { folderAssignmentTotal, folderDirectCounts, folderPathLabel } from './fo
 import { formatDate } from '../../shared/formatDate.js';
 import { ChecklistAccessBadge } from '../../shared/checklistAccess.js';
 import { checklistStatusAction } from './domain.js';
+import { ContextMenu, useContextMenu } from '../../shared/ContextMenu.js';
 
 const STATUS_BADGE_VARIANT: Record<ChecklistStatus, BadgeVariant> = {
   draft: 'draft',
@@ -23,7 +24,8 @@ export function creatorName(checklist: { creator?: { id?: string; firstName: str
 export type LibraryRow = { kind: 'folder'; key: string; folder: ChecklistFolder } | { kind: 'sheet'; key: string; checklist: ChecklistSummary };
 
 export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatusChange, onEdit, onCopy, onDelete, folders, onMove, selectedKeys, onSelectionChange, batchActions,
-  childFolders, allSheets, showFolderPath, onOpenFolder, onRenameFolder, onMoveFolder, onDeleteFolder, emptyMessage, sort, onSortChange, t }: {
+  childFolders, allSheets, showFolderPath, onOpenFolder, onRenameFolder, onMoveFolder, onDeleteFolder, onMoveSelection, onDeleteSelection, onCreateFolder, onCreateChecklist, canCreateFolder = true,
+  emptyMessage, sort, onSortChange, t }: {
   rows: ChecklistSummary[];
   statusLabels: Record<ChecklistStatus, string>;
   scoringModeLabels: Record<ChecklistScoringMode, string>;
@@ -48,6 +50,12 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
   onRenameFolder?: (folder: ChecklistFolder) => void;
   onMoveFolder?: (folder: ChecklistFolder) => void;
   onDeleteFolder?: (folder: ChecklistFolder) => void;
+  /** PR 411: the context menu of a selection of several rows, and of the empty area of the list. */
+  onMoveSelection?: (selection: { sheets: ChecklistSummary[]; folders: ChecklistFolder[] }) => void;
+  onDeleteSelection?: (selection: { sheets: ChecklistSummary[]; folders: ChecklistFolder[] }) => void;
+  onCreateFolder?: () => void;
+  onCreateChecklist?: () => void;
+  canCreateFolder?: boolean;
   emptyMessage?: string;
   sort?: DataTableSort;
   onSortChange?: (sort: DataTableSort) => void;
@@ -58,6 +66,109 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
     ...rows.map((checklist): LibraryRow => ({ kind: 'sheet', key: checklist.id, checklist })),
   ];
   const sheetsForCounts = allSheets ?? rows;
+  // PR 411: right button / menu key / Shift+F10 / long press open the row menu; F2 and Delete act on the row without opening it.
+  const menu = useContextMenu<{ kind: 'row'; key: string } | { kind: 'empty' }>();
+  const rowsByKey = new Map(libraryRows.map((row) => [row.key, row]));
+  /** A row outside the selection acts alone; a row inside it acts on the whole selection (as in file managers). */
+  function actingRows(key: string): LibraryRow[] {
+    const keys = selectedKeys?.has(key) ? [...selectedKeys] : [key];
+    return keys.flatMap((id) => rowsByKey.get(id) ?? []);
+  }
+  function splitRows(picked: LibraryRow[]) {
+    return {
+      sheets: picked.flatMap((row) => (row.kind === 'sheet' ? [row.checklist] : [])),
+      folders: picked.flatMap((row) => (row.kind === 'folder' ? [row.folder] : [])),
+    };
+  }
+  function deleteRows(picked: LibraryRow[]) {
+    const only = picked.length === 1 ? picked[0] : undefined;
+    if (only?.kind === 'folder') { if (only.folder.canManage) onDeleteFolder?.(only.folder); }
+    else if (only) onDelete(only.checklist);
+    else if (picked.length > 1) onDeleteSelection?.(splitRows(picked));
+  }
+  function rowProps(row: LibraryRow) {
+    const trigger = menu.triggerProps({ kind: 'row', key: row.key }, () => {
+      if (selectedKeys && onSelectionChange && !selectedKeys.has(row.key)) onSelectionChange(new Set([row.key]));
+    });
+    return {
+      ...trigger,
+      tabIndex: 0,
+      'data-row-key': row.key,
+      onKeyDown(event: KeyboardEvent<HTMLTableRowElement>) {
+        trigger.onKeyDown(event);
+        if (event.defaultPrevented) return;
+        const target = event.target as HTMLElement;
+        // Only the row itself or its selection box: keys typed in a button or a field keep their own meaning.
+        if (target !== event.currentTarget && !(target instanceof HTMLInputElement && target.type === 'checkbox')) return;
+        const picked = actingRows(row.key);
+        if (event.key === 'F2') {
+          const only = picked.length === 1 ? picked[0] : undefined;
+          if (only?.kind === 'folder' && only.folder.canManage && onRenameFolder) { event.preventDefault(); onRenameFolder(only.folder); }
+        } else if (event.key === 'Delete') {
+          event.preventDefault();
+          deleteRows(picked);
+        }
+      },
+    };
+  }
+  function contextMenuContent() {
+    const target = menu.state?.target;
+    if (!target) return { label: '', items: null };
+    if (target.kind === 'empty') {
+      return {
+        label: t('admin.checklists.contextMenu.emptyLabel', 'Library actions'),
+        items: (
+          <>
+            <button disabled={!canCreateFolder} onClick={() => onCreateFolder?.()} role="menuitem" type="button">{t('admin.checklists.createMenu.folder', 'Folder…')}</button>
+            <button onClick={() => onCreateChecklist?.()} role="menuitem" type="button">{t('admin.checklists.createMenu.checklist', 'Checklist')}</button>
+          </>
+        ),
+      };
+    }
+    const picked = actingRows(target.key);
+    const only = picked.length === 1 ? picked[0] : undefined;
+    if (!only) {
+      const selection = splitRows(picked);
+      return {
+        label: t('admin.checklists.contextMenu.selectionLabel', 'Actions on the selection ({{selected}})', { selected: picked.length }),
+        items: (
+          <>
+            {onMoveSelection && <button onClick={() => onMoveSelection(selection)} role="menuitem" type="button">{t('admin.checklists.contextMenu.moveSelection', 'Move the selection to a folder…')}</button>}
+            {onDeleteSelection && <button onClick={() => onDeleteSelection(selection)} role="menuitem" type="button">{t('admin.checklists.contextMenu.deleteSelection', 'Delete the selection…')}</button>}
+          </>
+        ),
+      };
+    }
+    if (only.kind === 'folder') {
+      const folder = only.folder;
+      return {
+        label: t('admin.checklists.contextMenu.rowLabel', 'Actions: {{name}}', { name: folder.name }),
+        items: (
+          <>
+            <button onClick={() => onOpenFolder?.(folder)} role="menuitem" type="button">{t('admin.checklists.folders.open', 'Open')}</button>
+            {folder.canManage && <button onClick={() => onRenameFolder?.(folder)} role="menuitem" type="button">{t('admin.checklists.folders.renameFolder', 'Rename folder')}</button>}
+            {folder.canManage && onMoveFolder && <button onClick={() => onMoveFolder(folder)} role="menuitem" type="button">{t('admin.checklists.folders.moveOpen', 'Move to folder…')}</button>}
+            {folder.canManage && <button onClick={() => onDeleteFolder?.(folder)} role="menuitem" type="button">{t('admin.checklists.folders.delete', 'Delete')}</button>}
+          </>
+        ),
+      };
+    }
+    const checklist = only.checklist;
+    return {
+      label: t('admin.checklists.contextMenu.rowLabel', 'Actions: {{name}}', { name: checklist.title }),
+      items: (
+        <>
+          <button onClick={() => onEdit(checklist)} role="menuitem" type="button">{t('admin.checklists.edit', 'Edit')}</button>
+          <button onClick={() => void onCopy(checklist)} role="menuitem" type="button">{t('admin.checklists.copy', 'Copy')}</button>
+          {checklist.status !== 'archived' && <button onClick={() => void onStatusChange(checklist, 'archived')} role="menuitem" type="button">{t('admin.checklists.action.archive', 'Archive')}</button>}
+          {onMove && <button onClick={() => onMove(checklist)} role="menuitem" type="button">{t('admin.checklists.folders.moveOpen', 'Move to folder…')}</button>}
+          <button onClick={() => onDelete(checklist)} role="menuitem" type="button">{t('admin.checklists.delete', 'Delete')}</button>
+        </>
+      ),
+    };
+  }
+  const emptyAreaProps = onCreateFolder || onCreateChecklist ? { onContextMenu: menu.triggerProps({ kind: 'empty' }).onContextMenu } : {};
+  const menuContent = contextMenuContent();
   const dash = '—';
   // PR 327: the status is a badge plus one explicit next-step button (not a free dropdown), so the
   // common transitions read as actions ("Publish") and archive/delete live behind the row menu.
@@ -158,7 +269,7 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
       },
     },
   ] satisfies Column<LibraryRow>[];
-  return <DataTable label={t('admin.checklists.title', 'Checklists')} columns={columns} rows={libraryRows}
+  return <div {...emptyAreaProps} style={{ minHeight: 'min(60vh, 520px)' }}><DataTable label={t('admin.checklists.title', 'Checklists')} columns={columns} rows={libraryRows} rowProps={rowProps}
     selection={selectedKeys && onSelectionChange ? {
       selectedKeys,
       onChange: onSelectionChange,
@@ -176,5 +287,7 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
       label: t('courses.details'),
       expandLabel: (row) => `${t('courses.details')}: ${row.kind === 'sheet' ? row.checklist.title : row.folder.name}`,
       collapseLabel: (row) => `${t('courses.details')}: ${row.kind === 'sheet' ? row.checklist.title : row.folder.name}`,
-    }} />;
+    }} />
+    <ContextMenu label={menuContent.label} onClose={menu.close} state={menu.state}>{menuContent.items}</ContextMenu>
+  </div>;
 }

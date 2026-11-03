@@ -3,7 +3,8 @@ import type { TFunction } from 'i18next';
 
 import type { ChecklistFolder } from '../../shared/api/types.js';
 import { Button, Dialog } from '../../shared/ui.js';
-import { folderAndDescendantIds, folderRows } from './folders.js';
+import { ContextMenu, useContextMenu } from '../../shared/ContextMenu.js';
+import { MAX_FOLDER_DEPTH, folderAndDescendantIds, folderRows } from './folders.js';
 
 export type FolderDialogTarget =
   | { kind: 'create'; parent: ChecklistFolder | null }
@@ -73,7 +74,7 @@ export function FolderDialog({ target, onClose, onSubmit, t }: {
 }
 
 /** "Move to folder…": the root and the tree as a list of choices. */
-export function MoveToFolderDialog({ open, count, folders, currentFolderId, title, excludeFolderIds, onClose, onMove, t }: {
+export function MoveToFolderDialog({ open, count, folders, currentFolderId, title, excludeFolderIds, onRenameFolder, onCreateFolder, onClose, onMove, t }: {
   open: boolean;
   count: number;
   /** PR 408/410: replaces the default "Move N checklist(s)" title (folders are being moved too). */
@@ -81,6 +82,9 @@ export function MoveToFolderDialog({ open, count, folders, currentFolderId, titl
   /** The moved folders: neither they nor anything below them can be the target. */
   excludeFolderIds?: readonly string[];
   folders: ChecklistFolder[];
+  /** PR 411: the context menu of the list (right button, menu key, Shift+F10, long press); deleting is deliberately absent here. */
+  onRenameFolder?: (folder: ChecklistFolder) => void;
+  onCreateFolder?: (parent: ChecklistFolder | null) => void;
   /** Preselected: the folder all the moved sheets share, or null (root). */
   currentFolderId: string | null;
   onClose: () => void;
@@ -90,24 +94,43 @@ export function MoveToFolderDialog({ open, count, folders, currentFolderId, titl
   const titleId = useId();
   const [choice, setChoice] = useState<string | null>(currentFolderId);
   useEffect(() => { if (open) setChoice(currentFolderId); }, [open, currentFolderId]);
+  const menu = useContextMenu<{ kind: 'folder'; folder: ChecklistFolder; level: number } | { kind: 'root' }>();
   const blocked = new Set((excludeFolderIds ?? []).flatMap((id) => [...folderAndDescendantIds(folders, id)]));
   const rows = folderRows(folders, 'all').filter(({ folder }) => !blocked.has(folder.id));
 
   return (
     <Dialog labelledBy={titleId} onClose={onClose} open={open}>
       <h2 id={titleId}>{title ?? t('admin.checklists.folders.moveTitle', 'Move {{count}} checklist(s) to a folder', { count })}</h2>
-      <div role="radiogroup" aria-labelledby={titleId}>
-        <label className="admin-checkbox-field">
+      <div role="radiogroup" aria-labelledby={titleId} onContextMenu={onCreateFolder ? menu.triggerProps({ kind: 'root' }).onContextMenu : undefined}>
+        <label className="admin-checkbox-field" {...(onCreateFolder ? menu.triggerProps({ kind: 'root' }) : {})}>
           <input checked={choice === null} name={`${titleId}-folder`} onChange={() => setChoice(null)} type="radio" />
           {t('admin.checklists.folders.all', 'All checklists')}
         </label>
         {rows.map(({ folder, level }) => (
-          <label className="admin-checkbox-field" key={folder.id} style={{ paddingInlineStart: `${level * 16}px` }}>
+          <label className="admin-checkbox-field" key={folder.id} style={{ paddingInlineStart: `${level * 16}px` }} {...(onRenameFolder || onCreateFolder ? menu.triggerProps({ kind: 'folder', folder, level }) : {})}>
             <input checked={choice === folder.id} name={`${titleId}-folder`} onChange={() => setChoice(folder.id)} type="radio" />
             {folder.name}
           </label>
         ))}
       </div>
+      <ContextMenu
+        label={menu.state?.target.kind === 'folder'
+          ? t('admin.checklists.contextMenu.rowLabel', 'Actions: {{name}}', { name: menu.state.target.folder.name })
+          : t('admin.checklists.contextMenu.treeLabel', 'Folder list actions')}
+        onClose={menu.close}
+        state={menu.state}
+      >
+        {menu.state?.target.kind === 'folder' ? (() => {
+          const { folder, level } = menu.state.target;
+          return (
+            <>
+              <button onClick={() => setChoice(folder.id)} role="menuitem" type="button">{t('admin.checklists.contextMenu.choose', 'Choose this folder')}</button>
+              {folder.canManage && onRenameFolder && <button onClick={() => onRenameFolder(folder)} role="menuitem" type="button">{t('admin.checklists.folders.renameFolder', 'Rename folder')}</button>}
+              {onCreateFolder && <button disabled={level >= MAX_FOLDER_DEPTH} onClick={() => onCreateFolder(folder)} role="menuitem" type="button">{t('admin.checklists.contextMenu.newInside', 'New folder inside')}</button>}
+            </>
+          );
+        })() : onCreateFolder ? <button onClick={() => onCreateFolder(null)} role="menuitem" type="button">{t('admin.checklists.contextMenu.newFolder', 'New folder')}</button> : null}
+      </ContextMenu>
       <div className="ds-dialog__actions">
         <Button onClick={onClose} type="button" variant="secondary">{t('admin.checklists.cancel', 'Cancel')}</Button>
         <Button onClick={() => onMove(choice)} type="button" variant="primary">{t('admin.checklists.folders.moveHere', 'Move')}</Button>

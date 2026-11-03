@@ -1701,7 +1701,18 @@
         "checklist": "Checklist",
         "depthHint": "The deepest level: folders can be nested at most 5 levels deep."
       },
-      "createError": "Unable to create the checklist."
+      "createError": "Unable to create the checklist.",
+      "contextMenu": {
+        "rowLabel": "Actions: {{name}}",
+        "selectionLabel": "Actions on the selection ({{selected}})",
+        "emptyLabel": "Library actions",
+        "treeLabel": "Folder list actions",
+        "moveSelection": "Move the selection to a folder…",
+        "deleteSelection": "Delete the selection…",
+        "choose": "Choose this folder",
+        "newInside": "New folder inside",
+        "newFolder": "New folder"
+      }
     },
     "orgTools": {
       "cardTitle": "Organization structure import",

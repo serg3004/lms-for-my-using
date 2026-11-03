@@ -1701,7 +1701,18 @@
         "checklist": "检查表",
         "depthHint": "已是最深一层：文件夹最多嵌套 5 层。"
       },
-      "createError": "无法创建检查表。"
+      "createError": "无法创建检查表。",
+      "contextMenu": {
+        "rowLabel": "操作：{{name}}",
+        "selectionLabel": "对所选项的操作（{{selected}}）",
+        "emptyLabel": "列表操作",
+        "treeLabel": "文件夹列表操作",
+        "moveSelection": "将所选项移到文件夹…",
+        "deleteSelection": "删除所选项…",
+        "choose": "选择此文件夹",
+        "newInside": "在其中新建文件夹",
+        "newFolder": "新建文件夹"
+      }
     },
     "orgTools": {
       "cardTitle": "组织架构导入",

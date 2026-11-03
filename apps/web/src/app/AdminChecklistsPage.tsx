@@ -450,6 +450,8 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
           <ChecklistTable rows={sortedSheets} childFolders={shownFolders} allSheets={loadState.data.checklists} showFolderPath={searching} statusLabels={statusLabels} scoringModeLabels={scoringModeLabels} folders={folders}
             onStatusChange={updateStatus} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} onDelete={setDeleteTarget} onMove={(checklist) => setMoveTargets({ sheets: [checklist], folders: [] })}
             selectedKeys={selectedKeys} onSelectionChange={setSelectedKeys}
+            onMoveSelection={setMoveTargets} onDeleteSelection={(selection) => void requestSelectionDelete(selection)}
+            onCreateFolder={() => setFolderDialog({ kind: 'create', parent: selectedFolder })} onCreateChecklist={() => void createInOpenFolder()} canCreateFolder={canAddSubfolder(folders, selectedFolderId)}
             onOpenFolder={(folder) => selectFolder(folder.id)} onRenameFolder={(folder) => setFolderDialog({ kind: 'edit', folder })} onMoveFolder={(folder) => setMoveTargets({ sheets: [], folders: [folder] })} onDeleteFolder={(folder) => void requestFolderDelete(folder)}
             sort={sort} onSortChange={setSort} emptyMessage={emptyMessage}
             batchActions={({ sheets, folders: pickedFolders }) => <ChecklistBulkBar selected={sheets} selectedFolders={pickedFolders} busy={bulkBusy} onAction={requestBulk} onMove={setMoveTargets} onRenameFolder={(folder) => setFolderDialog({ kind: 'edit', folder })} onDeleteSelection={(selection) => void requestSelectionDelete(selection)} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} t={t} />}
@@ -470,6 +472,8 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
           return parents.length > 0 && parents.every((parent) => parent === parents[0]) ? parents[0]! : null;
         })()}
         folders={folders}
+        onRenameFolder={(folder) => setFolderDialog({ kind: 'edit', folder })}
+        onCreateFolder={(parent) => setFolderDialog({ kind: 'create', parent })}
         onClose={() => setMoveTargets(null)}
         onMove={(parentId) => { const target = moveTargets; setMoveTargets(null); if (target) void runMove(target, parentId); }}
         open={moveTargets !== null}
