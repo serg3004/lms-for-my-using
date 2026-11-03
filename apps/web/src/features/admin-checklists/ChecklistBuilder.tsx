@@ -257,8 +257,27 @@ export function ChecklistBuilder({
     setItems(refreshed.items);
   }
   async function addCriterionToGroup(groupId: string | null) {
-    const created = await createChecklistItem(checklist.id, { text: t('admin.checklists.newCriterionText', 'New criterion'), points: 10, isRequired: true, photoRequired: false, ...(groupId ? { groupId } : {}) });
+    const created = await createChecklistItem(checklist.id, { text: t('admin.checklists.newCriterionText', 'New criterion'), points: 10, isRequired: true, photoRequired: false, scaleId: null, ...(groupId ? { groupId } : {}) });
     setItems((prev) => [...prev, created]);
+  }
+  /** PR 414: the scale a criterion gets when its switch is turned on: the organization's "Yes/No" first, else the first active one. */
+  function defaultScaleForSwitch() {
+    return scales.find((scale) => scale.isDefault && scale.status === 'active') ?? scales.find((scale) => scale.status === 'active') ?? null;
+  }
+  async function setItemScaleEnabled(item: ChecklistItemSummary, enabled: boolean) {
+    if (!enabled) { updateItemLocally(item.id, { scaleId: null }); await persistItem(item.id, { scaleId: null }); return; }
+    const scale = defaultScaleForSwitch();
+    if (!scale) { setScaleCreateForItemId(item.id); return; }
+    updateItemLocally(item.id, { scaleId: scale.id });
+    await persistItem(item.id, { scaleId: scale.id });
+  }
+  /** "Enable the scale for all criteria" / "Disable it for all": one request per criterion that changes. */
+  async function setAllScalesEnabled(enabled: boolean) {
+    const scale = enabled ? defaultScaleForSwitch() : null;
+    if (enabled && !scale) return;
+    for (const item of items.filter((entry) => (enabled ? !entry.scaleId : !!entry.scaleId))) {
+      await persistItem(item.id, { scaleId: scale?.id ?? null });
+    }
   }
   function updateContextFieldLocally(fieldId: string, patch: Partial<ContextField>) {
     setContextFields((prev) => applyContextFieldPatch(prev, fieldId, patch));
@@ -558,6 +577,10 @@ export function ChecklistBuilder({
           <ChecklistItemsEditor>
             <div className="admin-builder-section-head">
               <h3>{t('admin.checklists.groupsTitle', 'Groups and criteria')} <Badge variant="neutral">{items.length}</Badge></h3>
+              <span className="admin-group-card__bulk">
+                <Button type="button" variant="secondary" size="sm" disabled={!canEdit || items.length === 0 || items.every((entry) => !!entry.scaleId)} onClick={() => void setAllScalesEnabled(true)}>{t('admin.checklists.scaleSwitch.enableAll', 'Enable scale for all criteria')}</Button>
+                <Button type="button" variant="secondary" size="sm" disabled={!canEdit || items.every((entry) => !entry.scaleId)} onClick={() => void setAllScalesEnabled(false)}>{t('admin.checklists.scaleSwitch.disableAll', 'Disable scale for all')}</Button>
+              </span>
               <Button type="button" variant="primary" size="sm" onClick={() => void addGroup()}>
                 + {t('admin.checklists.addGroup', 'Group')}
               </Button>
@@ -608,8 +631,8 @@ export function ChecklistBuilder({
                       <span className="admin-criteria-row__order" aria-hidden="true" />
                       <span>{t('admin.checklists.field.criterion', 'Criterion')}</span>
                       <span>{t('admin.checklists.field.scale', 'Scale')}</span>
-                      {scoringMode === 'sum_points' && <span>{t('admin.checklists.field.points', 'Points')}</span>}
-                      <span>{t('admin.checklists.field.weight', 'Weight')}</span>
+                      {scoringMode === 'sum_points' && <span title={t('admin.checklists.scaleSwitch.pointsHint', 'Result = earned points / maximum; the checklist is passed at the pass threshold.')}>{t('admin.checklists.field.points', 'Points')}</span>}
+                      <span title={t('admin.checklists.scaleSwitch.weightHint', 'Weight multiplies the points of the criterion and its maximum: weight 3 makes the criterion three times as important.')}>{t('admin.checklists.field.weight', 'Weight')}</span>
                       <span>{t('admin.checklists.criteriaTable.required', 'Required')}</span>
                       <span>{t('admin.checklists.criteriaTable.photo', 'Photo')}</span>
                       <span className="admin-criteria-row__menu" aria-hidden="true" />
@@ -634,29 +657,48 @@ export function ChecklistBuilder({
                           onCommit={(text) => persistItem(item.id, { text })}
                           t={t}
                         />
-                        <div className="admin-criteria-cell">
-                          <span aria-hidden="true">{t('admin.checklists.field.scale', 'Scale')}</span>
-                          <select
-                            className="admin-criteria-row__scale"
-                            value={item.scaleId ?? ''}
-                            onChange={(e) => {
-                              if (e.target.value === CREATE_SCALE_OPTION) {
-                                setScaleCreateForItemId(item.id);
-                                return;
-                              }
-                              void persistItem(item.id, { scaleId: e.target.value || null });
-                            }}
-                            title={describeScaleLevels(scales.find((s) => s.id === item.scaleId)?.levels ?? [])}
-                            aria-label={t('admin.checklists.field.scale', 'Scale')}
-                          >
-                            <option value={CREATE_SCALE_OPTION}>+ {t('admin.checklists.scaleManager.createOption', 'Create scale')}</option>
-                            <option value="">{t('admin.checklists.noScale', 'No scale')}</option>
-                            {scales.filter((s) => s.status === 'active' || s.id === item.scaleId).map((s) => (
-                              <option key={s.id} value={s.id}>{s.name}</option>
-                            ))}
-                          </select>
+                        <div className="admin-criteria-cell admin-criteria-cell--scale">
+                          <label className="admin-criteria-scale-switch">
+                            <input
+                              className="admin-switch"
+                              type="checkbox"
+                              role="switch"
+                              checked={!!item.scaleId}
+                              disabled={!canEdit}
+                              onChange={(e) => void setItemScaleEnabled(item, e.target.checked)}
+                              aria-label={t('admin.checklists.scaleSwitch.label', 'Scale: {{name}}', { name: item.text })}
+                            />
+                            <span aria-hidden="true">{t('admin.checklists.field.scale', 'Scale')}</span>
+                          </label>
+                          {item.scaleId && (
+                            <select
+                              className="admin-criteria-row__scale"
+                              value={item.scaleId}
+                              disabled={!canEdit}
+                              onChange={(e) => {
+                                if (e.target.value === CREATE_SCALE_OPTION) {
+                                  setScaleCreateForItemId(item.id);
+                                  return;
+                                }
+                                void persistItem(item.id, { scaleId: e.target.value });
+                              }}
+                              title={describeScaleLevels(scales.find((s) => s.id === item.scaleId)?.levels ?? [])}
+                              aria-label={t('admin.checklists.scaleSwitch.choose', 'Scale of the criterion: {{name}}', { name: item.text })}
+                            >
+                              <option value={CREATE_SCALE_OPTION}>+ {t('admin.checklists.scaleManager.createOption', 'Create scale')}</option>
+                              {scales.filter((s) => s.status === 'active' || s.id === item.scaleId).map((s) => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                              ))}
+                            </select>
+                          )}
                         </div>
-                        {scoringMode === 'sum_points' && (
+                        {scoringMode === 'sum_points' && item.scaleId && (
+                          <div className="admin-criteria-cell admin-criteria-cell--points-from-scale" title={t('admin.checklists.scaleSwitch.pointsFromScale', 'Points come from the levels of the scale')}>
+                            <span aria-hidden="true">{t('admin.checklists.field.points', 'Points')}</span>
+                            <span>{t('admin.checklists.scaleSwitch.fromScale', 'from scale')}</span>
+                          </div>
+                        )}
+                        {scoringMode === 'sum_points' && !item.scaleId && (
                           <div className="admin-criteria-cell">
                             <span aria-hidden="true">{t('admin.checklists.field.points', 'Points')}</span>
                             <input
@@ -679,7 +721,7 @@ export function ChecklistBuilder({
                             onChange={(e) => updateItemLocally(item.id, { weight: Number(e.target.value) })}
                             onBlur={(e) => void persistItem(item.id, { weight: Number(e.target.value) })}
                             aria-label={t('admin.checklists.field.weight', 'Weight')}
-                            title={t('admin.checklists.field.weight', 'Weight')}
+                            title={t('admin.checklists.scaleSwitch.weightHint', 'Weight multiplies the points of the criterion and its maximum: weight 3 makes the criterion three times as important.')}
                           />
                         </div>
                         <label className="admin-criteria-cell">

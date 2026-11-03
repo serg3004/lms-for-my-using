@@ -2315,3 +2315,12 @@
 .checklist-library__folder { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
 .checklist-library__open { border: 0; background: transparent; padding: 0; min-height: 44px; font: inherit; font-weight: 600; color: var(--color-primary); text-align: start; cursor: pointer; overflow-wrap: anywhere; }
 .checklist-library__open:hover { text-decoration: underline; }
+
+/* PR 414: the scale switch and the bulk buttons. */
+.admin-group-card__bulk,
+.admin-criteria-scale-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}

@@ -1723,6 +1723,16 @@
         "saved": "Saved",
         "failed": "Unable to save the name.",
         "retry": "Retry"
+      },
+      "scaleSwitch": {
+        "enableAll": "Enable scale for all criteria",
+        "disableAll": "Disable scale for all",
+        "label": "Scale: {{name}}",
+        "choose": "Scale of the criterion: {{name}}",
+        "pointsFromScale": "Points come from the levels of the scale",
+        "fromScale": "from scale",
+        "weightHint": "Weight multiplies the points of the criterion and its maximum: weight 3 makes the criterion three times as important.",
+        "pointsHint": "Result = earned points / maximum; the checklist is passed at the pass threshold."
       }
     },
     "orgTools": {

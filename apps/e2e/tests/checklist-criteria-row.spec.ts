@@ -49,7 +49,7 @@ test.describe('Checklist editor: criterion row (PR 403)', () => {
 
         const cells = await page.locator('.admin-criteria-row:not(.admin-criteria-row--head)').nth(1).evaluate((row) => {
           const r = (selector: string) => { const e = row.querySelector(selector) as HTMLElement | null; if (!e) return null; const b = e.getBoundingClientRect(); return { left: b.left, right: b.right, width: b.width, height: b.height, scrollHeight: e.scrollHeight, clientHeight: e.clientHeight }; };
-          return { text: r('textarea'), scale: r('select'), points: r('.admin-criteria-row__points'), weight: r('.admin-criteria-row__weight'), menu: r('.admin-criteria-row__menu'), rowRight: row.getBoundingClientRect().right };
+          return { text: r('textarea'), scale: r('.admin-criteria-cell--scale'), points: r('.admin-criteria-row__points'), weight: r('.admin-criteria-row__weight'), menu: r('.admin-criteria-row__menu'), rowRight: row.getBoundingClientRect().right };
         });
         // The long text is never clipped: no hidden overflow inside its field.
         expect(cells.text!.scrollHeight).toBeLessThanOrEqual(cells.text!.clientHeight + 2);

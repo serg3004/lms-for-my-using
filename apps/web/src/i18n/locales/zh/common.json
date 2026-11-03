@@ -1723,6 +1723,16 @@
         "saved": "已保存",
         "failed": "无法保存名称。",
         "retry": "重试"
+      },
+      "scaleSwitch": {
+        "enableAll": "为所有标准启用量表",
+        "disableAll": "为所有标准关闭量表",
+        "label": "量表：{{name}}",
+        "choose": "标准的量表：{{name}}",
+        "pointsFromScale": "分数来自量表等级",
+        "fromScale": "按量表",
+        "weightHint": "权重会乘以标准的分数及其最高分：权重 3 使该标准重要三倍。",
+        "pointsHint": "结果 = 得分 / 最高分；达到及格线即通过。"
       }
     },
     "orgTools": {

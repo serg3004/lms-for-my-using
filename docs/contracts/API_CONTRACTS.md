@@ -624,7 +624,9 @@ PR 358 scoring/completion details:
 - `POST /checklists/:checklistId/items` with omitted `scaleId` idempotently obtains the tenant's
   protected Yes/No scale and stores its ID. First creation follows the caller's locale. Explicit
   `scaleId: null` opts into the legacy checklist scoring; existing criteria, template/group copies
-  and snapshots are not backfilled. `PATCH` omission retains the current reference.
+  and snapshots are not backfilled. PR 414: the checklist editor always sends `scaleId: null` when it
+  adds a criterion (the scale is a per-criterion switch there), so criteria created in the editor have
+  no scale until the switch is turned on; the API default for an omitted `scaleId` is unchanged. `PATCH` omission retains the current reference.
 - Comment/photo metadata-only result saves retain the answer, points and skip/review state; a
   comment before an answer does not invent a selected level. Answer changes still reset review.
 - No migration, background job or read-time recomputation rewrites completed scores or reports.
