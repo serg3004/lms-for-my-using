@@ -1758,6 +1758,15 @@
         "summaryAlways": "解释：始终",
         "summaryOnAnswers": "解释：{{answers}}",
         "summaryRequired": "必填"
+      },
+      "unsavedBar": "有未保存的更改",
+      "discardChanges": "放弃",
+      "leave": {
+        "title": "未保存的更改",
+        "message": "清单设置有未保存的更改。离开前要保存吗？",
+        "save": "保存",
+        "discard": "不保存",
+        "stay": "留下"
       }
     },
     "orgTools": {
