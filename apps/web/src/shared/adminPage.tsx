@@ -513,6 +513,9 @@ type ConfirmDialogProps = {
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: 'danger' | 'default';
+  /** A third choice between "stay" and "confirm" (e.g. "Don't save"); shown only when both are given. */
+  secondaryLabel?: string;
+  onSecondary?: () => void;
 };
 
 export function ConfirmDialog({
@@ -524,6 +527,8 @@ export function ConfirmDialog({
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   variant = 'default',
+  secondaryLabel,
+  onSecondary,
 }: ConfirmDialogProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const confirmRef = useRef<HTMLButtonElement>(null);
@@ -564,6 +569,11 @@ export function ConfirmDialog({
           <button className="admin-btn admin-btn--secondary" onClick={onCancel} type="button">
             {cancelLabel}
           </button>
+          {secondaryLabel && onSecondary && (
+            <button className="admin-btn admin-btn--secondary" onClick={onSecondary} type="button">
+              {secondaryLabel}
+            </button>
+          )}
           <button
             className={`admin-btn ${variant === 'danger' ? 'admin-btn--danger' : 'admin-btn--primary'}`}
             onClick={onConfirm}

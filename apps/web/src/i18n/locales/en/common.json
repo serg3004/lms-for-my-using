@@ -1758,6 +1758,15 @@
         "summaryAlways": "Explanation: always",
         "summaryOnAnswers": "Explanation: {{answers}}",
         "summaryRequired": "required"
+      },
+      "unsavedBar": "There are unsaved changes",
+      "discardChanges": "Discard",
+      "leave": {
+        "title": "Unsaved changes",
+        "message": "The checklist settings have unsaved changes. Save them before leaving?",
+        "save": "Save",
+        "discard": "Don’t save",
+        "stay": "Stay"
       }
     },
     "orgTools": {

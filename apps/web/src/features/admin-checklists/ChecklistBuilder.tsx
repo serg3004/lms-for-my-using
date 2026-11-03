@@ -1,6 +1,6 @@
 import type { FeedbackLayout } from '@lms/shared/checklist-feedback';
 import { FeedbackBuilder } from '../checklist-feedback/FeedbackBuilder.js';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useOptionalSession } from '../../shared/session.js';
 import type { TFunction } from 'i18next';
@@ -166,22 +166,83 @@ export function ChecklistBuilder({
   }, [checklist.id]);
   const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, feedbackLayout, feedbackEnabled, feedbackRequired, allowSkipAll, accessMode, pinned, allowEditByAll: canManageEditAccess ? allowEditByAll : undefined, moduleSettings });
   const hasUnsavedChanges = JSON.stringify(settingsPayload) !== savedSnapshot;
-  async function saveSettings() {
+  function settingsErrorMessage(error: unknown) {
+    return error instanceof ApiClientError && error.status === 409
+      ? t('admin.checklists.pinnedLimit', 'Eight checklists are already pinned. Unpin one of them in its settings, then try again.')
+      : error instanceof ApiClientError ? error.message : t('admin.checklists.saveError', 'Unable to save checklist.');
+  }
+  /** PR 417: where a failed save shows its error: next to the Save button, or in the top bar next to Publish. */
+  const [headerError, setHeaderError] = useState<string | null>(null);
+  async function saveSettings(origin: 'form' | 'header' = 'form'): Promise<boolean> {
     setSaveState({ status: 'saving' });
+    setHeaderError(null);
     try {
       await updateChecklist(checklist.id, settingsPayload);
       setSavedSnapshot(JSON.stringify(settingsPayload));
       setSaveState({ status: 'idle' });
       setSavedAt(new Date());
       await onReload();
+      return true;
     } catch (error) {
-      setSaveState({
-        status: 'error',
-        message: error instanceof ApiClientError && error.status === 409
-          ? t('admin.checklists.pinnedLimit', 'Eight checklists are already pinned. Unpin one of them in its settings, then try again.')
-          : error instanceof ApiClientError ? error.message : t('admin.checklists.saveError', 'Unable to save checklist.'),
-      });
+      if (origin === 'header') {
+        setSaveState({ status: 'idle' });
+        setHeaderError(settingsErrorMessage(error));
+      } else {
+        setSaveState({ status: 'error', message: settingsErrorMessage(error) });
+      }
+      return false;
     }
+  }
+  /** PR 417: "Cancel" in the unsaved bar: every settings field returns to what is stored on the server. */
+  function discardChanges() {
+    setTitle(checklist.title);
+    setDescription(checklist.description ?? '');
+    setScoringMode(checklist.scoringMode);
+    setPassThreshold(checklist.passThreshold);
+    setRequiresReview(checklist.requiresReview);
+    setAllowFinishIncomplete(checklist.allowFinishIncomplete ?? false);
+    setForbidGalleryPhotos(checklist.forbidGalleryPhotos ?? false);
+    setFeedbackLayout(checklist.feedbackLayout ?? null);
+    setFeedbackEnabled(checklist.feedbackEnabled ?? true);
+    setFeedbackRequired(checklist.feedbackRequired ?? false);
+    setAllowSkipAll(checklist.allowSkipAll ?? false);
+    setAccessMode(checklist.accessMode ?? 'assigned');
+    setPinned(checklist.pinned ?? false);
+    setAllowEditByAll(checklist.allowEditByAll ?? true);
+    setScaleLevels(checklist.scaleLevels ?? createDefaultScale(t));
+    setDefaultLocationCapturePolicy(checklist.defaultLocationCapturePolicy ?? '');
+    setPreSessionVisibility(checklist.preSessionVisibility ?? 'structure_only');
+    setModuleSettings(storedModuleSettings);
+    setSaveState({ status: 'idle' });
+    setHeaderError(null);
+  }
+  // PR 417: leaving with unsaved settings (the back link, a menu link, closing the tab) asks what to do.
+  const unsavedGuard = hasUnsavedChanges && canEdit;
+  const [leave, setLeave] = useState<{ proceed: () => void } | null>(null);
+  const bypassLeaveGuard = useRef(false);
+  useEffect(() => {
+    if (!unsavedGuard) return undefined;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    const guard = (event: MouseEvent) => {
+      if (bypassLeaveGuard.current || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) return;
+      const link = (event.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
+      if (!link || link.getAttribute('href')?.startsWith('#') || link.target === '_blank') return;
+      event.preventDefault();
+      event.stopPropagation();
+      setLeave({ proceed: () => { bypassLeaveGuard.current = true; link.click(); bypassLeaveGuard.current = false; } });
+    };
+    window.addEventListener('beforeunload', warn);
+    document.addEventListener('click', guard, true);
+    return () => { window.removeEventListener('beforeunload', warn); document.removeEventListener('click', guard, true); };
+  }, [unsavedGuard]);
+  function requestBack() {
+    if (unsavedGuard) setLeave({ proceed: onBack });
+    else onBack();
+  }
+  /** PR 417: Preview shows the saved sheet, so unsaved settings are saved first; a failed save keeps the editor as it is. */
+  async function openPreview() {
+    if (hasUnsavedChanges && canEdit && !(await saveSettings('header'))) return;
+    setPreviewOpen(true);
   }
   async function reloadScales() {
     const result = await listChecklistScales().catch(() => scales);
@@ -296,12 +357,16 @@ export function ChecklistBuilder({
     setContextFields(next);
     await persistContextFields(next);
   }
+  /** PR 417: unsaved settings travel in the same request as the status, so the sheet is never published with old settings. */
   async function publish() {
+    setHeaderError(null);
+    const withSettings = hasUnsavedChanges && canEdit;
     try {
-      await updateChecklist(checklist.id, { status: 'published' });
+      await updateChecklist(checklist.id, withSettings ? { ...settingsPayload, status: 'published' } : { status: 'published' });
+      if (withSettings) setSavedSnapshot(JSON.stringify(settingsPayload));
       await onReload();
     } catch (error) {
-      setSaveState({ status: 'error', message: error instanceof ApiClientError ? error.message : t('admin.checklists.publishError', 'Unable to publish checklist.') });
+      setHeaderError(error instanceof ApiClientError ? (error.status === 409 ? settingsErrorMessage(error) : error.message) : t('admin.checklists.publishError', 'Unable to publish checklist.'));
     }
   }
 
@@ -396,7 +461,7 @@ export function ChecklistBuilder({
   const previewItems = items.map((item) => ({ ...item, scale: scales.find((scale) => scale.id === item.scaleId) ?? item.scale }));
   return (
     <div className="admin-builder">
-      <button type="button" className="admin-back-link" onClick={onBack}>
+      <button type="button" className="admin-back-link" onClick={requestBack}>
         ← {t('admin.checklists.backToList', 'All checklists')}
       </button>
       {!canEdit && <p className="ui-state ui-state--warning admin-inline-banner" role="status">{t('admin.checklists.readOnlyNotice', 'Only the creator or an administrator can edit this checklist. You can view it.')}</p>}
@@ -425,9 +490,7 @@ export function ChecklistBuilder({
               variant="secondary"
               disabled={items.length === 0}
               aria-describedby={items.length === 0 ? 'checklist-needs-items' : undefined}
-              onClick={() => {
-                setPreviewOpen(true);
-              }}
+              onClick={() => void openPreview()}
             >
               {t('admin.checklists.preview', 'Preview')}
             </Button>
@@ -451,6 +514,16 @@ export function ChecklistBuilder({
           </div>
         }
       />
+      {unsavedGuard && (
+        <div className="ui-state ui-state--warning admin-inline-banner" role="status" data-testid="checklist-unsaved-bar" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+          <span style={{ marginRight: 'auto' }}>{t('admin.checklists.unsavedBar', 'There are unsaved changes')}</span>
+          <Button type="button" variant="secondary" size="sm" disabled={saveState.status === 'saving'} onClick={discardChanges}>{t('admin.checklists.discardChanges', 'Discard')}</Button>
+          <Button type="button" variant="primary" size="sm" disabled={saveState.status === 'saving'} onClick={() => void saveSettings('header')}>
+            {saveState.status === 'saving' ? t('admin.checklists.saving', 'Saving...') : t('admin.checklists.save', 'Save')}
+          </Button>
+        </div>
+      )}
+      {headerError && <p className="learner-quiz__submit-error" role="alert">{headerError}</p>}
       {templateState === 'saved' && <p role="status" className="admin-form__hint">{t('admin.checklists.templates.saved', 'Saved as a template of the organization.')}</p>}
       {templateState === 'error' && <p role="alert" className="learner-quiz__submit-error">{t('admin.checklists.templates.saveError', 'Unable to save the template.')}</p>}
       {items.length === 0 && (
@@ -952,6 +1025,21 @@ export function ChecklistBuilder({
           </ChecklistSettingsForm>
         </div>
       </div>
+      <ConfirmDialog
+        open={leave !== null}
+        title={t('admin.checklists.leave.title', 'Unsaved changes')}
+        message={t('admin.checklists.leave.message', 'The checklist settings have unsaved changes. Save them before leaving?')}
+        confirmLabel={t('admin.checklists.leave.save', 'Save')}
+        secondaryLabel={t('admin.checklists.leave.discard', 'Don’t save')}
+        cancelLabel={t('admin.checklists.leave.stay', 'Stay')}
+        onCancel={() => setLeave(null)}
+        onSecondary={() => { const target = leave; setLeave(null); if (target) { bypassLeaveGuard.current = true; target.proceed(); bypassLeaveGuard.current = false; } }}
+        onConfirm={() => {
+          const target = leave;
+          setLeave(null);
+          void saveSettings('header').then((ok) => { if (ok && target) target.proceed(); });
+        }}
+      />
       <ConfirmDialog
         open={contextFieldToDelete !== null}
         title={t('admin.checklists.contextFieldDeleteTitle', 'Delete field')}

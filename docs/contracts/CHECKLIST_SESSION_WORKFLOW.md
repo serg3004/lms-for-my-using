@@ -278,3 +278,14 @@ Limits: at most 40 photos (JPEG and PNG, up to 4 MB each and 16 MB in total; the
 note "photos not included"), 30 seconds for the whole build (504 `GatewayTimeoutException`) and 25 MB
 for the file (413 `PayloadTooLargeException`). The web button "Download PDF" sits next to "Print" and
 shows the server's message on failure.
+
+## Checklist editor: what is saved at once and what by the button (PR 417)
+
+Criteria, groups, the fields of "General information", photos and scales are saved at once (each change is its own request).
+The title, description, scoring, threshold, access and "Module settings" are the sheet **settings** and are saved by **Save**.
+To keep typed settings from being lost:
+
+- **Publish** and **Preview** first save unsaved settings; Publish sends them together with `status: 'published'` in one `PATCH /checklists/:id`, so a sheet is never published with old settings. If the request fails, the sheet is not published (or the preview does not open), the server message is shown under the page header, and the form keeps what was typed;
+- while the settings differ from the saved ones, a bar "There are unsaved changes" with **Save** and **Discard** (restores the stored values) is shown above the editor;
+- leaving with unsaved settings (the "All checklists" link, a link of the menu, closing the tab) asks "Save / Don’t save / Stay"; an in-app link is intercepted in the capture phase and followed after the choice, the tab close uses the browser's own prompt;
+- settings are not autosaved; only people who may edit the sheet see the bar and the prompt.
