@@ -43,7 +43,7 @@ test.describe('Checklist module settings block (PR 397)', () => {
     await expect(thresholds).toBeChecked();
     await thresholds.uncheck();
     await page.getByLabel('Порог высокого выполнения').fill('70');
-    await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
+    await page.getByTestId('checklist-unsaved-bar').getByRole('button', { name: 'Сохранить', exact: true }).click();
     await expect.poll(() => saved.length).toBe(1);
     expect(saved[0]!['moduleSettings']).toEqual({ thresholds: { high: 70, low: 40 }, resultColors: null, feedbackVisibility: null, observers: null });
   });
