@@ -59,11 +59,9 @@ describe('ChecklistBuilder: create a scale from the criterion dropdown (PR 343)'
       root?.render(<ChecklistBuilder checklist={checklist} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale' }} onBack={() => {}} onReload={async () => {}} t={t} />);
     });
 
-    const select = container.querySelector<HTMLSelectElement>('select.admin-criteria-row__scale')!;
-    await act(async () => {
-      select.value = '__create_scale__';
-      select.dispatchEvent(new Event('change', { bubbles: true }));
-    });
+    // PR 414: the scale is a switch; with no scale to pick, turning it on opens the "create a scale" editor.
+    const toggle = container.querySelector<HTMLInputElement>('input[role="switch"]')!;
+    await act(async () => { toggle.click(); });
 
     const dialog = [...document.querySelectorAll<HTMLElement>('dialog[open]')].find((d) => d.querySelector('input[aria-label="Название уровня 1"]'))!;
     expect(dialog).toBeTruthy();
@@ -85,16 +83,20 @@ describe('ChecklistBuilder: create a scale from the criterion dropdown (PR 343)'
 });
 
 
-it('PR 358: keeps the server-selected default scale and uses it in a sum-points preview', async () => {
+it('PR 358/414: a new criterion has no scale; the switch gives it the default scale, used in a sum-points preview', async () => {
   const scale = { id: 'default-scale', name: 'Да/Нет', status: 'active', isDefault: true, levels: [{ value: 1, label: 'Нет', score: 0 }, { value: 2, label: 'Да', score: 100 }] };
   api.listChecklistItemGroups.mockResolvedValue([]);
   api.listChecklistScales.mockResolvedValue([scale]);
-  api.createChecklistItem.mockResolvedValue({ ...item, id: 'new', scaleId: scale.id });
+  api.createChecklistItem.mockResolvedValue({ ...item, id: 'new', scaleId: null });
+  api.updateChecklistItem.mockResolvedValue({ ...item, id: 'new', scaleId: scale.id });
   const container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container);
   await act(async () => root?.render(<ChecklistBuilder checklist={{ ...checklist, items: [] }} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale' }} onBack={() => {}} onReload={async () => {}} t={i18n.t.bind(i18n) as never} />));
   const button = (text: string) => [...container.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes(text))!;
   await act(async () => button('Критерий').click());
-  expect(api.createChecklistItem).toHaveBeenCalledWith('c1', expect.not.objectContaining({ scaleId: null }));
+  expect(api.createChecklistItem).toHaveBeenCalledWith('c1', expect.objectContaining({ scaleId: null }));
+  expect(container.querySelector('select.admin-criteria-row__scale')).toBeNull();
+  await act(async () => container.querySelector<HTMLInputElement>('input[role="switch"]')!.click());
+  expect(api.updateChecklistItem).toHaveBeenCalledWith('new', { scaleId: 'default-scale' });
   expect(container.querySelector<HTMLSelectElement>('select.admin-criteria-row__scale')?.value).toBe('default-scale');
   await act(async () => button('Предпросмотр').click());
   const dialog = document.querySelector('dialog.admin-preview-overlay[open]')!;

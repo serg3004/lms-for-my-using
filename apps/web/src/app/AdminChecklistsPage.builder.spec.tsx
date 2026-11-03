@@ -206,5 +206,24 @@ describe('ChecklistBuilder settings column (PR 340)', () => {
     expect(html).toContain('A criterion can also use its own ready-made scale');
     expect(html).toContain('<p role="status" class="admin-form__hint">All changes are saved.</p>');
   });
+
+  it('PR 414: the scale is a switch; the choice and the "from scale" points appear only when it is on', () => {
+    const withScale = { ...checklist, scoringMode: 'sum_points' as const, items: [
+      { ...checklist.items[0]!, scaleId: 'scale-1' },
+      { ...checklist.items[1]!, scaleId: null },
+    ] };
+    const html = renderToStaticMarkup(
+      <ChecklistBuilder checklist={withScale} statusLabels={statusLabels} scoringModeLabels={scoringModeLabels} onBack={() => {}} onReload={async () => {}} t={((key: string, fallback?: string, options?: Record<string, string>) => (fallback ?? key).replace('{{name}}', options?.name ?? '')) as never} />,
+    );
+    expect(html.match(/role="switch"/g)).toHaveLength(2);
+    expect(html).toContain('aria-label="Scale: Работа с кассой"');
+    expect(html.match(/<input[^>]*role="switch"[^>]*>/g)!.filter((tag) => tag.includes('checked=""'))).toHaveLength(1);
+    // one select (the criterion with a scale) and one "from scale" cell; the other keeps the Points field.
+    expect(html.match(/class="admin-criteria-row__scale"/g)).toHaveLength(1);
+    expect(html.match(/admin-criteria-cell--points-from-scale/g)).toHaveLength(1);
+    expect(html.match(/class="admin-criteria-row__points"/g)).toHaveLength(1);
+    expect(html).toContain('Enable scale for all criteria');
+    expect(html).toContain('Disable scale for all');
+  });
 });
 
