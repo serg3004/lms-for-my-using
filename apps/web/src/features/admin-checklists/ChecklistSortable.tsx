@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type CSSProperties, type HTMLAttributes, type ReactNode } from 'react';
 import {
   DndContext,
   KeyboardSensor,
@@ -31,7 +31,7 @@ export function DragHandle({ handle, label }: { handle: HandleProps; label: stri
   return <button aria-label={label} className="admin-drag" type="button" {...handle}>⋮⋮</button>;
 }
 
-export function SortableBox({ id, className, role, children }: { id: string; className: string; role?: string; children: (handle: HandleProps) => ReactNode }) {
+export function SortableBox({ id, className, role, extra, children }: { id: string; className: string; role?: string; /** PR 413: more handlers of the box (the context menu). */ extra?: HTMLAttributes<HTMLDivElement>; children: (handle: HandleProps) => ReactNode }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style: CSSProperties = {
     transform: CSS.Translate.toString(transform),
@@ -39,7 +39,7 @@ export function SortableBox({ id, className, role, children }: { id: string; cla
     ...(isDragging ? { opacity: 0.6, position: 'relative', zIndex: 2, boxShadow: '0 4px 16px rgb(0 0 0 / .2)' } : {}),
   };
   return (
-    <div className={className} ref={setNodeRef} role={role} style={style}>
+    <div className={className} ref={setNodeRef} role={role} style={style} {...extra}>
       {children({ ref: setActivatorNodeRef, ...attributes, ...listeners })}
     </div>
   );

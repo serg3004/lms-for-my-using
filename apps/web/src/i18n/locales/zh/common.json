@@ -1712,6 +1712,17 @@
         "choose": "选择此文件夹",
         "newInside": "在其中新建文件夹",
         "newFolder": "新建文件夹"
+      },
+      "rename": {
+        "action": "重命名",
+        "namedGroup": "重命名分组：{{name}}",
+        "required": "请输入名称",
+        "tooLong": "不超过 {{max}} 个字符",
+        "duplicateGroup": "已有同名分组",
+        "saving": "正在保存…",
+        "saved": "已保存",
+        "failed": "无法保存名称。",
+        "retry": "重试"
       }
     },
     "orgTools": {

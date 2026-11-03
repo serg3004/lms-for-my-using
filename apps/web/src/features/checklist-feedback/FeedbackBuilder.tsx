@@ -5,8 +5,24 @@ import { collectFeedbackFields, defaultFeedbackLayout, type FeedbackFieldDef, ty
 import { listChecklistAnswerSets } from '../../shared/api/checklists.js';
 import type { ChecklistAnswerSet } from '../../shared/api/types.js';
 import { Button, Input, Menu } from '../../shared/ui.js';
+import { focusNameField } from '../admin-checklists/InlineNameField.js';
 import { OrderedList } from './OrderedList.js';
 import { feedbackLabels } from './FeedbackFields.js';
+/**
+ * PR 413: the name of a feedback field. The text is kept while it is retyped: erasing it does not bring the standard name
+ * (a built-in field such as "Zones") back at once; the standard name returns only when the field is left empty.
+ */
+function FieldTitleInput({ id, label, title, fallback, onTitle, t }: { id: string; label: string; title: string; fallback: string; onTitle: (title: string) => void; t: (key: string, fallback: string) => string }) {
+  const [draft, setDraft] = useState(title || fallback);
+  const [focused, setFocused] = useState(false);
+  useEffect(() => { if (!focused) setDraft(title || fallback); }, [title, fallback, focused]);
+  const unnamed = !focused && !draft.trim();
+  return <Input id={id} label={label} maxLength={255} value={draft} error={unnamed ? t('admin.checklists.rename.required', 'Enter a name') : undefined}
+    onFocus={() => setFocused(true)}
+    onChange={(event) => { setDraft(event.target.value); onTitle(event.target.value); }}
+    onBlur={() => { setFocused(false); if (!draft.trim() && fallback) { setDraft(fallback); onTitle(''); } }} />;
+}
+
 export function FeedbackBuilder({ value, onChange, required }: { value: FeedbackLayout | null; onChange: (layout: FeedbackLayout | null) => void; required: boolean }) {
   const { t } = useTranslation(), labels = feedbackLabels(t);
   const roles = useOptionalSession()?.currentUser?.roles ?? [];
@@ -28,7 +44,7 @@ export function FeedbackBuilder({ value, onChange, required }: { value: Feedback
       <OrderedList items={node.fields} onChange={(fields) => container(parentId, (current) => ({ ...current, fields }))}>{(field) => {
         function patch(value: Partial<FeedbackFieldDef>) { container(parentId, (current) => ({ ...current, fields: current.fields.map((item) => item.id === field.id ? { ...field, ...value } : item) })); }
         return <div style={{ display: 'grid', gap: 10 }}>
-          <Input label={t('feedbackBuilder.fieldName')} maxLength={255} value={field.title || (field.builtin ? labels[field.builtin] : '')} onChange={(event) => patch({ title: event.target.value })} />
+          <FieldTitleInput id={`feedback-field-${field.id}`} label={t('feedbackBuilder.fieldName')} title={field.title} fallback={field.builtin ? labels[field.builtin] : ''} onTitle={(title) => patch({ title })} t={t as never} />
           <label>{t('feedbackBuilder.type')} <select value={field.kind} onChange={(event) => { const kind = event.target.value as FeedbackFieldDef['kind']; container(parentId, (current) => ({ ...current, fields: current.fields.map((item) => item.id !== field.id ? item : { id: item.id, title: item.title || (item.builtin ? labels[item.builtin] : t('feedbackBuilder.field')), required: item.required, kind, ...(kind === 'choice' ? { answerSetId: available.find((set) => set.status === 'active')?.id, multiple: false } : {}) }) })); }}><option value="text">{t('feedbackBuilder.text')}</option><option value="choice">{t('feedbackBuilder.choice')}</option></select></label>
           {field.kind === 'choice' && <>
             <label>{t('feedbackBuilder.answerSet')} <select value={field.answerSetId ?? ''} onChange={(event) => patch({ answerSetId: event.target.value })}><option value="">{t('feedbackBuilder.selectSet')}</option>{available.map((set) => <option key={set.id} value={set.id}>{set.name}{set.status === 'archived' ? ` · ${t('admin.checklists.scaleManager.archived')}` : ''}</option>)}</select></label>
@@ -37,12 +53,13 @@ export function FeedbackBuilder({ value, onChange, required }: { value: Feedback
             <label>{t('feedbackBuilder.selection')} <select value={field.multiple ? 'multiple' : 'single'} onChange={(event) => patch({ multiple: event.target.value === 'multiple' })}><option value="single">{t('feedbackBuilder.single')}</option><option value="multiple">{t('feedbackBuilder.multiple')}</option></select></label>
           </>}
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44 }}><input type="checkbox" style={{ width: 'auto' }} checked={field.required} onChange={(event) => patch({ required: event.target.checked })} />{t('feedbackBuilder.required')}</label>
-          <Menu label={t('feedbackBuilder.actions')}><Button type="button" variant="secondary" disabled={fieldsCount <= 1} onClick={() => container(parentId, (current) => ({ ...current, fields: current.fields.filter(({ id }) => id !== field.id) }))}>{t('admin.checklists.scaleManager.delete')}</Button></Menu>
+          <Menu label={t('feedbackBuilder.actions')}><Button type="button" variant="secondary" onClick={() => focusNameField(`feedback-field-${field.id}`)}>{t('admin.checklists.rename.action', 'Rename')}</Button><Button type="button" variant="secondary" disabled={fieldsCount <= 1} onClick={() => container(parentId, (current) => ({ ...current, fields: current.fields.filter(({ id }) => id !== field.id) }))}>{t('admin.checklists.scaleManager.delete')}</Button></Menu>
         </div>;
       }}</OrderedList>
       <Button type="button" variant="secondary" disabled={fieldsCount >= 30} onClick={() => container(parentId, (current) => ({ ...current, fields: [...current.fields, { id: crypto.randomUUID(), kind: 'text', title: t('feedbackBuilder.field'), required: false }] }))}>+ {t('feedbackBuilder.addField')}</Button>
       <OrderedList items={node.sections} onChange={(sections) => container(parentId, (current) => ({ ...current, sections }))}>{(section) => <section aria-label={section.title}>
-        <Input label={t('feedbackBuilder.sectionName')} maxLength={255} value={section.title} onChange={(event) => container(section.id, (current) => ({ ...current, title: event.target.value }))} />
+        <Input id={`feedback-section-${section.id}`} label={t('feedbackBuilder.sectionName')} maxLength={255} value={section.title} onChange={(event) => container(section.id, (current) => ({ ...current, title: event.target.value }))} />
+        <Button type="button" variant="secondary" onClick={() => focusNameField(`feedback-section-${section.id}`)}>{t('admin.checklists.rename.action', 'Rename')}</Button>
         <Button type="button" variant="secondary" disabled={collectFeedbackFields({ fields: [], sections: [section] }).length === fieldsCount} onClick={() => container(parentId, (current) => ({ ...current, sections: current.sections.filter(({ id }) => id !== section.id) }))}>{t('admin.checklists.scaleManager.delete')}</Button>
         {render(section, section.id, depth + 1)}
       </section>}</OrderedList>
@@ -50,8 +67,10 @@ export function FeedbackBuilder({ value, onChange, required }: { value: Feedback
     </div>;
   }
   return <section className="admin-card admin-feedback-block" aria-labelledby="checklist-feedback-title">
-    <h3 id="checklist-feedback-title">{t('admin.checklists.feedbackSectionTitle')}</h3>
-    <Input label={t('feedbackBuilder.title')} maxLength={255} value={layout.title ?? t('admin.checklists.feedbackSectionTitle')} onChange={(event) => onChange({ ...layout, title: event.target.value })} />
+    <h3 id="checklist-feedback-title" onDoubleClick={() => focusNameField('feedback-layout-title')}>{layout.title || t('admin.checklists.feedbackSectionTitle')}</h3>
+    <Input id="feedback-layout-title" label={t('feedbackBuilder.title')} maxLength={255} value={layout.title ?? t('admin.checklists.feedbackSectionTitle')} onChange={(event) => onChange({ ...layout, title: event.target.value })}
+      onBlur={(event) => { if (!event.target.value.trim()) onChange({ ...layout, title: t('admin.checklists.feedbackSectionTitle') }); }} />
+    <Button type="button" variant="secondary" onClick={() => focusNameField('feedback-layout-title')}>{t('admin.checklists.rename.action', 'Rename')}</Button>
     {failed && <div role="alert">{t('feedbackBuilder.loadError')} <Button type="button" onClick={() => setRetry((value) => value + 1)}>{t('longread.retry')}</Button></div>}
     {render(layout, null, 0)}
     <Button type="button" variant="secondary" onClick={() => onChange(null)}>{t('feedbackBuilder.reset')}</Button>

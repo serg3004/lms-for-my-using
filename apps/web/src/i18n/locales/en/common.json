@@ -1712,6 +1712,17 @@
         "choose": "Choose this folder",
         "newInside": "New folder inside",
         "newFolder": "New folder"
+      },
+      "rename": {
+        "action": "Rename",
+        "namedGroup": "Rename group: {{name}}",
+        "required": "Enter a name",
+        "tooLong": "No more than {{max}} characters",
+        "duplicateGroup": "A group with this name already exists",
+        "saving": "Saving…",
+        "saved": "Saved",
+        "failed": "Unable to save the name.",
+        "retry": "Retry"
       }
     },
     "orgTools": {
