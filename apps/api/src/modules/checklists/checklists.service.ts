@@ -2126,14 +2126,17 @@ export class ChecklistsService {
 
     const answersCriterion = input.checked !== undefined || input.scaleLevel !== undefined;
     // PR 415: an explanation the criterion requires for this answer must come with it (or already be on file).
-    const existingResult = await this.prisma.checklistItemResult.findUnique({
-      where: { instanceId_itemId: { instanceId, itemId } },
-      select: { checked: true, scaleLevel: true, answerState: true, comment: true },
-    });
-    const nextAnswer = answersCriterion ? { checked: input.checked ?? false, scaleLevel: input.scaleLevel ?? null, answerState: 'answered' } : existingResult ?? undefined;
-    const nextComment = input.comment !== undefined ? input.comment : existingResult?.comment ?? '';
-    if (nextAnswer && isNoteRequired(item, nextAnswer, Boolean(item.scale)) && !nextComment.trim()) {
-      throw new BadRequestException(`An explanation is required for the criterion "${item.text}"`);
+    // Criteria without a rule (all of them before this PR) cost no extra read.
+    if (item.noteRequired === true && item.noteRule && item.noteRule !== 'off') {
+      const existingResult = await this.prisma.checklistItemResult.findUnique({
+        where: { instanceId_itemId: { instanceId, itemId } },
+        select: { checked: true, scaleLevel: true, answerState: true, comment: true },
+      });
+      const nextAnswer = answersCriterion ? { checked: input.checked ?? false, scaleLevel: input.scaleLevel ?? null, answerState: 'answered' } : existingResult ?? undefined;
+      const nextComment = input.comment !== undefined ? input.comment : existingResult?.comment ?? '';
+      if (nextAnswer && isNoteRequired(item, nextAnswer, Boolean(item.scale)) && !nextComment.trim()) {
+        throw new BadRequestException(`An explanation is required for the criterion "${item.text}"`);
+      }
     }
     const points = answersCriterion ? this.computeItemPoints(
       checklist.scoringMode,
