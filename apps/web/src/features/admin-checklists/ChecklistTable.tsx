@@ -20,6 +20,12 @@ export function creatorName(checklist: { creator?: { id?: string; firstName: str
   return name || '—';
 }
 
+/**
+ * PR 411: the blank space under the list also opens the "create" menu. The padding widens the hit area and the equal negative
+ * margin keeps the page layout exactly as it was; later content paints over the padding, so it keeps its own clicks.
+ */
+const EMPTY_AREA_STYLE = { paddingBottom: 'min(40vh, 320px)', marginBottom: 'calc(-1 * min(40vh, 320px))' } as const;
+
 /** PR 408: one row of the library: a folder of the open folder, or a checklist. Folders always come first. */
 export type LibraryRow = { kind: 'folder'; key: string; folder: ChecklistFolder } | { kind: 'sheet'; key: string; checklist: ChecklistSummary };
 
@@ -269,7 +275,7 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
       },
     },
   ] satisfies Column<LibraryRow>[];
-  return <div {...emptyAreaProps} style={{ minHeight: 'min(60vh, 520px)' }}><DataTable label={t('admin.checklists.title', 'Checklists')} columns={columns} rows={libraryRows} rowProps={rowProps}
+  return <div {...emptyAreaProps} style={EMPTY_AREA_STYLE}><DataTable label={t('admin.checklists.title', 'Checklists')} columns={columns} rows={libraryRows} rowProps={rowProps}
     selection={selectedKeys && onSelectionChange ? {
       selectedKeys,
       onChange: onSelectionChange,
