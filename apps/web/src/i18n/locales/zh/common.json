@@ -1733,6 +1733,25 @@
         "fromScale": "按量表",
         "weightHint": "权重会乘以标准的分数及其最高分：权重 3 使该标准重要三倍。",
         "pointsHint": "结果 = 得分 / 最高分；达到及格线即通过。"
+      },
+      "itemDetails": {
+        "action": "说明与解释…",
+        "title": "标准：说明与解释",
+        "descriptionSwitch": "说明（给填写者的提示）",
+        "descriptionLabel": "检查什么、如何评分",
+        "ruleLabel": "解释栏",
+        "ruleOff": "不需要",
+        "ruleAlways": "始终显示",
+        "ruleOnAnswers": "选中答案时显示",
+        "answersLegend": "当答案为以下时显示该栏",
+        "chooseAnswer": "请至少选择一个答案。",
+        "required": "必须填写解释（否则答案不会被接受）",
+        "notTicked": "未完成",
+        "saveFailed": "无法保存。",
+        "summaryDescription": "说明",
+        "summaryAlways": "解释：始终",
+        "summaryOnAnswers": "解释：{{answers}}",
+        "summaryRequired": "必填"
       }
     },
     "orgTools": {
@@ -2817,7 +2836,12 @@
     "finishConfirm": "完成后无法更改答案。",
     "finishConfirmReview": "答案将提交给讲师，之后无法更改。",
     "finishError": "无法完成检查。",
-    "finishCancel": "取消"
+    "finishCancel": "取消",
+    "itemDescription": "说明",
+    "noteRequired": "解释（必填）",
+    "note": "解释",
+    "notePending": "请填写并保存解释：答案会与其一起保存。",
+    "noteSave": "保存解释"
   },
   "checklistReview": {
     "title": "检查清单审核",

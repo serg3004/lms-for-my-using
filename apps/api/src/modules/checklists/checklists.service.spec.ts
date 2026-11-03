@@ -789,3 +789,46 @@ describe('ChecklistsService — skip, weight, and scoring v1 (PR 290)', () => {
     expect(itemA?.answerState).toBe('answered');
   });
 });
+
+describe('ChecklistsService — explanation rule (PR 415)', () => {
+  async function publishedWithItem(rule: { noteRule: 'always' | 'on_answers'; noteAnswers?: string[]; noteRequired: boolean }) {
+    const prisma = createFakePrisma();
+    const service = new ChecklistsService(prisma);
+    const checklist = await service.createChecklist({ organizationId, title: 'Обход зала', scoringMode: 'sum_points', passThreshold: 80, requiresReview: false }, instructorId);
+    const created = await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'Витрина выставлена', points: 10, isRequired: true, photoRequired: false });
+    await service.updateItem(created.id, organizationId, rule);
+    await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
+    const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
+    return { service, instance, itemId: created.id };
+  }
+
+  it('refuses the answer that opens a required explanation until a comment comes with it, and accepts the other answer without one', async () => {
+    const { service, instance, itemId } = await publishedWithItem({ noteRule: 'on_answers', noteAnswers: ['unchecked'], noteRequired: true });
+    await expect(service.submitItemResult(instance.id, itemId, organizationId, learnerId, false, { checked: false })).rejects.toThrow(/explanation is required.*Витрина выставлена/);
+    await service.submitItemResult(instance.id, itemId, organizationId, learnerId, false, { checked: false, comment: 'Нет ценников' });
+    // The explanation cannot be erased while the answer that needs it stands.
+    await expect(service.submitItemResult(instance.id, itemId, organizationId, learnerId, false, { comment: '' })).rejects.toThrow(/explanation is required/);
+  });
+
+  it('does not ask for an explanation on an answer the rule does not list', async () => {
+    const { service, instance, itemId } = await publishedWithItem({ noteRule: 'on_answers', noteAnswers: ['unchecked'], noteRequired: true });
+    const done = await service.submitItemResult(instance.id, itemId, organizationId, learnerId, false, { checked: true });
+    expect(done.status).toBe('completed');
+  });
+
+  it('"always" with a required explanation applies to every answer; an optional one never blocks', async () => {
+    const required = await publishedWithItem({ noteRule: 'always', noteRequired: true });
+    await expect(required.service.submitItemResult(required.instance.id, required.itemId, organizationId, learnerId, false, { checked: true })).rejects.toThrow(BadRequestException);
+    const optional = await publishedWithItem({ noteRule: 'always', noteRequired: false });
+    const done = await optional.service.submitItemResult(optional.instance.id, optional.itemId, organizationId, learnerId, false, { checked: true });
+    expect(done.status).toBe('completed');
+  });
+
+  it('rejects a rule "on these answers" without any answer', async () => {
+    const prisma = createFakePrisma();
+    const service = new ChecklistsService(prisma);
+    const checklist = await service.createChecklist({ organizationId, title: 'Обход', scoringMode: 'sum_points', passThreshold: 80, requiresReview: false }, instructorId);
+    const created = await service.createItem(checklist.id, organizationId, { scaleId: null, text: 'Пункт', points: 10, isRequired: true, photoRequired: false });
+    await expect(service.updateItem(created.id, organizationId, { noteRule: 'on_answers', noteAnswers: [] })).rejects.toThrow(BadRequestException);
+  });
+});

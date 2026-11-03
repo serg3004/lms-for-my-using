@@ -1733,6 +1733,25 @@
         "fromScale": "from scale",
         "weightHint": "Weight multiplies the points of the criterion and its maximum: weight 3 makes the criterion three times as important.",
         "pointsHint": "Result = earned points / maximum; the checklist is passed at the pass threshold."
+      },
+      "itemDetails": {
+        "action": "Description and explanation…",
+        "title": "Criterion: description and explanation",
+        "descriptionSwitch": "Description (a hint for whoever fills the sheet)",
+        "descriptionLabel": "What to check and how to assess it",
+        "ruleLabel": "Explanation field",
+        "ruleOff": "Not needed",
+        "ruleAlways": "Always show",
+        "ruleOnAnswers": "Show for chosen answers",
+        "answersLegend": "Show the field when the answer is",
+        "chooseAnswer": "Choose at least one answer.",
+        "required": "The explanation is required (the answer is not accepted without it)",
+        "notTicked": "Not ticked",
+        "saveFailed": "Unable to save.",
+        "summaryDescription": "Description",
+        "summaryAlways": "Explanation: always",
+        "summaryOnAnswers": "Explanation: {{answers}}",
+        "summaryRequired": "required"
       }
     },
     "orgTools": {
@@ -2817,7 +2836,12 @@
     "finishConfirm": "After finishing, the answers cannot be changed.",
     "finishConfirmReview": "The answers will go to your instructor and cannot be changed afterwards.",
     "finishError": "Unable to finish the check.",
-    "finishCancel": "Cancel"
+    "finishCancel": "Cancel",
+    "itemDescription": "Description",
+    "noteRequired": "Explanation (required)",
+    "note": "Explanation",
+    "notePending": "Fill in the explanation and save it: your answer is saved together with it.",
+    "noteSave": "Save explanation"
   },
   "checklistReview": {
     "loadError": "Unable to load pending reviews.",

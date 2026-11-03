@@ -1288,6 +1288,14 @@ model ChecklistItem {
   // -- deleting a group (PR 402) either soft-deletes its items explicitly or leaves them ungrouped;
   // the database never deletes an item together with its group.
   groupId            String?               @map("group_id") @db.Uuid
+  // PR 415: a hint for whoever fills the sheet (shown only while descriptionEnabled) and the rule that opens the
+  // "explanation" field (stored in the result's existing `comment`): 'off' | 'always' | 'on_answers'. noteAnswers
+  // lists the answers that open it: level values as strings ("2") and "unchecked" for a plain tick box.
+  description        String?
+  descriptionEnabled Boolean               @default(false) @map("description_enabled")
+  noteRule           String                @default("off") @map("note_rule")
+  noteAnswers        Json?                 @map("note_answers")
+  noteRequired       Boolean               @default(false) @map("note_required")
   createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime              @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt          DateTime?             @map("deleted_at") @db.Timestamptz

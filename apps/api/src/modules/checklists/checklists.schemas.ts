@@ -179,6 +179,18 @@ const AUTO_SKIP_REQUIRES_ALLOW_SKIP_ISSUE = {
   path: ['autoSkipUnanswered'],
 };
 
+// PR 415: per-criterion description (a hint for whoever fills the sheet) and the explanation rule.
+const noteAnswersSchema = z.array(z.string().regex(/^(unchecked|\d{1,4})$/)).max(50);
+function itemNoteShape() {
+  return {
+    description: z.string().trim().max(2000).nullable().optional(),
+    descriptionEnabled: z.boolean().default(false),
+    noteRule: z.enum(['off', 'always', 'on_answers']).default('off'),
+    noteAnswers: noteAnswersSchema.optional(),
+    noteRequired: z.boolean().default(false),
+  };
+}
+
 export const createChecklistItemSchema = z
   .object({
     text: z.string().trim().min(1).max(500),
@@ -196,6 +208,7 @@ export const createChecklistItemSchema = z
     // Optional ChecklistItemGroup (PR 296 observation-sheet builder). Validity (exists in org,
     // belongs to the same checklist) is checked in the service.
     groupId: z.string().uuid().optional(),
+    ...itemNoteShape(),
   })
   .refine(requiresAllowSkipForAutoSkip, AUTO_SKIP_REQUIRES_ALLOW_SKIP_ISSUE);
 export type CreateChecklistItemInput = z.infer<typeof createChecklistItemSchema>;
@@ -216,6 +229,11 @@ export const updateChecklistItemSchema = z
     autoSkipUnanswered: z.boolean(),
     scaleId: z.string().uuid().nullable(),
     groupId: z.string().uuid().nullable(),
+    description: z.string().trim().max(2000).nullable(),
+    descriptionEnabled: z.boolean(),
+    noteRule: z.enum(['off', 'always', 'on_answers']),
+    noteAnswers: noteAnswersSchema.nullable(),
+    noteRequired: z.boolean(),
   })
   .partial();
 export type UpdateChecklistItemInput = z.infer<typeof updateChecklistItemSchema>;

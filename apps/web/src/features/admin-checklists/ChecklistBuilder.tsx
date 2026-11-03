@@ -46,6 +46,7 @@ import { applyLayout, toLayoutPayload, type Layout } from './layout.js';
 import { ChecklistModuleSettingsBlock } from './ChecklistModuleSettings.js';
 import { ChecklistPreviewDialog } from './ChecklistPreviewDialog.js';
 import { ChecklistSettingsForm } from './ChecklistSettingsForm.js';
+import { ItemDetailsDialog, noteAnswerOptions, type NoteAnswerOption } from './ItemDetailsDialog.js';
 import { ScaleManagerDialog } from './ScaleManagerDialog.js';
 import {
   applyContextFieldPatch,
@@ -149,6 +150,7 @@ export function ChecklistBuilder({
   // PR 296 observation-sheet builder state.
   const [itemGroups, setItemGroups] = useState<ChecklistItemGroup[]>(checklist.itemGroups ?? []);
   const [groupToDelete, setGroupToDelete] = useState<ChecklistItemGroup | null>(null);
+  const [detailsItemId, setDetailsItemId] = useState<string | null>(null);
   const [keepItemsOnGroupDelete, setKeepItemsOnGroupDelete] = useState(false);
   const layoutDnd = useChecklistLayoutDnd({ items, groups: itemGroups, t, onCommit: (layout) => void commitLayout(layout) });
   const [contextFields, setContextFields] = useState<ContextField[]>(checklist.contextFields ?? []);
@@ -326,6 +328,24 @@ export function ChecklistBuilder({
   function removeScaleLevel(index: number) {
     setScaleLevels((prev) => removeScaleLevelAt(prev, index));
   }
+  /** PR 415: the answers that can open a criterion's explanation: its scale's levels, the sheet's levels, or "not ticked". */
+  function noteOptionsFor(item: ChecklistItemSummary): NoteAnswerOption[] {
+    const own = scales.find((scale) => scale.id === item.scaleId)?.levels ?? item.scale?.levels ?? null;
+    if (own) return noteAnswerOptions(own, t);
+    if (scoringMode === 'scale') return noteAnswerOptions(scaleLevels.map((level) => ({ value: level.level, label: level.label })), t);
+    return noteAnswerOptions(null, t);
+  }
+  function describeItemDetails(item: ChecklistItemSummary) {
+    const parts: string[] = [];
+    if (item.descriptionEnabled) parts.push(t('admin.checklists.itemDetails.summaryDescription', 'Description'));
+    if (item.noteRule === 'always') parts.push(t('admin.checklists.itemDetails.summaryAlways', 'Explanation: always'));
+    if (item.noteRule === 'on_answers') {
+      const labels = noteOptionsFor(item).filter((option) => item.noteAnswers?.includes(option.value)).map((option) => option.label).join(', ');
+      parts.push(t('admin.checklists.itemDetails.summaryOnAnswers', 'Explanation: {{answers}}', { answers: labels }));
+    }
+    if (item.noteRule && item.noteRule !== 'off' && item.noteRequired) parts.push(t('admin.checklists.itemDetails.summaryRequired', 'required'));
+    return parts.join(' · ');
+  }
   function rowMenuContent() {
     const target = rowMenu.state?.target;
     if (!target) return { label: '', items: null };
@@ -354,6 +374,7 @@ export function ChecklistBuilder({
         items: (
           <>
             {rename(`item-text-${item.id}`)}
+            <button disabled={!canEdit} onClick={() => setDetailsItemId(item.id)} role="menuitem" type="button">{t('admin.checklists.itemDetails.action', 'Description and explanation…')}</button>
             <button disabled={!canEdit} onClick={() => void removeItem(item)} role="menuitem" type="button">{t('admin.checklists.delete', 'Delete')}</button>
           </>
         ),
@@ -759,10 +780,14 @@ export function ChecklistBuilder({
                           <button disabled={!canEdit} onClick={() => focusNameField(`item-text-${item.id}`)} role="menuitem" type="button">
                             {t('admin.checklists.rename.action', 'Rename')}
                           </button>
+                          <button disabled={!canEdit} onClick={() => setDetailsItemId(item.id)} role="menuitem" type="button">
+                            {t('admin.checklists.itemDetails.action', 'Description and explanation…')}
+                          </button>
                           <button onClick={() => void removeItem(item)} role="menuitem" type="button">
                             {t('admin.checklists.delete', 'Delete')}
                           </button>
                         </Menu>
+                        {describeItemDetails(item) && <p className="admin-criteria-row__meta">{describeItemDetails(item)}</p>}
                       </>)}</SortableBox>
                     ))}
                     </ItemsSortable>
@@ -994,6 +1019,20 @@ export function ChecklistBuilder({
         startCreating
         t={t}
       />
+      {detailsItemId && (() => {
+        const target = items.find((entry) => entry.id === detailsItemId);
+        return target ? (
+          <ItemDetailsDialog
+            key={target.id}
+            item={target}
+            onClose={() => setDetailsItemId(null)}
+            onSave={async (patch) => { await persistItem(target.id, patch); }}
+            open
+            options={noteOptionsFor(target)}
+            t={t}
+          />
+        ) : null;
+      })()}
       <ContextMenu label={rowMenuView.label} onClose={rowMenu.close} state={rowMenu.state}>{rowMenuView.items}</ContextMenu>
     </div>
   );

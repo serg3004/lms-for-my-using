@@ -14,6 +14,7 @@ import { ChecklistOrgTemplates } from './checklist-org-templates.js';
 import { assertObserversBelongToOrganization, freezeReportSettings, loadEffectiveSettings, overridesToColumns, presentOverrides, presentStaffChecklist, SHEET_OVERRIDES_SELECT } from './checklist-settings-overrides.js';
 import { ChecklistBulkActions, type ChecklistBulkAction } from './checklist-bulk-actions.js';
 import { visibleFolderIds, type FolderActor } from './checklist-folder-tree.js';
+import { isNoteRequired, parseNoteAnswers } from './checklist-item-note.js';
 import { ChecklistResultDeletion } from './checklist-result-deletion.js';
 import { findTemplate, renderTemplate, templateLocale } from './checklist-templates.js';
 import {
@@ -156,6 +157,11 @@ const checklistWithItemsSelect = {
       allowSkip: true,
       autoSkipUnanswered: true,
       scaleId: true,
+      description: true,
+      descriptionEnabled: true,
+      noteRule: true,
+      noteAnswers: true,
+      noteRequired: true,
       groupId: true,
     },
   },
@@ -216,7 +222,7 @@ const instanceWithSnapshotSelect = {
 
 type ItemScaleRef = { scale?: ChecklistSnapshotItemScale | null };
 type ScoringItem = ItemScaleRef & { id: string; points: number; isRequired: boolean; weight?: number };
-type CompletionItem = ItemScaleRef & { id: string; isRequired: boolean; photoRequired: boolean; autoSkipUnanswered?: boolean };
+type CompletionItem = ItemScaleRef & { id: string; isRequired: boolean; photoRequired: boolean; autoSkipUnanswered?: boolean; noteRule?: string; noteAnswers?: unknown; noteRequired?: boolean };
 type CompletionResult = {
   itemId: string;
   checked: boolean;
@@ -225,6 +231,7 @@ type CompletionResult = {
   photoObjectKey: string | null;
   reviewStatus: string;
   answerState?: string;
+  comment?: string | null;
 };
 type ChecklistSnapshotItemScale = {
   id: string;
@@ -253,6 +260,12 @@ type ChecklistSnapshotItem = {
   scaleId?: string | null;
   scale?: ChecklistSnapshotItemScale | null;
   groupId?: string | null;
+  // PR 415 -- optional: older snapshots have none and read as "description off, no explanation rule".
+  description?: string | null;
+  descriptionEnabled?: boolean;
+  noteRule?: string;
+  noteAnswers?: Prisma.JsonValue | null;
+  noteRequired?: boolean;
 };
 type ChecklistRuntime = {
   id: string;
@@ -789,6 +802,11 @@ export class ChecklistsService {
             allowSkip: item.allowSkip,
             autoSkipUnanswered: item.autoSkipUnanswered,
             scaleId: item.scaleId,
+            description: item.description,
+            descriptionEnabled: item.descriptionEnabled,
+            noteRule: item.noteRule,
+            noteAnswers: item.noteAnswers === null ? Prisma.DbNull : (item.noteAnswers as Prisma.InputJsonValue),
+            noteRequired: item.noteRequired,
           },
         });
       }
@@ -1121,6 +1139,11 @@ export class ChecklistsService {
             allowSkip: item.allowSkip,
             autoSkipUnanswered: item.autoSkipUnanswered,
             scaleId: item.scaleId,
+            description: item.description,
+            descriptionEnabled: item.descriptionEnabled,
+            noteRule: item.noteRule,
+            noteAnswers: item.noteAnswers === null ? Prisma.DbNull : (item.noteAnswers as Prisma.InputJsonValue),
+            noteRequired: item.noteRequired,
           },
         });
       }
@@ -1149,22 +1172,30 @@ export class ChecklistsService {
     if (input.groupId) {
       await this.assertValidGroup(input.groupId, checklistId, organizationId);
     }
+    await this.assertValidNoteConfig({ noteRule: input.noteRule, noteAnswers: input.noteAnswers }, scaleId ?? null, organizationId);
     const count = await this.prisma.checklistItem.count({ where: { checklistId, deletedAt: null } });
 
+    const { noteAnswers, ...rest } = input;
     return this.prisma.checklistItem.create({
-      data: { ...input, scaleId, checklistId, organizationId, order: count },
+      data: { ...rest, ...(noteAnswers ? { noteAnswers } : {}), scaleId, checklistId, organizationId, order: count },
     });
   }
 
   async updateItem(itemId: string, organizationId: string, input: UpdateChecklistItemInput) {
     const item = await this.prisma.checklistItem.findFirst({
       where: { id: itemId, organizationId, deletedAt: null },
-      select: { id: true, checklistId: true, allowSkip: true, autoSkipUnanswered: true },
+      select: { id: true, checklistId: true, allowSkip: true, autoSkipUnanswered: true, scaleId: true, noteRule: true, noteAnswers: true },
     });
 
     if (!item) {
       throw new NotFoundException('Checklist item not found');
     }
+
+    await this.assertValidNoteConfig(
+      { noteRule: input.noteRule ?? item.noteRule, noteAnswers: input.noteAnswers === undefined ? item.noteAnswers : input.noteAnswers },
+      input.scaleId === undefined ? item.scaleId : input.scaleId,
+      organizationId,
+    );
 
     const allowSkip = input.allowSkip ?? item.allowSkip;
     const autoSkipUnanswered = input.autoSkipUnanswered ?? item.autoSkipUnanswered;
@@ -1180,7 +1211,26 @@ export class ChecklistsService {
       await this.assertValidGroup(input.groupId, item.checklistId, organizationId);
     }
 
-    return this.prisma.checklistItem.update({ where: { id: itemId, organizationId }, data: input });
+    const { noteAnswers, ...rest } = input;
+    return this.prisma.checklistItem.update({
+      where: { id: itemId, organizationId },
+      data: { ...rest, ...(noteAnswers === undefined ? {} : { noteAnswers: noteAnswers === null ? Prisma.DbNull : noteAnswers }) },
+    });
+  }
+
+  /** PR 415: "on these answers" needs at least one answer, and a level must exist in the criterion's scale. */
+  private async assertValidNoteConfig(config: { noteRule: string; noteAnswers: unknown }, scaleId: string | null, organizationId: string) {
+    if (config.noteRule !== 'on_answers') return;
+    const answers = parseNoteAnswers(config.noteAnswers);
+    if (answers.length === 0) {
+      throw new BadRequestException('Choose at least one answer that opens the explanation');
+    }
+    if (!scaleId) return;
+    const levels = await this.prisma.checklistScaleLevel.findMany({ where: { scaleId, organizationId }, select: { value: true } });
+    const known = new Set(levels.map((level) => String(level.value)));
+    if (answers.some((answer) => answer !== 'unchecked' && !known.has(answer))) {
+      throw new BadRequestException('An answer that opens the explanation is not a level of the criterion scale');
+    }
   }
 
   async deleteItem(itemId: string, organizationId: string) {
@@ -1257,6 +1307,11 @@ export class ChecklistsService {
         allowSkip: true,
         autoSkipUnanswered: true,
         scaleId: true,
+        description: true,
+        descriptionEnabled: true,
+        noteRule: true,
+        noteAnswers: true,
+        noteRequired: true,
         groupId: true,
       },
     });
@@ -1379,7 +1434,7 @@ export class ChecklistsService {
 
     const items = await this.prisma.checklistItem.findMany({
       where: { checklistId, organizationId, deletedAt: null }, orderBy: { order: 'asc' },
-      select: { id: true, checklistId: true, order: true, text: true, points: true, isRequired: true, photoRequired: true, weight: true, allowSkip: true, autoSkipUnanswered: true, scaleId: true, groupId: true },
+      select: { id: true, checklistId: true, order: true, text: true, points: true, isRequired: true, photoRequired: true, weight: true, allowSkip: true, autoSkipUnanswered: true, scaleId: true, description: true, descriptionEnabled: true, noteRule: true, noteAnswers: true, noteRequired: true, groupId: true },
     });
     const itemsWithScale = await this.attachItemScales(this.prisma, organizationId, items);
     const runtimeChecklist = await this.withFeedbackAnswerSets(this.toRuntimeChecklist(checklist, itemsWithScale), organizationId);
@@ -1926,7 +1981,7 @@ export class ChecklistsService {
     const checklist = await this.resolveRuntimeChecklist(instance, organizationId);
     const results = await client.checklistItemResult.findMany({
       where: { instanceId },
-      select: { itemId: true, checked: true, scaleLevel: true, points: true, photoObjectKey: true, reviewStatus: true, answerState: true },
+      select: { itemId: true, checked: true, scaleLevel: true, points: true, photoObjectKey: true, reviewStatus: true, answerState: true, comment: true },
     });
     const itemIds = new Set(checklist.items.map((item) => item.id));
     const relevantResults = results.filter((result) => itemIds.has(result.itemId));
@@ -2070,6 +2125,16 @@ export class ChecklistsService {
     }
 
     const answersCriterion = input.checked !== undefined || input.scaleLevel !== undefined;
+    // PR 415: an explanation the criterion requires for this answer must come with it (or already be on file).
+    const existingResult = await this.prisma.checklistItemResult.findUnique({
+      where: { instanceId_itemId: { instanceId, itemId } },
+      select: { checked: true, scaleLevel: true, answerState: true, comment: true },
+    });
+    const nextAnswer = answersCriterion ? { checked: input.checked ?? false, scaleLevel: input.scaleLevel ?? null, answerState: 'answered' } : existingResult ?? undefined;
+    const nextComment = input.comment !== undefined ? input.comment : existingResult?.comment ?? '';
+    if (nextAnswer && isNoteRequired(item, nextAnswer, Boolean(item.scale)) && !nextComment.trim()) {
+      throw new BadRequestException(`An explanation is required for the criterion "${item.text}"`);
+    }
     const points = answersCriterion ? this.computeItemPoints(
       checklist.scoringMode,
       item,
@@ -2649,6 +2714,11 @@ export class ChecklistsService {
           allowSkip: true,
           autoSkipUnanswered: true,
           scaleId: true,
+          description: true,
+          descriptionEnabled: true,
+          noteRule: true,
+          noteAnswers: true,
+          noteRequired: true,
           groupId: true,
         },
       }),
@@ -2774,6 +2844,10 @@ export class ChecklistsService {
       return !item.isRequired;
     }
 
+    if (isNoteRequired(item, result, Boolean(item.scale)) && !(result?.comment ?? '').trim()) {
+      return false;
+    }
+
     return !item.photoRequired || Boolean(result?.photoObjectKey);
   }
 
@@ -2831,7 +2905,7 @@ export class ChecklistsService {
     const checklist = await this.resolveRuntimeChecklist(instance, organizationId);
     const results = await this.prisma.checklistItemResult.findMany({
       where: { instanceId },
-      select: { itemId: true, checked: true, scaleLevel: true, points: true, photoObjectKey: true, reviewStatus: true, answerState: true },
+      select: { itemId: true, checked: true, scaleLevel: true, points: true, photoObjectKey: true, reviewStatus: true, answerState: true, comment: true },
     });
     const byItem = new Map<string, CompletionResult>(results.map((result) => [result.itemId, result]));
     const missing = checklist.items.filter((item) => !this.isItemSatisfied(checklist.scoringMode, item, byItem.get(item.id))).map((item) => item.id);
@@ -2937,6 +3011,7 @@ export class ChecklistsService {
         photoObjectKey: true,
         reviewStatus: true,
         answerState: true,
+        comment: true,
       },
     });
     const itemIds = new Set(checklist.items.map((item) => item.id));

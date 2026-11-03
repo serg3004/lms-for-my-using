@@ -627,6 +627,17 @@ PR 358 scoring/completion details:
   and snapshots are not backfilled. PR 414: the checklist editor always sends `scaleId: null` when it
   adds a criterion (the scale is a per-criterion switch there), so criteria created in the editor have
   no scale until the switch is turned on; the API default for an omitted `scaleId` is unchanged. `PATCH` omission retains the current reference.
+- PR 415: `POST /checklists/:checklistId/items` and `PATCH /checklist-items/:id` accept `description` (up to 2000
+  characters, `null` clears), `descriptionEnabled`, `noteRule` (`off` | `always` | `on_answers`), `noteAnswers`
+  (strings: level values such as `"2"`, and `"unchecked"` for a plain tick box; at most 50) and `noteRequired`.
+  `on_answers` needs at least one answer (400 otherwise) and a level must exist in the criterion's scale. The
+  fields are part of the frozen snapshot, are copied with a criterion, group, sheet, template and organization
+  template, and default to "description off, rule `off`" for everything saved earlier. The explanation is the
+  result's existing `comment`. `PATCH /checklist-instances/:id/items/:itemId` answers 400 `An explanation is
+  required for the criterion "<text>"` when the rule requires an explanation for the answer being saved (or for the
+  answer already on file when only the comment is saved) and the comment is empty; completion, `finish` and
+  session completion treat such a criterion as unanswered. Reports (screen, PDF, CSV) already print the comment
+  next to the answer; the description is never printed as an answer.
 - Comment/photo metadata-only result saves retain the answer, points and skip/review state; a
   comment before an answer does not invent a selected level. Answer changes still reset review.
 - No migration, background job or read-time recomputation rewrites completed scores or reports.

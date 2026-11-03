@@ -5,12 +5,15 @@ import type {
   ChecklistScoringMode,
   ChecklistScaleLevel,
 } from '../shared/api/types.js';
+import { isNoteRequired, type NoteItem } from './checklistItemNote.js';
 import { hasChecklistPhotoEvidence } from './checklistPhotoEvidence.js';
 
 export type ChecklistAnswerState = {
   checked?: boolean;
   scaleLevel?: number | null;
   hasPhoto?: boolean;
+  /** PR 415: the explanation (the result's comment). */
+  comment?: string | null;
 };
 
 export function checklistItemLevels(item: Pick<ChecklistItemSummary, 'scale'>, scoringMode: ChecklistScoringMode, levels: ChecklistScaleLevel[] | null): ChecklistScaleLevel[] | null {
@@ -24,17 +27,27 @@ export function hasChecklistAnswer(scoringMode: ChecklistScoringMode, answer: Ch
   return scoringMode === 'scale' ? answer.scaleLevel != null : answer.checked === true;
 }
 
+/** PR 415: a required explanation that the answer needs and that is still empty. */
+export function isChecklistNoteMissing(
+  item: Pick<ChecklistItemSummary, 'scale'> & NoteItem,
+  scoringMode: ChecklistScoringMode,
+  answer: ChecklistAnswerState | undefined,
+) {
+  return isNoteRequired(item, answer, Boolean(item.scale) || scoringMode === 'scale') && !(answer?.comment ?? '').trim();
+}
+
 export function isChecklistAnswerComplete(
-  item: Pick<ChecklistItemSummary, 'photoRequired' | 'scale'>,
+  item: Pick<ChecklistItemSummary, 'photoRequired' | 'scale'> & NoteItem,
   scoringMode: ChecklistScoringMode,
   answer: ChecklistAnswerState | undefined,
 ) {
   if (!hasChecklistAnswer(scoringMode, answer, item)) return false;
+  if (isChecklistNoteMissing(item, scoringMode, answer)) return false;
   return !item.photoRequired || answer?.hasPhoto === true;
 }
 
 export function isChecklistRequirementSatisfied(
-  item: Pick<ChecklistItemSummary, 'isRequired' | 'photoRequired' | 'scale'>,
+  item: Pick<ChecklistItemSummary, 'isRequired' | 'photoRequired' | 'scale'> & NoteItem,
   scoringMode: ChecklistScoringMode,
   answer: ChecklistAnswerState | undefined,
 ) {
@@ -48,6 +61,7 @@ export function checklistResultToAnswer(result: ChecklistItemResultSummary | und
     checked: result.checked,
     scaleLevel: result.scaleLevel,
     hasPhoto: hasChecklistPhotoEvidence(result),
+    comment: result.comment,
   };
 }
 
