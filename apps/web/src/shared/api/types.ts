@@ -359,6 +359,13 @@ export type ChecklistItemSummary = {
   autoSkipUnanswered?: boolean;
   scaleId?: string | null;
   groupId?: string | null;
+  // PR 415: a hint for whoever fills the sheet, and the rule that offers (and may require) an explanation, stored in
+  // the result's `comment`. noteAnswers: level values as strings ("2") and "unchecked" for a plain tick box.
+  description?: string | null;
+  descriptionEnabled?: boolean;
+  noteRule?: 'off' | 'always' | 'on_answers';
+  noteAnswers?: string[] | null;
+  noteRequired?: boolean;
   // PR 293: the item's per-criterion reusable scale, resolved once at assignment time and frozen
   // into the instance's checklist -- readers use this directly, never `scaleId` against the live
   // scale library (which may have moved on since).

@@ -4,7 +4,7 @@ import type {
   ChecklistAnswerState,
 } from '../../app/checklistCompletion.js';
 import { HIGHLIGHT_COLOR_PATTERN } from '../../shared/HighlightColorField.js';
-import { checklistItemLevels, isChecklistRequirementSatisfied } from '../../app/checklistCompletion.js';
+import { checklistItemLevels, isChecklistNoteMissing, isChecklistRequirementSatisfied } from '../../app/checklistCompletion.js';
 import type {
   ChecklistAccessMode,
   ChecklistModuleSettings,
@@ -165,7 +165,7 @@ export function computePreviewResult(
   }
   const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
   const allAnswered = items.length > 0 && (answeredOnly
-    ? eligible.length === answered.length && eligible.every((item) => !item.photoRequired || answers[item.id]?.hasPhoto === true)
+    ? eligible.length === answered.length && eligible.every((item) => (!item.photoRequired || answers[item.id]?.hasPhoto === true) && !isChecklistNoteMissing(item, scoringMode, answers[item.id]))
     : eligible.every((item) => isChecklistRequirementSatisfied(item, scoringMode, answers[item.id])));
   return { totalScore, maxScore, percentage, passed: allAnswered && percentage >= passThreshold, allAnswered };
 }

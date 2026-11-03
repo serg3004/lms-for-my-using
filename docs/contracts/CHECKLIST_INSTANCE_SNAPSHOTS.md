@@ -47,6 +47,7 @@ Live template не должен участвовать в этих вычисл�
 - title/description;
 - points;
 - `isRequired` / `photoRequired`;
+- PR 415: `description`, `descriptionEnabled`, `noteRule`, `noteAnswers`, `noteRequired` (у старых snapshot их нет: описание выключено, правило `off`);
 - scoring mode/scale levels;
 - pass threshold;
 - набор items.

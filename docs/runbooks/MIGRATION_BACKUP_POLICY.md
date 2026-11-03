@@ -6,6 +6,14 @@
 >
 > **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
 
+## Criterion description and explanation rule migration (PR 415)
+
+`20261103120000_checklist_item_description_note` is additive and backward-compatible:
+
+- adds to `checklist_items`: nullable `description`, `description_enabled` (default false), `note_rule` (default `'off'`), nullable JSONB `note_answers`, `note_required` (default false);
+- every existing criterion keeps the description off and the rule `off`, so no existing sheet, assignment or snapshot changes behaviour; the explanation is stored in the existing `checklist_item_results.comment`;
+- an older API build ignores the new columns, so the migration may run before the API deploy and can be left in place on rollback; no special backup and no new environment variable.
+
 ## Checklist feedback layout migration (PR 405а)
 
 `20261101180000_checklist_feedback_layout` is additive and backward-compatible:

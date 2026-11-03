@@ -1,5 +1,5 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import type { ChecklistGeolocationPolicy, ChecklistPreSessionVisibility, Prisma } from '@prisma/client';
+import { Prisma, type ChecklistGeolocationPolicy, type ChecklistPreSessionVisibility } from '@prisma/client';
 
 import type { PrismaService } from '../../database/prisma.service.js';
 import type { AuditLogService } from '../audit-log/public.js';
@@ -11,6 +11,8 @@ export const MAX_ORG_TEMPLATES = 100;
 type PayloadItem = {
   groupIndex: number | null; order: number; text: string; points: number; isRequired: boolean; photoRequired: boolean;
   weight: number | null; allowSkip: boolean; autoSkipUnanswered: boolean; scaleId: string | null;
+  // PR 415 -- optional: templates saved earlier have none.
+  description?: string | null; descriptionEnabled?: boolean; noteRule?: string; noteAnswers?: Prisma.JsonValue | null; noteRequired?: boolean;
 };
 /** Frozen copy of a checklist: settings, groups and criteria. Never references the source row. */
 export type ChecklistTemplatePayload = {
@@ -76,6 +78,8 @@ export class ChecklistOrgTemplates {
         groupIndex: item.groupId ? groupIndex.get(item.groupId) ?? null : null, order: item.order, text: item.text, points: item.points,
         isRequired: item.isRequired, photoRequired: item.photoRequired, weight: item.weight, allowSkip: item.allowSkip,
         autoSkipUnanswered: item.autoSkipUnanswered, scaleId: item.scaleId,
+        description: item.description, descriptionEnabled: item.descriptionEnabled, noteRule: item.noteRule,
+        noteAnswers: (item.noteAnswers as Prisma.JsonValue | null) ?? null, noteRequired: item.noteRequired,
       })),
     };
     const created = await this.prisma.checklistTemplate.create({
@@ -168,6 +172,8 @@ export class ChecklistOrgTemplates {
             order: item.order, text: item.text, points: item.points, isRequired: item.isRequired, photoRequired: item.photoRequired,
             weight: item.weight ?? undefined, allowSkip: item.allowSkip, autoSkipUnanswered: item.autoSkipUnanswered,
             scaleId: item.scaleId && liveScales.has(item.scaleId) ? item.scaleId : null,
+            description: item.description ?? null, descriptionEnabled: item.descriptionEnabled ?? false, noteRule: item.noteRule ?? 'off',
+            noteAnswers: item.noteAnswers == null ? Prisma.DbNull : (item.noteAnswers as Prisma.InputJsonValue), noteRequired: item.noteRequired ?? false,
           },
         });
       }

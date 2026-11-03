@@ -4,6 +4,8 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { ContextFields, CriterionHeading, FeedbackFields, type FeedbackDraft } from '../../app/ChecklistConductFields.js';
 import { checklistItemLevels } from '../../app/checklistCompletion.js';
+import { ChecklistItemDescription, ChecklistNoteField } from '../../app/ChecklistItemNote.js';
+import { isNoteOffered, isNoteRequired } from '../../app/checklistItemNote.js';
 import type { ChecklistItemGroup, ChecklistItemSummary, ChecklistScaleLevel, ChecklistScoringMode, ContextField } from '../../shared/api/types.js';
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, validateChecklistPhoto } from '../../shared/checklistPhoto.js';
 import { Button } from '../../shared/ui.js';
@@ -127,8 +129,10 @@ function PreviewCriterion({ item, number, answer, levels, scoringMode, allowSkip
     { level: 1, label: t('checklistPreview.yes', 'Yes'), points: scoringMode === 'all_required' ? 1 : item.points },
     { level: 0, label: t('checklistPreview.no', 'No'), points: 0 },
   ];
+  const noteShown = isNoteOffered(item, answer && !answer.skipped ? answer : undefined, levels !== null);
   return <div style={{ padding: '20px 0', borderBottom: '1px solid var(--color-border)' }}>
     <CriterionHeading text={`${number} ${item.text}`} required={item.isRequired} t={t} />
+    <ChecklistItemDescription item={item} t={t} />
     <div role="radiogroup" aria-required={item.isRequired} aria-label={`${number} ${item.text}`} style={{ display: 'grid', gap: 6, marginBottom: 12 }}>
       {options.map((level) => <label key={level.level} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, cursor: 'pointer' }}>
         <input type="radio" style={{ width: 'auto', flex: 'none' }} name={id} checked={!answer?.skipped && (levels ? answer?.scaleLevel === level.level : answer?.answered === true && answer.checked === (level.level === 1))}
@@ -136,6 +140,7 @@ function PreviewCriterion({ item, number, answer, levels, scoringMode, allowSkip
         <span style={{ flex: 1 }}>{level.label}</span>
       </label>)}
     </div>
+    {noteShown && <ChecklistNoteField id={`${id}-note`} onChange={(value) => onChange({ comment: value })} required={isNoteRequired(item, answer, levels !== null)} t={t} value={answer?.comment ?? ''} />}
     {allowSkip && <Button type="button" size="sm" variant="ghost" aria-pressed={answer?.skipped === true}
       onClick={() => onChange({ skipped: !answer?.skipped })}>{t('checklistSessions.conduct.skip', 'Skip')}</Button>}
     {item.photoRequired && <div>

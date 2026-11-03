@@ -10,7 +10,9 @@ import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistIte
 import { ChecklistCover } from '../shared/ChecklistCover.js';
 import { ChecklistAccessBadge } from '../shared/checklistAccess.js';
 import { PinnedChecklistTiles } from './PinnedChecklistTiles.js';
-import { PageState } from '../shared/ui.js';
+import { Button, PageState } from '../shared/ui.js';
+import { ChecklistItemDescription, ChecklistNoteField } from './ChecklistItemNote.js';
+import { isNoteOffered, isNoteRequired, pendingAnswer } from './checklistItemNote.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { ChecklistPhotoProof } from './ChecklistPhotoProof.js';
 import { ChecklistFinishBar } from './ChecklistFinishBar.js';
@@ -226,6 +228,10 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, op
     </main>
   );
 }
+/** A copy of `record` without `key`. */
+function without<T>(record: Record<string, T>, key: string): Record<string, T> {
+  return Object.fromEntries(Object.entries(record).filter(([entry]) => entry !== key));
+}
 function ChecklistTaking({
   instance,
   onBack,
@@ -240,6 +246,9 @@ function ChecklistTaking({
   const checklist = instance.checklist;
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // PR 415: the explanation being typed, and an answer held back until a required explanation is filled.
+  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const [pendingAnswers, setPendingAnswers] = useState<Record<string, { checked?: boolean; scaleLevel?: number }>>({});
 
   if (!checklist) return null;
   const resultFor = (itemId: string) => findResultForItem(instance.results, itemId);
@@ -249,17 +258,30 @@ function ChecklistTaking({
     checklist.scoringMode,
   );
   const editable = instance.status === 'assigned' || instance.status === 'in_progress';
-  async function submit(item: ChecklistItemSummary, input: { checked?: boolean; scaleLevel?: number; photoUrl?: string }) {
+  async function submit(item: ChecklistItemSummary, input: { checked?: boolean; scaleLevel?: number; photoUrl?: string; comment?: string }) {
     setSubmitting(item.id);
     setError(null);
     try {
       await submitChecklistItemResult(instance.id, item.id, input);
+      setPendingAnswers((current) => without(current, item.id));
+      setNoteDrafts((current) => without(current, item.id));
       await onUpdated();
     } catch (err) {
       setError(localizeChecklistScaleError(err instanceof ApiClientError ? err.message : t('checklists.submitError', 'Unable to save this item.'), t));
     } finally {
       setSubmitting(null);
     }
+  }
+  /** An answer that needs a required explanation waits for it; otherwise it is saved at once (with the typed explanation, if any). */
+  function choose(item: ChecklistItemSummary, input: { checked?: boolean; scaleLevel?: number }, hasScale: boolean) {
+    const typed = noteDrafts[item.id];
+    const note = typed ?? resultFor(item.id)?.comment ?? '';
+    if (isNoteRequired(item, pendingAnswer(input), hasScale) && !note.trim()) {
+      setPendingAnswers((current) => ({ ...current, [item.id]: input }));
+      return;
+    }
+    setPendingAnswers((current) => without(current, item.id));
+    void submit(item, typed === undefined ? input : { ...input, comment: typed });
   }
   async function uploadPhoto(item: ChecklistItemSummary, file: File) {
     setError(null);
@@ -347,6 +369,7 @@ function ChecklistTaking({
                     : t('checklists.optionalItem', 'Optional')}
                 </span>
               </p>
+              <ChecklistItemDescription item={item} t={t} />
               {levels !== null ? (
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   {levels.map((level) => (
@@ -355,7 +378,7 @@ function ChecklistTaking({
                       aria-pressed={result?.scaleLevel === level.level}
                       type="button"
                       disabled={!editable || submitting === item.id}
-                      onClick={() => void submit(item, { scaleLevel: level.level })}
+                      onClick={() => choose(item, { scaleLevel: level.level }, true)}
                       style={{
                         border: `1px solid ${result?.scaleLevel === level.level ? COLORS.primary : COLORS.border}`,
                         background: result?.scaleLevel === level.level ? COLORS.primarySoft : COLORS.surface,
@@ -378,11 +401,41 @@ function ChecklistTaking({
                     type="checkbox"
                     checked={result?.checked ?? false}
                     disabled={!editable || submitting === item.id}
-                    onChange={(e) => void submit(item, { checked: e.target.checked })}
+                    onChange={(e) => choose(item, { checked: e.target.checked }, false)}
                   />
                   {t('checklists.markDone', 'Done')}
                 </label>
               )}
+              {(() => {
+                const held = pendingAnswers[item.id];
+                const shown = held ? pendingAnswer(held) : checklistResultToAnswer(result);
+                if (!isNoteOffered(item, shown, levels !== null)) return null;
+                const required = isNoteRequired(item, shown, levels !== null);
+                const text = noteDrafts[item.id] ?? result?.comment ?? '';
+                return (
+                  <div style={{ marginTop: 10 }}>
+                    <ChecklistNoteField
+                      disabled={!editable || submitting === item.id}
+                      hint={held ? t('checklists.notePending', 'Fill in the explanation and save it: your answer is saved together with it.') : undefined}
+                      id={`note-${item.id}`}
+                      onChange={(value) => setNoteDrafts((current) => ({ ...current, [item.id]: value }))}
+                      required={required}
+                      t={t}
+                      value={text}
+                    />
+                    <Button
+                      disabled={!editable || submitting === item.id || text === (result?.comment ?? '') && !held || (required && !text.trim())}
+                      onClick={() => void submit(item, held ? { ...held, comment: text } : { comment: text })}
+                      size="sm"
+                      style={{ marginTop: 6, minHeight: 44 }}
+                      type="button"
+                      variant="secondary"
+                    >
+                      {t('checklists.noteSave', 'Save explanation')}
+                    </Button>
+                  </div>
+                );
+              })()}
               {item.photoRequired && (
                 <PhotoAttachment
                   instanceId={instance.id}

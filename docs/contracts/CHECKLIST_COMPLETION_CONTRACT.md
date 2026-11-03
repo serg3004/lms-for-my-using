@@ -20,7 +20,8 @@
 4. Сохранённый `checked=false` в checkbox-based scoring не считается valid answer.
 5. Для `scale` valid answer существует только при выбранном допустимом уровне.
 6. `photoRequired=true` проверяется по object-backed photo metadata.
-7. После загрузки evidence backend повторно пересчитывает instance, поэтому фото последнего required item может выполнить переход `in_progress → completed` либо `in_progress → submitted`.
+7. PR 415: если критерий требует пояснение (`noteRequired=true`) и правило (`noteRule`: `always` или `on_answers` с выбранным ответом) для текущего ответа открывает поле, а `comment` пуст, критерий не `satisfied`; ответ с таким пропуском не принимается (400), а очистка пояснения при действующем ответе отклоняется. Пропущенный (`skipped`) критерий пояснения не требует.
+8. После загрузки evidence backend повторно пересчитывает instance, поэтому фото последнего required item может выполнить переход `in_progress → completed` либо `in_progress → submitted`.
 
 ## 3. Manual review
 

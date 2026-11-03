@@ -5,7 +5,7 @@ import type {
   ChecklistItemSummary,
   ChecklistScoringMode,
 } from '../shared/api/types.js';
-import { checklistResultToAnswer, isChecklistAnswerComplete } from './checklistCompletion.js';
+import { checklistResultToAnswer, isChecklistAnswerComplete, isChecklistNoteMissing } from './checklistCompletion.js';
 import { hasChecklistPhotoEvidence } from './checklistPhotoEvidence.js';
 
 /** Navigation state only: does not change required-item validation or scoring. */
@@ -13,6 +13,7 @@ export function conductAnswerState(item: ChecklistItemSummary, result: Checklist
   if (!result || result.answerState === 'unanswered') return 'unanswered';
   if (result.answerState === 'skipped') return 'skipped';
   if (item.photoRequired && !hasChecklistPhotoEvidence(result)) return 'unanswered';
+  if (result.answerState === 'answered' && isChecklistNoteMissing(item, scoringMode, checklistResultToAnswer(result))) return 'unanswered';
   if (result.answerState === 'answered') return 'answered';
   return isChecklistAnswerComplete(item, item.scale ? 'scale' : scoringMode, checklistResultToAnswer(result)) ? 'answered' : 'unanswered';
 }

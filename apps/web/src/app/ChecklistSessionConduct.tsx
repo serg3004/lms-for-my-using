@@ -26,6 +26,8 @@ import { Avatar, Badge, Button, InlineFeedback, PageState, ProgressBar, Textarea
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { PastSessions } from './ChecklistSessionHistory.js';
 import { ChecklistConductOverview } from './ChecklistConductOverview.js';
+import { ChecklistItemDescription } from './ChecklistItemNote.js';
+import { isNoteRequired, pendingAnswer } from './checklistItemNote.js';
 import { conductCriteria, nextConductStep } from './checklistConductOverview.js';
 import { localizeChecklistScaleError, checklistResultToAnswer, getRequiredChecklistProgress, isChecklistAnswerComplete } from './checklistCompletion.js';
 
@@ -613,6 +615,7 @@ export function formatElapsed(ms: number) {
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
 }
 
+// PR 415: a click on an answer that needs a required explanation waits until the explanation is filled.
 function CriterionCard({
   instanceId,
   item,
@@ -645,6 +648,10 @@ function CriterionCard({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [heldAnswer, setHeldAnswer] = useState<{ checked?: boolean; scaleLevel?: number } | null>(null);
+  const hasScale = Boolean(item.scale) || scoringMode === 'scale';
+  const shownAnswer = heldAnswer ? pendingAnswer(heldAnswer) : checklistResultToAnswer(result);
+  const noteRequired = isNoteRequired(item, shownAnswer, hasScale);
   // Combines this card's own save state with the photo upload's (tracked separately below, since
   // it doesn't go through run()) so the parent stepper can block navigation during either -- see
   // CriterionStepper's cardBusy comment for why that matters.
@@ -665,10 +672,19 @@ function CriterionCard({
   }
 
   const canAct = editable && !busy;
+  function choose(input: { checked?: boolean; scaleLevel?: number }) {
+    if (isNoteRequired(item, pendingAnswer(input), hasScale) && !comment.trim()) {
+      setHeldAnswer(input);
+      return;
+    }
+    setHeldAnswer(null);
+    void run(() => submitChecklistItemResult(instanceId, item.id, comment !== (result?.comment ?? '') ? { ...input, comment } : input));
+  }
 
   return (
     <div>
       <CriterionHeading text={item.text} required={item.isRequired} t={t} />
+      <ChecklistItemDescription item={item} t={t} />
 
       {error && (
         <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 12.5 }}>
@@ -684,7 +700,7 @@ function CriterionCard({
               aria-pressed={result?.scaleLevel === level.value}
               type="button"
               disabled={!canAct}
-              onClick={() => void run(() => submitChecklistItemResult(instanceId, item.id, { scaleLevel: level.value }))}
+              onClick={() => choose({ scaleLevel: level.value })}
               style={{
                 border: `1px solid ${result?.scaleLevel === level.value ? COLORS.primary : COLORS.border}`,
                 background: result?.scaleLevel === level.value ? 'var(--color-primary-bg, #eef2ff)' : COLORS.surface,
@@ -708,7 +724,7 @@ function CriterionCard({
               aria-pressed={result?.scaleLevel === level.level}
               type="button"
               disabled={!canAct}
-              onClick={() => void run(() => submitChecklistItemResult(instanceId, item.id, { scaleLevel: level.level }))}
+              onClick={() => choose({ scaleLevel: level.level })}
               style={{
                 border: `1px solid ${result?.scaleLevel === level.level ? COLORS.primary : COLORS.border}`,
                 background: result?.scaleLevel === level.level ? 'var(--color-primary-bg, #eef2ff)' : COLORS.surface,
@@ -730,7 +746,7 @@ function CriterionCard({
             type="checkbox"
             checked={result?.checked ?? false}
             disabled={!canAct}
-            onChange={(e) => void run(() => submitChecklistItemResult(instanceId, item.id, { checked: e.target.checked }))}
+            onChange={(e) => choose({ checked: e.target.checked })}
           />
           {t('checklists.markDone', 'Done')}
         </label>
@@ -738,7 +754,9 @@ function CriterionCard({
 
       <div style={{ marginTop: 12 }}>
         <Textarea
-          label={t('checklistSessions.conduct.comment', 'Comment')}
+          label={noteRequired ? t('checklists.noteRequired', 'Explanation (required)') : t('checklistSessions.conduct.comment', 'Comment')}
+          hint={heldAnswer ? t('checklists.notePending', 'Fill in the explanation and save it: your answer is saved together with it.') : undefined}
+          aria-required={noteRequired || undefined}
           value={comment}
           disabled={!editable}
           onChange={(e) => onCommentChange(e.target.value)}
@@ -748,11 +766,15 @@ function CriterionCard({
           type="button"
           size="sm"
           variant="secondary"
-          disabled={!canAct || comment === (result?.comment ?? '')}
-          onClick={() => void run(() => submitChecklistItemResult(instanceId, item.id, { comment }))}
+          disabled={!canAct || (comment === (result?.comment ?? '') && !heldAnswer) || (noteRequired && !comment.trim())}
+          onClick={() => {
+            const held = heldAnswer;
+            setHeldAnswer(null);
+            void run(() => submitChecklistItemResult(instanceId, item.id, held ? { ...held, comment } : { comment }));
+          }}
           style={{ marginTop: 6, minHeight: 44 }}
         >
-          {t('checklistSessions.conduct.saveComment', 'Save comment')}
+          {noteRequired ? t('checklists.noteSave', 'Save explanation') : t('checklistSessions.conduct.saveComment', 'Save comment')}
         </Button>
       </div>
 
