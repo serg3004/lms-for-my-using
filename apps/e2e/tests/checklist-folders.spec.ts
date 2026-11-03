@@ -38,6 +38,21 @@ async function mockApi(page: Page, state: { folders: ReturnType<typeof folder>[]
       state.folders.push(created);
       return route.fulfill({ json: created });
     }
+    if (path === '/checklist-folders/bulk') {
+      const body = request.postDataJSON() as { action: 'move' | 'delete'; ids: string[]; parentId?: string | null };
+      calls.push({ method, path, body });
+      const below = (id: string): string[] => [id, ...state.folders.filter((item) => item.parentId === id).flatMap((item) => below(item.id))];
+      const results = body.ids.map((id) => {
+        if (body.action === 'move') {
+          if (id === 'dup') return { id, result: 'skipped', reason: 'name_conflict' };
+          state.folders = state.folders.map((item) => (item.id === id ? { ...item, parentId: body.parentId ?? null } : item));
+        }
+        return { id, result: 'done' };
+      });
+      if (body.action === 'delete') { const gone = new Set(body.ids.flatMap(below)); state.folders = state.folders.filter((item) => !gone.has(item.id)); }
+      const done = results.filter((item) => item.result === 'done').length;
+      return route.fulfill({ json: { action: body.action, done, skipped: results.length - done, results, ...(body.action === 'delete' ? { summary: { folders: 1, checklists: 0, movedToDraft: [] } } : {}) } });
+    }
     if (/^\/checklist-folders\/[^/]+\/delete-impact$/.test(path)) return route.fulfill({ json: { folders: 2, checklists: 1, movedToDraft: [] } });
     if (/^\/checklist-folders\/[^/]+$/.test(path) && method === 'PATCH') {
       const body = request.postDataJSON() as { name?: string; parentId?: string | null };
@@ -129,7 +144,7 @@ test.describe('Checklist library: one list of folders and checklists (PR 408)', 
     await move.getByRole('radio', { name: 'Магазин' }).check();
     await move.getByRole('button', { name: 'Переместить' }).click();
     await expect(page.getByRole('row', { name: /Основной склад/ })).toHaveCount(0);
-    expect(calls.filter((call) => call.method === 'PATCH').at(-1)?.body).toEqual({ parentId: 'shop' });
+    expect(calls.filter((call) => call.path === '/checklist-folders/bulk').at(-1)?.body).toEqual({ action: 'move', ids: ['store'], parentId: 'shop' });
 
     // Create a subfolder of the open folder.
     await page.getByRole('row', { name: /Магазин/ }).getByRole('button', { name: 'Открыть папку: Магазин' }).click();
@@ -163,6 +178,152 @@ test.describe('Checklist library: one list of folders and checklists (PR 408)', 
     await confirm.getByRole('button', { name: 'Удалить' }).click();
     await expect.poll(() => calls.some((call) => call.method === 'DELETE' && call.path === '/checklist-folders/shop')).toBe(true);
     await expect(page.getByRole('row', { name: /Магазин/ })).toHaveCount(0);
+  });
+
+  test('selects folders and a checklist together: select all, rename one folder, move the mix, delete with one confirmation', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const calls: { method: string; path: string; body: unknown }[] = [];
+    const state = {
+      folders: [folder('a', null, 'Альфа', true), folder('b', null, 'Бета', true), folder('c', null, 'Гамма', true), folder('dest', null, 'Архив', true), folder('inner', 'a', 'Внутри', true)],
+      sheets: [sheet('s1', 'Открытие', null)],
+    };
+    await mockApi(page, state, calls);
+    await page.goto('/admin/checklists');
+    const bar = page.getByRole('region', { name: /Выбрано/ });
+
+    // One folder: the panel offers "Переименовать папку" and the other actions say they are not for folders.
+    await page.getByRole('checkbox', { name: 'Выбрать папку: Альфа' }).check();
+    await expect(bar.getByRole('button', { name: 'Переименовать папку' })).toBeVisible();
+    await expect(bar.getByRole('button', { name: 'Опубликовать' })).toBeDisabled();
+    await expect(bar.getByRole('button', { name: 'Опубликовать' })).toHaveAttribute('title', 'Недоступно для папок');
+    await bar.getByRole('button', { name: 'Переименовать папку' }).click();
+    await page.getByRole('dialog').getByLabel('Название папки').fill('Альфа 2');
+    await page.getByRole('dialog').getByRole('button', { name: 'Сохранить' }).click();
+    await expect(page.getByRole('row', { name: /Альфа 2/ })).toBeVisible();
+    expect(calls.find((call) => call.method === 'PATCH')?.body).toMatchObject({ name: 'Альфа 2' });
+    await expect(bar).toHaveCount(0);
+
+    // Select all rows of the open folder (folders and the checklist), then unselect the target folder.
+    await page.getByRole('checkbox', { name: 'Выбрать все папки и листы в этой папке' }).check();
+    await expect(bar).toContainText('5');
+    await page.getByRole('checkbox', { name: 'Выбрать папку: Архив' }).uncheck();
+    await expect(bar.getByRole('button', { name: 'Переименовать папку' })).toHaveCount(0);
+    await bar.getByRole('button', { name: 'Переместить в папку…' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('heading', { name: /Переместить выбранное \(4\)/ })).toBeVisible();
+    await expect(dialog.getByRole('radio', { name: 'Альфа 2' })).toHaveCount(0);
+    await dialog.getByRole('radio', { name: 'Архив' }).check();
+    await dialog.getByRole('button', { name: 'Переместить' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Готово: 4, пропущено: 0' })).toBeVisible();
+    expect(calls.find((call) => call.path === '/checklists/bulk')?.body).toEqual({ action: 'move', ids: ['s1'], folderId: 'dest' });
+    expect(calls.filter((call) => call.path === '/checklist-folders/bulk').at(-1)?.body).toEqual({ action: 'move', ids: ['a', 'b', 'c'], parentId: 'dest' });
+    await expect(page.getByRole('row', { name: /Бета/ })).toHaveCount(0);
+
+    // Open the destination, select two folders and delete them with one confirmation.
+    await page.getByRole('button', { name: 'Открыть папку: Архив' }).click();
+    await page.getByRole('checkbox', { name: 'Выбрать папку: Бета' }).check();
+    await page.getByRole('checkbox', { name: 'Выбрать папку: Гамма' }).check();
+    await bar.getByRole('button', { name: 'Удалить' }).click();
+    const confirm = page.getByRole('dialog');
+    // The mocked impact says 2 folders and 1 checklist per selected folder, summed over both.
+    await expect(confirm).toContainText('Папок (со всем содержимым): 4, чек-листов: 2');
+    await confirm.getByRole('button', { name: 'Удалить' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Готово: 2, пропущено: 0' })).toBeVisible();
+    expect(calls.filter((call) => call.path === '/checklist-folders/bulk').at(-1)?.body).toEqual({ action: 'delete', ids: ['b', 'c'] });
+  });
+
+  test('right button, keyboard and the move window: context menu on a folder, F2, Delete, the empty area and the folder list (PR 411)', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const calls: { method: string; path: string; body: unknown }[] = [];
+    const state = {
+      folders: [folder('a', null, 'Альфа', true), folder('b', null, 'Бета', true), folder('inner', 'a', 'Внутри', true)],
+      sheets: [sheet('s1', 'Открытие', null)],
+    };
+    await mockApi(page, state, calls);
+    await page.goto('/admin/checklists');
+
+    // Right click on a folder: the menu names it, the row becomes the selection, "Переименовать папку" works.
+    await page.getByRole('row', { name: /Альфа/ }).click({ button: 'right' });
+    const menu = page.getByRole('menu', { name: 'Действия: Альфа' });
+    await expect(menu.getByRole('menuitem')).toHaveText(['Открыть', 'Переименовать папку', 'Переместить в папку…', 'Удалить']);
+    await expect(page.getByRole('checkbox', { name: 'Выбрать папку: Альфа' })).toBeChecked();
+    await menu.getByRole('menuitem', { name: 'Переименовать папку' }).click();
+    await page.getByRole('dialog').getByLabel('Название папки').fill('Альфа 2');
+    await page.getByRole('dialog').getByRole('button', { name: 'Сохранить' }).click();
+    await expect(page.getByRole('row', { name: /Альфа 2/ })).toBeVisible();
+    expect(calls.find((call) => call.method === 'PATCH')?.body).toMatchObject({ name: 'Альфа 2' });
+
+    // Right click inside a selection of two rows acts on both; Open and Rename are not offered.
+    await page.getByRole('checkbox', { name: 'Выбрать папку: Бета' }).check();
+    await page.getByRole('checkbox', { name: 'Выбрать чек-лист: Открытие' }).check();
+    await page.getByRole('row', { name: /Открытие/ }).click({ button: 'right' });
+    await expect(page.getByRole('menu', { name: /Действия с выбранным \(2\)/ }).getByRole('menuitem')).toHaveText(['Переместить выбранное в папку…', 'Удалить выбранное…']);
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('menu')).toHaveCount(0);
+
+    // The empty area of the list: create a folder or a checklist.
+    await page.getByRole('checkbox', { name: 'Выбрать папку: Бета' }).uncheck();
+    await page.getByRole('checkbox', { name: 'Выбрать чек-лист: Открытие' }).uncheck();
+    await page.mouse.click(10, 10);
+    const box = (await page.getByRole('table', { name: 'Чек-листы' }).boundingBox())!;
+    await page.mouse.click(box.x + 40, box.y + box.height + 40, { button: 'right' });
+    await expect(page.getByRole('menu', { name: 'Действия со списком' }).getByRole('menuitem')).toHaveText(['Папку…', 'Чек-лист']);
+    await page.keyboard.press('Escape');
+
+    // Keyboard: focus a row, Shift+F10 opens the menu, arrows move, Escape returns the focus; F2 renames, Delete asks to delete.
+    const row = page.getByRole('row', { name: /Бета/ });
+    await row.focus();
+    await page.keyboard.press('Shift+F10');
+    await expect(page.getByRole('menuitem', { name: 'Открыть' })).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('menuitem', { name: 'Переименовать папку' })).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(row).toBeFocused();
+    await page.keyboard.press('F2');
+    await expect(page.getByRole('dialog').getByLabel('Название папки')).toHaveValue('Бета');
+    await page.getByRole('dialog').getByRole('button', { name: 'Отмена' }).click();
+    await row.focus();
+    await page.keyboard.press('Delete');
+    await expect(page.getByRole('dialog')).toContainText('Бета');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    // The move window: the folder list has its own menu without "Удалить".
+    await page.getByRole('row', { name: /Открытие/ }).click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Переместить в папку…' }).click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByText('Бета', { exact: true }).click({ button: 'right' });
+    await expect(page.getByRole('menu', { name: 'Действия: Бета' }).getByRole('menuitem')).toHaveText(['Выбрать эту папку', 'Переименовать папку', 'Новая папка внутри']);
+    await page.getByRole('menuitem', { name: 'Выбрать эту папку' }).click();
+    await expect(dialog.getByRole('radio', { name: 'Бета' })).toBeChecked();
+    await dialog.getByText('Бета', { exact: true }).click({ button: 'right' });
+    await page.getByRole('menuitem', { name: 'Новая папка внутри' }).click();
+    await page.getByRole('dialog', { name: 'Создать папку' }).getByLabel('Название папки').fill('Новая');
+    await page.getByRole('dialog', { name: 'Создать папку' }).getByRole('button', { name: 'Создать' }).click();
+    await expect(dialog.getByRole('radio', { name: 'Новая' })).toBeVisible();
+    expect(calls.find((call) => call.method === 'POST' && call.path === '/checklist-folders')?.body).toMatchObject({ name: 'Новая', parentId: 'b' });
+    // Axe on the open context menu of the move window, then on the open menu of the list.
+    await dialog.getByText('Бета', { exact: true }).click({ button: 'right' });
+    await expect(page.getByRole('menu', { name: 'Действия: Бета' })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()).violations).toEqual([]);
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.getByRole('row', { name: /Альфа 2/ }).click({ button: 'right' });
+    await expect(page.getByRole('menu', { name: 'Действия: Альфа 2' })).toBeVisible();
+    expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze()).violations).toEqual([]);
+  });
+
+  test('a skipped folder is reported with its reason', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await mockApi(page, { folders: [folder('dup', null, 'Касса', true), folder('dest', null, 'Архив', true)], sheets: [] }, []);
+    await page.goto('/admin/checklists');
+    await page.getByRole('checkbox', { name: 'Выбрать папку: Касса' }).check();
+    await page.getByRole('region', { name: /Выбрано/ }).getByRole('button', { name: 'Переместить в папку…' }).click();
+    await page.getByRole('dialog').getByRole('radio', { name: 'Архив' }).check();
+    await page.getByRole('dialog').getByRole('button', { name: 'Переместить' }).click();
+    const report = page.getByRole('status').filter({ hasText: 'Готово: 0, пропущено: 1' });
+    await expect(report).toContainText('Папка «Касса»: папка с таким названием там уже есть');
   });
 
   test('"+ Создать" makes a folder, then a checklist inside it, and the checklist lands in that folder', async ({ page }) => {

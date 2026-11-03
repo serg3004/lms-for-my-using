@@ -10,7 +10,7 @@ import { ObserverSessionsNav } from './ObserverSessionsNav.js';
 import { ChecklistBuilder } from '../features/admin-checklists/ChecklistBuilder.js';
 import { ChecklistCreateMenu } from '../features/admin-checklists/ChecklistCreateMenu.js';
 import { ChecklistTemplateDialog } from '../features/admin-checklists/ChecklistTemplateDialog.js';
-import { ChecklistBulkBar, bulkDeleteMessage, bulkResultSummary } from '../features/admin-checklists/ChecklistBulkBar.js';
+import { ChecklistBulkBar, bulkDeleteMessage, bulkResultSummary, folderBulkResultSummary, mergeBulkReports, selectionDeleteMessage, type BulkReport } from '../features/admin-checklists/ChecklistBulkBar.js';
 import { FolderDialog, MoveToFolderDialog, type FolderDialogTarget } from '../features/admin-checklists/FolderDialogs.js';
 import { canAddSubfolder, deleteImpactMessage, folderErrorMessage, folderPath, libraryContents, resolveSelectedFolder } from '../features/admin-checklists/folders.js';
 import { ChecklistTable } from '../features/admin-checklists/ChecklistTable.js';
@@ -18,6 +18,7 @@ import { CHECKLIST_STATUSES, filterChecklists, isUntouchedDraft } from '../featu
 import { Button, PageState, SearchInput, Toolbar, type DataTableSort } from '../shared/ui.js';
 import {
   bulkChecklistAction,
+  bulkChecklistFolderAction,
   copyChecklist,
   createChecklist,
   createChecklistFolder,
@@ -33,7 +34,6 @@ import {
 import type {
   ChecklistBulkAction,
   ChecklistFolder,
-  ChecklistBulkResult,
   ChecklistScoringMode,
   ChecklistStatus,
   ChecklistSummary,
@@ -100,7 +100,7 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkDeleteTargets, setBulkDeleteTargets] = useState<ChecklistSummary[] | null>(null);
-  const [bulkResult, setBulkResult] = useState<{ result: ChecklistBulkResult; titles: Map<string, string> } | null>(null);
+  const [bulkResult, setBulkResult] = useState<BulkReport | null>(null);
   // PR 396: folders. Collapsed folder ids (everything is expanded by default); the selected folder lives in the URL (`?folder=`).
   const [searchParams, setSearchParams] = useSearchParams();
   // PR 404: usage links open only a sheet already returned by the permission-filtered library.
@@ -114,9 +114,9 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
   const [sort, setSort] = useState<DataTableSort | undefined>(undefined);
   const [folderDialog, setFolderDialog] = useState<FolderDialogTarget | null>(null);
   const [folderDelete, setFolderDelete] = useState<{ folder: ChecklistFolder; message: string } | null>(null);
-  const [moveTargets, setMoveTargets] = useState<ChecklistSummary[] | null>(null);
-  // PR 408: moving one folder through its row menu.
-  const [moveFolder, setMoveFolder] = useState<ChecklistFolder | null>(null);
+  // PR 410: what the "Move to folder…" dialog moves: checklists and/or folders (one row, a selection, or a mix).
+  const [moveTargets, setMoveTargets] = useState<{ sheets: ChecklistSummary[]; folders: ChecklistFolder[] } | null>(null);
+  const [selectionDelete, setSelectionDelete] = useState<{ sheets: ChecklistSummary[]; folders: ChecklistFolder[]; message: string } | null>(null);
   // Refreshes a single checklist in place (no full-list reload, no loading flash) — used after
   // an edit made from inside the builder, where a full reload would remount it mid-edit.
   const refreshChecklist = useCallback(async (id: string) => {
@@ -138,7 +138,7 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
     setBulkBusy(true);
     try {
       const result = await bulkChecklistAction(action, targets.map((checklist) => checklist.id), folderId);
-      setBulkResult({ result, titles: new Map(targets.map((checklist) => [checklist.id, checklist.title])) });
+      setBulkResult(bulkResultSummary(result, new Map(targets.map((checklist) => [checklist.id, checklist.title])), t));
       setSelectedKeys(new Set());
       await load();
     } catch (error) {
@@ -168,6 +168,7 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
         await createChecklistFolder({ name: values.name, parentId: target.parent?.id ?? null, visibleToStaff: values.visibleToStaff });
       } else {
         await updateChecklistFolder(target.folder.id, { name: values.name, visibleToStaff: values.visibleToStaff });
+        setSelectedKeys(new Set());
       }
     } catch (error) {
       throw new Error(folderErrorMessage(error, t), { cause: error });
@@ -195,13 +196,80 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
       setStatusError(folderErrorMessage(error, t));
     }
   }
-  async function moveFolderTo(folder: ChecklistFolder, parentId: string | null) {
+  /** PR 410: moves the selected checklists and folders; checklists go first, folders second, one report. */
+  async function runMove(selection: { sheets: ChecklistSummary[]; folders: ChecklistFolder[] }, parentId: string | null) {
     setStatusError(null);
+    setBulkResult(null);
+    setBulkBusy(true);
     try {
-      await updateChecklistFolder(folder.id, { parentId });
+      const reports: BulkReport[] = [];
+      const counts: Array<{ done: number; skipped: number }> = [];
+      if (selection.sheets.length > 0) {
+        const result = await bulkChecklistAction('move', selection.sheets.map((checklist) => checklist.id), parentId);
+        reports.push(bulkResultSummary(result, new Map(selection.sheets.map((checklist) => [checklist.id, checklist.title])), t));
+        counts.push(result);
+      }
+      if (selection.folders.length > 0) {
+        const result = await bulkChecklistFolderAction('move', selection.folders.map((folder) => folder.id), parentId);
+        reports.push(folderBulkResultSummary(result, new Map(selection.folders.map((folder) => [folder.id, folder.name])), t));
+        counts.push(result);
+      }
+      setBulkResult(reports.length === 1 ? reports[0]! : mergeBulkReports(reports, counts, t));
+      setSelectedKeys(new Set());
       await load();
     } catch (error) {
       setStatusError(folderErrorMessage(error, t));
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+  /** PR 410: one confirmation with the numbers up front for deleting a selection that contains folders. */
+  async function requestSelectionDelete(selection: { sheets: ChecklistSummary[]; folders: ChecklistFolder[] }) {
+    setStatusError(null);
+    try {
+      // A selected folder inside another selected folder is deleted with it, so only the top-most ones are counted.
+      const ids = new Set(selection.folders.map((folder) => folder.id));
+      const topMost = selection.folders.filter((folder) => !folderPath(folders, folder.id).slice(0, -1).some((ancestor) => ids.has(ancestor.id)));
+      const impacts = await Promise.all(topMost.map((folder) => getChecklistFolderDeleteImpact(folder.id)));
+      const impact = {
+        folders: impacts.reduce((sum, item) => sum + item.folders, 0),
+        checklists: impacts.reduce((sum, item) => sum + item.checklists, 0),
+        movedToDraft: impacts.flatMap((item) => item.movedToDraft),
+      };
+      setSelectionDelete({ ...selection, message: selectionDeleteMessage(impact, selection.sheets.length, t) });
+    } catch (error) {
+      setStatusError(folderErrorMessage(error, t));
+    }
+  }
+  async function confirmSelectionDelete() {
+    const target = selectionDelete;
+    setSelectionDelete(null);
+    if (!target) return;
+    setStatusError(null);
+    setBulkResult(null);
+    setBulkBusy(true);
+    try {
+      const reports: BulkReport[] = [];
+      const counts: Array<{ done: number; skipped: number }> = [];
+      if (target.sheets.length > 0) {
+        const result = await bulkChecklistAction('delete', target.sheets.map((checklist) => checklist.id));
+        reports.push(bulkResultSummary(result, new Map(target.sheets.map((checklist) => [checklist.id, checklist.title])), t));
+        counts.push(result);
+      }
+      const result = await bulkChecklistFolderAction('delete', target.folders.map((folder) => folder.id));
+      const report = folderBulkResultSummary(result, new Map(target.folders.map((folder) => [folder.id, folder.name])), t);
+      if (result.summary && result.summary.movedToDraft.length > 0) {
+        report.skipped.push({ id: 'moved-to-draft', text: t('admin.checklists.bulk.folderMovedToDraft', 'Not deleted, moved to drafts at the root (assignments in progress): {{titles}}', { titles: result.summary.movedToDraft.map((sheet) => `«${sheet.title}»`).join(', ') }) });
+      }
+      reports.push(report);
+      counts.push(result);
+      setBulkResult(reports.length === 1 ? reports[0]! : mergeBulkReports(reports, counts, t));
+      setSelectedKeys(new Set());
+      await load();
+    } catch (error) {
+      setStatusError(folderErrorMessage(error, t));
+    } finally {
+      setBulkBusy(false);
     }
   }
   function changeSearch(value: string) {
@@ -372,45 +440,54 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
               </>
             }
           />
-          {bulkResult && (() => {
-            const summary = bulkResultSummary(bulkResult.result, bulkResult.titles, t);
-            return (
-              <div className="ui-state admin-inline-banner" role="status">
-                <p>{summary.headline}</p>
-                {summary.skipped.length > 0 && <ul>{summary.skipped.map((line) => <li key={line.id}>{line.text}</li>)}</ul>}
-                <button type="button" className="admin-inline-banner__close" aria-label={t('admin.checklists.close', 'Close')} onClick={() => setBulkResult(null)}>×</button>
-              </div>
-            );
-          })()}
+          {bulkResult && (
+            <div className="ui-state admin-inline-banner" role="status">
+              <p>{bulkResult.headline}</p>
+              {bulkResult.skipped.length > 0 && <ul>{bulkResult.skipped.map((line) => <li key={line.id}>{line.text}</li>)}</ul>}
+              <button type="button" className="admin-inline-banner__close" aria-label={t('admin.checklists.close', 'Close')} onClick={() => setBulkResult(null)}>×</button>
+            </div>
+          )}
           <ChecklistTable rows={sortedSheets} childFolders={shownFolders} allSheets={loadState.data.checklists} showFolderPath={searching} statusLabels={statusLabels} scoringModeLabels={scoringModeLabels} folders={folders}
-            onStatusChange={updateStatus} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} onDelete={setDeleteTarget} onMove={(checklist) => setMoveTargets([checklist])}
+            onStatusChange={updateStatus} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} onDelete={setDeleteTarget} onMove={(checklist) => setMoveTargets({ sheets: [checklist], folders: [] })}
             selectedKeys={selectedKeys} onSelectionChange={setSelectedKeys}
-            onOpenFolder={(folder) => selectFolder(folder.id)} onRenameFolder={(folder) => setFolderDialog({ kind: 'edit', folder })} onMoveFolder={setMoveFolder} onDeleteFolder={(folder) => void requestFolderDelete(folder)}
+            onMoveSelection={setMoveTargets} onDeleteSelection={(selection) => void requestSelectionDelete(selection)}
+            onCreateFolder={() => setFolderDialog({ kind: 'create', parent: selectedFolder })} onCreateChecklist={() => void createInOpenFolder()} canCreateFolder={canAddSubfolder(folders, selectedFolderId)}
+            onOpenFolder={(folder) => selectFolder(folder.id)} onRenameFolder={(folder) => setFolderDialog({ kind: 'edit', folder })} onMoveFolder={(folder) => setMoveTargets({ sheets: [], folders: [folder] })} onDeleteFolder={(folder) => void requestFolderDelete(folder)}
             sort={sort} onSortChange={setSort} emptyMessage={emptyMessage}
-            batchActions={(selected) => <ChecklistBulkBar selected={selected} busy={bulkBusy} onAction={requestBulk} onMove={setMoveTargets} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} t={t} />}
+            batchActions={({ sheets, folders: pickedFolders }) => <ChecklistBulkBar selected={sheets} selectedFolders={pickedFolders} busy={bulkBusy} onAction={requestBulk} onMove={setMoveTargets} onRenameFolder={(folder) => setFolderDialog({ kind: 'edit', folder })} onDeleteSelection={(selection) => void requestSelectionDelete(selection)} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} t={t} />}
             t={t} />
         </div>
       </div>
       <FolderDialog onClose={() => setFolderDialog(null)} onSubmit={submitFolder} t={t} target={folderDialog} />
       <MoveToFolderDialog
-        count={moveTargets?.length ?? 0}
-        currentFolderId={moveTargets && moveTargets.length > 0 && moveTargets.every((checklist) => (checklist.folderId ?? null) === (moveTargets[0]!.folderId ?? null)) ? (moveTargets[0]!.folderId ?? null) : null}
+        count={(moveTargets?.sheets.length ?? 0) + (moveTargets?.folders.length ?? 0)}
+        title={moveTargets && moveTargets.folders.length > 0
+          ? (moveTargets.sheets.length === 0 && moveTargets.folders.length === 1
+            ? t('admin.checklists.folders.moveFolderTitle', 'Move the folder "{{name}}"', { name: moveTargets.folders[0]!.name })
+            : t('admin.checklists.folders.moveItemsTitle', 'Move the selected items ({{count}}) to a folder', { count: moveTargets.sheets.length + moveTargets.folders.length }))
+          : undefined}
+        excludeFolderIds={moveTargets?.folders.map((folder) => folder.id)}
+        currentFolderId={(() => {
+          const parents = [...(moveTargets?.sheets ?? []).map((checklist) => checklist.folderId ?? null), ...(moveTargets?.folders ?? []).map((folder) => folder.parentId)];
+          return parents.length > 0 && parents.every((parent) => parent === parents[0]) ? parents[0]! : null;
+        })()}
         folders={folders}
+        onRenameFolder={(folder) => setFolderDialog({ kind: 'edit', folder })}
+        onCreateFolder={(parent) => setFolderDialog({ kind: 'create', parent })}
         onClose={() => setMoveTargets(null)}
-        onMove={(folderId) => { const targets = moveTargets ?? []; setMoveTargets(null); void runBulk('move', targets, folderId); }}
+        onMove={(parentId) => { const target = moveTargets; setMoveTargets(null); if (target) void runMove(target, parentId); }}
         open={moveTargets !== null}
         t={t}
       />
-      <MoveToFolderDialog
-        count={1}
-        folderName={moveFolder?.name}
-        excludeFolderId={moveFolder?.id ?? null}
-        currentFolderId={moveFolder?.parentId ?? null}
-        folders={folders}
-        onClose={() => setMoveFolder(null)}
-        onMove={(parentId) => { const target = moveFolder; setMoveFolder(null); if (target) void moveFolderTo(target, parentId); }}
-        open={moveFolder !== null}
-        t={t}
+      <ConfirmDialog
+        open={selectionDelete !== null}
+        title={t('admin.checklists.bulk.deleteSelectionTitle', 'Delete the selection')}
+        message={selectionDelete?.message ?? ''}
+        confirmLabel={t('admin.checklists.delete', 'Delete')}
+        cancelLabel={t('admin.checklists.cancel', 'Cancel')}
+        variant="danger"
+        onConfirm={() => void confirmSelectionDelete()}
+        onCancel={() => setSelectionDelete(null)}
       />
       <ConfirmDialog
         open={folderDelete !== null}

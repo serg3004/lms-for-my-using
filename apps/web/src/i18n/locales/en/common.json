@@ -1026,7 +1026,8 @@
         "createTitle": "Create folder",
         "createIn": "The folder will be created in \"{{name}}\".",
         "createInRoot": "The folder will be created at the top level (All checklists).",
-        "createSubmit": "Create"
+        "createSubmit": "Create",
+        "moveItemsTitle": "Move the selected items ({{count}}) to a folder"
       },
       "bulk": {
         "selectAll": "Select all checklists",
@@ -1043,8 +1044,21 @@
           "already_in_folder": "already in this folder",
           "has_active_assignments": "has assignments in progress",
           "cannot_publish": "cannot be published: it has no criteria or uses an archived scale",
-          "moved_to_draft": "not deleted, moved to drafts: it has assignments in progress"
-        }
+          "moved_to_draft": "not deleted, moved to drafts: it has assignments in progress",
+          "folderForbidden": "only the creator of the folder or an administrator can change it",
+          "name_conflict": "a folder with this name already exists there",
+          "too_deep": "folders can be nested at most 5 levels deep",
+          "cycle": "a folder cannot be moved into itself or into its subfolder",
+          "covered_by_parent": "deleted together with its parent folder"
+        },
+        "selectAllRows": "Select all folders and checklists in this folder",
+        "selectFolderRow": "Select folder: {{name}}",
+        "notForFolders": "Not available for folders",
+        "foldersHint": "Edit, copy, publish, draft and archive are available only for a selection of checklists.",
+        "deleteMixedConfirm": "Delete the selection? Folders (with everything inside): {{folders}}, checklists: {{checklists}}. Completed results are kept. This cannot be undone.",
+        "deleteSelectionTitle": "Delete the selection",
+        "folderWord": "Folder",
+        "folderMovedToDraft": "Not deleted, moved to drafts at the root (assignments in progress): {{titles}}"
       },
       "col": {
         "title": "Title",
@@ -1687,7 +1701,18 @@
         "checklist": "Checklist",
         "depthHint": "The deepest level: folders can be nested at most 5 levels deep."
       },
-      "createError": "Unable to create the checklist."
+      "createError": "Unable to create the checklist.",
+      "contextMenu": {
+        "rowLabel": "Actions: {{name}}",
+        "selectionLabel": "Actions on the selection ({{selected}})",
+        "emptyLabel": "Library actions",
+        "treeLabel": "Folder list actions",
+        "moveSelection": "Move the selection to a folder…",
+        "deleteSelection": "Delete the selection…",
+        "choose": "Choose this folder",
+        "newInside": "New folder inside",
+        "newFolder": "New folder"
+      }
     },
     "orgTools": {
       "cardTitle": "Organization structure import",

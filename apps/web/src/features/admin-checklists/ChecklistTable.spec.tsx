@@ -130,10 +130,12 @@ describe('ChecklistTable library rows (PR 408)', () => {
     expect(renderLibrary({ childFolders: [folders[1]!] })).toContain('Closed folder');
   });
 
-  it('offers no selection checkbox on a folder row, only on checklists', () => {
+  it('offers a checkbox on every folder and checklist row and one in the header to select the whole open folder (PR 410)', () => {
     const html = renderLibrary({ selectedKeys: new Set<string>(), onSelectionChange: vi.fn() });
     expect(html.match(/type="checkbox"/g)).toHaveLength(1 + 3);
-    expect(html.match(/disabled=""/g)).toHaveLength(2);
+    expect(html).not.toContain('disabled=""');
+    expect(html).toContain('aria-label="Select folder: Магазин"');
+    expect(html).toContain('aria-label="Select all folders and checklists in this folder"');
   });
 
   it('says the folder is empty with the given message', () => {

@@ -1026,7 +1026,8 @@
         "createTitle": "创建文件夹",
         "createIn": "文件夹将创建在“{{name}}”中。",
         "createInRoot": "文件夹将创建在顶层（全部检查表）。",
-        "createSubmit": "创建"
+        "createSubmit": "创建",
+        "moveItemsTitle": "将所选项目（{{count}}）移到文件夹"
       },
       "bulk": {
         "selectAll": "选择全部检查清单",
@@ -1043,8 +1044,21 @@
           "already_in_folder": "已在该文件夹中",
           "has_active_assignments": "有进行中的分配",
           "cannot_publish": "无法发布：没有评分项或使用了已归档的量表",
-          "moved_to_draft": "未删除，已转为草稿：有进行中的分配"
-        }
+          "moved_to_draft": "未删除，已转为草稿：有进行中的分配",
+          "folderForbidden": "只有文件夹的创建者或管理员可以更改",
+          "name_conflict": "该位置已有同名文件夹",
+          "too_deep": "文件夹最多嵌套 5 层",
+          "cycle": "文件夹不能移入自身或其子文件夹",
+          "covered_by_parent": "已随上级文件夹一并删除"
+        },
+        "selectAllRows": "选择此文件夹中的所有文件夹和检查表",
+        "selectFolderRow": "选择文件夹：{{name}}",
+        "notForFolders": "不适用于文件夹",
+        "foldersHint": "编辑、复制、发布、转为草稿和归档仅适用于只选择检查表的情况。",
+        "deleteMixedConfirm": "删除所选内容？文件夹（含其中全部内容）：{{folders}}，检查表：{{checklists}}。已完成的结果会保留。此操作无法撤销。",
+        "deleteSelectionTitle": "删除所选内容",
+        "folderWord": "文件夹",
+        "folderMovedToDraft": "未删除，已移至根目录的草稿（有进行中的任务分配）：{{titles}}"
       },
       "col": {
         "title": "标题",
@@ -1687,7 +1701,18 @@
         "checklist": "检查表",
         "depthHint": "已是最深一层：文件夹最多嵌套 5 层。"
       },
-      "createError": "无法创建检查表。"
+      "createError": "无法创建检查表。",
+      "contextMenu": {
+        "rowLabel": "操作：{{name}}",
+        "selectionLabel": "对所选项的操作（{{selected}}）",
+        "emptyLabel": "列表操作",
+        "treeLabel": "文件夹列表操作",
+        "moveSelection": "将所选项移到文件夹…",
+        "deleteSelection": "删除所选项…",
+        "choose": "选择此文件夹",
+        "newInside": "在其中新建文件夹",
+        "newFolder": "新建文件夹"
+      }
     },
     "orgTools": {
       "cardTitle": "组织架构导入",

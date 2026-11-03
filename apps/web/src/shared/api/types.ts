@@ -408,6 +408,16 @@ export type ChecklistBulkOutcome =
   | { id: string; result: 'skipped'; reason: ChecklistBulkSkipReason; message?: string };
 export type ChecklistBulkResult = { action: ChecklistBulkAction; done: number; skipped: number; results: ChecklistBulkOutcome[] };
 
+/** PR 407/410: the result of `POST /checklist-folders/bulk` (move or delete several folders). */
+export type ChecklistFolderBulkSkipReason = 'not_found' | 'forbidden' | 'name_conflict' | 'too_deep' | 'cycle' | 'already_in_folder' | 'covered_by_parent';
+export type ChecklistFolderBulkResult = {
+  action: 'move' | 'delete';
+  done: number;
+  skipped: number;
+  results: Array<{ id: string; result: 'done' } | { id: string; result: 'skipped'; reason: ChecklistFolderBulkSkipReason }>;
+  summary?: ChecklistFolderDeleteImpact;
+};
+
 /** PR 395/396: one folder of the checklist tree as `GET /checklist-folders` returns it (only the folders the caller may see). */
 export type ChecklistFolder = {
   id: string;

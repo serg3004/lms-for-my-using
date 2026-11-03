@@ -5,6 +5,7 @@ import {
   useState,
   type ButtonHTMLAttributes,
   type CSSProperties,
+  type HTMLAttributes,
   type InputHTMLAttributes,
   type ReactNode,
   type RefObject,
@@ -436,6 +437,8 @@ export type DataTableProps<T> = {
    * (e.g. a link in the primary cell) that does the same thing.
    */
   onRowClick?: (row: T) => void;
+  /** PR 411: extra attributes and handlers of a row (focus, context menu, keys); they never replace the table's own. */
+  rowProps?: (row: T) => HTMLAttributes<HTMLTableRowElement> & { [attribute: `data-${string}`]: string | undefined };
   /**
    * Makes secondary and tertiary columns available in an expandable details
    * region when responsive CSS removes them from the table row.
@@ -458,6 +461,7 @@ export function DataTable<T>({
   batchActions,
   expansion,
   onRowClick,
+  rowProps,
   responsiveDetails,
 }: DataTableProps<T>) {
   const [responsiveExpandedKeys, setResponsiveExpandedKeys] = useState<Set<string>>(new Set());
@@ -569,6 +573,7 @@ export function DataTable<T>({
               const expanded = expansion?.expandedKeys.has(key) ?? responsiveExpandedKeys.has(key);
               return [
                 <tr
+                  {...rowProps?.(row)}
                   key={key}
                   style={onRowClick ? { cursor: 'pointer' } : undefined}
                   onClick={onRowClick ? (event) => {
