@@ -129,6 +129,13 @@ function isIsoDate(value: string): boolean {
 
 export type ChecklistSessionView = ChecklistSession & { overdue: boolean };
 
+/** PR 416: the frozen sheet has the mode "Without points" -- lists say "Completed" instead of "Not scored". */
+function snapshotWithoutPoints(snapshot: Prisma.JsonValue | null | undefined): boolean {
+  if (!snapshot || typeof snapshot !== 'object' || Array.isArray(snapshot)) return false;
+  const checklist = (snapshot as Record<string, unknown>).checklist;
+  return !!checklist && typeof checklist === 'object' && !Array.isArray(checklist) && (checklist as Record<string, unknown>).scoringMode === 'none';
+}
+
 function present(session: ChecklistSession): ChecklistSessionView {
   return {
     ...session,
@@ -157,6 +164,7 @@ function presentProjected(session: SessionWithProjection) {
       percentage: instance.percentage,
       passed: instance.passed,
       scored: instance.scored,
+      withoutPoints: snapshotWithoutPoints(instance.templateSnapshot),
       visible: true,
     },
   };

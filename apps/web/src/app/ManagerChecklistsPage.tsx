@@ -215,6 +215,7 @@ export function EmployeeSessionsDrilldown({ userId, from, to, t, onMessage }: { 
               if (!session.result.visible) return '—';
               const result = describeChecklistSessionResult(session.result);
               if (result.kind === 'scored') return `${result.percentage}%`;
+              if (result.kind === 'finished') return t('checklists.finishedNoPoints', 'Completed');
               if (result.kind === 'notScored') return t('manager.checklists.notScored', 'Not scored (all skipped)');
               return '—';
             })()}

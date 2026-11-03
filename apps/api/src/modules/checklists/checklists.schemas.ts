@@ -8,7 +8,7 @@ import { answerOptionSchema, feedbackLayoutSchema, FEEDBACK_TEXT_MAX_LENGTH } fr
 const highlightColorSchema = z.string().regex(HIGHLIGHT_COLOR_PATTERN, 'color must be #RRGGBB').transform(normalizeHighlightColor);
 
 export const checklistStatusSchema = z.enum(['draft', 'published', 'archived']);
-export const checklistScoringModeSchema = z.enum(['sum_points', 'all_required', 'scale']);
+export const checklistScoringModeSchema = z.enum(['sum_points', 'all_required', 'scale', 'none']);
 export const checklistInstanceStatusSchema = z.enum(['assigned', 'in_progress', 'submitted', 'completed', 'expired']);
 export const checklistReviewStatusSchema = z.enum(['pending', 'approved', 'rejected']);
 // Also used below by the PR 296 checklist-level defaultLocationCapturePolicy field, not just the

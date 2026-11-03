@@ -103,10 +103,16 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
         </section>}
         <footer>
           <div role="status" className={complete && result.passed ? 'admin-preview-result admin-preview-result--pass' : 'admin-preview-result'}>
-            <span>{complete ? (result.passed ? t('admin.checklists.previewPassed', 'Pass') : t('admin.checklists.previewFailed', 'Fail')) : t('checklistPreview.incomplete', 'Incomplete')}</span>
-            <strong>{result.totalScore} / {result.maxScore} ({result.percentage}%)</strong>
+            {scoringMode === 'none' ? (
+              <strong>{complete ? t('checklists.finishedNoPoints', 'Completed') : t('checklistPreview.incomplete', 'Incomplete')}</strong>
+            ) : (
+              <>
+                <span>{complete ? (result.passed ? t('admin.checklists.previewPassed', 'Pass') : t('admin.checklists.previewFailed', 'Fail')) : t('checklistPreview.incomplete', 'Incomplete')}</span>
+                <strong>{result.totalScore} / {result.maxScore} ({result.percentage}%)</strong>
+              </>
+            )}
           </div>
-          <p className="admin-form__hint">{t('checklistPreview.scoreHint', 'The percentage is calculated from answered criteria. Skipped criteria are excluded.')}</p>
+          {scoringMode !== 'none' && <p className="admin-form__hint">{t('checklistPreview.scoreHint', 'The percentage is calculated from answered criteria. Skipped criteria are excluded.')}</p>}
           <div className="admin-form__actions">
             <Button type="button" variant="secondary" onClick={reset}>{t('admin.checklists.previewReset', 'Reset')}</Button>
             <Button type="button" onClick={onClose}>{t('admin.checklists.close', 'Close')}</Button>

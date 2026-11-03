@@ -561,6 +561,16 @@ source: the selected level's `score` is earned points, and the greatest level sc
 It takes precedence over the checklist's `scoringMode`/`scaleLevels`. Without a criterion scale,
 the existing checklist-level scale, `sum_points` and `all_required` behavior is unchanged.
 
+PR 416 adds the checklist mode `scoringMode='none'` ("Without points"; Prisma enum value added by migration
+`20261103140000_checklist_scoring_mode_none`). Such a sheet never has a score: `totalScore`/`maxScore` stay 0,
+`scored=false`, `percentage=0`, `passed=false` and the pass threshold is ignored, whichever formula a session
+uses. A criterion may still have a scale as a set of answers; its points are not counted. Completion still
+requires every required criterion to be answered. The session report carries `summary.scoringMode`
+(`passed=null`, criterion `score`/`maxScore` = `null`, group `percentage=null`) and the PDF prints "Completed" and the
+number of answered criteria instead of the ring, points and verdict. `result.withoutPoints` on a session
+projection lets lists say "Completed" instead of "Not scored". Assigned checks keep the mode frozen in their
+snapshot; changing the sheet mode never touches them.
+
 Tenant-scoped, reusable evaluation scale library (`GET/POST /checklist-scales`, `GET/PATCH/DELETE
 /checklist-scales/:id`, `POST /checklist-scales/:id/archive`) -- coexists with, and never touches,
 the pre-existing per-checklist `scoringMode='scale'` + `Checklist.scaleLevels` JSON mechanism.

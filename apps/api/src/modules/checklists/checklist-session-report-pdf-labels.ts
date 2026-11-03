@@ -9,6 +9,7 @@ export type PdfLabels = {
   groups: string; criteria: string; number: string; criterion: string; score: string; level: string; comment: string;
   skippedCriterion: string; photos: string; photoFile: string; photosOmitted: (count: number) => string; photoUnavailable: string;
   feedback: string; strengths: string; developmentAreas: string; nextSteps: string;
+  finished: string; ofCriteria: (answered: number, total: number) => string;
   hidden: string; page: (page: number, pages: number) => string; empty: string;
   statuses: Record<string, string>; review: Record<string, string>;
 };
@@ -22,6 +23,7 @@ export const PDF_LABELS: Record<PdfLocale, PdfLabels> = {
     groups: 'Группы', criteria: 'Критерии', number: '№', criterion: 'Критерий', score: 'Баллы', level: 'Уровень', comment: 'Комментарий',
     skippedCriterion: 'Пропущен', photos: 'Фотографии', photoFile: 'Фото', photosOmitted: (count) => `Ещё фотографий не включено в файл: ${count}`, photoUnavailable: 'Фото недоступно',
     feedback: 'Обратная связь', strengths: 'Сильные стороны', developmentAreas: 'Зоны роста', nextSteps: 'Комментарий',
+    finished: 'Завершено', ofCriteria: (a, t) => `${a} из ${t} критериев`,
     hidden: 'Результат пока скрыт от сотрудника.', page: (page, pages) => `Стр. ${page} из ${pages}`, empty: 'нет данных',
     statuses: { scheduled: 'Запланирована', in_progress: 'В процессе', paused: 'На паузе', completed: 'Завершена', cancelled: 'Отменена' },
     review: { pending: 'На проверке', approved: 'Принято', rejected: 'Отклонено' },
@@ -34,6 +36,7 @@ export const PDF_LABELS: Record<PdfLocale, PdfLabels> = {
     groups: 'Groups', criteria: 'Criteria', number: '#', criterion: 'Criterion', score: 'Points', level: 'Level', comment: 'Comment',
     skippedCriterion: 'Skipped', photos: 'Photos', photoFile: 'Photo', photosOmitted: (count) => `Photos not included in the file: ${count}`, photoUnavailable: 'Photo unavailable',
     feedback: 'Feedback', strengths: 'Strengths', developmentAreas: 'Development areas', nextSteps: 'Comment',
+    finished: 'Completed', ofCriteria: (a, t) => `${a} of ${t} criteria`,
     hidden: 'The result is still hidden from the employee.', page: (page, pages) => `Page ${page} of ${pages}`, empty: 'no data',
     statuses: { scheduled: 'Scheduled', in_progress: 'In progress', paused: 'Paused', completed: 'Completed', cancelled: 'Cancelled' },
     review: { pending: 'Pending review', approved: 'Approved', rejected: 'Rejected' },
@@ -46,6 +49,7 @@ export const PDF_LABELS: Record<PdfLocale, PdfLabels> = {
     groups: 'Топтар', criteria: 'Өлшемдер', number: '№', criterion: 'Өлшем', score: 'Балл', level: 'Деңгей', comment: 'Пікір',
     skippedCriterion: 'Өткізілді', photos: 'Фотолар', photoFile: 'Фото', photosOmitted: (count) => `Файлға енгізілмеген фотолар: ${count}`, photoUnavailable: 'Фото қолжетімсіз',
     feedback: 'Кері байланыс', strengths: 'Күшті жақтары', developmentAreas: 'Даму аймақтары', nextSteps: 'Пікір',
+    finished: 'Аяқталды', ofCriteria: (a, t) => `${t} өлшемнің ${a}-і`,
     hidden: 'Нәтиже қызметкерден әзірге жасырылған.', page: (page, pages) => `${page} / ${pages} бет`, empty: 'дерек жоқ',
     statuses: { scheduled: 'Жоспарланған', in_progress: 'Жүріп жатыр', paused: 'Тоқтатылған', completed: 'Аяқталған', cancelled: 'Бас тартылған' },
     review: { pending: 'Тексерілуде', approved: 'Қабылданды', rejected: 'Қабылданбады' },
@@ -58,6 +62,7 @@ export const PDF_LABELS: Record<PdfLocale, PdfLabels> = {
     groups: '分组', criteria: '评分标准', number: '序号', criterion: '标准', score: '得分', level: '等级', comment: '备注',
     skippedCriterion: '已跳过', photos: '照片', photoFile: '照片', photosOmitted: (count) => `未包含在文件中的照片：${count}`, photoUnavailable: '照片不可用',
     feedback: '反馈', strengths: '优势', developmentAreas: '改进方向', nextSteps: '备注',
+    finished: '已完成', ofCriteria: (a, t) => `${t} 项标准中的 ${a} 项`,
     hidden: '结果暂未向员工公开。', page: (page, pages) => `第 ${page} 页，共 ${pages} 页`, empty: '无数据',
     statuses: { scheduled: '已计划', in_progress: '进行中', paused: '已暂停', completed: '已完成', cancelled: '已取消' },
     review: { pending: '待审核', approved: '已通过', rejected: '已驳回' },

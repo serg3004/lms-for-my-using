@@ -43,7 +43,7 @@ describe('ChecklistBuilder save status (PR 340)', () => {
     root = createRoot(container);
     const t = ((key: string, fallback?: string) => fallback ?? key) as never;
     await act(async () => {
-      root?.render(<ChecklistBuilder checklist={checklist} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale' }} onBack={() => {}} onReload={async () => {}} t={t} />);
+      root?.render(<ChecklistBuilder checklist={checklist} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale', none: 'None' }} onBack={() => {}} onReload={async () => {}} t={t} />);
     });
     const status = () => container.querySelector('p[role="status"]:not([style])')?.textContent;
     expect(status()).toBe('All changes are saved.');
@@ -69,7 +69,7 @@ describe('ChecklistBuilder save status (PR 340)', () => {
     root = createRoot(container);
     const t = ((key: string, fallback?: string) => fallback ?? key) as never;
     await act(async () => {
-      root?.render(<ChecklistBuilder checklist={{ ...checklist, moduleSettings: { thresholds: null, resultColors: null, feedbackVisibility: null, observers: null } }} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale' }} onBack={() => {}} onReload={async () => {}} t={t} />);
+      root?.render(<ChecklistBuilder checklist={{ ...checklist, moduleSettings: { thresholds: null, resultColors: null, feedbackVisibility: null, observers: null } }} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale', none: 'None' }} onBack={() => {}} onReload={async () => {}} t={t} />);
     });
     const status = () => container.querySelector('p[role="status"]:not([style])')?.textContent;
     const inherit = [...container.querySelectorAll('label')].find((label) => label.textContent?.includes('Feedback visibility: as in the organization'))!.querySelector('input')!;

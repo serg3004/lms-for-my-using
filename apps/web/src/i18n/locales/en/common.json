@@ -1086,7 +1086,10 @@
       "scoring": {
         "sumPoints": "Sum of points",
         "allRequired": "All items required",
-        "scale": "Custom scale"
+        "scale": "Custom scale",
+        "none": "No points",
+        "noneHint": "Without points: the check is only completed. No percentage, pass threshold or “passed / not passed” is shown.",
+        "changeNote": "The new mode will not affect checks that are already assigned: they keep the mode they were assigned with."
       },
       "backToList": "All checklists",
       "publish": "Publish",
@@ -1534,7 +1537,9 @@
         "otherObservations": "Summary with other observations of this employee",
         "otherObservationsHint": "Choose the observation dates to include in one file.",
         "otherObservationsError": "Unable to load other observations.",
-        "currentObservation": "this session"
+        "currentObservation": "this session",
+        "answeredOfTotal": "{{answered}} of {{total}} criteria",
+        "criterionAnswered": "Answered"
       },
       "dueAtHint": "Optional. Enter local time; it is stored as UTC.",
       "requiredItem": "Required",
@@ -1571,7 +1576,8 @@
       "scoringModeInfo": {
         "sum_points": "Each criterion has points. The result is the points earned as a percentage of the maximum. Example: 3 criteria of 10 points, 2 done — 20 of 30, that is 67%.",
         "all_required": "The checklist is passed only if every required criterion is done. Example: 4 of 5 criteria are required; one required criterion is missed — the checklist is not passed.",
-        "scale": "For each criterion the observer picks a scale level, for example from \"Very poor\" to \"Excellent\". The result is the sum of the points of the chosen levels. Example: \"Good\" gives 75 points, \"Excellent\" 100."
+        "scale": "For each criterion the observer picks a scale level, for example from \"Very poor\" to \"Excellent\". The result is the sum of the points of the chosen levels. Example: \"Good\" gives 75 points, \"Excellent\" 100.",
+        "none": "No points: the employee and the observer answer the criteria and the sheet is completed. The result is “Completed” with no percentage and no “passed / not passed”. Good for questionnaires and observations."
       },
       "scaleLevelsCriterionHint": "A criterion can use its own ready-made scale, chosen in the criteria table; without one, the levels above apply.",
       "advancedTitle": "Additional settings",
@@ -2841,7 +2847,9 @@
     "noteRequired": "Explanation (required)",
     "note": "Explanation",
     "notePending": "Fill in the explanation and save it: your answer is saved together with it.",
-    "noteSave": "Save explanation"
+    "noteSave": "Save explanation",
+    "finishedNoPoints": "Completed",
+    "finishedNoPointsDone": "The check is completed"
   },
   "checklistReview": {
     "loadError": "Unable to load pending reviews.",

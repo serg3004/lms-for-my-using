@@ -126,6 +126,17 @@ function ReportHeader({ report, t }: { report: Report; t: TFunction }) {
 }
 
 function ReportTotal({ summary, t }: { summary: NonNullable<Report['summary']>; t: TFunction }) {
+  if (summary.scoringMode === 'none') {
+    return (
+      <Card>
+        <p style={{ ...muted, margin: 0 }}>{t('admin.checklists.report.finalResult', 'Final result')}</p>
+        <p style={{ margin: '6px 0', fontSize: 22, fontWeight: 700, color: 'var(--color-text)' }}>{t('checklists.finishedNoPoints', 'Completed')}</p>
+        <p style={{ margin: 0, fontWeight: 600 }}>
+          {t('admin.checklists.report.answeredOfTotal', '{{answered}} of {{total}} criteria', { answered: summary.answeredCount, total: summary.criteriaCount - summary.skippedCount })}
+        </p>
+      </Card>
+    );
+  }
   const allSkipped = summary.criteriaCount > 0 && summary.answeredCount === 0 && summary.skippedCount === summary.criteriaCount;
   return (
     <Card>
@@ -225,7 +236,7 @@ export function ReportSummary({ report, t }: { report: Report; t: TFunction }) {
           )}
           <ReportTotal summary={report.summary} t={t} />
           {report.feedbackForm && isCustomFeedback(report.feedbackForm.layout) ? <div className="admin-card"><FeedbackReadOnly config={report.feedbackForm} answers={report.feedbackForm.answers} t={t} /></div> : report.feedback && <ReportFeedback feedback={report.feedback} t={t} />}
-          <ReportGroups groups={report.groups} t={t} />
+          {report.summary?.scoringMode !== 'none' && <ReportGroups groups={report.groups} t={t} />}
         </>
       )}
     </>
@@ -250,6 +261,7 @@ export function ReportCriteria({ report, t }: { report: Report; t: TFunction }) 
   }
   if (report.criteria.length === 0) return <p>{t('admin.checklists.report.criteriaEmpty', 'This checklist has no criteria.')}</p>;
 
+  const withoutPoints = report.summary?.scoringMode === 'none';
   const groupTitles = new Map(report.groups.map((group) => [group.id, `${group.number}. ${group.title}`]));
   let previousGroup: string | null | undefined;
   const rows: ReactNode[] = [];
@@ -264,7 +276,9 @@ export function ReportCriteria({ report, t }: { report: Report; t: TFunction }) 
         );
       }
     }
-    const status = criterionStatus(criterion);
+    // PR 416: a sheet without points has no score, so an answered row says "Answered" rather than "No points".
+    const status = withoutPoints && criterion.state === 'answered' ? ('full' as const) : criterionStatus(criterion);
+    const answerLabel = criterion.state === 'answered' ? t('admin.checklists.report.criterionAnswered', 'Answered') : statusLabel(status, t);
     const fill = criterion.color ? { background: criterion.color.light.fill, color: criterion.color.light.text } : {};
     const cell = { padding: 8, verticalAlign: 'top', ...fill } as const;
     rows.push(
@@ -274,10 +288,16 @@ export function ReportCriteria({ report, t }: { report: Report; t: TFunction }) 
         </td>
         <td style={{ ...cell, whiteSpace: 'nowrap' }}>
           <span aria-hidden>{STATUS_SYMBOL[status]} </span>
-          {criterion.score === null || criterion.maxScore === null
-            ? statusLabel(status, t)
-            : t('admin.checklists.report.scoreOf', '{{earned}} of {{max}}', { earned: criterion.score, max: criterion.maxScore })}
-          <span style={{ display: 'block', fontSize: 12 }}>{statusLabel(status, t)}</span>
+          {withoutPoints ? (
+            <span>{answerLabel}</span>
+          ) : (
+            <>
+              {criterion.score === null || criterion.maxScore === null
+                ? statusLabel(status, t)
+                : t('admin.checklists.report.scoreOf', '{{earned}} of {{max}}', { earned: criterion.score, max: criterion.maxScore })}
+              <span style={{ display: 'block', fontSize: 12 }}>{statusLabel(status, t)}</span>
+            </>
+          )}
         </td>
         <td style={cell}>{criterion.levelLabel ?? '—'}</td>
         <td style={cell}>

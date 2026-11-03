@@ -23,6 +23,8 @@ type Props = {
   disabled: boolean;
   /** Only an administrator changes who may observe a sheet (as for the organization). */
   canEditObservers: boolean;
+  /** PR 416: the sheet has no points, so thresholds and result colours do not apply and are not shown. */
+  withoutPoints?: boolean;
   t: TFunction;
 };
 
@@ -35,7 +37,7 @@ const policyLabel = (t: TFunction, policy: ChecklistGeolocationPolicy) =>
  * PR 397: per-sheet overrides of the module settings. Each group has an "As in the organization" switch (on
  * by default); switched off, it shows the same controls as the organization's settings, pre-filled from them.
  */
-export function ChecklistModuleSettingsBlock({ value, onChange, locationPolicy, onResetLocation, disabled, canEditObservers, t }: Props) {
+export function ChecklistModuleSettingsBlock({ value, onChange, locationPolicy, onResetLocation, disabled, canEditObservers, withoutPoints = false, t }: Props) {
   const id = useId();
   const [org, setOrg] = useState<ChecklistWorkplaceSettingsView | null>(null);
   useEffect(() => {
@@ -66,6 +68,8 @@ export function ChecklistModuleSettingsBlock({ value, onChange, locationPolicy, 
         {t('admin.checklists.moduleSettings.intro', 'By default the checklist uses the organization settings. Switch a group off “As in the organization” to set it for this checklist only.')}
       </p>
 
+      {!withoutPoints && (
+        <>
       <ChecklistCheckboxOption
         label={t('admin.checklists.moduleSettings.thresholds', 'Result thresholds: as in the organization')}
         hint={inheritHint(org ? `${org.highPerformanceThreshold}% / ${org.lowThreshold === null ? '—' : `${org.lowThreshold}%`}` : null)}
@@ -104,6 +108,9 @@ export function ChecklistModuleSettingsBlock({ value, onChange, locationPolicy, 
             </div>
           ))}
         </fieldset>
+      )}
+
+        </>
       )}
 
       <div className="admin-form__field">

@@ -57,7 +57,7 @@ export async function installSessionManagementMocks(page: Page, role: SessionMan
     if (path === '/checklist-sessions') return route.fulfill({ json: { items: [scheduled, completed], total: 2, page: 1, pageSize: 20 } });
     if (path === `/checklist-sessions/${completedId}`) return route.fulfill({ json: completed });
     if (path === `/checklist-sessions/${completedId}/report`) return route.fulfill({ json: sessionReportFixture(completed, {
-      summary: { scored: true, percentage: 100, totalScore: 10, maxScore: 10, criteriaCount: 1, answeredCount: 1, skippedCount: 0, passed: true, passThreshold: 80, formula: 'snapshot', color: reportGreen },
+      summary: { scored: true, scoringMode: 'sum_points', percentage: 100, totalScore: 10, maxScore: 10, criteriaCount: 1, answeredCount: 1, skippedCount: 0, passed: true, passThreshold: 80, formula: 'snapshot', color: reportGreen },
       groups: [],
       criteria: [{ id: item.id, number: '1', groupId: null, text: managementCriterion, state: 'answered', score: 10, maxScore: 10, levelLabel: null, comment: 'Оборудование готово.', photo: null, reviewStatus: 'approved', color: reportGreen }],
     }) });

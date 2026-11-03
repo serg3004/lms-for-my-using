@@ -37,6 +37,7 @@ export function sessionReportFixture(session: ReportSession, overrides: Partial<
     generalInfo: [],
     summary: {
       scored: scored === true,
+      scoringMode: 'sum_points',
       percentage: scored ? percentage : null,
       totalScore: 7,
       maxScore: 9,

@@ -38,6 +38,7 @@ export const CHECKLIST_SESSION_STATUS_BADGE_VARIANT: Record<ChecklistSessionStat
 export type ChecklistSessionResultDisplay =
   | { kind: 'pending' }
   | { kind: 'notScored' }
+  | { kind: 'finished' }
   | { kind: 'scored'; percentage: number; passed: boolean };
 
 /**
@@ -51,8 +52,11 @@ export function describeChecklistSessionResult(result: {
   scored: boolean | null;
   percentage: number | null;
   passed: boolean | null;
+  /** PR 416: the sheet has the mode "Without points"; a completed one is simply finished. */
+  withoutPoints?: boolean;
 }): ChecklistSessionResultDisplay {
   if (result.instanceStatus !== 'completed') return { kind: 'pending' };
+  if (result.withoutPoints) return { kind: 'finished' };
   if (!result.scored) return { kind: 'notScored' };
   return { kind: 'scored', percentage: result.percentage ?? 0, passed: Boolean(result.passed) };
 }

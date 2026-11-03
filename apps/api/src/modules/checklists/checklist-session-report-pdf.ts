@@ -201,6 +201,16 @@ class ReportPainter {
     const top = this.y + 4;
     const cx = PAGE.margin + 48;
     const cy = top + 44;
+    if (summary.scoringMode === 'none') {
+      // PR 416: a sheet without points has no ring, percentage, points or verdict -- only "Completed" and the answer count.
+      const x = PAGE.margin;
+      const width = CONTENT_WIDTH;
+      this.text(this.labels.finished, x, width, { weight: 700, size: 15 }, top + 4);
+      this.text(this.labels.ofCriteria(summary.answeredCount, summary.criteriaCount - summary.skippedCount), x, width, { size: 11 }, top + 28);
+      this.text(`${this.labels.skipped}: ${summary.skippedCount}`, x, width, { size: 10, color: MUTED }, top + 46);
+      this.y = top + 66;
+      return;
+    }
     const color = summary.color?.color ?? NEUTRAL_STRIPE;
     this.ring(cx, cy, 36, summary.scored ? summary.percentage : null, color);
     const percentLabel = summary.scored && summary.percentage !== null ? `${summary.percentage}%` : '–';
@@ -241,7 +251,7 @@ class ReportPainter {
   }
 
   private groups() {
-    if (!this.report.visible || this.report.groups.length === 0) return;
+    if (!this.report.visible || this.report.groups.length === 0 || this.report.summary?.scoringMode === 'none') return;
     this.section(this.labels.groups);
     for (const group of this.report.groups) {
       const titleWidth = 250;
@@ -287,10 +297,11 @@ class ReportPainter {
     const column = { stripe: PAGE.margin, text: PAGE.margin + 12, score: PAGE.margin + 262, detail: PAGE.margin + 372 };
     const widths = { text: 244, score: 104, detail: PAGE.margin + CONTENT_WIDTH - (PAGE.margin + 372) };
 
+    const withoutPoints = this.report.summary?.scoringMode === 'none';
     const drawHead = () => {
       this.ensureSpace(24);
       this.text(this.labels.criterion, column.text, widths.text, { weight: 700, size: 9, color: MUTED });
-      this.text(this.labels.score, column.score, widths.score, { weight: 700, size: 9, color: MUTED });
+      this.text(withoutPoints ? this.labels.status : this.labels.score, column.score, widths.score, { weight: 700, size: 9, color: MUTED });
       this.text(`${this.labels.level} / ${this.labels.comment}`, column.detail, widths.detail, { weight: 700, size: 9, color: MUTED });
       this.y += 16;
     };
@@ -302,8 +313,10 @@ class ReportPainter {
       const status = criterionStatus(criterion);
       const ink = highlight?.light.text ?? INK;
       const title = `${criterion.number}  ${criterion.text}`;
-      const scoreText = criterion.score === null || criterion.maxScore === null
-        ? this.labels.skippedCriterion : `${formatNumber(criterion.score)} / ${formatNumber(criterion.maxScore)}`;
+      const scoreText = withoutPoints
+        ? (criterion.state === 'skipped' ? this.labels.skippedCriterion : criterion.state === 'answered' ? this.labels.answered : this.labels.unanswered)
+        : criterion.score === null || criterion.maxScore === null
+          ? this.labels.skippedCriterion : `${formatNumber(criterion.score)} / ${formatNumber(criterion.maxScore)}`;
       const level = criterion.levelLabel ?? '';
       const photo = criterion.photo ? this.thumbnail(photos.get(criterion.id), widths.detail) : null;
       const fileLine = criterion.photo?.fileName ?? '';

@@ -266,6 +266,7 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
       render: (row) => {
         const result = describeChecklistSessionResult(row.result);
         if (result.kind === 'scored') return `${result.percentage}% ${result.passed ? '✓' : '✗'}`;
+        if (result.kind === 'finished') return t('checklists.finishedNoPoints', 'Completed');
         if (result.kind === 'notScored') return t('admin.checklists.sessions.notScored', 'Not scored (all skipped)');
         return '—';
       },

@@ -119,4 +119,17 @@ describe('buildSessionReport (PR 370)', () => {
     const old = buildSessionReport({ ...base, breakdown: { ...base.breakdown, rows: [noColor] } });
     expect(old.criteria[0]!.color?.color).toBe('#E65100');
   });
+
+  it('reports a sheet without points (PR 416) with answers only: no score, percentage or verdict', () => {
+    const base = input(sample5s());
+    const report = buildSessionReport({
+      ...base,
+      instance: { ...base.instance, totalScore: 0, maxScore: 0, percentage: 0, passed: false, scored: false },
+      breakdown: { ...base.breakdown, checklist: { ...base.breakdown.checklist, scoringMode: 'none' } },
+    });
+    if (!report.visible) throw new Error('unreachable');
+    expect(report.summary).toMatchObject({ scoringMode: 'none', scored: false, percentage: null, passed: null, criteriaCount: 27, answeredCount: 27 });
+    expect(report.criteria.every((criterion) => criterion.score === null && criterion.maxScore === null)).toBe(true);
+    expect(report.groups.every((group) => group.percentage === null)).toBe(true);
+  });
 });

@@ -1990,7 +1990,10 @@ export class ChecklistsService {
     // Criteria mode counts valid marks equally: checkbox=true or a selected scale level.
     // Missing answers stay in the denominator; explicit skips do not. Rejected answers earn 0.
     const criteria = checklist.items.filter((item) => resultByItemId.get(item.id)?.answerState !== 'skipped');
-    const { totalScore, maxScore, scored } = formula === 'criteria'
+    // PR 416: a sheet without points never has a score, whichever formula the session uses.
+    const { totalScore, maxScore, scored } = checklist.scoringMode === 'none'
+      ? { totalScore: 0, maxScore: 0, scored: false }
+      : formula === 'criteria'
       ? { totalScore: criteria.filter((item) => {
           const result = resultByItemId.get(item.id);
           return result?.reviewStatus !== 'rejected' && this.hasValidAnswer(checklist.scoringMode, result, item);
@@ -2040,7 +2043,9 @@ export class ChecklistsService {
       let earned = 0;
       let max = 0;
       if (!skipped) {
-        if (formula === 'criteria') {
+        if (checklist.scoringMode === 'none') {
+          // PR 416: no points, so the row carries neither earned nor max; `state` still tells answered from not.
+        } else if (formula === 'criteria') {
           max = 1;
           earned = result?.reviewStatus !== 'rejected' && answered ? 1 : 0;
         } else {
@@ -2796,7 +2801,12 @@ export class ChecklistsService {
         throw new BadRequestException(item.scale ? 'Select a valid level from this criterion’s evaluation scale' : 'Invalid scale level for this checklist');
       }
 
-      return level.points;
+      // PR 416: in a sheet without points a scale is only a set of answers; its points are not counted.
+      return scoringMode === 'none' ? 0 : level.points;
+    }
+
+    if (scoringMode === 'none') {
+      return 0;
     }
 
     if (scoringMode === 'all_required') {
@@ -2815,6 +2825,7 @@ export class ChecklistsService {
   }
 
   private computeItemMax(scoringMode: string, item: ItemScaleRef & { points: number }, scaleLevels: ScaleLevel[] | null) {
+    if (scoringMode === 'none') return 0;
     const levels = this.itemScaleLevels(item, scoringMode, scaleLevels);
     if (levels !== null) {
       return levels.reduce((max, level) => Math.max(max, level.points), 0);
@@ -2868,6 +2879,8 @@ export class ChecklistsService {
     scaleLevels: ScaleLevel[] | null,
     resultByItemId: Map<string, CompletionResult>,
   ): { totalScore: number; maxScore: number; scored: boolean } {
+    if (scoringMode === 'none') return { totalScore: 0, maxScore: 0, scored: false };
+
     let totalScore = 0;
     let maxScore = 0;
 

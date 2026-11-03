@@ -109,6 +109,9 @@ export function buildSessionReport(input: SessionReportInput) {
   const groupTotals = new Map<string | null, { earned: number; max: number; count: number }>();
   let ungroupedCounter = 0;
 
+  // PR 416: a sheet without points reports answers only -- no score, maximum, percentage or verdict anywhere.
+  const withoutPoints = breakdown.checklist.scoringMode === 'none';
+
   const criteria = breakdown.rows.map(({ item, result, state, earned, max }) => {
     const groupId = item.groupId && groupById.has(item.groupId) ? item.groupId : null;
     if (!groupNumbers.has(groupId)) groupNumbers.set(groupId, groupId === null ? 0 : [...groupNumbers.keys()].filter((key) => key !== null).length + 1);
@@ -137,8 +140,8 @@ export function buildSessionReport(input: SessionReportInput) {
       groupId,
       text: item.text,
       state,
-      score: state === 'skipped' ? null : round2(earned),
-      maxScore: state === 'skipped' ? null : round2(max),
+      score: state === 'skipped' || withoutPoints ? null : round2(earned),
+      maxScore: state === 'skipped' || withoutPoints ? null : round2(max),
       levelLabel: level ? level.label : null,
       comment: result?.comment ?? null,
       photo: result?.photoObjectKey ? { fileName: result.photoFileName ?? null } : null,
@@ -150,7 +153,7 @@ export function buildSessionReport(input: SessionReportInput) {
   const groups = [...groupTotals.entries()]
     .filter(([groupId]) => groupId !== null)
     .map(([groupId, totals]) => {
-      const percentage = percentOf(totals.earned, totals.max);
+      const percentage = withoutPoints ? null : percentOf(totals.earned, totals.max);
       return {
         id: groupId, number: String(groupNumbers.get(groupId)), title: groupById.get(groupId as string)!.title,
         score: round2(totals.earned), maxScore: round2(totals.max), percentage, criteriaCount: totals.count,
@@ -161,13 +164,14 @@ export function buildSessionReport(input: SessionReportInput) {
   const percentage = instance.scored ? instance.percentage : null;
   const summary = {
     scored: instance.scored === true,
+    scoringMode: breakdown.checklist.scoringMode,
     percentage,
     totalScore: instance.totalScore,
     maxScore: instance.maxScore,
     criteriaCount: criteria.length,
     answeredCount: criteria.filter((criterion) => criterion.state === 'answered').length,
     skippedCount: criteria.filter((criterion) => criterion.state === 'skipped').length,
-    passed: instance.passed,
+    passed: withoutPoints ? null : instance.passed,
     passThreshold: breakdown.checklist.passThreshold,
     formula: input.formula,
     color: rangeColor(percentage, settings),

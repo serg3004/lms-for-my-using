@@ -37,7 +37,7 @@ function makeReport(overrides: Partial<ChecklistSessionReport> = {}): ChecklistS
     },
     generalInfo: [{ id: 'f1', label: 'Store number', type: 'text', value: 'A-12' }],
     summary: {
-      scored: true, percentage: 90, totalScore: 71, maxScore: 79, criteriaCount: 27, answeredCount: 27, skippedCount: 0,
+      scored: true, scoringMode: 'sum_points', percentage: 90, totalScore: 71, maxScore: 79, criteriaCount: 27, answeredCount: 27, skippedCount: 0,
       passed: true, passThreshold: 80, formula: 'snapshot', color: green,
     },
     groups: [
@@ -88,6 +88,23 @@ describe('ReportSummary', () => {
     expect(html).toContain('90% — 70 of 78');
     expect(html).toContain('stroke="#2E7D32"');
     expect(html).toContain('border-left:6px solid #2E7D32');
+  });
+
+  it('shows "Completed" and the answer count, with no percentage, points, verdict or groups, for a sheet without points (PR 416)', () => {
+    const base = makeReport();
+    const report = makeReport({
+      summary: { ...base.summary!, scoringMode: 'none', scored: false, percentage: null, totalScore: 0, maxScore: 0, answeredCount: 3, skippedCount: 1, criteriaCount: 4, passed: null, color: null },
+      criteria: base.criteria.map((criterion) => ({ ...criterion, score: null, maxScore: null })),
+    });
+    const html = renderToStaticMarkup(<ReportSummary report={report} t={t} />);
+    expect(html).toContain('Completed');
+    expect(html).toContain('3 of 3 criteria');
+    expect(html).not.toContain('%');
+    expect(html).not.toContain('Passed');
+    expect(html).not.toContain('1. Sort');
+    const rows = renderToStaticMarkup(<ReportCriteria report={report} t={t} />);
+    expect(rows).toContain('Answered');
+    expect(rows).not.toContain('No points');
   });
 
   it('shows "Not scored (all skipped)" and no arc fill when every criterion was skipped', () => {

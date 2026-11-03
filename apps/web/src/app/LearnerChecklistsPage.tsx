@@ -207,7 +207,10 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, op
                     <p style={{ color: COLORS.muted, margin: '4px 0 0', fontSize: 13 }}>{t('checklists.free.itemCount', 'Criteria: {{count}}', { count: row.free.itemCount })}</p>
                   )}
                   {row.instance && <ChecklistDeadlineMeta instance={row.instance} />}
-                  {row.instance?.status === 'completed' && (
+                  {row.instance?.status === 'completed' && row.instance.checklist?.scoringMode === 'none' && (
+                    <p style={{ color: COLORS.muted, marginBottom: 0 }}>{t('checklists.finishedNoPointsDone', 'The check is completed')}</p>
+                  )}
+                  {row.instance?.status === 'completed' && row.instance.checklist?.scoringMode !== 'none' && (
                     <p style={{ color: COLORS.muted, marginBottom: 0 }}>
                       {t('checklists.resultLine', '{{score}} / {{max}} ({{percentage}}%)', {
                         score: row.instance.totalScore,
@@ -454,7 +457,12 @@ function ChecklistTaking({
         })}
       </div>
       {editable && <ChecklistFinishBar requiresReview={checklist.requiresReview === true} missing={missingTitles} onFinish={finish} t={t} />}
-      {instance.status === 'completed' && (
+      {instance.status === 'completed' && checklist.scoringMode === 'none' && (
+        <div style={{ marginTop: 20, borderRadius: 14, padding: '16px 18px', background: COLORS.successSoft, color: '#166534' }}>
+          {t('checklists.finishedNoPointsDone', 'The check is completed')}
+        </div>
+      )}
+      {instance.status === 'completed' && checklist.scoringMode !== 'none' && (
         <div
           style={{
             marginTop: 20,

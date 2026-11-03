@@ -43,7 +43,7 @@ const checklist = {
 };
 
 const statusLabels = { draft: 'Черновик', published: 'Опубликован', archived: 'В архиве' };
-const scoringModeLabels = { sum_points: 'Сумма баллов', all_required: 'Все пункты обязательны', scale: 'Своя шкала' };
+const scoringModeLabels = { sum_points: 'Сумма баллов', all_required: 'Все пункты обязательны', scale: 'Своя шкала', none: 'None' };
 
 describe('localized checklist defaults', () => {
   it('localizes new scale labels without replacing authored labels', () => {
@@ -227,3 +227,28 @@ describe('ChecklistBuilder settings column (PR 340)', () => {
   });
 });
 
+
+describe('ChecklistBuilder sheet without points (PR 416)', () => {
+  const html = renderToStaticMarkup(
+    <ChecklistBuilder
+      checklist={{ ...checklist, scoringMode: 'none' }}
+      statusLabels={statusLabels}
+      scoringModeLabels={scoringModeLabels}
+      onBack={() => {}}
+      onReload={async () => {}}
+      t={((key: string, fallback?: string) => fallback ?? key) as never}
+    />,
+  );
+
+  it('offers the mode, hides the pass threshold and explains that nothing is scored', () => {
+    expect(html).toContain('>None<');
+    expect(html).not.toContain('id="checklist-threshold"');
+    expect(html).toContain('Without points: the check is only completed.');
+  });
+
+  it('shows no points or weight columns and no threshold or colour overrides', () => {
+    expect(html).toContain('admin-criteria-table admin-criteria-table--no-points');
+    expect(html).not.toContain('Result thresholds: as in the organization');
+    expect(html).not.toContain('Result colours: as in the organization');
+  });
+});

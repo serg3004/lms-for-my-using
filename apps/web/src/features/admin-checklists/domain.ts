@@ -23,7 +23,7 @@ import type {
 } from '../../shared/api/types.js';
 
 export const CHECKLIST_STATUSES: ChecklistStatus[] = ['draft', 'published', 'archived'];
-export const SCORING_MODES: ChecklistScoringMode[] = ['sum_points', 'all_required', 'scale'];
+export const SCORING_MODES: ChecklistScoringMode[] = ['sum_points', 'all_required', 'scale', 'none'];
 
 export type PreviewAnswer = ChecklistAnswerState & { answered?: boolean; skipped?: boolean };
 export type SaveState = { status: 'idle' } | { status: 'saving' } | { status: 'error'; message: string };
@@ -151,7 +151,7 @@ export function computePreviewResult(
   });
   let totalScore = 0;
   let maxScore = 0;
-  for (const item of (answeredOnly ? answered : eligible)) {
+  for (const item of (scoringMode === 'none' ? [] : answeredOnly ? answered : eligible)) {
     const levels = checklistItemLevels(item, scoringMode, scaleLevels);
     const weight = item.weight ?? 1;
     if (levels !== null) {
@@ -167,7 +167,7 @@ export function computePreviewResult(
   const allAnswered = items.length > 0 && (answeredOnly
     ? eligible.length === answered.length && eligible.every((item) => (!item.photoRequired || answers[item.id]?.hasPhoto === true) && !isChecklistNoteMissing(item, scoringMode, answers[item.id]))
     : eligible.every((item) => isChecklistRequirementSatisfied(item, scoringMode, answers[item.id])));
-  return { totalScore, maxScore, percentage, passed: allAnswered && percentage >= passThreshold, allAnswered };
+  return { totalScore, maxScore, percentage, passed: allAnswered && (scoringMode === 'none' || percentage >= passThreshold), allAnswered };
 }
 
 export function createDefaultScale(t: TFunction): ChecklistScaleLevel[] {
