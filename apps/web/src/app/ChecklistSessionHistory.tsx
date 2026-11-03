@@ -82,6 +82,7 @@ function PastSessionCard({ past, t }: { past: ChecklistSessionSummary; t: TFunct
             {result.percentage}% {result.passed ? '✓' : '✗'}
           </Badge>
         )}
+        {result.kind === 'finished' && <Badge variant="success">{t('checklists.finishedNoPoints', 'Completed')}</Badge>}
         {result.kind === 'notScored' && <Badge variant="neutral">{t('checklistSessions.conduct.history.notScored', 'Not scored')}</Badge>}
       </div>
       {past.strengths || past.developmentAreas ? (

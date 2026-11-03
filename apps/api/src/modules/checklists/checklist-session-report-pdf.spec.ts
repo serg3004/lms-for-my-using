@@ -79,6 +79,22 @@ describe('renderSessionReportPdf (PR 372)', () => {
     expect(text).toContain('Стр. 2 из 2');
   });
 
+  it('prints "Завершено" and the answer count for a sheet without points (PR 416): no ring, percentage, points, verdict or groups', async () => {
+    const rows = sample5s().map((entry) => ({ ...entry, earned: 0, max: 0 }));
+    const base = report(rows);
+    const data = report(rows, {
+      instance: { id: 'inst', status: 'completed', totalScore: 0, maxScore: 0, percentage: 0, passed: false, scored: false, completedAt: new Date('2026-10-01T11:00:00Z') },
+      breakdown: { ...(base.visible ? { checklist: { title: '5S', scoringMode: 'none', passThreshold: 70, scaleLevels: null, feedbackEnabled: true, itemGroups: [{ id: 'g1', title: 'Sort', order: 1 }, { id: 'g2', title: 'Shine', order: 2 }] } } : {}), rows, totals: { totalScore: 0, maxScore: 0, scored: false } } as never,
+    });
+    const { text } = await render(data);
+    expect(text).toContain('Завершено');
+    expect(text).toContain('27 из 27 критериев');
+    expect(text).not.toContain('Баллы:');
+    expect(text).not.toContain('Пройдено');
+    expect(text).not.toContain('2. Shine');
+    expect(text).toContain('2.26  Criterion 25');
+  });
+
   it('paints rows with the owner-chosen colours: green, orange and red fills, stripes and group bars', async () => {
     const data = report(sample5s());
     if (!data.visible) throw new Error('unreachable');

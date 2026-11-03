@@ -393,6 +393,7 @@ function ReviewDetail({
           );
         })}
       </div>
+      {instance.checklist?.scoringMode !== 'none' && (
       <div
         style={{
           marginTop: 20,
@@ -408,6 +409,7 @@ function ReviewDetail({
         <span>{t('checklistReview.currentResult', 'Current result')}</span>
         <strong>{instance.totalScore} / {instance.maxScore} ({instance.percentage}%)</strong>
       </div>
+      )}
 
       <div style={{ marginTop: 20 }}>
         <h3 style={{ color: COLORS.text, fontSize: 14 }}>{t('checklistReview.timeline.title', 'History')}</h3>

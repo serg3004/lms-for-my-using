@@ -32,7 +32,7 @@ async function render(checklist: Omit<typeof base, 'status'> & { status?: 'draft
   root = createRoot(container);
   const t = i18n.t.bind(i18n) as never;
   await act(async () => {
-    root?.render(<ChecklistBuilder checklist={checklist as never} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale' }} onBack={() => {}} onReload={async () => {}} t={t} />);
+    root?.render(<ChecklistBuilder checklist={checklist as never} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale', none: 'None' }} onBack={() => {}} onReload={async () => {}} t={t} />);
   });
 }
 const select = () => container.querySelector<HTMLSelectElement>('#checklist-access-mode')!;

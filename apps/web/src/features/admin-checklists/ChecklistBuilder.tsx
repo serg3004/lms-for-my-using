@@ -851,16 +851,23 @@ export function ChecklistBuilder({
                 <p className="admin-form__hint">{t('admin.checklists.scaleLevelsCriterionHint', 'A criterion can also use its own ready-made scale, chosen in the criteria table; without one, the levels above apply.')}</p>
               </div>
             )}
-            <FormField id="checklist-threshold" label={t('admin.checklists.field.passThreshold', 'Pass threshold, %')}>
-              <input
-                id="checklist-threshold"
-                type="number"
-                min={0}
-                max={100}
-                value={passThreshold}
-                onChange={(e) => setPassThreshold(Number(e.target.value))}
-              />
-            </FormField>
+            {scoringMode === 'none' ? (
+              <p className="admin-form__hint">{t('admin.checklists.scoring.noneHint', 'Without points: the check is only completed. No percentage, pass threshold or “passed / not passed” is shown.')}</p>
+            ) : (
+              <FormField id="checklist-threshold" label={t('admin.checklists.field.passThreshold', 'Pass threshold, %')}>
+                <input
+                  id="checklist-threshold"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={passThreshold}
+                  onChange={(e) => setPassThreshold(Number(e.target.value))}
+                />
+              </FormField>
+            )}
+            {scoringMode !== checklist.scoringMode && (checklist.status !== 'draft') && (
+              <p className="admin-form__hint" role="note">{t('admin.checklists.scoring.changeNote', 'The new mode will not affect checks that are already assigned: they keep the mode they were assigned with.')}</p>
+            )}
             <FormField id="checklist-access-mode" label={t('admin.checklists.field.accessMode', 'How the checklist is taken')} hint={t(`admin.checklists.accessModeHint.${accessMode}`, accessMode)}>
               {canSwitchAccessMode ? (
                 <select
@@ -925,6 +932,7 @@ export function ChecklistBuilder({
             </details>
             <ChecklistModuleSettingsBlock
               canEditObservers={canSwitchAccessMode}
+              withoutPoints={scoringMode === 'none'}
               disabled={!canEdit}
               locationPolicy={defaultLocationCapturePolicy}
               onChange={setModuleSettings}

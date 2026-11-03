@@ -115,7 +115,7 @@ export function buildSessionSummary(reports: ChecklistSessionReport[], locale: R
       if (criterion.groupId !== previousGroup) {
         previousGroup = criterion.groupId;
         const group = first.groups.find(({ id }) => id === criterion.groupId);
-        if (group) layout.headerRows.push(scoreRow(`${group.number} ${group.title}`, observations.map((report) => report.groups.find(({ id }) => id === group.id) ?? null)));
+        if (group) layout.headerRows.push(scoreRow(`${group.number} ${group.title}`, observations.map((report) => (report.summary.scoringMode === 'none' ? null : report.groups.find(({ id }) => id === group.id) ?? null))));
       }
       scoreRow(`${criterion.number} ${criterion.text}`, observations.map((report) => {
         const row = report.criteria.find(({ id }) => id === criterion.id);

@@ -552,7 +552,12 @@ export function ConductScreen({
         />
       )}
 
-      {session.status === 'completed' && (
+      {session.status === 'completed' && instance.checklist?.scoringMode === 'none' && (
+        <div style={{ marginTop: 20, borderRadius: 14, padding: '16px 18px', background: COLORS.successSoft }}>
+          {t('checklists.finishedNoPointsDone', 'The check is completed')}
+        </div>
+      )}
+      {session.status === 'completed' && instance.checklist?.scoringMode !== 'none' && (
         <div
           style={{
             marginTop: 20,

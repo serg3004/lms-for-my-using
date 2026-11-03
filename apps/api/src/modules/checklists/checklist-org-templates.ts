@@ -16,7 +16,7 @@ type PayloadItem = {
 };
 /** Frozen copy of a checklist: settings, groups and criteria. Never references the source row. */
 export type ChecklistTemplatePayload = {
-  scoringMode: 'sum_points' | 'all_required' | 'scale';
+  scoringMode: 'sum_points' | 'all_required' | 'scale' | 'none';
   passThreshold: number;
   scaleLevels: Prisma.JsonValue | null;
   requiresReview: boolean;

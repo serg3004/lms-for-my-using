@@ -10,7 +10,7 @@ import { checklistStatusAction } from './domain.js';
 
 const t = ((key: string, fallback?: string) => fallback ?? key) as unknown as TFunction;
 const statusLabels = { draft: 'Draft', published: 'Published', archived: 'Archived' };
-const scoringModeLabels = { sum_points: 'Sum', all_required: 'All', scale: 'Scale' };
+const scoringModeLabels = { sum_points: 'Sum', all_required: 'All', scale: 'Scale', none: 'None' };
 
 function render(status: ChecklistStatus) {
   const checklist = { id: 'c1', title: 'Opening shift', status, scoringMode: 'sum_points', items: [] } as unknown as ChecklistSummary;

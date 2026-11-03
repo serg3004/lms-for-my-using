@@ -196,6 +196,9 @@ function renderResultCell(session: ChecklistSessionSummary, t: TFunction) {
       </Badge>
     );
   }
+  if (result.kind === 'finished') {
+    return <Badge variant="success">{t('checklists.finishedNoPoints', 'Completed')}</Badge>;
+  }
   if (result.kind === 'notScored') {
     return <Badge variant="neutral">{t('checklistSessions.learner.notScored', 'Not scored (all skipped)')}</Badge>;
   }
@@ -271,6 +274,11 @@ export function LearnerSessionDetail({ session, onBack, t }: { session: Checklis
             >
               <span>{session.result.passed ? t('checklists.passed', 'Passed') : t('checklists.notPassed', 'Not passed')}</span>
               <strong>{session.result.percentage}%</strong>
+            </div>
+          )}
+          {describeChecklistSessionResult(session.result).kind === 'finished' && (
+            <div style={{ marginTop: 16, borderRadius: 14, padding: '16px 18px', background: COLORS.successSoft, color: COLORS.success }}>
+              {t('checklists.finishedNoPointsDone', 'The check is completed')}
             </div>
           )}
           {describeChecklistSessionResult(session.result).kind === 'notScored' && (

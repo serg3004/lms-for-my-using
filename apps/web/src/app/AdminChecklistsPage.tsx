@@ -77,6 +77,7 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
     sum_points: t('admin.checklists.scoring.sumPoints', 'Sum of points'),
     all_required: t('admin.checklists.scoring.allRequired', 'All items required'),
     scale: t('admin.checklists.scoring.scale', 'Custom scale'),
+    none: t('admin.checklists.scoring.none', 'No points'),
   };
   const { state: loadState, reload: load, mutate } = useAsyncData<AdminChecklistsData>(
     async () => {

@@ -8,7 +8,7 @@
 
 - **Required item** — пункт с `isRequired=true`; он обязан быть выполнен до `submitted/completed`.
 - **Optional item** — пункт с `isRequired=false`; его можно полностью пропустить.
-- **Valid answer** — для `sum_points` и `all_required` это `checked=true`, для `scale` — выбранный допустимый scale level.
+- **Valid answer** — для `sum_points`, `all_required` и `none` («Без баллов», PR 416) это `checked=true`, для `scale` — выбранный допустимый scale level.
 - **Evidence** — фото, сохранённое через object-backed upload flow. На backend source of truth — `photoObjectKey`; legacy `photoUrl` не удовлетворяет `photoRequired`.
 - **Satisfied item** — пункт с valid answer и, если `photoRequired=true`, с прикреплённым evidence.
 

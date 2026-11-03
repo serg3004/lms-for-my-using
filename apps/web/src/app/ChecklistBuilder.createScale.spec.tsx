@@ -56,7 +56,7 @@ describe('ChecklistBuilder: create a scale from the criterion dropdown (PR 343)'
     root = createRoot(container);
     const t = i18n.t.bind(i18n) as never;
     await act(async () => {
-      root?.render(<ChecklistBuilder checklist={checklist} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale' }} onBack={() => {}} onReload={async () => {}} t={t} />);
+      root?.render(<ChecklistBuilder checklist={checklist} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale', none: 'None' }} onBack={() => {}} onReload={async () => {}} t={t} />);
     });
 
     // PR 414: the scale is a switch; with no scale to pick, turning it on opens the "create a scale" editor.
@@ -90,7 +90,7 @@ it('PR 358/414: a new criterion has no scale; the switch gives it the default sc
   api.createChecklistItem.mockResolvedValue({ ...item, id: 'new', scaleId: null });
   api.updateChecklistItem.mockResolvedValue({ ...item, id: 'new', scaleId: scale.id });
   const container = document.createElement('div'); document.body.appendChild(container); root = createRoot(container);
-  await act(async () => root?.render(<ChecklistBuilder checklist={{ ...checklist, items: [] }} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale' }} onBack={() => {}} onReload={async () => {}} t={i18n.t.bind(i18n) as never} />));
+  await act(async () => root?.render(<ChecklistBuilder checklist={{ ...checklist, items: [] }} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale', none: 'None' }} onBack={() => {}} onReload={async () => {}} t={i18n.t.bind(i18n) as never} />));
   const button = (text: string) => [...container.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent?.includes(text))!;
   await act(async () => button('Критерий').click());
   expect(api.createChecklistItem).toHaveBeenCalledWith('c1', expect.objectContaining({ scaleId: null }));

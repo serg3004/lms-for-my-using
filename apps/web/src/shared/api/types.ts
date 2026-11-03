@@ -338,7 +338,7 @@ export type ChecklistScaleLevel = {
   points: number;
 };
 
-export type ChecklistScoringMode = 'sum_points' | 'all_required' | 'scale';
+export type ChecklistScoringMode = 'sum_points' | 'all_required' | 'scale' | 'none';
 export type ChecklistStatus = 'draft' | 'published' | 'archived';
 export type ChecklistInstanceStatus = 'assigned' | 'in_progress' | 'submitted' | 'completed' | 'expired';
 export type ChecklistReviewStatus = 'pending' | 'approved' | 'rejected';
@@ -710,7 +710,7 @@ export type ChecklistSessionSummary = {
   // PR 298: masked (percentage/passed/scored nulled, visible=false) for the learner while the
   // tenant's `feedbackVisibility` is `after_completion` and the instance isn't `completed` yet --
   // never masked for admin/manager/instructor, nor once the instance completes.
-  result: { instanceStatus: ChecklistInstanceStatus; percentage: number | null; passed: boolean | null; scored: boolean | null; visible: boolean };
+  result: { instanceStatus: ChecklistInstanceStatus; percentage: number | null; passed: boolean | null; scored: boolean | null; withoutPoints?: boolean; visible: boolean };
 };
 
 /** PR 370/371: colours arrive ready from the server; the client never derives them. */
@@ -743,6 +743,7 @@ export type ChecklistSessionReport = {
   generalInfo: Array<{ id: string; label: string; type: string; value: string | null }>;
   summary: null | {
     scored: boolean;
+    scoringMode: ChecklistScoringMode;
     percentage: number | null;
     totalScore: number;
     maxScore: number;

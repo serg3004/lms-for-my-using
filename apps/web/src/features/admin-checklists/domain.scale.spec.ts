@@ -108,3 +108,10 @@ describe('observer preview scoring (PR 374)', () => {
     expect(computePreviewResult([{ ...item, scale: { id: 's', name: 'S', levels: [{ value: 1, label: 'Good', score: 3 }] } }], 'sum_points', [], 70, { a: { scaleLevel: 99 } }).allAnswered).toBe(false);
   });
 });
+
+it('previews a sheet without points (PR 416) with no score and completion by answers only', () => {
+  const base = { checklistId: 'c', text: 'Criterion', isRequired: true, photoRequired: false, points: 10, weight: 1, allowSkip: false };
+  const items = [{ ...base, id: 'a', order: 0 }, { ...base, id: 'b', order: 1 }];
+  expect(computePreviewResult(items, 'none', [], 70, { a: { checked: true } }, false, true)).toEqual({ totalScore: 0, maxScore: 0, percentage: 0, passed: false, allAnswered: false });
+  expect(computePreviewResult(items, 'none', [], 70, { a: { checked: true }, b: { checked: true } }, false, true)).toEqual({ totalScore: 0, maxScore: 0, percentage: 0, passed: true, allAnswered: true });
+});

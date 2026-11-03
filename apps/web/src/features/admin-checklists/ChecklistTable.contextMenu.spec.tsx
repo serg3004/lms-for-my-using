@@ -32,7 +32,7 @@ const handlers = {
 function Harness({ initial = [] as string[], canCreateFolder = true }: { initial?: string[]; canCreateFolder?: boolean }) {
   const [selected, setSelected] = useState(() => new Set(initial));
   return <ChecklistTable childFolders={folders} allSheets={sheets} folders={folders} rows={sheets} selectedKeys={selected} onSelectionChange={setSelected} canCreateFolder={canCreateFolder}
-    scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale' }} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} t={tFill} {...handlers} />;
+    scoringModeLabels={{ sum_points: 'Sum', all_required: 'All', scale: 'Scale', none: 'None' }} statusLabels={{ draft: 'Draft', published: 'Published', archived: 'Archived' }} t={tFill} {...handlers} />;
 }
 
 let host: HTMLElement;

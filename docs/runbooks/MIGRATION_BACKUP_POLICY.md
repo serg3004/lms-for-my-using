@@ -6,6 +6,13 @@
 >
 > **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
 
+## Checklist scoring mode "Without points" migration (PR 416)
+
+`20261103140000_checklist_scoring_mode_none` is additive and backward-compatible:
+
+- one statement: `ALTER TYPE "ChecklistScoringMode" ADD VALUE IF NOT EXISTS 'none'`; no table is rewritten and no row changes, so every existing sheet, assignment and snapshot keeps its mode;
+- an older API build never writes the new value, so the migration may run before the API deploy; on rollback the value stays in the enum (Postgres cannot drop an enum value) and is harmless; no special backup and no new environment variable.
+
 ## Criterion description and explanation rule migration (PR 415)
 
 `20261103120000_checklist_item_description_note` is additive and backward-compatible:

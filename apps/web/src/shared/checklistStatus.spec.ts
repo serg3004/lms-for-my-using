@@ -71,4 +71,9 @@ describe('describeChecklistSessionResult', () => {
       passed: true,
     });
   });
+
+  it('is simply finished for a completed sheet without points (PR 416) and still pending before completion', () => {
+    expect(describeChecklistSessionResult({ instanceStatus: 'completed', scored: false, percentage: 0, passed: false, withoutPoints: true })).toEqual({ kind: 'finished' });
+    expect(describeChecklistSessionResult({ instanceStatus: 'in_progress', scored: false, percentage: 0, passed: false, withoutPoints: true })).toEqual({ kind: 'pending' });
+  });
 });

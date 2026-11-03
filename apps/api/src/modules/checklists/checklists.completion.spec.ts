@@ -63,7 +63,7 @@ function createHarness({
   requiresReview = false,
 }: {
   items: TestItem[];
-  scoringMode?: 'sum_points' | 'all_required' | 'scale';
+  scoringMode?: 'sum_points' | 'all_required' | 'scale' | 'none';
   requiresReview?: boolean;
 }) {
   const scaleLevels = scoringMode === 'scale'
@@ -275,5 +275,22 @@ describe('ChecklistsService completion correctness', () => {
 
     expect(completed.status).toBe('completed');
     expect(completed.totalScore).toBe(10);
+  });
+
+  it('completes a sheet without points (PR 416) with no score and no verdict', async () => {
+    const { service } = createHarness({
+      items: [
+        { id: 'a', points: 10, isRequired: true, photoRequired: false },
+        { id: 'b', points: 5, isRequired: true, photoRequired: false },
+      ],
+      scoringMode: 'none',
+    });
+
+    const half = await service.submitItemResult(instanceId, 'a', organizationId, userId, false, { checked: true });
+    expect(half.status).toBe('in_progress');
+
+    const completed = await service.submitItemResult(instanceId, 'b', organizationId, userId, false, { checked: true });
+    expect(completed.status).toBe('completed');
+    expect(completed).toMatchObject({ totalScore: 0, maxScore: 0, percentage: 0, passed: false, scored: false });
   });
 });

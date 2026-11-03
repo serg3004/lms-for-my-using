@@ -1197,7 +1197,7 @@ describe('ChecklistSessionService', () => {
 
       const result = await service.get(sessionId, organizationId, {}, learnerViewer);
 
-      expect(result.result).toEqual({ instanceStatus: 'in_progress', percentage: null, passed: null, scored: null, visible: false });
+      expect(result.result).toEqual({ instanceStatus: 'in_progress', percentage: null, passed: null, scored: null, withoutPoints: false, visible: false });
       expect(result.strengths).toBeNull();
       expect(result.developmentAreas).toBeNull();
       expect(result.nextSteps).toBeNull();
@@ -1210,7 +1210,7 @@ describe('ChecklistSessionService', () => {
 
       const result = await service.get(sessionId, organizationId, {}, learnerViewer);
 
-      expect(result.result).toEqual({ instanceStatus: 'completed', percentage: 90, passed: true, scored: true, visible: true });
+      expect(result.result).toEqual({ instanceStatus: 'completed', percentage: 90, passed: true, scored: true, withoutPoints: false, visible: true });
       expect(result.strengths).toBe('Great work');
     });
 

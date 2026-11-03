@@ -157,6 +157,7 @@ enum ChecklistScoringMode {
   sum_points
   all_required
   scale
+  none
 }
 
 /// Formula used for an explicit score revision; normal scoring keeps the assignment snapshot.
