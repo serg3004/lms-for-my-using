@@ -36,6 +36,8 @@ import type {
   ContextField,
 } from '../../shared/api/types.js';
 import { ChecklistAccessBadge } from '../../shared/checklistAccess.js';
+import { ContextMenu, useContextMenu } from '../../shared/ContextMenu.js';
+import { InlineNameField, focusNameField } from './InlineNameField.js';
 import { ChecklistCoverField } from './ChecklistCoverField.js';
 import { ChecklistCheckboxOption, ChecklistHelpTip } from './ChecklistHelpTip.js';
 import { ChecklistItemsEditor } from './ChecklistItemsEditor.js';
@@ -187,9 +189,6 @@ export function ChecklistBuilder({
     const created = await createChecklistItemGroup(checklist.id, { title: t('admin.checklists.newGroupTitle', 'New group') });
     setItemGroups((prev) => [...prev, created]);
   }
-  function renameGroupLocally(groupId: string, title: string) {
-    setItemGroups((prev) => applyGroupPatch(prev, groupId, { title }));
-  }
   async function persistGroupTitle(groupId: string, title: string) {
     const updated = await updateChecklistItemGroup(groupId, { title });
     setItemGroups((prev) => applyGroupPatch(prev, groupId, updated));
@@ -261,15 +260,16 @@ export function ChecklistBuilder({
     const created = await createChecklistItem(checklist.id, { text: t('admin.checklists.newCriterionText', 'New criterion'), points: 10, isRequired: true, photoRequired: false, ...(groupId ? { groupId } : {}) });
     setItems((prev) => [...prev, created]);
   }
-  function addContextFieldLocally() {
-    setContextFields((prev) => appendContextField(prev));
-  }
   function updateContextFieldLocally(fieldId: string, patch: Partial<ContextField>) {
     setContextFields((prev) => applyContextFieldPatch(prev, fieldId, patch));
   }
+  /** PR 413: a field without a name is not sent (the server refuses it and would reject the whole list); it waits for its name. */
   async function persistContextFields(fields: ContextField[]) {
-    await updateChecklist(checklist.id, { contextFields: fields.length > 0 ? fields : null });
+    const named = fields.filter((field) => field.label.trim() !== '');
+    await updateChecklist(checklist.id, { contextFields: named.length > 0 ? named : null });
   }
+  // PR 413: right button / menu key / long press on a group, a criterion or a field of "General information".
+  const rowMenu = useContextMenu<{ kind: 'group' | 'item' | 'field'; id: string }>();
   async function removeContextField(fieldId: string) {
     const next = removeContextFieldById(contextFields, fieldId);
     setContextFields(next);
@@ -307,6 +307,52 @@ export function ChecklistBuilder({
   function removeScaleLevel(index: number) {
     setScaleLevels((prev) => removeScaleLevelAt(prev, index));
   }
+  function rowMenuContent() {
+    const target = rowMenu.state?.target;
+    if (!target) return { label: '', items: null };
+    const rename = (id: string) => (
+      <button disabled={!canEdit} onClick={() => focusNameField(id)} role="menuitem" type="button">{t('admin.checklists.rename.action', 'Rename')}</button>
+    );
+    if (target.kind === 'group') {
+      const group = itemGroups.find((entry) => entry.id === target.id);
+      if (!group) return { label: '', items: null };
+      return {
+        label: t('admin.checklists.contextMenu.rowLabel', 'Actions: {{name}}', { name: group.title }),
+        items: (
+          <>
+            {rename(`group-title-${group.id}`)}
+            <button disabled={!canEdit} onClick={() => void copyGroup(group.id)} role="menuitem" type="button">{t('admin.checklists.copyGroup', 'Copy')}</button>
+            <button disabled={!canEdit} onClick={() => { setKeepItemsOnGroupDelete(false); setGroupToDelete(group); }} role="menuitem" type="button">{t('admin.checklists.delete', 'Delete')}</button>
+          </>
+        ),
+      };
+    }
+    if (target.kind === 'item') {
+      const item = items.find((entry) => entry.id === target.id);
+      if (!item) return { label: '', items: null };
+      return {
+        label: t('admin.checklists.contextMenu.rowLabel', 'Actions: {{name}}', { name: item.text }),
+        items: (
+          <>
+            {rename(`item-text-${item.id}`)}
+            <button disabled={!canEdit} onClick={() => void removeItem(item)} role="menuitem" type="button">{t('admin.checklists.delete', 'Delete')}</button>
+          </>
+        ),
+      };
+    }
+    const field = contextFields.find((entry) => entry.id === target.id);
+    if (!field) return { label: '', items: null };
+    return {
+      label: t('admin.checklists.contextMenu.rowLabel', 'Actions: {{name}}', { name: field.label || t('admin.checklists.contextFieldLabel', 'Field label') }),
+      items: (
+        <>
+          {rename(`context-field-${field.id}`)}
+          <button disabled={!canEdit} onClick={() => setContextFieldToDelete(field)} role="menuitem" type="button">{t('admin.checklists.delete', 'Delete')}</button>
+        </>
+      ),
+    };
+  }
+  const rowMenuView = rowMenuContent();
   const previewItems = items.map((item) => ({ ...item, scale: scales.find((scale) => scale.id === item.scaleId) ?? item.scale }));
   return (
     <div className="admin-builder">
@@ -440,14 +486,21 @@ export function ChecklistBuilder({
             <p className="admin-form__hint">{t('admin.checklists.contextFieldsHint', 'Filled in by the observer before the criteria.')}</p>
             <div className="admin-context-fields">
               {contextFields.map((field) => (
-                <div className="admin-context-field-row" key={field.id}>
+                <div className="admin-context-field-row" key={field.id} {...rowMenu.triggerProps({ kind: 'field', id: field.id })}>
                   <label className="admin-context-field-row__field">
                     <span>{t('admin.checklists.contextFieldLabel', 'Field label')}</span>
-                    <input
-                      onBlur={(e) => void persistContextFields(applyContextFieldPatch(contextFields, field.id, { label: e.target.value }))}
-                      onChange={(e) => updateContextFieldLocally(field.id, { label: e.target.value })}
-                      type="text"
+                    <InlineNameField
+                      id={`context-field-${field.id}`}
+                      label={t('admin.checklists.contextFieldLabel', 'Field label')}
                       value={field.label}
+                      maxLength={120}
+                      disabled={!canEdit}
+                      hintWhenEmpty
+                      onCommit={async (label) => {
+                        await persistContextFields(applyContextFieldPatch(contextFields, field.id, { label }));
+                        updateContextFieldLocally(field.id, { label });
+                      }}
+                      t={t}
                     />
                   </label>
                   <label className="admin-context-field-row__field">
@@ -482,6 +535,9 @@ export function ChecklistBuilder({
                     buttonClassName="admin-btn admin-btn--sm"
                     label={<><span aria-hidden="true">⋮</span><span className="ui-visually-hidden">{t('admin.checklists.contextFieldActions', 'Field actions: {{name}}', { name: field.label || t('admin.checklists.contextFieldLabel', 'Field label') })}</span></>}
                   >
+                    <button disabled={!canEdit} onClick={() => focusNameField(`context-field-${field.id}`)} role="menuitem" type="button">
+                      {t('admin.checklists.rename.action', 'Rename')}
+                    </button>
                     <button onClick={() => setContextFieldToDelete(field)} role="menuitem" type="button">
                       {t('admin.checklists.delete', 'Delete')}
                     </button>
@@ -490,7 +546,12 @@ export function ChecklistBuilder({
                 </div>
               ))}
             </div>
-            <Button onClick={() => { addContextFieldLocally(); void persistContextFields(appendContextField(contextFields)); }} type="button" variant="secondary" size="sm">
+            <Button onClick={() => {
+              // PR 413: the new field is only added on the screen; it is saved with its name (an unnamed field is refused by the server).
+              const next = appendContextField(contextFields);
+              setContextFields(next);
+              focusNameField(`context-field-${next.at(-1)!.id}`);
+            }} type="button" variant="secondary" size="sm">
               + {t('admin.checklists.addContextField', 'Field')}
             </Button>
           </ChecklistItemsEditor>
@@ -506,15 +567,19 @@ export function ChecklistBuilder({
             {(layoutDnd.dragging ? layoutDnd.buckets : groupItems(items, itemGroups)).map(({ group, items: groupedItems }, groupIndex, allGroups) => {
               return (
               <GroupShell key={group?.id ?? 'ungrouped'} groupId={group?.id ?? null}>{(groupHandle) => (<>
-                <div className="admin-group-card__head">
+                <div className="admin-group-card__head" {...(group ? rowMenu.triggerProps({ kind: 'group', id: group.id }) : {})}>
                   {group && groupHandle && <DragHandle handle={groupHandle} label={t('admin.checklists.dnd.dragGroup', 'Drag group: {{name}}', { name: group.title })} />}
                   <div className="admin-group-card__title">
                     {group ? (
-                      <input
-                        aria-label={t('admin.checklists.groupTitle', 'Group title')}
-                        onBlur={(e) => void persistGroupTitle(group.id, e.target.value)}
-                        onChange={(e) => renameGroupLocally(group.id, e.target.value)}
+                      <InlineNameField
+                        id={`group-title-${group.id}`}
+                        label={t('admin.checklists.groupTitle', 'Group title')}
                         value={group.title}
+                        maxLength={120}
+                        disabled={!canEdit}
+                        validate={(name) => (itemGroups.some((other) => other.id !== group.id && other.title.trim().toLowerCase() === name.toLowerCase()) ? t('admin.checklists.rename.duplicateGroup', 'A group with this name already exists') : null)}
+                        onCommit={(name) => persistGroupTitle(group.id, name)}
+                        t={t}
                       />
                     ) : itemGroups.length > 0 ? (
                       <h4>{t('admin.checklists.ungroupedItems', 'Ungrouped')}</h4>
@@ -526,6 +591,7 @@ export function ChecklistBuilder({
                       <>
                         <button className="admin-btn admin-btn--sm" disabled={groupIndex === 0} onClick={() => void moveGroupDirection(group.id, 'up')} type="button" aria-label={t('admin.checklists.moveNamedUp', 'Move up: {{name}}', { name: group.title })}>↑</button>
                         <button className="admin-btn admin-btn--sm" disabled={groupIndex === allGroups.filter((b) => b.group).length - 1} onClick={() => void moveGroupDirection(group.id, 'down')} type="button" aria-label={t('admin.checklists.moveNamedDown', 'Move down: {{name}}', { name: group.title })}>↓</button>
+                        <button className="admin-btn admin-btn--sm" disabled={!canEdit} onClick={() => focusNameField(`group-title-${group.id}`)} type="button" aria-label={t('admin.checklists.rename.namedGroup', 'Rename group: {{name}}', { name: group.title })}>{t('admin.checklists.rename.action', 'Rename')}</button>
                         <button className="admin-btn admin-btn--sm" onClick={() => void copyGroup(group.id)} type="button">{t('admin.checklists.copyGroup', 'Copy')}</button>
                         <button className="admin-btn admin-btn--sm" onClick={() => { setKeepItemsOnGroupDelete(false); setGroupToDelete(group); }} type="button" aria-label={t('admin.checklists.deleteNamedGroup', 'Delete group: {{name}}', { name: group.title })}>{t('admin.checklists.delete', 'Delete')}</button>
                       </>
@@ -550,20 +616,23 @@ export function ChecklistBuilder({
                     </div>
                     <ItemsSortable ids={groupedItems.map((entry) => entry.id)}>
                     {groupedItems.map((item, itemIndex) => (
-                      <SortableBox className="admin-criteria-row" id={item.id} key={item.id} role="row">{(itemHandle) => (<>
+                      <SortableBox className="admin-criteria-row" id={item.id} key={item.id} role="row" extra={rowMenu.triggerProps({ kind: 'item', id: item.id })}>{(itemHandle) => (<>
                         <DragHandle handle={itemHandle} label={t('admin.checklists.dnd.dragCriterion', 'Drag criterion: {{name}}', { name: item.text })} />
                         <div className="admin-criteria-row__order">
                           <button disabled={itemIndex === 0} onClick={() => void moveItemDirection(item.id, 'up')} type="button" aria-label={t('admin.checklists.moveNamedUp', 'Move up: {{name}}', { name: item.text })}>↑</button>
                           <button disabled={itemIndex === groupedItems.length - 1} onClick={() => void moveItemDirection(item.id, 'down')} type="button" aria-label={t('admin.checklists.moveNamedDown', 'Move down: {{name}}', { name: item.text })}>↓</button>
                         </div>
-                        <textarea
+                        <InlineNameField
+                          id={`item-text-${item.id}`}
                           className="admin-criteria-row__text"
-                          rows={2}
+                          wrapperClassName="admin-criteria-row__name"
+                          multiline
+                          label={t('admin.checklists.field.criterion', 'Criterion')}
                           value={item.text}
-                          onChange={(e) => updateItemLocally(item.id, { text: e.target.value })}
-                          onBlur={(e) => void persistItem(item.id, { text: e.target.value })}
-                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); } }}
-                          aria-label={t('admin.checklists.field.criterion', 'Criterion')}
+                          maxLength={500}
+                          disabled={!canEdit}
+                          onCommit={(text) => persistItem(item.id, { text })}
+                          t={t}
                         />
                         <div className="admin-criteria-cell">
                           <span aria-hidden="true">{t('admin.checklists.field.scale', 'Scale')}</span>
@@ -645,6 +714,9 @@ export function ChecklistBuilder({
                           className="admin-criteria-row__menu"
                           label={<><span aria-hidden="true">⋮</span><span className="ui-visually-hidden">{t('admin.checklists.rowActions', 'Actions')}</span></>}
                         >
+                          <button disabled={!canEdit} onClick={() => focusNameField(`item-text-${item.id}`)} role="menuitem" type="button">
+                            {t('admin.checklists.rename.action', 'Rename')}
+                          </button>
                           <button onClick={() => void removeItem(item)} role="menuitem" type="button">
                             {t('admin.checklists.delete', 'Delete')}
                           </button>
@@ -880,6 +952,7 @@ export function ChecklistBuilder({
         startCreating
         t={t}
       />
+      <ContextMenu label={rowMenuView.label} onClose={rowMenu.close} state={rowMenu.state}>{rowMenuView.items}</ContextMenu>
     </div>
   );
 }
