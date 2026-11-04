@@ -6,9 +6,13 @@ import {
   applyGroupPatch,
   groupItems,
   isUntouchedDraft,
+  moveContextField,
   moveGroup,
   moveItem,
+  moveListItem,
+  reorderContextFields,
   removeContextFieldById,
+  withSequentialOrder,
 } from './domain.js';
 import type { ChecklistItemGroup, ChecklistItemSummary, ContextField } from '../../shared/api/types.js';
 
@@ -149,6 +153,50 @@ describe('context field helpers', () => {
   it('removeContextFieldById drops only the matching field', () => {
     const other: ContextField = { id: 'f-2', label: 'Shift', type: 'textarea', required: false, order: 1 };
     expect(removeContextFieldById([field, other], 'f-1')).toEqual([other]);
+  });
+});
+
+describe('PR 418: moving fields of "General information"', () => {
+  const mk = (id: string, order: number): ContextField => ({ id, label: id, type: 'text', required: false, order });
+  const fields = [mk('a', 5), mk('b', 9), mk('c', 2)];
+
+  it('moveContextField swaps neighbours and rewrites order 0, 1, 2 by position', () => {
+    const down = moveContextField(fields, 'a', 'down');
+    expect(down.map((field) => field.id)).toEqual(['b', 'a', 'c']);
+    expect(down.map((field) => field.order)).toEqual([0, 1, 2]);
+    const up = moveContextField(fields, 'c', 'up');
+    expect(up.map((field) => field.id)).toEqual(['a', 'c', 'b']);
+    expect(up.map((field) => field.order)).toEqual([0, 1, 2]);
+  });
+
+  it('does not change the list at the edges or for an unknown id', () => {
+    expect(moveContextField(fields, 'a', 'up')).toBe(fields);
+    expect(moveContextField(fields, 'c', 'down')).toBe(fields);
+    expect(moveContextField(fields, 'missing', 'down')).toBe(fields);
+  });
+
+  it('reorderContextFields moves a field over another one and renumbers', () => {
+    const moved = reorderContextFields(fields, 'a', 'c');
+    expect(moved.map((field) => field.id)).toEqual(['b', 'c', 'a']);
+    expect(moved.map((field) => field.order)).toEqual([0, 1, 2]);
+    expect(reorderContextFields(fields, 'a', 'a')).toBe(fields);
+    expect(reorderContextFields(fields, 'a', 'missing')).toBe(fields);
+  });
+
+  it('does not mutate the input and keeps untouched order values', () => {
+    const before = JSON.stringify(fields);
+    moveContextField(fields, 'b', 'up');
+    expect(JSON.stringify(fields)).toBe(before);
+    const sequential = [mk('x', 0), mk('y', 1)];
+    expect(withSequentialOrder(sequential)[0]).toBe(sequential[0]);
+  });
+
+  it('moveListItem keeps every element and ignores out-of-range indexes', () => {
+    expect(moveListItem(['a', 'b', 'c'], 0, 2)).toEqual(['b', 'c', 'a']);
+    expect(moveListItem(['a', 'b', 'c'], 2, 0)).toEqual(['c', 'a', 'b']);
+    const list = ['a', 'b'];
+    expect(moveListItem(list, 0, 2)).toBe(list);
+    expect(moveListItem(list, -1, 0)).toBe(list);
   });
 });
 

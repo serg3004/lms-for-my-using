@@ -1313,6 +1313,7 @@
       "contextFieldsTitle": "Общая информация",
       "contextFieldsHint": "Заполняется наблюдателем перед критериями.",
       "contextFieldLabel": "Название поля",
+      "contextFieldNumbered": "Поле {{n}}",
       "addContextField": "Поле",
       "groupsTitle": "Группы и критерии",
       "groupTitle": "Название группы",
@@ -1669,6 +1670,8 @@
       "dnd": {
         "dragGroup": "Перетащить группу: {{name}}",
         "dragCriterion": "Перетащить критерий: {{name}}",
+        "dragField": "Перетащить поле: {{name}}",
+        "dragLevel": "Перетащить уровень: {{name}}",
         "picked": "Взято: {{name}}.",
         "over": "«{{name}}» над «{{target}}».",
         "dropped": "«{{name}}» перемещено.",

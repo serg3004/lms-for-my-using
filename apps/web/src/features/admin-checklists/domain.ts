@@ -241,6 +241,35 @@ export function removeContextFieldById(fields: ContextField[], fieldId: string) 
   return fields.filter((field) => field.id !== fieldId);
 }
 
+/** PR 418: moves one element of a flat list; an index outside the list or a move past an edge changes nothing. */
+export function moveListItem<T>(list: T[], from: number, to: number): T[] {
+  if (from === to || from < 0 || to < 0 || from >= list.length || to >= list.length) return list;
+  const next = [...list];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved!);
+  return next;
+}
+
+/** PR 418: the observer screen and the report sort "General information" by `order`, so after a move it is rewritten 0, 1, 2, … by position. */
+export function withSequentialOrder(fields: ContextField[]): ContextField[] {
+  return fields.map((field, index) => (field.order === index ? field : { ...field, order: index }));
+}
+
+export function moveContextField(fields: ContextField[], fieldId: string, direction: 'up' | 'down'): ContextField[] {
+  const index = fields.findIndex((field) => field.id === fieldId);
+  if (index === -1) return fields;
+  const moved = moveListItem(fields, index, direction === 'up' ? index - 1 : index + 1);
+  return moved === fields ? fields : withSequentialOrder(moved);
+}
+
+export function reorderContextFields(fields: ContextField[], activeId: string, overId: string): ContextField[] {
+  const from = fields.findIndex((field) => field.id === activeId);
+  const to = fields.findIndex((field) => field.id === overId);
+  if (from === -1 || to === -1) return fields;
+  const moved = moveListItem(fields, from, to);
+  return moved === fields ? fields : withSequentialOrder(moved);
+}
+
 // ---- PR 293/296: reusable evaluation scale library (scale-manager builder UI) ----
 
 export const SCALE_MIN_LEVELS = 2;

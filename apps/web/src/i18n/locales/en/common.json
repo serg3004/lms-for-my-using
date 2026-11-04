@@ -1313,6 +1313,7 @@
       "contextFieldsTitle": "General information",
       "contextFieldsHint": "Filled in by the observer before the criteria.",
       "contextFieldLabel": "Field label",
+      "contextFieldNumbered": "Field {{n}}",
       "addContextField": "Field",
       "groupsTitle": "Groups and criteria",
       "groupTitle": "Group title",
@@ -1669,6 +1670,8 @@
       "dnd": {
         "dragGroup": "Drag group: {{name}}",
         "dragCriterion": "Drag criterion: {{name}}",
+        "dragField": "Drag field: {{name}}",
+        "dragLevel": "Drag level: {{name}}",
         "picked": "Picked up {{name}}.",
         "over": "{{name}} is over {{target}}.",
         "dropped": "{{name}} was moved.",

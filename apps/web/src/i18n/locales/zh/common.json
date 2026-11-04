@@ -1313,6 +1313,7 @@
       "contextFieldsTitle": "基本信息",
       "contextFieldsHint": "由观察员在评估标准之前填写。",
       "contextFieldLabel": "字段标签",
+      "contextFieldNumbered": "字段 {{n}}",
       "addContextField": "字段",
       "groupsTitle": "分组与标准",
       "groupTitle": "分组名称",
@@ -1669,6 +1670,8 @@
       "dnd": {
         "dragGroup": "拖动分组：{{name}}",
         "dragCriterion": "拖动标准：{{name}}",
+        "dragField": "拖动字段：{{name}}",
+        "dragLevel": "拖动等级：{{name}}",
         "picked": "已拿起：{{name}}。",
         "over": "“{{name}}”位于“{{target}}”上方。",
         "dropped": "“{{name}}”已移动。",

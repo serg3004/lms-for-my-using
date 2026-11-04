@@ -289,3 +289,16 @@ To keep typed settings from being lost:
 - while the settings differ from the saved ones, a bar "There are unsaved changes" with **Save** and **Discard** (restores the stored values) is shown above the editor;
 - leaving with unsaved settings (the "All checklists" link, a link of the menu, closing the tab) asks "Save / Don’t save / Stay"; an in-app link is intercepted in the capture phase and followed after the choice, the tab close uses the browser's own prompt;
 - settings are not autosaved; only people who may edit the sheet see the bar and the prompt.
+
+## Checklist editor: reordering lists (PR 418)
+
+Every list that is edited by hand in the checklist editor can be reordered with the ↑/↓ buttons, by the "⋮⋮" handle (mouse, touch, keyboard: Space/Enter picks up, arrows move, Space/Enter drops, Esc cancels) and, for a field, from its "⋮" menu and the right-button menu (Move up / Move down). Only people who may edit the sheet see the handle and the arrows.
+
+| List | Where the order is stored | When it is saved |
+|---|---|---|
+| Groups and criteria | `order` of each group and criterion (`PUT /checklists/:id/layout` for a drag, per-row `PATCH` for the arrows) | at once (PR 402) |
+| Fields of "General information" | `contextFields[].order` | at once, all named fields in one `PATCH /checklists/:id`; `order` is rewritten 0, 1, 2, … by position; if the request fails the old order comes back and an error is shown |
+| Scale levels of the sheet (scoring "Own scale") | position in `scaleLevels`; the `level` number is the identity of a level (answers refer to it) and moves with its row | with the other settings by **Save** (PR 417) |
+| Sections and fields of the structured feedback, answer sets, levels of a reusable scale | position in the list | as before (PR 405, PR 296) |
+
+The observer screen and the report show "General information" in the saved order. A session that has already started keeps the list it was started with (`contextFieldsSnapshot`), so a later move does not change it.
