@@ -93,9 +93,17 @@ export function RichDescriptionEditor({ value, onChange, label, id, maxLength = 
   }
   useLayoutEffect(() => {
     if (!popup || !panel.current) return;
-    const rect = { width: panel.current.offsetWidth, height: panel.current.offsetHeight };
-    setPlacement({ left: Math.max(8, Math.min(popup.x, document.documentElement.clientWidth - rect.width - 8)), top: Math.max(8, Math.min(popup.y, window.innerHeight - rect.height - 8)) });
-    panel.current.querySelector<HTMLButtonElement>('button')?.focus();
+    const element = panel.current;
+    const place = () => {
+      const left = Math.max(8, Math.min(popup.x, document.documentElement.clientWidth - element.offsetWidth - 8));
+      const top = Math.max(8, Math.min(popup.y, window.innerHeight - element.offsetHeight - 8));
+      setPlacement((current) => current.left === left && current.top === top ? current : { left, top });
+    };
+    place();
+    element.querySelector<HTMLButtonElement>('button')?.focus();
+    const observer = new ResizeObserver(place);
+    observer.observe(element);
+    return () => observer.disconnect();
   }, [popup]);
   useEffect(() => {
     if (!popup) return;

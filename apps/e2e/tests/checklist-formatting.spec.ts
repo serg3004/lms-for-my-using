@@ -45,6 +45,7 @@ for (const width of [320, 390]) test(`touch long-press and low-contrast warning 
   await popup.getByLabel('Свой цвет', { exact: true }).fill('#ffff00');
   await expect(popup.getByRole('status')).toContainText('Низкий контраст');
   const rect = await popup.boundingBox(); expect(rect!.x).toBeGreaterThanOrEqual(0); expect(rect!.x + rect!.width).toBeLessThanOrEqual(width);
+  await expect.poll(async () => { const bounds = await popup.boundingBox(); return bounds!.y + bounds!.height; }).toBeLessThanOrEqual(800);
   await page.keyboard.press('Escape'); await expect(popup).toHaveCount(0);
 });
 
