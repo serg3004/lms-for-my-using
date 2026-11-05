@@ -98,4 +98,44 @@ test.describe('Scale switch (PR 414)', () => {
     await expect(page.getByRole('switch', { name: 'Шкала: Новый критерий' })).not.toBeChecked();
     expect((server.calls.find((call) => call.path === '/checklists/c1/items')?.body as { scaleId: unknown }).scaleId).toBeNull();
   });
+  // PR 419: switches are not above the list; the Points column always says where points come from.
+  test('PR 419: bulk buttons sit on the right next to "+ Группа"; the switch is beside the scale list; the Points column is not empty', async ({ page }) => {
+    await openEditor(page);
+    const enableAll = await page.getByRole('button', { name: 'Включить шкалу для всех критериев' }).boundingBox();
+    const addGroup = await page.getByRole('button', { name: '+ Группа' }).boundingBox();
+    const disableAll = await page.getByRole('button', { name: 'Выключить шкалу у всех' }).boundingBox();
+    expect(disableAll!.x).toBeGreaterThan(enableAll!.x);
+    expect(addGroup!.x).toBeGreaterThan(disableAll!.x);
+    // the buttons are a group next to "+ Группа", not centred in the header.
+    expect(addGroup!.x - (disableAll!.x + disableAll!.width)).toBeLessThan(20);
+
+    const sw = await page.getByRole('switch', { name: 'Шкала: Проверить кассу' }).boundingBox();
+    const select = await page.getByRole('combobox', { name: 'Шкала критерия: Проверить кассу' }).boundingBox();
+    expect(select!.x).toBeGreaterThan(sw!.x);
+    expect(Math.abs((sw!.y + sw!.height / 2) - (select!.y + select!.height / 2))).toBeLessThan(6);
+
+    const row = (name: string) => page.locator('.admin-criteria-row').filter({ has: page.getByRole('switch', { name }) });
+    // the scale cell is the same height with and without a scale (the switch no longer stacks above the list).
+    const withScale = await row('Шкала: Проверить кассу').locator('.admin-criteria-cell--scale').boundingBox();
+    const without = await row('Шкала: Включить свет').locator('.admin-criteria-cell--scale').boundingBox();
+    expect(Math.abs(withScale!.height - without!.height)).toBeLessThan(2);
+
+    const note = row('Шкала: Проверить кассу').getByText('по шкале', { exact: true });
+    await expect(note).toBeVisible();
+    await expect(row('Шкала: Проверить кассу').locator('.admin-criteria-cell--points-from-scale')).toHaveAttribute('title', 'Баллы берутся из уровней шкалы');
+    await expect(row('Шкала: Включить свет').getByRole('spinbutton', { name: 'Баллы' })).toBeVisible();
+  });
+
+  for (const width of [320, 390]) {
+    test(`PR 419: ${width} px, no horizontal scroll, switch has a 44 px tap area`, async ({ page }) => {
+      await openEditor(page);
+      await page.setViewportSize({ width, height: 900 });
+      const sw = page.locator('.admin-criteria-scale-switch').first();
+      await sw.scrollIntoViewIfNeeded();
+      const box = await sw.boundingBox();
+      expect(box!.height).toBeGreaterThanOrEqual(43.5);
+      expect(box!.width).toBeGreaterThanOrEqual(43.5);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    });
+  }
 });
