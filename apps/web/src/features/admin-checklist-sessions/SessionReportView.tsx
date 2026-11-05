@@ -287,7 +287,7 @@ export function ReportCriteria({ report, t }: { report: Report; t: TFunction }) 
     rows.push(
       <tr key={criterion.id}>
         <td style={{ ...cell, borderLeft: `6px solid ${criterion.color?.color ?? '#e3e8ef'}` }}>
-          <span>{checklistLabel(criterion.text, criterion.number, report.checklist.showNumbering)}</span>
+          {report.checklist.showNumbering !== false && criterion.number && <><strong>{checklistLabel('', criterion.number, true, '')}</strong>{' '}</>}<span>{criterion.text}</span>
           {criterion.description && <p><RichDescription value={criterion.description} /></p>}
         </td>
         <td style={{ ...cell, whiteSpace: 'nowrap' }}>
