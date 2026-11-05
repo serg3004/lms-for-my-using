@@ -74,16 +74,41 @@ async function settledBox(locator: Locator) {
   return (await locator.boundingBox())!;
 }
 
+// dnd-kit reacts to pointer events asynchronously. On a slow runner the pointer can be released while its
+// collision detection still reports the previous element (often the dragged row itself), so the drop lands
+// on a neighbour or nowhere. Its live region announces what the item is over; the helper waits for the
+// announcement to name the target and nudges the pointer while it does not.
+const liveRegion = (page: Page) => page.locator('[id^="DndLiveRegion"]').evaluateAll((nodes) => nodes.map((node) => node.textContent ?? '').join('|'));
+const nameOfTarget = (target: Locator) => target.locator('textarea.admin-criteria-row__text, input').first().inputValue();
+
 async function drag(page: Page, handle: Locator, target: Locator, position: 'top' | 'bottom' = 'top') {
-  const from = await settledBox(handle);
-  const to = await settledBox(target);
-  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(from.x + from.width / 2 + 6, from.y + from.height / 2 + 6, { steps: 4 });
-  const y = position === 'top' ? to.y + 4 : to.y + to.height - 4;
-  await page.mouse.move(to.x + to.width / 2, y, { steps: 20 });
-  await page.mouse.move(to.x + to.width / 2, y + (position === 'top' ? 1 : -1), { steps: 3 });
-  await page.mouse.up();
+  const name = await nameOfTarget(target);
+  // A pointer drag that never reaches the target is cancelled with Escape (nothing is saved) and retried.
+  for (let drop = 0; drop < 3; drop++) {
+    const from = await settledBox(handle);
+    const to = await settledBox(target);
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(from.x + from.width / 2 + 6, from.y + from.height / 2 + 6, { steps: 4 });
+    await page.mouse.move(to.x + to.width / 2, position === 'top' ? to.y + 4 : to.y + to.height - 4, { steps: 20 });
+    let announced = false;
+    // Picking the row up and moving it between lists reflows the rows below, so aim at where the target is now.
+    for (let attempt = 0; attempt < 15 && !announced; attempt++) {
+      const box = (await target.boundingBox()) ?? to;
+      const y = position === 'top' ? box.y + 4 : box.y + box.height - 4;
+      await page.mouse.move(box.x + box.width / 2, y + (position === 'top' ? 1 : -1) + (attempt % 2), { steps: 3 });
+      await page.waitForTimeout(100);
+      announced = (await liveRegion(page)).includes(`над «${name}»`);
+    }
+    if (announced) {
+      await page.waitForTimeout(150);
+      await page.mouse.up();
+      return;
+    }
+    await page.keyboard.press('Escape');
+    await page.mouse.up();
+  }
+  throw new Error(`the drag never reached «${name}»`);
 }
 
 const groupCard = (page: Page, title: string) => page.locator('.admin-group-card').filter({ has: page.locator(`input[value="${title}"]`) });
