@@ -1,5 +1,7 @@
 import { RichDescriptionEditor } from '../../shared/RichDescriptionEditor.js';
 import type { FeedbackLayout } from '@lms/shared/checklist-feedback';
+import { ChecklistAppearanceEditor } from './ChecklistAppearanceEditor.js';
+import { sanitizeAppearance, type Appearance } from '@lms/shared/checklist-appearance';
 import { FeedbackBuilder } from '../checklist-feedback/FeedbackBuilder.js';
 import { useEffect, useRef, useState } from 'react';
 import { verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -110,6 +112,7 @@ export function ChecklistBuilder({
   const [allowFinishIncomplete, setAllowFinishIncomplete] = useState(checklist.allowFinishIncomplete ?? false);
   const [forbidGalleryPhotos, setForbidGalleryPhotos] = useState(checklist.forbidGalleryPhotos ?? false);
   const [feedbackLayout, setFeedbackLayout] = useState<FeedbackLayout | null>(checklist.feedbackLayout ?? null);
+  const [appearance, setAppearance] = useState<Appearance | null>(() => sanitizeAppearance(checklist.appearance));
   const [feedbackEnabled, setFeedbackEnabled] = useState(checklist.feedbackEnabled ?? true);
   const [feedbackRequired, setFeedbackRequired] = useState(checklist.feedbackRequired ?? false);
   const [allowSkipAll, setAllowSkipAll] = useState(checklist.allowSkipAll ?? false);
@@ -150,7 +153,7 @@ export function ChecklistBuilder({
     title: checklist.title, description: checklist.description ?? '', scoringMode: checklist.scoringMode, passThreshold: checklist.passThreshold,
     requiresReview: checklist.requiresReview, scaleLevels: checklist.scaleLevels ?? createDefaultScale(t), defaultLocationCapturePolicy: checklist.defaultLocationCapturePolicy ?? '',
     preSessionVisibility: checklist.preSessionVisibility ?? 'structure_only', allowFinishIncomplete: checklist.allowFinishIncomplete ?? false, forbidGalleryPhotos: checklist.forbidGalleryPhotos ?? false,
-    feedbackLayout: checklist.feedbackLayout ?? null, feedbackEnabled: checklist.feedbackEnabled ?? true, feedbackRequired: checklist.feedbackRequired ?? false, allowSkipAll: checklist.allowSkipAll ?? false,
+    feedbackLayout: checklist.feedbackLayout ?? null, appearance: sanitizeAppearance(checklist.appearance), feedbackEnabled: checklist.feedbackEnabled ?? true, feedbackRequired: checklist.feedbackRequired ?? false, allowSkipAll: checklist.allowSkipAll ?? false,
     accessMode: checklist.accessMode ?? 'assigned', pinned: (checklist.accessMode ?? 'assigned') === 'free' && (checklist.pinned ?? false),
     allowEditByAll: canManageEditAccess ? (checklist.allowEditByAll ?? true) : undefined,
     moduleSettings: storedModuleSettings,
@@ -191,7 +194,7 @@ export function ChecklistBuilder({
     listChecklistItemGroups(checklist.id).then(setItemGroups).catch(() => setItemGroups([]));
     listChecklistScales().then(setScales).catch(() => setScales([]));
   }, [checklist.id]);
-  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, feedbackLayout, feedbackEnabled, feedbackRequired, allowSkipAll, accessMode, pinned, allowEditByAll: canManageEditAccess ? allowEditByAll : undefined, moduleSettings });
+  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, feedbackLayout, appearance, feedbackEnabled, feedbackRequired, allowSkipAll, accessMode, pinned, allowEditByAll: canManageEditAccess ? allowEditByAll : undefined, moduleSettings });
   const hasUnsavedChanges = JSON.stringify(settingsPayload) !== savedSnapshot;
   function settingsErrorMessage(error: unknown) {
     return error instanceof ApiClientError && error.status === 409
@@ -230,6 +233,7 @@ export function ChecklistBuilder({
     setAllowFinishIncomplete(checklist.allowFinishIncomplete ?? false);
     setForbidGalleryPhotos(checklist.forbidGalleryPhotos ?? false);
     setFeedbackLayout(checklist.feedbackLayout ?? null);
+    setAppearance(sanitizeAppearance(checklist.appearance));
     setFeedbackEnabled(checklist.feedbackEnabled ?? true);
     setFeedbackRequired(checklist.feedbackRequired ?? false);
     setAllowSkipAll(checklist.allowSkipAll ?? false);
@@ -937,6 +941,7 @@ export function ChecklistBuilder({
             </SortableContext>
             </DndContext>
           </ChecklistItemsEditor>
+          <ChecklistAppearanceEditor value={appearance} onChange={setAppearance} groups={itemGroups} items={items} disabled={!canEdit} t={t} />
           {feedbackEnabled && <fieldset disabled={!canEdit} style={{ border: 0, padding: 0, minWidth: 0 }}><legend className="ui-visually-hidden">{t('admin.checklists.feedbackSectionTitle')}</legend><FeedbackBuilder value={feedbackLayout} onChange={setFeedbackLayout} required={feedbackRequired} /></fieldset>}
         </div>
         <div className="admin-builder__column" style={{ minWidth: 0 }}>
@@ -1166,6 +1171,7 @@ export function ChecklistBuilder({
           scaleLevels={scaleLevels}
           passThreshold={passThreshold}
           feedbackLayout={feedbackLayout}
+          appearance={appearance}
           feedbackEnabled={feedbackEnabled}
           feedbackRequired={feedbackRequired}
           allowSkipAll={allowSkipAll}

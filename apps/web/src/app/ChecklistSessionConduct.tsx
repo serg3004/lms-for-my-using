@@ -29,6 +29,8 @@ import { PastSessions } from './ChecklistSessionHistory.js';
 import { ChecklistConductOverview } from './ChecklistConductOverview.js';
 import { ChecklistItemDescription } from './ChecklistItemNote.js';
 import { ChecklistPhotoStrip } from '../shared/ChecklistPhotoStrip.js';
+import { AppearanceBlock, itemCardStyle } from '../shared/AppearanceBlock.js';
+import { resolveBlockStyle, isEmptyBlockStyle } from '@lms/shared/checklist-appearance';
 import { isNoteRequired, pendingAnswer } from './checklistItemNote.js';
 import { conductCriteria, nextConductStep } from './checklistConductOverview.js';
 import { localizeChecklistScaleError, checklistResultToAnswer, getRequiredChecklistProgress, isChecklistAnswerComplete } from './checklistCompletion.js';
@@ -363,8 +365,10 @@ export function ConductScreen({
       </p>
       <h1 style={{ margin: '2px 0 0', fontSize: 20 }}>{t('checklistSessions.conduct.screenTitle', 'Conduct session')}</h1>
 
+      <AppearanceBlock appearance={checklist.appearance} kind="header" style={{ marginTop: 8 }}>
       <Header session={session} instance={instance} t={t} />
       {instance.checklist?.description && <p><RichDescription value={instance.checklist.description} /></p>}
+      </AppearanceBlock>
 
       {/* PR 421: the sheet's extra pictures stay at hand during the pass. */}
       {(session.status === 'in_progress' || session.status === 'paused') && checklist.photos && checklist.photos.length > 0 && (
@@ -434,6 +438,7 @@ export function ConductScreen({
               </p>
 
               {isContextStep ? (
+                <AppearanceBlock appearance={checklist.appearance} kind="info">
                 <ContextFields
                   fields={contextFields}
                   values={contextValues}
@@ -441,6 +446,7 @@ export function ConductScreen({
                   onChange={(fieldId, value) => setContextValues((current) => ({ ...current, [fieldId]: value }))}
                   t={t}
                 />
+                </AppearanceBlock>
               ) : isFeedbackStep ? (
                 <StructuredFeedback
                   session={session}
@@ -458,14 +464,21 @@ export function ConductScreen({
                 const currentItem = checklist.allowSkipAll === true && !rawItem.allowSkip ? { ...rawItem, allowSkip: true } : rawItem;
                 const currentResult = instance.results.find((r) => r.itemId === currentItem.id);
                 const isDone = isChecklistAnswerComplete(currentItem, checklist.scoringMode, checklistResultToAnswer(currentResult));
+                const groupStyle = resolveBlockStyle(checklist.appearance, 'group', currentItem.groupId);
+                const groupTitle = checklist.itemGroups?.find((group) => group.id === currentItem.groupId)?.title;
                 return (
+                  <>
+                  {/* PR 422: the group is only named here when the author styled it, so sheets without appearance look as before. */}
+                  {groupTitle && !isEmptyBlockStyle(groupStyle) && (
+                    <AppearanceBlock appearance={checklist.appearance} kind="group" id={currentItem.groupId} style={{ marginBottom: 8 }}><strong>{groupTitle}</strong></AppearanceBlock>
+                  )}
                   <div
-                    style={{
+                    style={itemCardStyle(checklist.appearance, currentItem.id, {
                       border: `1px solid ${isDone ? COLORS.success : COLORS.border}`,
                       background: isDone ? COLORS.successSoft : COLORS.surface,
                       borderRadius: 14,
                       padding: 16,
-                    }}
+                    }, COLORS.success, isDone)}
                   >
                     <CriterionCard
                       key={currentItem.id}
@@ -484,6 +497,7 @@ export function ConductScreen({
                       t={t}
                     />
                   </div>
+                  </>
                 );
               })()}
 

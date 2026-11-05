@@ -1,3 +1,4 @@
+import { AppearanceBlock, itemCardStyle } from '../shared/AppearanceBlock.js';
 import { RichDescription } from '../shared/RichDescription.js';
 import { ObserverSessionsBlock } from './ObserverSessionsBlock.js';
 import { useRef, useState } from 'react';
@@ -331,10 +332,12 @@ function ChecklistTaking({
       <button type="button" onClick={onBack} style={{ border: 'none', background: 'none', color: COLORS.primary, fontWeight: 600, cursor: 'pointer', padding: 0, marginBottom: 16 }}>
         ← {t('checklists.backToList', 'All checklists')}
       </button>
+      <AppearanceBlock appearance={checklist.appearance} kind="header" style={{ marginBottom: 8 }}>
       <h1 style={{ color: COLORS.text, marginBottom: 4 }}>{checklist.title}</h1>
       {checklist.description && <p style={{ color: COLORS.muted }}><RichDescription value={checklist.description} /></p>}
       {/* PR 421: extra pictures of the sheet, visible during the pass. */}
       {checklist.photos && checklist.photos.length > 0 && <ChecklistPhotoStrip checklistId={checklist.id} photos={checklist.photos} title={checklist.title} />}
+      </AppearanceBlock>
       <ChecklistDeadlineMeta instance={instance} />
       {instance.status === 'expired' && (
         <p style={{ color: '#b91c1c', background: '#fef2f2', borderRadius: 10, padding: '10px 12px' }} role="status">
@@ -361,12 +364,12 @@ function ChecklistTaking({
           return (
             <div
               key={item.id}
-              style={{
+              style={itemCardStyle(checklist.appearance, item.id, {
                 border: `1px solid ${isDone ? COLORS.success : COLORS.border}`,
                 background: isDone ? COLORS.successSoft : COLORS.surface,
                 borderRadius: 14,
                 padding: 16,
-              }}
+              }, COLORS.success, isDone)}
             >
               <p style={{ fontWeight: 600, marginTop: 0 }}>
                 {item.text}{' '}

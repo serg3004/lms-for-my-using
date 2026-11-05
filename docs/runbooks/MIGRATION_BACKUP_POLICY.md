@@ -6,6 +6,15 @@
 >
 > **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
 
+## Checklist block appearance migration (PR 422)
+
+`20261105130000_checklist_appearance` is additive and backward-compatible:
+
+- one statement: `ALTER TABLE "checklists" ADD COLUMN "appearance" JSONB` (nullable, no default); no table is rewritten and no backfill is needed, so every existing sheet keeps the standard look (`null`);
+- the value holds only `#RRGGBB` colours, a 0-4 px border and radius/padding from fixed sets, sanitized on write; an older API build neither reads nor writes the column, so the migration may run before the deploy;
+- backup/restore: the column is part of the ordinary table backup; no special step and no new environment variable;
+- rollback: drop the column; sheets return to the standard look and nothing else depends on it.
+
 ## Checklist scoring mode "Without points" migration (PR 416)
 
 `20261103140000_checklist_scoring_mode_none` is additive and backward-compatible:

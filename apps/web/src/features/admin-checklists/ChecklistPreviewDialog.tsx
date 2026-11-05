@@ -11,6 +11,8 @@ import type { ChecklistItemGroup, ChecklistItemSummary, ChecklistPhotoSummary, C
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, validateChecklistPhoto } from '../../shared/checklistPhoto.js';
 import { ChecklistPhotoStrip } from '../../shared/ChecklistPhotoStrip.js';
 import { Button } from '../../shared/ui.js';
+import { AppearanceBlock, itemCardStyle } from '../../shared/AppearanceBlock.js';
+import type { Appearance } from '@lms/shared/checklist-appearance';
 import { computePreviewResult, groupItems, type PreviewAnswer } from './domain.js';
 
 type PreviewProps = {
@@ -20,6 +22,8 @@ type PreviewProps = {
   contextFields: ContextField[]; scoringMode: ChecklistScoringMode; scaleLevels: ChecklistScaleLevel[];
   passThreshold: number; feedbackEnabled: boolean; feedbackRequired: boolean; allowSkipAll: boolean;
   feedbackLayout?: FeedbackLayout | null;
+  // PR 422: the look of the sheet blocks, as the employee sees it.
+  appearance?: Appearance | null;
   cameraOnly: boolean; onClose: () => void; t: TFunction;
 };
 
@@ -73,6 +77,7 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }}>
       <div className="admin-preview-panel">
+        <AppearanceBlock appearance={props.appearance} kind="header" style={{ marginBottom: 8 }}>
         <header className="admin-preview-panel__header" style={{ marginBottom: 4 }}>
           <div style={{ minWidth: 0 }}>
             <p className="admin-form__hint">{t('admin.checklists.previewTitle', 'Preview')}</p>
@@ -84,21 +89,24 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
         <p id={hintId} className="admin-form__hint">{t('admin.checklists.previewHint', 'This is a local simulation — nothing here is saved or sent to anyone.')}</p>
         {description && <p><RichDescription value={description} /></p>}
         {props.checklistId && props.photos && <ChecklistPhotoStrip checklistId={props.checklistId} photos={props.photos} title={title} />}
-        {contextFields.length > 0 && <section aria-label={t('admin.checklists.contextFieldsTitle', 'General information')}>
+        </AppearanceBlock>
+        {contextFields.length > 0 && <AppearanceBlock appearance={props.appearance} kind="info" style={{ marginBottom: 8 }}><section aria-label={t('admin.checklists.contextFieldsTitle', 'General information')}>
           <h3>{t('admin.checklists.contextFieldsTitle', 'General information')}</h3>
           <ContextFields fields={[...contextFields].sort((a, b) => a.order - b.order)} values={values} disabled={false}
             onChange={(id, value) => setValues((previous) => ({ ...previous, [id]: value }))} t={t} />
-        </section>}
+        </section></AppearanceBlock>}
         <div key={resetKey}>
           {groupItems(items, groups).map(({ group, items: groupCriteria }, groupIndex) => (
-            <section key={group?.id ?? 'ungrouped'} aria-labelledby={`${titleId}-group-${groupIndex}`}>
+            <AppearanceBlock key={group?.id ?? 'ungrouped'} appearance={props.appearance} kind="group" id={group?.id} style={{ marginBottom: 8 }}>
+            <section aria-labelledby={`${titleId}-group-${groupIndex}`}>
               <h3 id={`${titleId}-group-${groupIndex}`}>{groupIndex + 1} {group?.title ?? t('admin.checklists.ungroupedItems', 'Ungrouped criteria')}</h3>
               {groupCriteria.map((item, index) => (
                 <PreviewCriterion key={item.id} item={item} number={`${groupIndex + 1}.${index + 1}`} answer={answers[item.id]}
                   levels={checklistItemLevels(item, scoringMode, scaleLevels)} scoringMode={scoringMode} allowSkip={allowSkipAll || item.allowSkip === true}
-                  cameraOnly={cameraOnly} onChange={(patch) => updateAnswer(item.id, patch)} t={t} />
+                  cameraOnly={cameraOnly} appearance={props.appearance} onChange={(patch) => updateAnswer(item.id, patch)} t={t} />
               ))}
             </section>
+            </AppearanceBlock>
           ))}
         </div>
         {feedbackEnabled && <section aria-label={t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')}>
@@ -128,7 +136,8 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
   );
 }
 
-function PreviewCriterion({ item, number, answer, levels, scoringMode, allowSkip, cameraOnly, onChange, t }: {
+function PreviewCriterion({ item, number, answer, levels, scoringMode, allowSkip, cameraOnly, appearance, onChange, t }: {
+  appearance?: Appearance | null;
   item: ChecklistItemSummary; number: string; answer: PreviewAnswer | undefined; levels: ChecklistScaleLevel[] | null;
   scoringMode: ChecklistScoringMode; allowSkip: boolean; cameraOnly: boolean; onChange: (patch: PreviewAnswer) => void; t: TFunction;
 }) {
@@ -141,7 +150,7 @@ function PreviewCriterion({ item, number, answer, levels, scoringMode, allowSkip
     { level: 0, label: t('checklistPreview.no', 'No'), points: 0 },
   ];
   const noteShown = isNoteOffered(item, answer && !answer.skipped ? answer : undefined, levels !== null);
-  return <div style={{ padding: '20px 0', borderBottom: '1px solid var(--color-border)' }}>
+  return <div style={itemCardStyle(appearance, item.id, { padding: '20px 0', borderBottom: '1px solid var(--color-border)' }, '#166534', answer?.answered === true)}>
     <CriterionHeading text={`${number} ${item.text}`} required={item.isRequired} t={t} />
     <ChecklistItemDescription item={item} t={t} />
     <div role="radiogroup" aria-required={item.isRequired} aria-label={`${number} ${item.text}`} style={{ display: 'grid', gap: 6, marginBottom: 12 }}>

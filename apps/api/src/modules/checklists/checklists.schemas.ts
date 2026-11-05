@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { UserRole } from '@prisma/client';
 
 import { HIGHLIGHT_COLOR_PATTERN, normalizeHighlightColor } from './checklist-colors.js';
+import { APPEARANCE_MARKUP_LIMIT, sanitizeAppearance } from '@lms/shared/checklist-appearance';
 import { answerOptionSchema, feedbackLayoutSchema, FEEDBACK_TEXT_MAX_LENGTH } from './checklist-feedback-layout.js';
 
 const descriptionSchema = (limit: number) => z.string().trim().max(DESCRIPTION_MARKUP_LIMIT).transform(sanitizeDescription).refine((value) => value.length <= DESCRIPTION_MARKUP_LIMIT && descriptionText(value).length <= limit, `Description must be at most ${limit} characters`);
@@ -80,6 +81,12 @@ export const bulkChecklistFolderSchema = z.object({
 }).strict().refine((input) => input.action !== 'move' || input.parentId !== undefined, { message: 'parentId is required for move', path: ['parentId'] });
 export type BulkChecklistFolderInput = z.infer<typeof bulkChecklistFolderSchema>;
 
+/** PR 422: unknown kinds, non-#RRGGBB colours and values outside the fixed sets are cut, not rejected. */
+export const appearanceSchema = z
+  .unknown()
+  .refine((value) => JSON.stringify(value ?? null).length <= APPEARANCE_MARKUP_LIMIT, 'Appearance is too large')
+  .transform((value) => sanitizeAppearance(value));
+
 export const createChecklistSchema = z.object({
   organizationId: z.string().uuid(),
   title: z.string().trim().min(1).max(200),
@@ -99,6 +106,8 @@ export const createChecklistSchema = z.object({
   // PR 405: configurable feedback section; absent/null = the classic three text fields.
   feedbackLayout: feedbackLayoutSchema.nullable().optional(),
   allowSkipAll: z.boolean().default(false),
+  // PR 422: block appearance; absent/null = the standard look.
+  appearance: appearanceSchema.optional(),
   accessMode: checklistAccessModeSchema.default('assigned'),
   allowEditByAll: z.boolean().default(false),
 });
@@ -163,6 +172,7 @@ export const updateChecklistSchema = z
     feedbackRequired: z.boolean(),
     feedbackLayout: feedbackLayoutSchema.nullable(),
     allowSkipAll: z.boolean(),
+    appearance: appearanceSchema,
     accessMode: checklistAccessModeSchema,
     pinned: z.boolean(),
     allowEditByAll: z.boolean(),

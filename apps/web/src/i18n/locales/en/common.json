@@ -1792,6 +1792,39 @@
         "captionError": "Unable to save the caption.",
         "moveError": "Unable to change the order of the photos.",
         "removeError": "Unable to remove the photo."
+      },
+      "appearance": {
+        "title": "Appearance",
+        "hint": "Text colour, background and border of the sheet blocks. The employee sees the sheet in this look; the report PDF does not repeat it.",
+        "presets": "Ready-made sets:",
+        "reset": "Reset to standard",
+        "resetBlock": "Reset this block",
+        "unset": "Clear",
+        "standard": "Standard",
+        "textColor": "Text colour",
+        "background": "Background",
+        "borderColor": "Border colour",
+        "borderWidth": "Border width",
+        "radius": "Corner radius",
+        "padding": "Padding",
+        "lowContrast": "Low contrast: the text may be hard to read (at least 4.5 : 1 is needed).",
+        "sample": "This is how the block will look.",
+        "pickBlock": "Block:",
+        "pickPlaceholder": "Choose a group or criterion",
+        "overridden": "Blocks styled separately: {{count}}. They are marked with a dot in the list.",
+        "kind": {
+          "header": "Header",
+          "info": "General information",
+          "group": "Group",
+          "item": "Criterion",
+          "own": "Single block"
+        },
+        "preset": {
+          "strict": "Strict",
+          "calm": "Calm",
+          "contrast": "High contrast"
+        },
+        "badge": "Styled separately"
       }
     },
     "orgTools": {

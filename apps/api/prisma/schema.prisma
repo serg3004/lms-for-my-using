@@ -1191,6 +1191,9 @@ model Checklist {
   // PR 362в: when false only the creator and an admin may edit the sheet. The column default keeps every
   // checklist created before this change editable by all; the create schema defaults new ones to false.
   allowEditByAll               Boolean                       @default(true) @map("allow_edit_by_all")
+  // PR 422: how the blocks look (header, general information, group, criterion card) plus per-group/criterion
+  // overrides keyed by id. Sanitized to #RRGGBB colours and fixed sets on write; null = the standard look.
+  appearance                   Json?
   // PR 397: per-sheet overrides of the organization module settings. Null (or, for the observer lists, an
   // absent eligibility override) = "as in the organization". Thresholds and result colours are set as a group.
   highThresholdOverride        Int?                          @map("high_threshold_override")
