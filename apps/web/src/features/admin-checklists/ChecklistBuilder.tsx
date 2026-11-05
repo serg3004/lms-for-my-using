@@ -41,7 +41,7 @@ import { InlineNameField, focusNameField } from './InlineNameField.js';
 import { ChecklistCoverField } from './ChecklistCoverField.js';
 import { ChecklistCheckboxOption, ChecklistHelpTip } from './ChecklistHelpTip.js';
 import { ChecklistItemsEditor } from './ChecklistItemsEditor.js';
-import { DndContext, DragHandle, GroupShell, ItemsSortable, SortableBox, SortableContext, useChecklistLayoutDnd } from './ChecklistSortable.js';
+import { DndContext, DragHandle, GroupShell, ItemsSortable, SortableBox, SortableContext, useChecklistLayoutDnd, useFlatListDnd } from './ChecklistSortable.js';
 import { applyLayout, toLayoutPayload, type Layout } from './layout.js';
 import { ChecklistModuleSettingsBlock } from './ChecklistModuleSettings.js';
 import { ChecklistPreviewDialog } from './ChecklistPreviewDialog.js';
@@ -53,6 +53,9 @@ import {
   applyGroupPatch,
   applyItemPatch,
   appendContextField,
+  moveContextField,
+  moveListItem,
+  reorderContextFields,
   appendScaleLevel,
   buildChecklistSettingsPayload,
   createDefaultScale,
@@ -131,6 +134,13 @@ export function ChecklistBuilder({
   // Defaults are system copy and follow the locale at creation time. Existing labels are authored
   // content, so changing the UI language must never rewrite them.
   const [scaleLevels, setScaleLevels] = useState<ChecklistScaleLevel[]>(() => checklist.scaleLevels ?? createDefaultScale(t));
+  const scaleLevelName = (index: number) => scaleLevels[index]?.label || String(index + 1);
+  const levelDnd = useFlatListDnd({
+    ids: scaleLevels.map((_, index) => String(index)),
+    nameOf: (id) => scaleLevelName(Number(id)),
+    onMove: (from, to) => moveScaleLevelTo(from, to),
+    t,
+  });
   const [saveState, setSaveState] = useState<SaveState>({ status: 'idle' });
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(buildChecklistSettingsPayload({
@@ -154,6 +164,18 @@ export function ChecklistBuilder({
   const [keepItemsOnGroupDelete, setKeepItemsOnGroupDelete] = useState(false);
   const layoutDnd = useChecklistLayoutDnd({ items, groups: itemGroups, t, onCommit: (layout) => void commitLayout(layout) });
   const [contextFields, setContextFields] = useState<ContextField[]>(checklist.contextFields ?? []);
+  // An unnamed field is called by its number: "Field label" would clash with the name input's own label.
+  const contextFieldName = (index: number) => contextFields[index]?.label || t('admin.checklists.contextFieldNumbered', 'Field {{n}}', { n: index + 1 });
+  const contextDnd = useFlatListDnd({
+    ids: contextFields.map((field) => field.id),
+    nameOf: (id) => contextFieldName(contextFields.findIndex((field) => field.id === id)),
+    onMove: (from, to) => {
+      const active = contextFields[from];
+      const over = contextFields[to];
+      if (active && over) void commitContextOrder(reorderContextFields(contextFields, active.id, over.id));
+    },
+    t,
+  });
   const [scales, setScales] = useState<ChecklistScaleSummary[]>([]);
   const [scaleManagerOpen, setScaleManagerOpen] = useState(false);
   // PR 343: the criterion whose scale dropdown asked to "Create scale" -- the new scale is assigned to it once saved.
@@ -352,6 +374,25 @@ export function ChecklistBuilder({
   }
   // PR 413: right button / menu key / long press on a group, a criterion or a field of "General information".
   const rowMenu = useContextMenu<{ kind: 'group' | 'item' | 'field'; id: string }>();
+  /** PR 418: the new order is saved at once (all named fields in one request, `order` rewritten 0, 1, 2, …); if it fails the old order comes back. */
+  async function commitContextOrder(next: ContextField[]) {
+    if (next === contextFields) return;
+    const previous = contextFields;
+    setContextFields(next);
+    try {
+      await persistContextFields(next);
+    } catch {
+      setContextFields(previous);
+      setSaveState({ status: 'error', message: t('admin.checklists.dnd.error', 'Unable to save the new order. The previous order is restored.') });
+    }
+  }
+  function moveContextFieldDirection(fieldId: string, direction: 'up' | 'down') {
+    void commitContextOrder(moveContextField(contextFields, fieldId, direction));
+  }
+  /** PR 418: the levels are part of the settings draft, so a move is saved with the other settings. The `level` number is the level's identity (answers refer to it) and stays with its row. */
+  function moveScaleLevelTo(from: number, to: number) {
+    setScaleLevels((prev) => moveListItem(prev, from, to));
+  }
   async function removeContextField(fieldId: string) {
     const next = removeContextFieldById(contextFields, fieldId);
     setContextFields(next);
@@ -452,6 +493,8 @@ export function ChecklistBuilder({
       items: (
         <>
           {rename(`context-field-${field.id}`)}
+          <button disabled={!canEdit || contextFields[0]?.id === field.id} onClick={() => moveContextFieldDirection(field.id, 'up')} role="menuitem" type="button">{t('admin.checklists.moveUp', 'Move up')}</button>
+          <button disabled={!canEdit || contextFields.at(-1)?.id === field.id} onClick={() => moveContextFieldDirection(field.id, 'down')} role="menuitem" type="button">{t('admin.checklists.moveDown', 'Move down')}</button>
           <button disabled={!canEdit} onClick={() => setContextFieldToDelete(field)} role="menuitem" type="button">{t('admin.checklists.delete', 'Delete')}</button>
         </>
       ),
@@ -598,8 +641,17 @@ export function ChecklistBuilder({
             <h3>{t('admin.checklists.contextFieldsTitle', 'General information')} <Badge variant="neutral">{contextFields.length}</Badge></h3>
             <p className="admin-form__hint">{t('admin.checklists.contextFieldsHint', 'Filled in by the observer before the criteria.')}</p>
             <div className="admin-context-fields">
-              {contextFields.map((field) => (
-                <div className="admin-context-field-row" key={field.id} {...rowMenu.triggerProps({ kind: 'field', id: field.id })}>
+              <DndContext {...contextDnd}>
+              <ItemsSortable ids={contextFields.map((field) => field.id)}>
+              {contextFields.map((field, fieldIndex) => (
+                <SortableBox className="admin-context-field-row" id={field.id} key={field.id} extra={rowMenu.triggerProps({ kind: 'field', id: field.id })}>{(fieldHandle) => (<>
+                  {canEdit && (<>
+                    <DragHandle handle={fieldHandle} label={t('admin.checklists.dnd.dragField', 'Drag field: {{name}}', { name: contextFieldName(fieldIndex) })} />
+                    <div className="admin-criteria-row__order">
+                      <button disabled={fieldIndex === 0} onClick={() => moveContextFieldDirection(field.id, 'up')} type="button" aria-label={t('admin.checklists.moveNamedUp', 'Move up: {{name}}', { name: contextFieldName(fieldIndex) })}>↑</button>
+                      <button disabled={fieldIndex === contextFields.length - 1} onClick={() => moveContextFieldDirection(field.id, 'down')} type="button" aria-label={t('admin.checklists.moveNamedDown', 'Move down: {{name}}', { name: contextFieldName(fieldIndex) })}>↓</button>
+                    </div>
+                  </>)}
                   <label className="admin-context-field-row__field">
                     <span>{t('admin.checklists.contextFieldLabel', 'Field label')}</span>
                     <InlineNameField
@@ -651,13 +703,21 @@ export function ChecklistBuilder({
                     <button disabled={!canEdit} onClick={() => focusNameField(`context-field-${field.id}`)} role="menuitem" type="button">
                       {t('admin.checklists.rename.action', 'Rename')}
                     </button>
+                    <button disabled={!canEdit || fieldIndex === 0} onClick={() => moveContextFieldDirection(field.id, 'up')} role="menuitem" type="button">
+                      {t('admin.checklists.moveUp', 'Move up')}
+                    </button>
+                    <button disabled={!canEdit || fieldIndex === contextFields.length - 1} onClick={() => moveContextFieldDirection(field.id, 'down')} role="menuitem" type="button">
+                      {t('admin.checklists.moveDown', 'Move down')}
+                    </button>
                     <button onClick={() => setContextFieldToDelete(field)} role="menuitem" type="button">
                       {t('admin.checklists.delete', 'Delete')}
                     </button>
                   </Menu>
                   </div>
-                </div>
+                </>)}</SortableBox>
               ))}
+              </ItemsSortable>
+              </DndContext>
             </div>
             <Button onClick={() => {
               // PR 413: the new field is only added on the screen; it is saved with its name (an unnamed field is refused by the server).
@@ -896,9 +956,17 @@ export function ChecklistBuilder({
             {scoringMode === 'scale' && (
               <div className="admin-scale-levels">
                 <label>{t('admin.checklists.scaleLevelsTitle', 'Scale levels')}</label>
+                <DndContext {...levelDnd}>
+                <ItemsSortable ids={scaleLevels.map((_, index) => String(index))}>
                 {scaleLevels.map((level, index) => (
-                  <div key={index} className="admin-scale-level-row">
-                    <span className="admin-scale-level-row__n">{level.level}</span>
+                  <SortableBox className="admin-scale-level-row" id={String(index)} key={index}>{(levelHandle) => (<>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <DragHandle handle={levelHandle} label={t('admin.checklists.dnd.dragLevel', 'Drag level: {{name}}', { name: scaleLevelName(index) })} />
+                      <div className="admin-criteria-row__order">
+                        <button disabled={index === 0} onClick={() => moveScaleLevelTo(index, index - 1)} type="button" aria-label={t('admin.checklists.moveNamedUp', 'Move up: {{name}}', { name: scaleLevelName(index) })}>↑</button>
+                        <button disabled={index === scaleLevels.length - 1} onClick={() => moveScaleLevelTo(index, index + 1)} type="button" aria-label={t('admin.checklists.moveNamedDown', 'Move down: {{name}}', { name: scaleLevelName(index) })}>↓</button>
+                      </div>
+                    </div>
                     <input
                       value={level.label}
                       onChange={(e) => updateScaleLevel(index, { label: e.target.value })}
@@ -915,8 +983,10 @@ export function ChecklistBuilder({
                       onChange={(e) => updateScaleLevel(index, { points: Number(e.target.value) })}
                     />
                     <button type="button" className="admin-scale-level-row__remove" onClick={() => removeScaleLevel(index)} aria-label={t('admin.checklists.delete', 'Delete')}>×</button>
-                  </div>
+                  </>)}</SortableBox>
                 ))}
+                </ItemsSortable>
+                </DndContext>
                 <Button type="button" variant="secondary" size="sm" onClick={addScaleLevel}>
                   + {t('admin.checklists.addScaleLevel', 'Add level')}
                 </Button>

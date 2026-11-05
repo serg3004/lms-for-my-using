@@ -141,4 +141,40 @@ export function useChecklistLayoutDnd({ items, groups, t, onCommit }: Options) {
   return { dndProps, dragging: draft !== null, buckets, layout };
 }
 
+type FlatOptions = {
+  /** One entry per row, in screen order; the dnd id of a row is its entry. */
+  ids: string[];
+  nameOf: (id: string) => string;
+  onMove: (fromIndex: number, toIndex: number) => void;
+  t: TFunction;
+};
+
+/** PR 418: mouse, touch and keyboard drag-and-drop for a flat list (fields of "General information", scale levels): no groups, no draft layout. */
+export function useFlatListDnd({ ids, nameOf, onMove, t }: FlatOptions) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+  const announcements: Announcements = {
+    onDragStart: ({ active }) => t('admin.checklists.dnd.picked', 'Picked up {{name}}.', { name: nameOf(String(active.id)) }),
+    onDragOver: ({ active, over }) => (over ? t('admin.checklists.dnd.over', '{{name}} is over {{target}}.', { name: nameOf(String(active.id)), target: nameOf(String(over.id)) }) : undefined),
+    onDragEnd: ({ active }) => t('admin.checklists.dnd.dropped', '{{name}} was moved.', { name: nameOf(String(active.id)) }),
+    onDragCancel: ({ active }) => t('admin.checklists.dnd.cancelled', 'Moving {{name}} was cancelled.', { name: nameOf(String(active.id)) }),
+  };
+  return {
+    sensors,
+    collisionDetection: closestCenter,
+    onDragEnd: ({ active, over }: DragEndEvent) => {
+      if (!over || active.id === over.id) return;
+      onMove(ids.indexOf(String(active.id)), ids.indexOf(String(over.id)));
+    },
+    accessibility: {
+      announcements,
+      screenReaderInstructions: {
+        draggable: t('admin.checklists.dnd.instructions', 'To pick up, press space or enter. Move with the arrow keys, drop with space or enter, cancel with escape.'),
+      },
+    },
+  };
+}
+
 export { DndContext, SortableContext };

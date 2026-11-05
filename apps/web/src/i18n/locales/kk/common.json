@@ -1313,6 +1313,7 @@
       "contextFieldsTitle": "Жалпы ақпарат",
       "contextFieldsHint": "Критерийлерден бұрын бақылаушы толтырады.",
       "contextFieldLabel": "Өріс атауы",
+      "contextFieldNumbered": "{{n}}-өріс",
       "addContextField": "Өріс",
       "groupsTitle": "Топтар мен критерийлер",
       "groupTitle": "Топ атауы",
@@ -1669,6 +1670,8 @@
       "dnd": {
         "dragGroup": "Топты сүйреу: {{name}}",
         "dragCriterion": "Өлшемшартты сүйреу: {{name}}",
+        "dragField": "Өрісті сүйреу: {{name}}",
+        "dragLevel": "Деңгейді сүйреу: {{name}}",
         "picked": "Алынды: {{name}}.",
         "over": "«{{name}}» «{{target}}» үстінде.",
         "dropped": "«{{name}}» жылжытылды.",
