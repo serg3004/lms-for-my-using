@@ -62,9 +62,21 @@ function seed(): State {
   };
 }
 
+// A previous drop animates rows into place; measuring before it ends aims the next drag at stale positions.
+async function settledBox(locator: Locator) {
+  let previous = JSON.stringify(await locator.boundingBox());
+  for (let attempt = 0; attempt < 40; attempt++) {
+    await locator.page().waitForTimeout(100);
+    const current = JSON.stringify(await locator.boundingBox());
+    if (current === previous) break;
+    previous = current;
+  }
+  return (await locator.boundingBox())!;
+}
+
 async function drag(page: Page, handle: Locator, target: Locator, position: 'top' | 'bottom' = 'top') {
-  const from = (await handle.boundingBox())!;
-  const to = (await target.boundingBox())!;
+  const from = await settledBox(handle);
+  const to = await settledBox(target);
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   await page.mouse.move(from.x + from.width / 2 + 6, from.y + from.height / 2 + 6, { steps: 4 });
@@ -148,12 +160,12 @@ test.describe('Checklist editor: drag-and-drop of groups and criteria (PR 402)',
     await dialog.getByRole('button', { name: 'Удалить', exact: true }).click();
     await expect.poll(() => state.deletes).toEqual(['g1:keep']);
     await expect(page.locator('.admin-group-card input[value="Группа 1"]')).toHaveCount(0);
-    expect(await order(page)).toEqual(expect.arrayContaining(['a', 'b']));
+    await expect.poll(() => order(page)).toEqual(expect.arrayContaining(['a', 'b']));
 
     await groupCard(page, 'Группа 2').getByRole('button', { name: /Удалить группу/ }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Удалить', exact: true }).click();
     await expect.poll(() => state.deletes).toEqual(['g1:keep', 'g2:delete']);
-    expect(await order(page)).not.toContain('c');
+    await expect.poll(() => order(page)).not.toContain('c');
   });
 
   test('handles are touch-sized and nothing overflows on a phone', async ({ page }) => {
