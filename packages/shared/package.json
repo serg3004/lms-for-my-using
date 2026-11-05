@@ -44,6 +44,11 @@
       "development": "./src/checklist-feedback.ts",
       "import": "./dist/checklist-feedback.js"
     },
+    "./checklist-appearance": {
+      "types": "./src/checklist-appearance.ts",
+      "development": "./src/checklist-appearance.ts",
+      "import": "./dist/checklist-appearance.js"
+    },
     "./checklist-description": {
       "types": "./src/checklist-description.ts",
       "development": "./src/checklist-description.ts",

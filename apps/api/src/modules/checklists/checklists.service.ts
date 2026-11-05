@@ -1,5 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { sanitizeAppearance, type Appearance } from '@lms/shared/checklist-appearance';
+import { kindAppearance } from './checklist-appearance.js';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
@@ -122,6 +124,7 @@ const checklistSelect = {
   feedbackEnabled: true,
   feedbackRequired: true,
   feedbackLayout: true,
+  appearance: true,
   allowSkipAll: true,
   showNumbering: true,
   accessMode: true,
@@ -297,6 +300,8 @@ type ChecklistRuntime = {
   // options of the choice fields as they were when the instance was assigned.
   feedbackLayout?: FeedbackLayout | null;
   feedbackAnswerSets?: Record<string, FeedbackAnswerSetSnapshot>;
+  // PR 422 -- optional: older snapshots read as the standard look.
+  appearance?: Appearance | null;
   allowSkipAll?: boolean;
   showNumbering?: boolean;
   itemGroups?: ChecklistSnapshotItemGroup[];
@@ -642,10 +647,10 @@ export class ChecklistsService {
   async createChecklist(input: CreateChecklistInput, createdBy: string) {
     await this.assertCreationFolder(input.folderId, input.organizationId, createdBy);
     assertFeedbackSettingsConsistent(input.feedbackEnabled ?? true, input.feedbackRequired ?? false);
-    const { feedbackLayout, ...rest } = input;
+    const { feedbackLayout, appearance, ...rest } = input;
     await this.answerSetService.assertLayoutReferences(input.organizationId, feedbackLayout ?? null, null);
     const created = await this.prisma.checklist.create({
-      data: { ...rest, ...(feedbackLayout ? { feedbackLayout } : {}), createdBy },
+      data: { ...rest, ...(feedbackLayout ? { feedbackLayout } : {}), ...(appearance ? { appearance: appearance as unknown as Prisma.InputJsonValue } : {}), createdBy },
       select: checklistWithItemsSelect,
     });
 
@@ -683,7 +688,7 @@ export class ChecklistsService {
       );
     }
 
-    const { scaleLevels, contextFields, moduleSettings, feedbackLayout, ...rest } = input;
+    const { scaleLevels, contextFields, moduleSettings, feedbackLayout, appearance, ...rest } = input;
     delete rest.pinned;
     if (feedbackLayout !== undefined) {
       await this.answerSetService.assertLayoutReferences(organizationId, feedbackLayout, parseFeedbackLayout(checklist.feedbackLayout));
@@ -703,6 +708,7 @@ export class ChecklistsService {
       ...(feedbackLayout !== undefined
         ? { feedbackLayout: feedbackLayout === null ? Prisma.JsonNull : (feedbackLayout as unknown as Prisma.InputJsonValue) }
         : {}),
+      ...(appearance !== undefined ? { appearance: appearance === null ? Prisma.JsonNull : (appearance as unknown as Prisma.InputJsonValue) } : {}),
     });
 
     await this.auditLog.record({
@@ -788,6 +794,8 @@ export class ChecklistsService {
           feedbackEnabled: source.feedbackEnabled,
           feedbackRequired: source.feedbackRequired,
           feedbackLayout: source.feedbackLayout ?? undefined,
+          // PR 422: the copy keeps the look of each block kind; per-group/criterion overrides refer to ids the copy does not have.
+          appearance: kindAppearance(source.appearance) ?? undefined,
           allowSkipAll: source.allowSkipAll,
           showNumbering: source.showNumbering,
           // PR 366: only an administrator's copy of a free checklist stays free.
@@ -2623,6 +2631,7 @@ export class ChecklistsService {
       feedbackEnabled?: boolean;
       feedbackRequired?: boolean;
       feedbackLayout?: Prisma.JsonValue | null;
+      appearance?: Prisma.JsonValue | null;
       allowSkipAll?: boolean;
       showNumbering?: boolean;
       itemGroups?: ChecklistSnapshotItemGroup[];
@@ -2647,6 +2656,7 @@ export class ChecklistsService {
       feedbackEnabled: checklist.feedbackEnabled,
       feedbackRequired: checklist.feedbackRequired,
       feedbackLayout: parseFeedbackLayout(checklist.feedbackLayout),
+      appearance: sanitizeAppearance(checklist.appearance),
       allowSkipAll: checklist.allowSkipAll,
       showNumbering: checklist.showNumbering ?? true,
       itemGroups: checklist.itemGroups?.map((group) => ({ ...group })),
@@ -2790,6 +2800,7 @@ export class ChecklistsService {
           feedbackEnabled: snapshot.checklist.feedbackEnabled ?? true,
           feedbackRequired: snapshot.checklist.feedbackRequired ?? false,
           feedbackLayout: snapshot.checklist.feedbackLayout ?? null,
+          appearance: snapshot.checklist.appearance ?? null,
           feedbackAnswerSets: snapshot.checklist.feedbackAnswerSets ?? {},
           allowSkipAll: snapshot.checklist.allowSkipAll ?? false,
           showNumbering: snapshot.checklist.showNumbering ?? true,

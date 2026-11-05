@@ -1,3 +1,4 @@
+import type { Appearance } from '@lms/shared/checklist-appearance';
 import type { FeedbackLayout, FeedbackConfig, FeedbackAnswers, FeedbackAnswersPatch, FeedbackAnswerOption } from '@lms/shared/checklist-feedback';
 import type { QuestionDefinition, QuestionResponse, PublicQuestionDefinition } from '@lms/shared/assessment-question-types';
 import type { UserRole } from '@lms/shared/types/api';
@@ -458,6 +459,8 @@ export type ChecklistModuleSettings = {
 
 export type ChecklistSummary = {
   feedbackLayout?: FeedbackLayout | null;
+  // PR 422 -- optional: older payloads read as the standard look.
+  appearance?: Appearance | null;
   id: string;
   organizationId: string;
   title: string;

@@ -1794,7 +1794,40 @@
         "moveError": "无法更改照片顺序。",
         "removeError": "无法删除照片。"
       },
-      "showNumberingHint": "在预览、填写和报告中显示编号。编辑器保留编号以便定位。保存后适用于新的分配。"
+      "showNumberingHint": "在预览、填写和报告中显示编号。编辑器保留编号以便定位。保存后适用于新的分配。",
+      "appearance": {
+        "title": "外观",
+        "hint": "设置清单各区块的文字颜色、背景和边框。员工将按此外观查看清单；报告 PDF 不沿用此外观。",
+        "presets": "预设方案：",
+        "reset": "恢复默认",
+        "resetBlock": "重置此区块",
+        "unset": "清除",
+        "standard": "默认",
+        "textColor": "文字颜色",
+        "background": "背景",
+        "borderColor": "边框颜色",
+        "borderWidth": "边框粗细",
+        "radius": "圆角",
+        "padding": "内边距",
+        "lowContrast": "对比度过低：文字可能难以阅读（至少需要 4.5 : 1）。",
+        "sample": "区块将显示为此样式。",
+        "pickBlock": "区块：",
+        "pickPlaceholder": "选择分组或标准",
+        "overridden": "单独设置外观的区块：{{count}} 个，列表中以圆点标记。",
+        "kind": {
+          "header": "页眉",
+          "info": "基本信息",
+          "group": "分组",
+          "item": "标准",
+          "own": "单个区块"
+        },
+        "preset": {
+          "strict": "严谨",
+          "calm": "柔和",
+          "contrast": "高对比"
+        },
+        "badge": "单独设置"
+      }
     },
     "orgTools": {
       "cardTitle": "组织架构导入",

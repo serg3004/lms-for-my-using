@@ -3,6 +3,7 @@ import { Prisma, type ChecklistGeolocationPolicy, type ChecklistPreSessionVisibi
 
 import type { PrismaService } from '../../database/prisma.service.js';
 import type { AuditLogService } from '../audit-log/public.js';
+import { kindAppearance } from './checklist-appearance.js';
 import { collectAnswerSetIds, dropMissingAnswerSets, parseFeedbackLayout } from './checklist-feedback-layout.js';
 import { overridesToColumns, presentOverrides, type ModuleSettingsOverridesView } from './checklist-settings-overrides.js';
 
@@ -31,6 +32,8 @@ export type ChecklistTemplatePayload = {
   // PR 405: configurable feedback section; templates saved before it have none (= the classic three fields).
   feedbackLayout?: Prisma.JsonValue | null;
   allowSkipAll?: boolean;
+  // PR 422: block appearance by kind; templates saved before it have none (= the standard look).
+  appearance?: Prisma.JsonValue | null;
   showNumbering?: boolean;
   // PR 397: per-sheet module-settings overrides; templates saved before it have none (= as in the organization).
   moduleSettings?: ModuleSettingsOverridesView;
@@ -73,6 +76,7 @@ export class ChecklistOrgTemplates {
       feedbackRequired: source.feedbackRequired,
       feedbackLayout: (source.feedbackLayout as Prisma.JsonValue | null) ?? null,
       allowSkipAll: source.allowSkipAll,
+      appearance: kindAppearance(source.appearance) as Prisma.JsonValue | null,
       showNumbering: source.showNumbering,
       moduleSettings: presentOverrides(source),
       groups: source.itemGroups.map((group) => ({ title: group.title, order: group.order })),
@@ -158,6 +162,7 @@ export class ChecklistOrgTemplates {
           feedbackEnabled: payload.feedbackEnabled ?? true, feedbackRequired: payload.feedbackRequired ?? false,
           ...(feedbackLayout ? { feedbackLayout: feedbackLayout as unknown as Prisma.InputJsonValue } : {}),
           allowSkipAll: payload.allowSkipAll ?? false,
+          ...(payload.appearance ? { appearance: kindAppearance(payload.appearance) ?? undefined } : {}),
           showNumbering: payload.showNumbering ?? true,
           ...(payload.moduleSettings ? overridesToColumns({ thresholds: payload.moduleSettings.thresholds, resultColors: payload.moduleSettings.resultColors, feedbackVisibility: payload.moduleSettings.feedbackVisibility, observers: payload.moduleSettings.observers }) as Prisma.ChecklistUncheckedCreateInput : {}),
           createdBy: actorId, folderId,
