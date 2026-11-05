@@ -1,3 +1,4 @@
+import { checklistLabel } from '@lms/shared/checklist-numbering';
 import { RichDescription } from '../../shared/RichDescription.js';
 import { isCustomFeedback } from '@lms/shared/checklist-feedback';
 import { FeedbackReadOnly } from '../checklist-feedback/FeedbackFields.js';
@@ -185,7 +186,7 @@ function ReportFeedback({ feedback, t }: { feedback: NonNullable<Report['feedbac
   );
 }
 
-function ReportGroups({ groups, t }: { groups: Report['groups']; t: TFunction }) {
+function ReportGroups({ groups, showNumbering, t }: { showNumbering?: boolean; groups: Report['groups']; t: TFunction }) {
   if (groups.length === 0) return null;
   return (
     <Card title={t('admin.checklists.report.groupsTitle', 'Results by criteria group')}>
@@ -193,7 +194,7 @@ function ReportGroups({ groups, t }: { groups: Report['groups']; t: TFunction })
         {groups.map((group) => (
           <li key={group.id ?? group.number} style={{ ...highlightedRowStyle(group.color), borderRadius: 10, padding: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-              <strong>{group.number}. {group.title}</strong>
+              <strong>{checklistLabel(group.title, group.number ? `${group.number}.` : '', showNumbering)}</strong>
               <span>
                 {group.percentage === null
                   ? t('admin.checklists.report.groupNotScored', 'Not scored')
@@ -238,7 +239,7 @@ export function ReportSummary({ report, t }: { report: Report; t: TFunction }) {
           {report.checklist.description && <p><RichDescription value={report.checklist.description} /></p>}
           <ReportTotal summary={report.summary} t={t} />
           {report.feedbackForm && isCustomFeedback(report.feedbackForm.layout) ? <div className="admin-card"><FeedbackReadOnly config={report.feedbackForm} answers={report.feedbackForm.answers} t={t} /></div> : report.feedback && <ReportFeedback feedback={report.feedback} t={t} />}
-          {report.summary?.scoringMode !== 'none' && <ReportGroups groups={report.groups} t={t} />}
+          {report.summary?.scoringMode !== 'none' && <ReportGroups groups={report.groups} showNumbering={report.checklist.showNumbering} t={t} />}
         </>
       )}
     </>
@@ -264,7 +265,7 @@ export function ReportCriteria({ report, t }: { report: Report; t: TFunction }) 
   if (report.criteria.length === 0) return <p>{t('admin.checklists.report.criteriaEmpty', 'This checklist has no criteria.')}</p>;
 
   const withoutPoints = report.summary?.scoringMode === 'none';
-  const groupTitles = new Map(report.groups.map((group) => [group.id, `${group.number}. ${group.title}`]));
+  const groupTitles = new Map(report.groups.map((group) => [group.id, checklistLabel(group.title, group.number ? `${group.number}.` : '', report.checklist.showNumbering)]));
   let previousGroup: string | null | undefined;
   const rows: ReactNode[] = [];
   for (const criterion of report.criteria) {
@@ -286,7 +287,7 @@ export function ReportCriteria({ report, t }: { report: Report; t: TFunction }) 
     rows.push(
       <tr key={criterion.id}>
         <td style={{ ...cell, borderLeft: `6px solid ${criterion.color?.color ?? '#e3e8ef'}` }}>
-          <strong>{criterion.number}</strong> <span>{criterion.text}</span>
+          <span>{checklistLabel(criterion.text, criterion.number, report.checklist.showNumbering)}</span>
           {criterion.description && <p><RichDescription value={criterion.description} /></p>}
         </td>
         <td style={{ ...cell, whiteSpace: 'nowrap' }}>

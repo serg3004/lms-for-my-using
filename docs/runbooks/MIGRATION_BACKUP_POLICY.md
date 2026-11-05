@@ -764,3 +764,15 @@ Functional rollback disables `longreadEnabled` while preserving JSON, versions a
 entries or synthesize completion from the cursor frontier. An older position writer would discard new JSON fields:
 keep the feature disabled before rolling back such an API, or retain the version-aware writer and the guard refusing
 generic longread progress writes. The existing PR 389 attempt/result filters remain required as documented above.
+
+### Checklist numbering (PR 423)
+
+Migration `20261105160000_checklist_show_numbering` adds `checklists.show_numbering BOOLEAN NOT NULL DEFAULT true`.
+Existing sheets keep numbering enabled; PostgreSQL’s constant default requires no application backfill.
+Apply the migration before the API/web rollout. Existing snapshots without the flag read as enabled;
+new snapshots and organization templates retain the selected value. No learning records are rewritten.
+
+This is additive: an older API ignores the column. Application rollback leaves it and the snapshots
+intact (the old interface shows numbering). Follow the normal verified production backup policy before
+deployment. The disposable PostgreSQL suite exercises migration defaults, copy/template retention and
+immutable assignment snapshots; it is not evidence of a production backup/restore.

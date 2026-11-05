@@ -180,3 +180,13 @@ it('PR 420: carries safe emphasis, uppercase, size and colour to PDF and plain t
     expect(spy).toHaveBeenCalledWith('READ', expect.objectContaining({ size: 19.5, color: '#1D4ED8', italic: true, underline: true }));
   } finally { spy.mockRestore(); }
 });
+
+it('omits generated group and criterion numbers in PDF, including description headings', async () => {
+  const data = report([row('c', 'g1', '7. Author criterion', 1, 1)]);
+  data.checklist.showNumbering = false;
+  data.criteria[0]!.description = 'Criterion explanation';
+  const { text } = await render(data, 'en');
+  expect(text).toContain('7. Author criterion');
+  expect(text).toContain('Sort');
+  expect(text).not.toMatch(/1\.1\s+7\. Author criterion|1\. Sort/);
+});

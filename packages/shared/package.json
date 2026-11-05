@@ -48,6 +48,11 @@
       "types": "./src/checklist-description.ts",
       "development": "./src/checklist-description.ts",
       "import": "./dist/checklist-description.js"
+    },
+    "./checklist-numbering": {
+      "types": "./src/checklist-numbering.ts",
+      "development": "./src/checklist-numbering.ts",
+      "import": "./dist/checklist-numbering.js"
     }
   },
   "scripts": {

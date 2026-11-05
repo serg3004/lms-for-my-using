@@ -132,4 +132,13 @@ describe('buildSessionReport (PR 370)', () => {
     expect(report.criteria.every((criterion) => criterion.score === null && criterion.maxScore === null)).toBe(true);
     expect(report.groups.every((group) => group.percentage === null)).toBe(true);
   });
+  it('hides generated criterion and group numbers using the frozen setting, keeping author titles', () => {
+    const data = input([row('c1', 'g1', '7. Author criterion', 1, 1)]);
+    data.breakdown.checklist.showNumbering = false;
+    const result = buildSessionReport(data);
+    expect(result.checklist).toMatchObject({ showNumbering: false });
+    expect(result.criteria[0]).toMatchObject({ number: '', text: '7. Author criterion' });
+    expect(result.groups[0]).toMatchObject({ number: '', title: 'Sort' });
+  });
+
 });

@@ -1118,7 +1118,8 @@
         "allowSkipAll": "添加“跳过”答案选项",
         "recordLocation": "在观察开始和结束时记录位置",
         "feedbackEnabled": "添加“反馈”部分",
-        "feedbackRequired": "反馈为必填"
+        "feedbackRequired": "反馈为必填",
+        "showNumbering": "为标准和分组编号"
       },
       "itemsTitle": "检查清单项目",
       "noItems": "暂无项目。",
@@ -1792,7 +1793,8 @@
         "captionError": "无法保存说明。",
         "moveError": "无法更改照片顺序。",
         "removeError": "无法删除照片。"
-      }
+      },
+      "showNumberingHint": "在预览、填写和报告中显示编号。编辑器保留编号以便定位。保存后适用于新的分配。"
     },
     "orgTools": {
       "cardTitle": "组织架构导入",
@@ -3068,7 +3070,8 @@
         "unanswered": "未作答"
       },
       "completeContextFirst": "跳转到标准前，请填写必填的基本信息。",
-      "feedbackRequiredHint": "完成前请先保存优势和待发展领域。"
+      "feedbackRequiredHint": "完成前请先保存优势和待发展领域。",
+      "criterion": "标准"
     },
     "learner": {
       "title": "我的培训会话",

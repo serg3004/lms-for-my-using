@@ -91,6 +91,7 @@ describe('checklist assignment snapshots — database', () => {
     await prisma.checklistInstance.deleteMany({ where: { organizationId } });
     await prisma.checklistItem.deleteMany({ where: { organizationId } });
     await prisma.checklistItemGroup.deleteMany({ where: { organizationId } });
+    await prisma.checklistTemplate.deleteMany({ where: { organizationId } });
     await prisma.checklist.deleteMany({ where: { organizationId } });
     await prisma.membership.deleteMany({ where: { organizationId } });
     await prisma.user.deleteMany({ where: { organizationId } });
@@ -225,6 +226,24 @@ describe('checklist assignment snapshots — database', () => {
     expect(frozen.checklist.description).toBe('<p><strong>Safety</strong></p>');
     expect(frozen.rows[0]!.item.description).toContain('font-size:20px;color:#166534');
     expect(frozen.checklist.scaleLevels?.[0]?.description).toBe('<p><strong>Level hint</strong></p>');
+  });
+
+  it('defaults numbering on, copies it into templates and freezes it independently of later edits (PR 423)', async () => {
+    const service = new ChecklistsService(prisma, {} as UploadService);
+    expect((await prisma.checklist.findUniqueOrThrow({ where: { id: checklistId } })).showNumbering).toBe(true);
+    await service.updateChecklist(checklistId, organizationId, updateChecklistSchema.parse({ showNumbering: false }));
+    const assigned = await service.assignChecklist(checklistId, organizationId, { userId: learnerId }, assignerId);
+    const copy = await service.copyChecklist(checklistId, organizationId, assignerId);
+    expect(copy.showNumbering).toBe(false);
+    const template = await service.createOrgTemplate(organizationId, { sourceChecklistId: checklistId, title: 'Frozen numbering' }, assignerId);
+    await service.updateChecklist(checklistId, organizationId, updateChecklistSchema.parse({ showNumbering: true }));
+    const fromTemplate = await service.createFromOrgTemplate(template.id, organizationId, assignerId);
+    expect(fromTemplate.showNumbering).toBe(false);
+    const frozen = await service.getInstance(assigned.id, organizationId);
+    expect(frozen.checklist?.showNumbering).toBe(false);
+    expect((await service.getScoreBreakdown(assigned.id, organizationId)).checklist.showNumbering).toBe(false);
+    const stored = await prisma.checklistInstance.findUniqueOrThrow({ where: { id: assigned.id } });
+    expect(stored.templateSnapshot).toMatchObject({ checklist: { showNumbering: false } });
   });
 
 });

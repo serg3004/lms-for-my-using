@@ -77,6 +77,7 @@ export function buildChecklistSettingsPayload(form: {
   feedbackRequired?: boolean;
   feedbackLayout?: FeedbackLayout | null;
   allowSkipAll?: boolean;
+  showNumbering?: boolean;
   accessMode: ChecklistAccessMode;
   pinned: boolean;
   /** Left out for people who may not change it (only the creator and admins can). */
@@ -100,6 +101,7 @@ export function buildChecklistSettingsPayload(form: {
     // A required feedback section only exists while the section is shown.
     feedbackRequired: (form.feedbackEnabled ?? true) && (form.feedbackRequired ?? false),
     allowSkipAll: form.allowSkipAll ?? false,
+    showNumbering: form.showNumbering ?? true,
     accessMode: form.accessMode,
     // Only a free checklist can be pinned; switching the mode back clears the pin in the same save.
     pinned: form.accessMode === 'free' && form.pinned,

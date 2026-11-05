@@ -1,3 +1,4 @@
+import { checklistLabel } from '@lms/shared/checklist-numbering';
 import type { FeedbackAnswers, FeedbackConfig } from '@lms/shared/checklist-feedback';
 import { isCustomFeedback } from '@lms/shared/checklist-feedback';
 import { FeedbackFields as ConfiguredFeedbackFields } from '../features/checklist-feedback/FeedbackFields.js';
@@ -54,9 +55,9 @@ export function ContextFields({
 }
 
 
-export function CriterionHeading({ text, required, t }: { text: string; required: boolean; t: TFunction }) {
+export function CriterionHeading({ text, number, required, t }: { number?: string; text: string; required: boolean; t: TFunction }) {
   return <>
-      <p style={{ fontWeight: 600, margin: '0 0 6px' }}>{text}</p>
+      <p style={{ fontWeight: 600, margin: '0 0 6px' }}>{checklistLabel('', number)}<span>{text}</span></p>
       <p style={{ color: 'var(--color-text-muted)', fontSize: 12, margin: '0 0 10px' }}>
         {required ? t('checklists.requiredItem', 'Required') : t('checklists.optionalItem', 'Optional')}
       </p>
