@@ -726,6 +726,16 @@ Migration `20261031120000_checklist_folders` is additive and backward-compatible
 - an older application version neither reads nor writes the new table or column, so a rolling deploy is safe;
 - rollback: drop the FK, the column and the table; sheets stay where they were because folders never owned them.
 
+### Checklist extra pictures (PR 421)
+
+Migration `20261105120000_checklist_sheet_photos` is additive and backward-compatible:
+
+- creates the table `checklist_photos` (id, organization_id, checklist_id, order, caption, object_key, mime_type, timestamps) with FK to `organizations` and to `checklists` (both `ON DELETE CASCADE`) and indexes on `(checklist_id, order)` and `(organization_id)`;
+- no existing table or column changes and no backfill is needed: a sheet without rows has no extra pictures;
+- an older application version neither reads nor writes the new table, so a rolling deploy is safe;
+- backup/restore: the rows hold only metadata; the picture bytes live in object storage under `checklist-photos/`, so a database restore needs the matching object storage state (an orphaned object is harmless, a row without its object shows no picture);
+- rollback: drop the table; the objects stay in storage and may be removed by prefix.
+
 ### Longread exercise attempts (PR 389)
 
 `20261031150000_longread_exercise_attempts` is additive: existing attempts default to `counts_toward_results=true`;

@@ -170,6 +170,14 @@ export class UploadService {
     };
   }
 
+  /** PR 421: an extra picture of a checklist (tenant/checklist-scoped key `checklist-photos/`). */
+  async uploadChecklistSheetPhoto(file: Express.Multer.File, organizationId: string, checklistId: string): Promise<UploadResult> {
+    const { s3, bucket } = this.requireStorage();
+    const key = `organizations/${organizationId}/checklist-photos/${checklistId}/${randomUUID()}`;
+    await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: file.buffer, ContentType: file.mimetype, ContentLength: file.size }));
+    return { objectKey: key, fileName: file.originalname, mimeType: file.mimetype, sizeBytes: file.size };
+  }
+
   async uploadOrganizationLogo(file: Express.Multer.File, organizationId: string): Promise<string> {
     if (!this.s3 || !this.bucket) {
       throw new ServiceUnavailableException('File storage is not configured');
@@ -289,6 +297,18 @@ export class UploadService {
   async copyChecklistCover(sourceKey: string, organizationId: string, checklistId: string): Promise<string> {
     const { s3, bucket } = this.requireStorage();
     const key = `organizations/${organizationId}/checklist-covers/${checklistId}/${randomUUID()}`;
+    await s3.send(new CopyObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      CopySource: `${bucket}/${encodeURIComponent(sourceKey).replace(/%2F/g, '/')}`,
+    }));
+    return key;
+  }
+
+  /** PR 421: a copied checklist gets its own object for every extra picture. */
+  async copyChecklistSheetPhoto(sourceKey: string, organizationId: string, checklistId: string): Promise<string> {
+    const { s3, bucket } = this.requireStorage();
+    const key = `organizations/${organizationId}/checklist-photos/${checklistId}/${randomUUID()}`;
     await s3.send(new CopyObjectCommand({
       Bucket: bucket,
       Key: key,

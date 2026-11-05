@@ -15,6 +15,7 @@ import type {
   ChecklistInstanceSummary,
   ChecklistItemGroup,
   ChecklistItemResultSummary,
+  ChecklistPhotoSummary,
   ChecklistItemSummary,
   ChecklistReviewQueueQuery,
   ChecklistScaleSummary,
@@ -417,6 +418,23 @@ export async function getChecklistCoverBlob(checklistId: string) {
 
 export function getChecklistCoverUrl(checklistId: string) {
   return apiRequest<{ url: string; expiresIn: number }>(`/checklists/${encodeURIComponent(checklistId)}/cover`);
+}
+
+// PR 421: extra pictures of a sheet (up to 6).
+export function uploadChecklistPhoto(checklistId: string, file: File, caption = '') {
+  const body = new FormData();
+  body.append('file', file);
+  if (caption) body.append('caption', caption);
+  return apiRequest<ChecklistPhotoSummary>(`/checklists/${encodeURIComponent(checklistId)}/photos`, { method: 'POST', body });
+}
+export const updateChecklistPhotoCaption = (checklistId: string, photoId: string, caption: string) =>
+  apiRequest<ChecklistPhotoSummary>(`/checklists/${encodeURIComponent(checklistId)}/photos/${encodeURIComponent(photoId)}`, { method: 'PATCH', body: JSON.stringify({ caption }) });
+export const reorderChecklistPhotos = (checklistId: string, ids: string[]) =>
+  apiRequest<ChecklistPhotoSummary[]>(`/checklists/${encodeURIComponent(checklistId)}/photos/order`, { method: 'PUT', body: JSON.stringify({ ids }) });
+export const deleteChecklistPhoto = (checklistId: string, photoId: string) =>
+  apiRequest<void>(`/checklists/${encodeURIComponent(checklistId)}/photos/${encodeURIComponent(photoId)}`, { method: 'DELETE' });
+export async function getChecklistPhotoBlob(checklistId: string, photoId: string) {
+  return (await apiDownloadRequest(`/checklists/${encodeURIComponent(checklistId)}/photos/${encodeURIComponent(photoId)}/file`)).blob;
 }
 
 export const listChecklistAnswerSets = () => apiRequest<ChecklistAnswerSet[]>('/checklist-answer-sets');

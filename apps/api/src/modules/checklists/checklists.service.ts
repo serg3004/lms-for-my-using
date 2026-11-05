@@ -11,6 +11,7 @@ import { parseFeedbackLayout, pickAnswerSets, type FeedbackAnswerSetSnapshot, ty
 import { performanceBand, type ManagerPerformanceBand } from './checklist-performance-band.js';
 import { managerExportRows, employeeExportRows, exportLocale, MAX_EXPORT_ROWS, serializeReportCsv, viewEmployees } from './checklist-report-csv.js';
 import { ChecklistOrgTemplates } from './checklist-org-templates.js';
+import { ChecklistSheetPhotos, sheetPhotosInclude } from './checklist-sheet-photos.js';
 import { assertObserversBelongToOrganization, freezeReportSettings, loadEffectiveSettings, overridesToColumns, presentOverrides, presentStaffChecklist, SHEET_OVERRIDES_SELECT } from './checklist-settings-overrides.js';
 import { ChecklistBulkActions, type ChecklistBulkAction } from './checklist-bulk-actions.js';
 import { visibleFolderIds, type FolderActor } from './checklist-folder-tree.js';
@@ -138,6 +139,8 @@ const checklistWithGroupsSelect = {
     orderBy: { order: 'asc' as const },
     select: { id: true, checklistId: true, title: true, order: true },
   },
+  // PR 421: extra pictures (id, caption, order, updatedAt only).
+  photos: sheetPhotosInclude,
 } as const;
 
 const checklistWithItemsSelect = {
@@ -334,6 +337,13 @@ export class ChecklistsService {
     // Plain helpers, not providers: built here so Nest does not try to inject them.
     this.resultDeletion = new ChecklistResultDeletion(prisma, auditLog);
     this.orgTemplates = new ChecklistOrgTemplates(prisma, auditLog);
+    this.sheetPhotos = new ChecklistSheetPhotos(
+      prisma,
+      uploadService,
+      auditLog,
+      (checklistId, organizationId, userId, isPrivileged) => this.assertSheetMediaVisible(checklistId, organizationId, userId, isPrivileged),
+      MAX_BUFFERED_UPLOAD_SIZE_BYTES,
+    );
     this.bulkActions = new ChecklistBulkActions(prisma, auditLog, {
       setStatus: (id, organizationId, status, actorId) => this.updateChecklist(id, organizationId, { status }, actorId),
       remove: (id, organizationId, actorId) => this.deleteChecklist(id, organizationId, actorId),
@@ -343,6 +353,7 @@ export class ChecklistsService {
 
   private readonly resultDeletion: ChecklistResultDeletion;
   private readonly orgTemplates: ChecklistOrgTemplates;
+  private readonly sheetPhotos: ChecklistSheetPhotos;
   private readonly bulkActions: ChecklistBulkActions;
 
   /** PR 394: bulk archive / draft / publish / delete with per-sheet outcomes. */
@@ -459,6 +470,14 @@ export class ChecklistsService {
     return presentStaffChecklist(checklist);
   }
 
+  /** PR 421: extra pictures of a sheet. */
+  assertSheetPhotoRoom(checklistId: string, organizationId: string) { return this.sheetPhotos.assertHasRoom(checklistId, organizationId); }
+  addSheetPhoto(checklistId: string, organizationId: string, actorId: string, uploaded: { objectKey: string; mimeType: string }, caption: string) { return this.sheetPhotos.add(checklistId, organizationId, actorId, uploaded, caption); }
+  updateSheetPhoto(checklistId: string, photoId: string, organizationId: string, caption: string) { return this.sheetPhotos.setCaption(checklistId, photoId, organizationId, caption); }
+  reorderSheetPhotos(checklistId: string, organizationId: string, ids: readonly string[]) { return this.sheetPhotos.reorder(checklistId, organizationId, ids); }
+  removeSheetPhoto(checklistId: string, photoId: string, organizationId: string, actorId: string) { return this.sheetPhotos.remove(checklistId, photoId, organizationId, actorId); }
+  getSheetPhotoFile(checklistId: string, photoId: string, organizationId: string, userId: string, isPrivileged: boolean) { return this.sheetPhotos.getFile(checklistId, photoId, organizationId, userId, isPrivileged); }
+
   /**
    * PR 355: stores the uploaded cover as the checklist's only cover. The previous object is removed
    * best-effort afterwards: a failed delete leaves an orphan in storage, never a broken checklist.
@@ -560,16 +579,26 @@ export class ChecklistsService {
     if (!checklist?.coverObjectKey) {
       throw new NotFoundException('No cover for this checklist');
     }
-    if (!isPrivileged) {
-      const visibleFree = checklist.status === 'published' && checklist.accessMode === 'free';
-      const assigned = visibleFree
-        ? true
-        : (await this.prisma.checklistInstance.count({ where: { organizationId, userId, checklistId, deletedAt: null } })) > 0;
-      if (!assigned) {
-        throw new NotFoundException('No cover for this checklist');
-      }
+    if (!isPrivileged && !(await this.learnerMaySeeSheet(checklist, checklistId, organizationId, userId))) {
+      throw new NotFoundException('No cover for this checklist');
     }
     return { ...checklist, coverObjectKey: checklist.coverObjectKey };
+  }
+
+  /** A learner sees a sheet's media only for a published free sheet or one assigned to them. */
+  private async learnerMaySeeSheet(sheet: { status: string; accessMode: string }, checklistId: string, organizationId: string, userId: string) {
+    if (sheet.status === 'published' && sheet.accessMode === 'free') return true;
+    if ((await this.prisma.checklistInstance.count({ where: { organizationId, userId, checklistId, deletedAt: null } })) > 0) return true;
+    // PR 421: the observer of a session of this sheet conducts it, so the sheet's pictures are theirs to see too.
+    return (await this.prisma.checklistSession.count({ where: { organizationId, observerId: userId, deletedAt: null, instance: { checklistId, deletedAt: null } } })) > 0;
+  }
+
+  /** PR 421: the same rule for the extra pictures; a hidden sheet is a plain 404. */
+  private async assertSheetMediaVisible(checklistId: string, organizationId: string, userId: string, isPrivileged: boolean) {
+    const sheet = await this.prisma.checklist.findFirst({ where: { id: checklistId, organizationId, deletedAt: null }, select: { status: true, accessMode: true } });
+    if (!sheet || (!isPrivileged && !(await this.learnerMaySeeSheet(sheet, checklistId, organizationId, userId)))) {
+      throw new NotFoundException('Picture not found');
+    }
   }
 
   /**
@@ -825,6 +854,8 @@ export class ChecklistsService {
         // the copy simply has no cover
       }
     }
+    // PR 421: and its own copies of the extra pictures.
+    await this.sheetPhotos.copyAll(checklistId, copyId, organizationId);
 
     await this.auditLog.record({
       organizationId,

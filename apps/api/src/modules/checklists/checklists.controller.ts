@@ -14,6 +14,7 @@ import { ChecklistSessionService } from './checklist-session.service.js';
 import type { ChecklistSessionAction, ChecklistSessionViewerContext } from './checklist-session.service.js';
 import { ChecklistWorkplaceSettingsService } from './checklist-workplace-settings.service.js';
 import { listTemplates } from './checklist-templates.js';
+import { reorderSheetPhotosSchema, sheetPhotoCaptionSchema, updateSheetPhotoSchema } from './checklist-sheet-photos.js';
 import { ChecklistsService } from './checklists.service.js';
 import {
   assignChecklistSchema,
@@ -337,6 +338,62 @@ export class ChecklistsController {
   async removeCover(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {
     await this.checklistsService.assertCanEdit({ checklistId }, request.currentUser!.organizationId, request.currentUser!);
     return this.checklistsService.removeCover(checklistId, request.currentUser!.organizationId, request.currentUser!.id);
+  }
+  // PR 421: extra pictures of a sheet (up to 6), shown to the employee during the pass.
+  @Post('checklists/:id/photos')
+  @Roles(...rolePolicies.checklistsCreate)
+  @UseInterceptors(
+    FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_BUFFERED_UPLOAD_SIZE_BYTES } }),
+  )
+  async uploadSheetPhoto(
+    @Param('id') checklistId: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const user = request.currentUser!;
+    await this.checklistsService.assertCanEdit({ checklistId }, user.organizationId, user);
+    if (!file) throw new BadRequestException('No file provided');
+    if (!ALLOWED_ITEM_PHOTO_MIME_TYPES.has(file.mimetype)) {
+      throw new BadRequestException('Only image files (JPEG, PNG, GIF, WEBP) can be used as a picture');
+    }
+    validateUploadFile(file);
+    const { caption } = sheetPhotoCaptionSchema.parse(body ?? {});
+    await this.checklistsService.assertSheetPhotoRoom(checklistId, user.organizationId);
+    const uploaded = await this.uploadService.uploadChecklistSheetPhoto(file, user.organizationId, checklistId);
+    try {
+      return await this.checklistsService.addSheetPhoto(checklistId, user.organizationId, user.id, uploaded, caption);
+    } catch (error) {
+      await this.uploadService.deleteObject(uploaded.objectKey).catch(() => undefined);
+      throw error;
+    }
+  }
+  @Put('checklists/:id/photos/order')
+  @Roles(...rolePolicies.checklistsCreate)
+  async reorderSheetPhotos(@Param('id') checklistId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    await this.checklistsService.assertCanEdit({ checklistId }, user.organizationId, user);
+    return this.checklistsService.reorderSheetPhotos(checklistId, user.organizationId, reorderSheetPhotosSchema.parse(body).ids);
+  }
+  @Patch('checklists/:id/photos/:photoId')
+  @Roles(...rolePolicies.checklistsCreate)
+  async updateSheetPhoto(@Param('id') checklistId: string, @Param('photoId') photoId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    await this.checklistsService.assertCanEdit({ checklistId }, user.organizationId, user);
+    return this.checklistsService.updateSheetPhoto(checklistId, photoId, user.organizationId, updateSheetPhotoSchema.parse(body).caption);
+  }
+  @Delete('checklists/:id/photos/:photoId')
+  @Roles(...rolePolicies.checklistsCreate)
+  async removeSheetPhoto(@Param('id') checklistId: string, @Param('photoId') photoId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    await this.checklistsService.assertCanEdit({ checklistId }, user.organizationId, user);
+    await this.checklistsService.removeSheetPhoto(checklistId, photoId, user.organizationId, user.id);
+  }
+  @Get('checklists/:id/photos/:photoId/file')
+  @Roles(...rolePolicies.checklistInstancesRead)
+  async getSheetPhotoFile(@Param('id') checklistId: string, @Param('photoId') photoId: string, @Headers('if-none-match') ifNoneMatch: string | undefined, @Req() request: AuthenticatedRequest, @Res() response: FileDownloadResponse) {
+    const user = request.currentUser!;
+    sendPrivateImage(ifNoneMatch, response, await this.checklistsService.getSheetPhotoFile(checklistId, photoId, user.organizationId, user.id, !isLearnerOnly(user.roles)));
   }
   @Delete('checklists/:id')
   @Roles(...rolePolicies.checklistsCreate)

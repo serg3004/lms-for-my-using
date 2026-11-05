@@ -140,6 +140,31 @@ describe('UploadService', () => {
     await expect(service.copyChecklistCover('k', 'org-1', 'c')).rejects.toThrow(ServiceUnavailableException);
   });
 
+  it('PR 421: stores and copies an extra checklist picture under the checklist-photos prefix', async () => {
+    process.env['S3_ENDPOINT'] = 'https://storage.internal.example';
+    process.env['S3_BUCKET'] = 'lms-bucket';
+    process.env['S3_ACCESS_KEY_ID'] = 'test-access-key';
+    process.env['S3_SECRET_ACCESS_KEY'] = 'test-secret-key';
+    const configured = new UploadService();
+    const send = jest.fn(async () => ({}));
+    (configured as unknown as { s3: { send: typeof send } }).s3 = { send };
+    const file = { originalname: 'scheme.png', mimetype: 'image/png', buffer: Buffer.from([1, 2]), size: 2 } as Express.Multer.File;
+
+    const uploaded = await configured.uploadChecklistSheetPhoto(file, 'org-1', 'checklist-1');
+    expect(uploaded.objectKey).toMatch(/^organizations\/org-1\/checklist-photos\/checklist-1\/[0-9a-f-]{36}$/);
+    expect(uploaded).toMatchObject({ mimeType: 'image/png', sizeBytes: 2 });
+
+    const key = await configured.copyChecklistSheetPhoto(uploaded.objectKey, 'org-1', 'copy-1');
+    expect(key).toMatch(/^organizations\/org-1\/checklist-photos\/copy-1\/[0-9a-f-]{36}$/);
+    expect((send.mock.calls[1] as unknown as [{ input: { CopySource: string } }])[0].input.CopySource).toBe(`lms-bucket/${uploaded.objectKey}`);
+  });
+
+  it('PR 421: refuses an extra checklist picture when storage is not configured', async () => {
+    const file = { originalname: 'a.png', mimetype: 'image/png', buffer: Buffer.from([1]), size: 1 } as Express.Multer.File;
+    await expect(service.uploadChecklistSheetPhoto(file, 'org-1', 'c')).rejects.toThrow(ServiceUnavailableException);
+    await expect(service.copyChecklistSheetPhoto('k', 'org-1', 'c')).rejects.toThrow(ServiceUnavailableException);
+  });
+
   it('creates a tenant-scoped opaque material key', () => {
     const key = service.createMaterialObjectKey(
       '11111111-1111-1111-1111-111111111111',

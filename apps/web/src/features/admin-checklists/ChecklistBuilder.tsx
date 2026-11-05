@@ -27,6 +27,7 @@ import type {
   ChecklistGeolocationPolicy,
   ChecklistItemGroup,
   ChecklistItemSummary,
+  ChecklistPhotoSummary,
   ChecklistPreSessionVisibility,
   ChecklistScaleLevel,
   ChecklistScaleSummary,
@@ -39,6 +40,7 @@ import { ChecklistAccessBadge } from '../../shared/checklistAccess.js';
 import { ContextMenu, useContextMenu } from '../../shared/ContextMenu.js';
 import { InlineNameField, focusNameField } from './InlineNameField.js';
 import { ChecklistCoverField } from './ChecklistCoverField.js';
+import { ChecklistPhotosField } from './ChecklistPhotosField.js';
 import { ChecklistCheckboxOption, ChecklistHelpTip } from './ChecklistHelpTip.js';
 import { ChecklistItemsEditor } from './ChecklistItemsEditor.js';
 import { DndContext, DragHandle, GroupShell, ItemsSortable, SortableBox, SortableContext, useChecklistLayoutDnd, useFlatListDnd } from './ChecklistSortable.js';
@@ -163,6 +165,8 @@ export function ChecklistBuilder({
   const [detailsItemId, setDetailsItemId] = useState<string | null>(null);
   const [keepItemsOnGroupDelete, setKeepItemsOnGroupDelete] = useState(false);
   const layoutDnd = useChecklistLayoutDnd({ items, groups: itemGroups, t, onCommit: (layout) => void commitLayout(layout) });
+  // PR 421: the extra pictures (the field below owns the saving; the preview shows the same list).
+  const [sheetPhotos, setSheetPhotos] = useState<ChecklistPhotoSummary[]>(checklist.photos ?? []);
   const [contextFields, setContextFields] = useState<ContextField[]>(checklist.contextFields ?? []);
   // An unnamed field is called by its number: "Field label" would clash with the name input's own label.
   const contextFieldName = (index: number) => contextFields[index]?.label || t('admin.checklists.contextFieldNumbered', 'Field {{n}}', { n: index + 1 });
@@ -584,6 +588,7 @@ export function ChecklistBuilder({
               <textarea id="checklist-description" value={description} onChange={(e) => setDescription(e.target.value)} />
             </FormField>
             <ChecklistCoverField checklistId={checklist.id} title={checklist.title} coverUpdatedAt={checklist.coverUpdatedAt} />
+            <ChecklistPhotosField checklistId={checklist.id} title={checklist.title} photos={checklist.photos} disabled={!canEdit} onChange={setSheetPhotos} />
           </ChecklistSettingsForm>
           <section className="admin-card admin-settings-block" aria-labelledby="checklist-settings-title">
             <h3 id="checklist-settings-title">{t('admin.checklists.settingsBlockTitle', 'Settings')}</h3>
@@ -1157,6 +1162,8 @@ export function ChecklistBuilder({
         <ChecklistPreviewDialog
           title={title || checklist.title}
           description={description}
+          checklistId={checklist.id}
+          photos={sheetPhotos}
           items={previewItems}
           groups={itemGroups}
           contextFields={contextFields}

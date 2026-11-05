@@ -756,6 +756,18 @@ object is copied, never shared; if storage fails the copy is created without a c
 "By assignment" / "Free access" / "On the panel" label is computed by clients from `accessMode`
 and `pinned`; it is not stored. Audit actions `checklist.cover_updated` and `checklist.cover_removed`.
 
+PR 421 adds up to 6 extra pictures per checklist, shown to the employee during the pass. `POST
+/checklists/:id/photos` (`checklistsCreate`, multipart `file` plus optional `caption`, at most 200
+characters) takes the same image types, limits and signature check as the cover; a seventh picture is 409.
+`PATCH /checklists/:id/photos/:photoId` changes the caption, `PUT /checklists/:id/photos/order` with
+`{ ids }` (every picture exactly once) sets the order, `DELETE /checklists/:id/photos/:photoId` removes one
+(the object is deleted best-effort). `GET /checklists/:id/photos/:photoId/file` returns the bytes with the
+cover's visibility (staff: any checklist of their organization; a learner: a published `free` checklist or one
+assigned to them; anything else is 404) and the cover's headers (`ETag` is `updatedAt` in milliseconds). Checklist
+payloads (staff and learner) carry `photos: [{ id, caption, order, updatedAt }]`; the storage key and MIME type
+never leave the server. A copy of a checklist gets its own copy of every picture (best effort); organization
+templates, like the cover, do not carry pictures. Audit actions `checklist.photo_added` and `checklist.photo_removed`.
+
 PR 400: the browser never opens the storage. `GET /checklists/:id/cover/file` (same roles and visibility
 as `GET /checklists/:id/cover`) and `GET /checklist-instances/:instanceId/items/:itemId/photo/file` (same
 access rules and the same `checklist_evidence.accessed` audit entry as the signed-URL photo route) return

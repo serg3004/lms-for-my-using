@@ -12,6 +12,10 @@ export const CHECKLIST_PHOTO_MAX_MB = Math.floor(CHECKLIST_PHOTO_MAX_BYTES / (10
 export const CHECKLIST_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const;
 export const CHECKLIST_PHOTO_ACCEPT = CHECKLIST_PHOTO_TYPES.join(',');
 
+/** PR 421: extra pictures of a sheet; kept equal to the API's `MAX_SHEET_PHOTOS` and caption length. */
+export const MAX_CHECKLIST_PHOTOS = 6;
+export const CHECKLIST_PHOTO_CAPTION_MAX_LENGTH = 200;
+
 export type ChecklistPhotoError = 'unsupported-type' | 'empty' | 'too-large';
 
 export function validateChecklistPhoto(file: { type: string; size: number }): ChecklistPhotoError | null {
