@@ -103,6 +103,7 @@ it('PR 358/414: a new criterion has no scale; the switch gives it the default sc
   const no = [...dialog.querySelectorAll<HTMLLabelElement>('label')].find((label) => label.textContent?.startsWith('Нет'))!.querySelector<HTMLInputElement>('input[type=radio]')!;
   await act(async () => no.click());
   expect(no.checked).toBe(true);
-  expect(dialog.querySelector('.admin-preview-result')?.textContent).toContain('0 / 100 (0%)');
-  expect(dialog.querySelector('.admin-preview-result')?.textContent).not.toContain('Не все');
+  await act(async () => [...dialog.querySelectorAll<HTMLButtonElement>('footer button')].find((b) => b.textContent === 'Завершить')!.click());
+  expect(dialog.querySelector('[data-testid="preview-finish-result"]')?.textContent).toContain('0 / 100 (0%)');
+  expect(dialog.querySelector('[data-testid="preview-finish-missing"]')).toBeNull();
 });

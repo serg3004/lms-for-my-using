@@ -137,6 +137,23 @@ export function removeScaleLevelAt(levels: ChecklistScaleLevel[], index: number)
   return levels.filter((_, currentIndex) => currentIndex !== index);
 }
 
+/** PR 424: criteria that keep a preview from finishing; the same rule that decides `allAnswered` in a partial preview. */
+export function previewUnfinishedItems(
+  items: ChecklistItemSummary[],
+  scoringMode: ChecklistScoringMode,
+  scaleLevels: ChecklistScaleLevel[],
+  answers: Record<string, PreviewAnswer>,
+  allowSkipAll = false,
+) {
+  return items.filter((item) => {
+    const answer = answers[item.id];
+    if (answer?.skipped && (allowSkipAll || item.allowSkip)) return false;
+    const levels = checklistItemLevels(item, scoringMode, scaleLevels);
+    const answered = levels !== null ? levels.some((level) => level.level === answer?.scaleLevel) : answer?.answered === true || answer?.checked === true;
+    return !(answered && (!item.photoRequired || answer?.hasPhoto === true) && !isChecklistNoteMissing(item, scoringMode, answer));
+  });
+}
+
 export function computePreviewResult(
   items: ChecklistItemSummary[],
   scoringMode: ChecklistScoringMode,
@@ -170,7 +187,7 @@ export function computePreviewResult(
   }
   const percentage = maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0;
   const allAnswered = items.length > 0 && (answeredOnly
-    ? eligible.length === answered.length && eligible.every((item) => (!item.photoRequired || answers[item.id]?.hasPhoto === true) && !isChecklistNoteMissing(item, scoringMode, answers[item.id]))
+    ? previewUnfinishedItems(items, scoringMode, scaleLevels, answers, allowSkipAll).length === 0
     : eligible.every((item) => isChecklistRequirementSatisfied(item, scoringMode, answers[item.id])));
   return { totalScore, maxScore, percentage, passed: allAnswered && (scoringMode === 'none' || percentage >= passThreshold), allAnswered };
 }

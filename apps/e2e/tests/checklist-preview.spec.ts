@@ -23,8 +23,9 @@ for (const width of [375, 1440]) {
     await first.getByRole('radio').first().focus();
     await page.keyboard.press('ArrowRight');
     await expect(first.getByRole('radio').nth(1)).toBeChecked();
-    await expect(dialog.getByRole('status')).toContainText('1 / 3 (33%)');
-    await expect(dialog.getByRole('status')).toContainText('Не завершено');
+    await expect(dialog.getByRole('status')).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Завершить', exact: true }).click();
+    await expect(dialog.getByRole('alert')).toContainText('Лист пока нельзя завершить');
     await dialog.locator('input[type=file]').setInputFiles({ name: 'evidence.png', mimeType: 'image/png', buffer: Buffer.from('synthetic local photo') });
     await expect(dialog.getByText('evidence.png', { exact: true })).toBeVisible();
     const skip = dialog.getByRole('button', { name: 'Пропустить', exact: true });
@@ -32,7 +33,6 @@ for (const width of [375, 1440]) {
     await skip.click();
     await expect(skip).toHaveAttribute('aria-pressed', 'true');
     await dialog.getByRole('radiogroup').last().getByRole('radio', { name: 'Нет', exact: false }).check();
-    await expect(dialog.getByRole('status')).toContainText('1 / 6 (17%)');
     await dialog.getByLabel('Сильные стороны', { exact: true }).fill('Порядок');
     await expect.poll(() => dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
     const close = dialog.getByRole('button', { name: 'Закрыть', exact: true }).last();
@@ -66,7 +66,9 @@ test('preview hides disabled sections, uses current settings and supports global
   await expect(dialog.getByRole('button', { name: 'Пропустить', exact: true })).toHaveCount(27);
   // All skipped criteria are completed, but have no score and cannot pass a positive threshold.
   for (const button of await dialog.getByRole('button', { name: 'Пропустить', exact: true }).all()) await button.click();
-  await expect(dialog.getByRole('status')).not.toContainText('Не завершено');
+  await dialog.getByRole('button', { name: 'Завершить', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toHaveCount(0);
+  await expect(dialog.getByRole('status')).toContainText('Лист завершён');
   await expect(dialog.getByRole('status')).toContainText('0 / 0 (0%)');
 });
 
@@ -101,9 +103,28 @@ test('preview completion requires configured general information, photo and feed
   await dialog.getByRole('radio', { name: 'Выполнено', exact: false }).last().check();
   await dialog.getByLabel('Рабочее место').fill('Участок');
   await dialog.locator('input[type=file]').setInputFiles({ name: 'evidence.png', mimeType: 'image/png', buffer: Buffer.from('local photo') });
-  await expect(dialog.getByRole('status')).toContainText('Не завершено');
+  await dialog.getByRole('button', { name: 'Завершить', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Структурированная обратная связь');
+  await expect(dialog.getByRole('status')).toHaveCount(0);
   await dialog.getByLabel('Сильные стороны', { exact: true }).fill('Порядок');
   await dialog.getByLabel('Зоны роста', { exact: true }).fill('Маркировка');
+  await expect(dialog.getByRole('status')).toContainText('Лист завершён');
   await expect(dialog.getByRole('status')).toContainText('Зачёт');
   await expect(dialog.getByRole('status')).toContainText('3 / 3 (100%)');
+});
+
+for (const width of [320, 390]) test(`Finish, Reset and Close fit the preview footer at ${width}px and Reset clears the result`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 800 });
+  const sheet = previewSheet(); sheet.contextFields = []; sheet.feedbackEnabled = false;
+  await openPreviewBuilder(page, sheet);
+  const dialog = await openSheetPreview(page);
+  const footer = dialog.locator('footer');
+  for (const name of ['Завершить', 'Сбросить', 'Закрыть']) await expect(footer.getByRole('button', { name, exact: true })).toBeVisible();
+  await footer.getByRole('button', { name: 'Завершить', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toBeVisible();
+  await dialog.getByRole('alert').getByRole('button').first().click();
+  await expect(dialog.getByRole('radiogroup').first().getByRole('radio').first()).toBeFocused();
+  await expect.poll(() => dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+  await footer.getByRole('button', { name: 'Сбросить', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toHaveCount(0);
 });
