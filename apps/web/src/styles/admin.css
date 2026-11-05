@@ -1602,10 +1602,15 @@
 
 .admin-builder-section-head {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
   margin-bottom: 4px;
+}
+
+.admin-builder-section-head .admin-group-card__bulk {
+  margin-left: auto;
 }
 
 .admin-builder-section-head h3 {
@@ -1771,9 +1776,26 @@
 }
 
 .admin-criteria-cell > span {
-  display: none;
   font-size: 11px;
   color: var(--color-text-muted);
+}
+
+/* PR 419: the column captions are only for the narrow layout; the visible "from scale" note stays. */
+.admin-criteria-cell > span[aria-hidden='true'],
+.admin-criteria-scale-switch > span {
+  display: none;
+}
+
+/* PR 419: the scale switch sits beside the scale list, not above it. */
+.admin-criteria-cell--scale {
+  flex-direction: row;
+  gap: 6px;
+  min-height: 36px;
+}
+
+.admin-criteria-cell--scale .admin-criteria-row__scale {
+  width: auto;
+  flex: 1;
 }
 
 .admin-criteria-row__points,
@@ -1814,7 +1836,8 @@
     align-items: stretch;
   }
 
-  .admin-criteria-cell > span {
+  .admin-criteria-cell > span[aria-hidden='true'],
+  .admin-criteria-scale-switch > span {
     display: block;
   }
 
@@ -1846,6 +1869,12 @@
 
   .admin-criteria-cell .admin-switch {
     min-height: 19px;
+  }
+
+  .admin-criteria-scale-switch {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
   }
 }
 

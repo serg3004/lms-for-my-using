@@ -224,6 +224,11 @@ describe('ChecklistBuilder settings column (PR 340)', () => {
     expect(html.match(/class="admin-criteria-row__points"/g)).toHaveLength(1);
     expect(html).toContain('Enable scale for all criteria');
     expect(html).toContain('Disable scale for all');
+    // PR 419: the visible note is a plain span (not an aria-hidden caption), so the column is never empty.
+    expect(html).toMatch(/<span>from scale<\/span>/);
+    expect(html).not.toMatch(/<span aria-hidden="true">from scale<\/span>/);
+    // the switch is in the same cell as the list, in one row.
+    expect(html).toMatch(/admin-criteria-cell--scale"><label class="admin-criteria-scale-switch">.*?<\/label><select class="admin-criteria-row__scale"/);
   });
 });
 
