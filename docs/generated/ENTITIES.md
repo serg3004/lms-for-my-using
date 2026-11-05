@@ -26,6 +26,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `ChecklistItemGroup` |
 | `ChecklistItemResult` |
 | `ChecklistLocationCapture` |
+| `ChecklistPhoto` |
 | `ChecklistScale` |
 | `ChecklistScaleLevel` |
 | `ChecklistScoreRevision` |

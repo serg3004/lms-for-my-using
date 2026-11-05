@@ -9,6 +9,7 @@ import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint,
 import { finishChecklistInstance, listFreeChecklists, listMyChecklistInstances, removeChecklistItemPhoto, startFreeChecklist, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
 import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary, FreeChecklistSummary } from '../shared/api/types.js';
 import { ChecklistCover } from '../shared/ChecklistCover.js';
+import { ChecklistPhotoStrip } from '../shared/ChecklistPhotoStrip.js';
 import { ChecklistAccessBadge } from '../shared/checklistAccess.js';
 import { PinnedChecklistTiles } from './PinnedChecklistTiles.js';
 import { Button, PageState } from '../shared/ui.js';
@@ -332,6 +333,8 @@ function ChecklistTaking({
       </button>
       <h1 style={{ color: COLORS.text, marginBottom: 4 }}>{checklist.title}</h1>
       {checklist.description && <p style={{ color: COLORS.muted }}><RichDescription value={checklist.description} /></p>}
+      {/* PR 421: extra pictures of the sheet, visible during the pass. */}
+      {checklist.photos && checklist.photos.length > 0 && <ChecklistPhotoStrip checklistId={checklist.id} photos={checklist.photos} title={checklist.title} />}
       <ChecklistDeadlineMeta instance={instance} />
       {instance.status === 'expired' && (
         <p style={{ color: '#b91c1c', background: '#fef2f2', borderRadius: 10, padding: '10px 12px' }} role="status">

@@ -393,6 +393,9 @@ export type ChecklistItemGroup = {
   order: number;
 };
 
+/** PR 421: one extra picture of a sheet; `updatedAt` is the cache key of its file. */
+export type ChecklistPhotoSummary = { id: string; caption: string; order: number; updatedAt: string };
+
 export type ChecklistAccessMode = 'assigned' | 'free';
 
 /** PR 353: one card of the free-access catalog (`GET /checklists/free`) -- never carries the criteria. */
@@ -483,6 +486,8 @@ export type ChecklistSummary = {
   allowEditByAll?: boolean;
   // PR 355 -- optional for the same reason (read as no cover).
   coverUpdatedAt?: string | null;
+  // PR 421 -- extra pictures shown during the pass (absent: none). Storage keys never reach the client.
+  photos?: ChecklistPhotoSummary[];
   itemGroups?: ChecklistItemGroup[];
   createdBy: string | null;
   // PR 393 -- only `GET /checklists` carries the author's name (null: author deleted); optional elsewhere.

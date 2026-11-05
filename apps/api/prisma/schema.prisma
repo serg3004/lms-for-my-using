@@ -355,6 +355,7 @@ model Organization {
   notifications              Notification[]
   checklists                 Checklist[]
   checklistFolders           ChecklistFolder[]
+  checklistPhotos            ChecklistPhoto[]
   checklistTemplates         ChecklistTemplate[]
   checklistItems             ChecklistItem[]
   checklistItemGroups        ChecklistItemGroup[]
@@ -1213,11 +1214,32 @@ model Checklist {
   items                        ChecklistItem[]
   itemGroups                   ChecklistItemGroup[]
   instances                    ChecklistInstance[]
+  photos                       ChecklistPhoto[]
 
   @@index([organizationId, status])
   @@index([organizationId, accessMode, status])
   @@index([organizationId, folderId])
   @@map("checklists")
+}
+
+/// PR 421: extra pictures of a sheet (up to 6) shown to the employee during the pass. The storage key and MIME type
+/// are private (never in an API select); the API exposes id, caption, order and `updatedAt` (the cache key).
+model ChecklistPhoto {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  checklistId    String       @map("checklist_id") @db.Uuid
+  order          Int          @default(0)
+  caption        String       @default("")
+  objectKey      String       @map("object_key")
+  mimeType       String       @map("mime_type")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  checklist      Checklist    @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+
+  @@index([checklistId, order])
+  @@index([organizationId])
+  @@map("checklist_photos")
 }
 
 /// PR 395: organization-wide folder tree for checklists (up to 5 levels, root folder = level 1). Folders are

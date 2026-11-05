@@ -50,6 +50,8 @@ Current storage architecture — S3-compatible и provider-neutral.
 | `uploadChecklistItemPhoto` | `implemented` | Загружает validated photo в tenant/instance/item-scoped key через `PutObject`. |
 | `uploadChecklistCover` | `implemented` | Загружает validated cover листа в tenant/checklist-scoped key `checklist-covers/` через `PutObject`; ключ наружу не отдаётся, чтение через `getInlinePresignedUrl`. |
 | `copyChecklistCover` | `implemented` | Копирует cover листа в новый key целевого листа (`CopyObject`) при копировании листа; общий ключ у двух листов не используется. |
+| `uploadChecklistSheetPhoto` | `implemented` | PR 421: загружает validated дополнительное фото листа (до 6 на лист) в tenant/checklist-scoped key `checklist-photos/` через `PutObject`; ключ наружу не отдаётся, чтение через `GET /checklists/:id/photos/:photoId/file` с правами как у обложки. |
+| `copyChecklistSheetPhoto` | `implemented` | PR 421: копирует дополнительное фото в новый key целевого листа (`CopyObject`) при копировании листа; общий ключ у двух листов не используется. |
 | `uploadOrganizationLogo` | `implemented` | Загружает validated logo в tenant-scoped branding key через `PutObject`. |
 | `getInlinePresignedUrl` | `implemented` | Выдаёт presigned `GetObject` для inline display с TTL не более 300 секунд. |
 | `createQuarantineObjectKey` | `implemented` | Создаёт opaque tenant/material-scoped quarantine key. |

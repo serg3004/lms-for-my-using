@@ -7,13 +7,16 @@ import { ContextFields, CriterionHeading, FeedbackFields, type FeedbackDraft } f
 import { checklistItemLevels } from '../../app/checklistCompletion.js';
 import { ChecklistItemDescription, ChecklistNoteField } from '../../app/ChecklistItemNote.js';
 import { isNoteOffered, isNoteRequired } from '../../app/checklistItemNote.js';
-import type { ChecklistItemGroup, ChecklistItemSummary, ChecklistScaleLevel, ChecklistScoringMode, ContextField } from '../../shared/api/types.js';
+import type { ChecklistItemGroup, ChecklistItemSummary, ChecklistPhotoSummary, ChecklistScaleLevel, ChecklistScoringMode, ContextField } from '../../shared/api/types.js';
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, validateChecklistPhoto } from '../../shared/checklistPhoto.js';
+import { ChecklistPhotoStrip } from '../../shared/ChecklistPhotoStrip.js';
 import { Button } from '../../shared/ui.js';
 import { computePreviewResult, groupItems, type PreviewAnswer } from './domain.js';
 
 type PreviewProps = {
   title: string; description: string; items: ChecklistItemSummary[]; groups: ChecklistItemGroup[];
+  // PR 421: the sheet's extra pictures, shown under the description like the employee sees them.
+  checklistId?: string; photos?: ChecklistPhotoSummary[];
   contextFields: ContextField[]; scoringMode: ChecklistScoringMode; scaleLevels: ChecklistScaleLevel[];
   passThreshold: number; feedbackEnabled: boolean; feedbackRequired: boolean; allowSkipAll: boolean;
   feedbackLayout?: FeedbackLayout | null;
@@ -80,6 +83,7 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
         </header>
         <p id={hintId} className="admin-form__hint">{t('admin.checklists.previewHint', 'This is a local simulation — nothing here is saved or sent to anyone.')}</p>
         {description && <p><RichDescription value={description} /></p>}
+        {props.checklistId && props.photos && <ChecklistPhotoStrip checklistId={props.checklistId} photos={props.photos} title={title} />}
         {contextFields.length > 0 && <section aria-label={t('admin.checklists.contextFieldsTitle', 'General information')}>
           <h3>{t('admin.checklists.contextFieldsTitle', 'General information')}</h3>
           <ContextFields fields={[...contextFields].sort((a, b) => a.order - b.order)} values={values} disabled={false}

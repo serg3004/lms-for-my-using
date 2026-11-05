@@ -42,6 +42,7 @@ module.exports = {
     '/src/integration/checklist-folders\\.database\\.spec\\.ts$',
     '/src/integration/checklist-settings-overrides\\.database\\.spec\\.ts$',
     '/src/integration/checklist-cover\\.database\\.spec\\.ts$',
+    '/src/integration/checklist-sheet-photos\\.database\\.spec\\.ts$',
     '/src/integration/checklist-observation-sheet-builder\\.database\\.spec\\.ts$',
     '/src/integration/checklist-templates\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-feedback\\.database\\.spec\\.ts$',

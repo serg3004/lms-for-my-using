@@ -1770,6 +1770,28 @@
         "save": "Save",
         "discard": "Don’t save",
         "stay": "Stay"
+      },
+      "photos": {
+        "title": "Extra photos",
+        "hint": "Up to {{max}} photos: JPEG, PNG, GIF or WEBP, up to {{maxMb}} MB each. The employee sees them on the sheet during the pass.",
+        "empty": "No photos yet.",
+        "add": "Add photo",
+        "full": "The maximum of {{max}} photos is uploaded.",
+        "caption": "Caption of photo {{n}}",
+        "captionPlaceholder": "Caption (optional)",
+        "up": "Photo {{n}} up",
+        "down": "Photo {{n}} down",
+        "drag": "Drag photo {{n}}",
+        "remove": "Remove photo {{n}}",
+        "removeTitle": "Remove the photo?",
+        "removeMessage": "Photo {{n}} will disappear from the sheet. This cannot be undone.",
+        "removeConfirm": "Remove",
+        "alt": "Photo {{n}} of the sheet “{{title}}”",
+        "file": "Photo file",
+        "uploadError": "Unable to upload the photo.",
+        "captionError": "Unable to save the caption.",
+        "moveError": "Unable to change the order of the photos.",
+        "removeError": "Unable to remove the photo."
       }
     },
     "orgTools": {
@@ -2861,7 +2883,15 @@
     "notePending": "Fill in the explanation and save it: your answer is saved together with it.",
     "noteSave": "Save explanation",
     "finishedNoPoints": "Completed",
-    "finishedNoPointsDone": "The check is completed"
+    "finishedNoPointsDone": "The check is completed",
+    "photos": {
+      "title": "Sheet photos",
+      "open": "Open photo {{n}} larger",
+      "close": "Close",
+      "alt": "Photo {{n}} of the sheet “{{title}}”",
+      "loadError": "Unable to show the photo.",
+      "retry": "Retry"
+    }
   },
   "checklistReview": {
     "loadError": "Unable to load pending reviews.",

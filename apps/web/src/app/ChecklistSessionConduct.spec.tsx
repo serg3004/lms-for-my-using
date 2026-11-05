@@ -331,6 +331,25 @@ describe('ConductScreen (real hooks)', () => {
     expect(html).toContain('Resume');
   });
 
+  it('PR 421: the sheet photos are at hand during the pass, folded and counted, and not before the start', () => {
+    const photos = [
+      { id: 'p1', caption: 'Схема', order: 0, updatedAt: '2026-11-05T00:00:00.000Z' },
+      { id: 'p2', caption: '', order: 1, updatedAt: '2026-11-05T00:00:00.000Z' },
+    ];
+    const withPhotos = (status: 'scheduled' | 'in_progress') => {
+      const base = instance();
+      return renderToStaticMarkup(
+        <ConductScreen data={{ session: session({ status }), instance: { ...base, checklist: { ...base.checklist!, photos } } }} onBack={onBack} onReload={onReload} onMutate={onMutate} t={t} />,
+      );
+    };
+    expect(withPhotos('in_progress').replace(/<!-- -->/g, '')).toMatch(/<details><summary[^>]*>Фото листа \(2\)/);
+    expect(withPhotos('scheduled')).not.toContain('Фото листа');
+    const none = renderToStaticMarkup(
+      <ConductScreen data={{ session: session({ status: 'in_progress' }), instance: instance() }} onBack={onBack} onReload={onReload} onMutate={onMutate} t={t} />,
+    );
+    expect(none).not.toContain('Фото листа');
+  });
+
   it('renders required context fields as the first step and blocks Next while empty', () => {
     const fieldId = '77777777-7777-4777-8777-777777777777';
     const html = renderToStaticMarkup(

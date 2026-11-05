@@ -1770,6 +1770,28 @@
         "save": "保存",
         "discard": "不保存",
         "stay": "留下"
+      },
+      "photos": {
+        "title": "附加照片",
+        "hint": "最多 {{max}} 张照片：JPEG、PNG、GIF 或 WEBP，每张不超过 {{maxMb}} MB。员工在执行时可在检查表上看到这些照片。",
+        "empty": "暂无照片。",
+        "add": "添加照片",
+        "full": "已上传最多 {{max}} 张照片。",
+        "caption": "照片 {{n}} 的说明",
+        "captionPlaceholder": "说明（可选）",
+        "up": "照片 {{n}} 上移",
+        "down": "照片 {{n}} 下移",
+        "drag": "拖动照片 {{n}}",
+        "remove": "删除照片 {{n}}",
+        "removeTitle": "删除这张照片？",
+        "removeMessage": "照片 {{n}} 将从检查表中消失，此操作无法撤销。",
+        "removeConfirm": "删除",
+        "alt": "检查表“{{title}}”的照片 {{n}}",
+        "file": "照片文件",
+        "uploadError": "无法上传照片。",
+        "captionError": "无法保存说明。",
+        "moveError": "无法更改照片顺序。",
+        "removeError": "无法删除照片。"
       }
     },
     "orgTools": {
@@ -2861,7 +2883,15 @@
     "notePending": "请填写并保存解释：答案会与其一起保存。",
     "noteSave": "保存解释",
     "finishedNoPoints": "已完成",
-    "finishedNoPointsDone": "检查已完成"
+    "finishedNoPointsDone": "检查已完成",
+    "photos": {
+      "title": "检查表照片",
+      "open": "放大查看照片 {{n}}",
+      "close": "关闭",
+      "alt": "检查表“{{title}}”的照片 {{n}}",
+      "loadError": "无法显示照片。",
+      "retry": "重试"
+    }
   },
   "checklistReview": {
     "title": "检查清单审核",

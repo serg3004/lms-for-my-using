@@ -28,6 +28,7 @@ import { useAsyncData } from '../shared/useAsyncData.js';
 import { PastSessions } from './ChecklistSessionHistory.js';
 import { ChecklistConductOverview } from './ChecklistConductOverview.js';
 import { ChecklistItemDescription } from './ChecklistItemNote.js';
+import { ChecklistPhotoStrip } from '../shared/ChecklistPhotoStrip.js';
 import { isNoteRequired, pendingAnswer } from './checklistItemNote.js';
 import { conductCriteria, nextConductStep } from './checklistConductOverview.js';
 import { localizeChecklistScaleError, checklistResultToAnswer, getRequiredChecklistProgress, isChecklistAnswerComplete } from './checklistCompletion.js';
@@ -364,6 +365,11 @@ export function ConductScreen({
 
       <Header session={session} instance={instance} t={t} />
       {instance.checklist?.description && <p><RichDescription value={instance.checklist.description} /></p>}
+
+      {/* PR 421: the sheet's extra pictures stay at hand during the pass. */}
+      {(session.status === 'in_progress' || session.status === 'paused') && checklist.photos && checklist.photos.length > 0 && (
+        <ChecklistPhotoStrip checklistId={checklist.id} photos={checklist.photos} title={checklist.title} collapsible />
+      )}
 
       {error && (
         <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 13 }}>
