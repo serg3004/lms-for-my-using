@@ -698,6 +698,30 @@ The observer saves custom answers after 800 ms idle or with Save feedback; optim
 Completion stays blocked until mandatory answers are saved. Session reports, PDF, CSV/XLSX and the learner's permitted result
 view use the snapshot layout and option descriptions; user-authored labels are never translated, defaults support RU/EN/KK/ZH.
 
+## Checklist description formatting (PR 420)
+
+The existing description strings of a sheet, criterion hint and checklist-level scale levels accept limited inline markup.
+No DDL or permission changes: sheet editing and snapshots retain their existing rules. Names, criterion titles and answers
+remain plain text. Creation/update of sheets, hints and organization-template descriptions sanitize input on the server.
+Allowed output consists of paragraphs/line breaks, strong, emphasis, underline and spans with `font-size` (14, 16, 20 or 26 px),
+`color` (`#RRGGBB`) and `text-transform: uppercase`. Source character case is preserved. Scripts, foreign namespaces,
+links, images, event attributes and other styles are removed; Word emphasis is normalized. The same parser is used for
+safe display of historical stored strings; React text nodes render the result, with no raw HTML insertion.
+
+Limits are checked after sanitization against displayed text: 2000 characters for sheet/hint/template descriptions, 500 for
+scale-level descriptions. Raw and sanitized markup are bounded to 24000 characters. Plain strings continue to display as
+plain text, including line breaks; unformatted editor output stays a plain string.
+
+The author selects text and opens a formatting dialog by right-click, long press, Shift+F10 or the menu key.
+Ctrl+B/I/U work in the editor. Without a selection the native context menu is retained; Esc closes formatting and restores
+the selection (including inside the criterion dialog). Five presets meet AA contrast on white; a custom low-contrast colour
+shows a warning and remains selectable. Controls support RU/EN/KK/ZH and narrow viewports.
+
+Session reports add optional `checklist.description`, criterion `description` and `levelDescription`, sourced from the
+assignment snapshot and omitted while result visibility hides the report. Preview, learner cards, session conduct and
+report views render these styles. PDF includes a description section with the same emphasis, case, size and colour;
+CSV/XLSX append description rows as plain displayed text. Old reports without descriptions retain the previous layout.
+
 ## Checklist observation-sheet builder (PR 296)
 
 Backend for the admin "Observation Sheet Builder" screen -- criterion grouping, an observer-filled

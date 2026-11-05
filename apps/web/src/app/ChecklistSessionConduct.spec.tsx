@@ -320,7 +320,8 @@ describe('ConductScreen (real hooks)', () => {
     expect(html).not.toContain('Structured feedback');
     expect(html).not.toContain('Past sessions');
     expect(html).toContain('Next');
-    expect(html).not.toContain('Complete');
+    expect(html).toContain('Complete before serving the first customer.');
+    expect(html).not.toMatch(/<button\b[^>]*>Complete<\/button>/);
   });
 
   it('renders the paused state with a Resume button', () => {

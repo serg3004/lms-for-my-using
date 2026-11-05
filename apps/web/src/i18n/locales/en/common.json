@@ -3576,5 +3576,28 @@
     "usedSetWarning": "Changes apply to sessions that have not started. Started sessions keep their frozen answers.",
     "requiredFields": "Fill in and save the required feedback fields.",
     "item": "Item {{number}}"
+  },
+  "richDescription": {
+    "title": "Text formatting",
+    "hint": "Select text, then right-click, long-press or press Shift+F10. Ctrl+B/I/U changes emphasis.",
+    "bold": "Bold",
+    "italic": "Italic",
+    "underline": "Underline",
+    "uppercase": "Uppercase",
+    "boldShort": "B",
+    "italicShort": "I",
+    "underlineShort": "U",
+    "uppercaseShort": "AA",
+    "size": "Size",
+    "size0": "Small",
+    "size1": "Normal",
+    "size2": "Large",
+    "size3": "Heading",
+    "color": "Color",
+    "customColor": "Custom color",
+    "lowContrast": "Low contrast against white. At least 4.5:1 is recommended.",
+    "reset": "Clear formatting",
+    "close": "Close",
+    "limit": "Maximum {{count}} characters."
   }
 }

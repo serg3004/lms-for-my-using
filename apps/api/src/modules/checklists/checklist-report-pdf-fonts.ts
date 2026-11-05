@@ -197,6 +197,18 @@ export class PdfFontBook {
     });
   }
 
+  inlineWidth(text: string, weight: PdfFontWeight, size: number) {
+    return this.segmentsOf(text, weight, size).reduce((width, segment) => width + segment.width, 0);
+  }
+
+  writeInline(text: string, options: { weight: PdfFontWeight; size: number; color: string; x: number; y: number; italic?: boolean; underline?: boolean }) {
+    let x = options.x;
+    for (const segment of this.segmentsOf(text, options.weight, options.size)) {
+      this.document.font(this.nameOf(segment.file)).fontSize(options.size).fillColor(options.color).text(segment.text, x, options.y, { lineBreak: false, oblique: options.italic ? 12 : false, underline: options.underline });
+      x += segment.width;
+    }
+  }
+
   /** Height of the text at the given width, used to size table rows before drawing them. */
   height(text: string, options: { weight?: PdfFontWeight; size: number; width: number; lineGap?: number }) {
     return Math.max(1, this.layout(text, options.weight ?? 400, options.size, options.width).length) * this.lineHeight(options.size, options.lineGap ?? 0);

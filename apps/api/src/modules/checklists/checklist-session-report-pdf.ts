@@ -1,3 +1,4 @@
+import { descriptionRuns, descriptionText, type DescriptionRun } from '@lms/shared/checklist-description';
 import { feedbackRows, isCustomFeedback } from '@lms/shared/checklist-feedback';
 import PDFDocument from 'pdfkit';
 
@@ -92,6 +93,7 @@ class ReportPainter {
       this.generalInfo();
       this.groups();
       this.criteriaTable();
+      this.descriptions();
       this.omittedPhotosNote();
       this.feedback();
     }
@@ -352,6 +354,46 @@ class ReportPainter {
       this.doc.moveTo(column.stripe, this.y).lineTo(column.stripe + CONTENT_WIDTH, this.y).lineWidth(0.4).strokeColor(TRACK).stroke();
     }
     this.y += 6;
+  }
+
+  private richParagraph(value: string) {
+    this.options.trace?.push(descriptionText(value));
+    let parts: Array<{ text: string; run: DescriptionRun; size: number; width: number }> = [], width = 0;
+    const flush = () => {
+      const size = Math.max(12, ...parts.map((part) => part.size)), height = size * 1.35 + 3;
+      this.ensureSpace(height); let x = PAGE.margin;
+      for (const part of parts) {
+        this.fonts.writeInline(part.text, { weight: part.run.bold ? 700 : 400, size: part.size, color: part.run.color ?? INK, x, y: this.y + (size - part.size) * 0.8, italic: part.run.italic, underline: part.run.underline });
+        x += part.width;
+      }
+      this.y += height; parts = []; width = 0;
+    };
+    for (const run of descriptionRuns(value)) {
+      const size = (run.size ?? 16) * 0.75;
+      const add = (text: string) => {
+        const measured = this.fonts.inlineWidth(text, run.bold ? 700 : 400, size);
+        if (width + measured > CONTENT_WIDTH && parts.length) flush();
+        parts.push({ text, run, size, width: measured }); width += measured;
+      };
+      for (const token of (run.uppercase ? run.text.toUpperCase() : run.text).match(/\n|[^\S\n]+|[^\s]+/gu) ?? []) {
+        if (token === '\n') { flush(); continue; }
+        if (this.fonts.inlineWidth(token, run.bold ? 700 : 400, size) > CONTENT_WIDTH) for (const character of token) add(character);
+        else add(token);
+      }
+    }
+    if (parts.length) flush();
+    this.y += 4;
+  }
+
+  private descriptions() {
+    if (!this.report.visible) return;
+    const descriptions = [
+      ...(this.report.checklist.description ? [{ title: this.report.checklist.title, value: this.report.checklist.description }] : []),
+      ...this.report.criteria.flatMap((criterion) => [criterion.description, criterion.levelDescription].filter((value): value is string => !!value).map((value) => ({ title: `${criterion.number} ${criterion.text}`, value }))),
+    ];
+    if (!descriptions.length) return;
+    this.section({ ru: 'Описание', en: 'Description', kk: 'Сипаттама', zh: '描述' }[this.options.locale]);
+    for (const description of descriptions) { this.paragraph(description.title, { weight: 700, size: 10 }); this.richParagraph(description.value); }
   }
 
   private feedback() {

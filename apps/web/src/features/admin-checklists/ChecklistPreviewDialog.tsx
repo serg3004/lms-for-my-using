@@ -1,3 +1,4 @@
+import { RichDescription } from '../../shared/RichDescription.js';
 import { collectFeedbackFields, isCustomFeedback, firstMissingRequiredFeedback, type FeedbackLayout, type FeedbackAnswerSetSnapshot } from '@lms/shared/checklist-feedback';
 import { listChecklistAnswerSets } from '../../shared/api/checklists.js';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -81,7 +82,7 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
           <button ref={closeButton} className="admin-dialog__close" style={{ flex: 'none', minWidth: 44, minHeight: 44 }} type="button" onClick={onClose} aria-label={t('admin.checklists.close', 'Close')}>×</button>
         </header>
         <p id={hintId} className="admin-form__hint">{t('admin.checklists.previewHint', 'This is a local simulation — nothing here is saved or sent to anyone.')}</p>
-        {description && <p>{description}</p>}
+        {description && <p><RichDescription value={description} /></p>}
         {props.checklistId && props.photos && <ChecklistPhotoStrip checklistId={props.checklistId} photos={props.photos} title={title} />}
         {contextFields.length > 0 && <section aria-label={t('admin.checklists.contextFieldsTitle', 'General information')}>
           <h3>{t('admin.checklists.contextFieldsTitle', 'General information')}</h3>
@@ -147,7 +148,7 @@ function PreviewCriterion({ item, number, answer, levels, scoringMode, allowSkip
       {options.map((level) => <label key={level.level} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, cursor: 'pointer' }}>
         <input type="radio" style={{ width: 'auto', flex: 'none' }} name={id} checked={!answer?.skipped && (levels ? answer?.scaleLevel === level.level : answer?.answered === true && answer.checked === (level.level === 1))}
           onChange={() => onChange(levels ? { scaleLevel: level.level, skipped: false, answered: true } : { checked: level.level === 1, skipped: false, answered: true })} />
-        <span style={{ flex: 1 }}>{level.label}</span>
+        <span style={{ flex: 1 }}>{level.label}{level.description && <span style={{ display: 'block' }}><RichDescription value={level.description} /></span>}</span>
       </label>)}
     </div>
     {noteShown && <ChecklistNoteField id={`${id}-note`} onChange={(value) => onChange({ comment: value })} required={isNoteRequired(item, answer, levels !== null)} t={t} value={answer?.comment ?? ''} />}

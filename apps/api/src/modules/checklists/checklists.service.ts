@@ -2095,6 +2095,7 @@ export class ChecklistsService {
     return {
       checklist: {
         title: checklist.title,
+        ...(checklist.description ? { description: checklist.description } : {}),
         scoringMode: checklist.scoringMode,
         passThreshold: checklist.passThreshold,
         scaleLevels: checklist.scaleLevels as ScaleLevel[] | null,

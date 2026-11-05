@@ -1,3 +1,4 @@
+import { RichDescription } from '../shared/RichDescription.js';
 import { ObserverSessionsBlock } from './ObserverSessionsBlock.js';
 import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
@@ -203,7 +204,7 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, op
                       </span>
                     )}
                   </div>
-                  {row.description && <p style={{ color: COLORS.muted, margin: '4px 0 0' }}>{row.description}</p>}
+                  {row.description && <p style={{ color: COLORS.muted, margin: '4px 0 0' }}><RichDescription value={row.description} /></p>}
                   {row.free && !row.instance && (
                     <p style={{ color: COLORS.muted, margin: '4px 0 0', fontSize: 13 }}>{t('checklists.free.itemCount', 'Criteria: {{count}}', { count: row.free.itemCount })}</p>
                   )}
@@ -331,7 +332,7 @@ function ChecklistTaking({
         ← {t('checklists.backToList', 'All checklists')}
       </button>
       <h1 style={{ color: COLORS.text, marginBottom: 4 }}>{checklist.title}</h1>
-      {checklist.description && <p style={{ color: COLORS.muted }}>{checklist.description}</p>}
+      {checklist.description && <p style={{ color: COLORS.muted }}><RichDescription value={checklist.description} /></p>}
       {/* PR 421: extra pictures of the sheet, visible during the pass. */}
       {checklist.photos && checklist.photos.length > 0 && <ChecklistPhotoStrip checklistId={checklist.id} photos={checklist.photos} title={checklist.title} />}
       <ChecklistDeadlineMeta instance={instance} />
@@ -397,7 +398,7 @@ function ChecklistTaking({
                         minWidth: 90,
                       }}
                     >
-                      <span style={{ color: result?.scaleLevel === level.level ? COLORS.text : COLORS.muted }}>{level.label}</span>
+                      <span style={{ color: result?.scaleLevel === level.level ? COLORS.text : COLORS.muted }}>{level.label}{level.description && <span style={{ display: 'block' }}><RichDescription value={level.description} /></span>}</span>
                     </button>
                   ))}
                 </div>
