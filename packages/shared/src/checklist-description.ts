@@ -10,7 +10,7 @@ type HtmlNode = ReturnType<typeof parseDocument>['children'][number];
 const escape = (value: string) => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 const blocked = new Set(['script', 'style', 'iframe', 'object', 'embed', 'svg', 'math', 'template', 'noscript', 'head']);
 const blocks = new Set(['p', 'div', 'li', 'h1', 'h2', 'h3', 'h4', 'tr', 'blockquote']);
-export const isRichDescription = (value: string) => /<\/?(?:p|strong|em|u|span|br)\b[^>]*>/i.test(value);
+export const isRichDescription = (value: string) => /<\/?(?:p|strong|em|u|span|br)\b[^<>]*>/i.test(value);
 
 export function descriptionStyle(style: string): DescriptionStyle {
   const result: DescriptionStyle = {};
@@ -59,7 +59,7 @@ function readHtml(value: string): DescriptionRun[] {
 
 /** No URLs, arbitrary attributes, CSS functions or foreign namespaces survive this serializer. */
 export function sanitizeDescription(value: string): string {
-  if (!/<\/?[a-z][^>]*>/i.test(value)) return value;
+  if (!/<\/?[a-z][^<>]*>/i.test(value)) return value;
   const runs = readHtml(value);
   const plain = runs.map((run) => run.text).join('');
   if (!runs.some(({ bold, italic, underline, uppercase, size, color }) => bold || italic || underline || uppercase || size || color) && !/[<>]/.test(plain)) return plain;

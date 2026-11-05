@@ -29,6 +29,9 @@ describe('checklist description markup', () => {
     expect(descriptionHtml('<p>&lt;script&gt;literal&lt;/script&gt;</p>')).not.toContain('<script>');
   });
   it('bounds pathological nesting and provides AA presets with a custom-colour warning threshold', () => {
+    const incompleteTags = '<a'.repeat(12000);
+    expect(sanitizeDescription(incompleteTags)).toBe(incompleteTags);
+    expect(descriptionRuns(incompleteTags)).toEqual([{ text: incompleteTags }]);
     expect(() => sanitizeDescription('<b>'.repeat(2000) + 'text' + '</b>'.repeat(2000))).not.toThrow();
     for (const color of DESCRIPTION_COLORS) expect(descriptionContrast(color)).toBeGreaterThanOrEqual(4.5);
     expect(descriptionContrast('#FFFF00')).toBeLessThan(4.5);
