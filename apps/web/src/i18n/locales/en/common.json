@@ -3597,7 +3597,7 @@
     "customColor": "Custom color",
     "lowContrast": "Low contrast against white. At least 4.5:1 is recommended.",
     "reset": "Clear formatting",
-    "close": "Close",
-    "limit": "Maximum {{count}} characters."
+    "limit": "Maximum {{count}} characters.",
+    "weight": "Style"
   }
 }

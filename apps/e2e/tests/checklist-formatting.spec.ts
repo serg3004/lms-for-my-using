@@ -4,9 +4,9 @@ import { openFormattingEditor, openFormattingPopup, selectDescription } from '..
 test('selected description formats, saves, previews, and resets without changing its source case', async ({ page }) => {
   const { editor, popup, saved } = await openFormattingPopup(page);
   for (const name of ['Жирный', 'Курсив', 'Подчёркнутый', 'Прописные']) await popup.getByRole('button', { name, exact: true }).click();
-  await popup.getByRole('combobox', { name: 'Размер', exact: true }).selectOption('26');
+  await popup.getByRole('button', { name: 'Размер: Заголовок', exact: true }).click();
   await popup.getByRole('button', { name: 'Цвет #1D4ED8', exact: true }).click();
-  await popup.getByRole('button', { name: 'Закрыть', exact: true }).click();
+  await page.keyboard.press('Escape');
   await expect(editor).toBeFocused(); await expect(editor.locator('strong')).toHaveText('Важный текст');
   await page.getByRole('button', { name: 'Сохранить', exact: true }).first().click();
   await expect.poll(() => String(saved()?.description)).toContain('font-size:26px;color:#1D4ED8;text-transform:uppercase');
