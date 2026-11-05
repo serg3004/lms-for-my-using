@@ -3597,7 +3597,7 @@
     "customColor": "自定义颜色",
     "lowContrast": "与白色背景的对比度较低，建议至少为 4.5:1。",
     "reset": "清除格式",
-    "close": "关闭",
-    "limit": "最多 {{count}} 个字符。"
+    "limit": "最多 {{count}} 个字符。",
+    "weight": "样式"
   }
 }
