@@ -69,7 +69,9 @@ test('answer-set creation, failed save keeps the draft, keyboard ordering, archi
   await expect(page.getByLabel('Название ответа 1', { exact: true })).toHaveValue('Нет');
   const handle = page.getByRole('button', { name: 'Перетащить элемент 2', exact: true });
   await handle.focus(); await page.keyboard.press('Space'); await expect(handle).toHaveAttribute('aria-pressed', 'true');
-  await page.keyboard.press('ArrowUp'); await expect(page.getByRole('status').filter({ hasText: '«Элемент 2» над «Элемент 1».' })).toBeVisible();
+  // wait until the keyboard drag is really picked up (live region), otherwise the arrow key can be lost
+  await expect(page.locator('[id^="DndLiveRegion"]').filter({ hasText: '«Элемент 2» над «Элемент 2».' })).toHaveCount(1);
+  await page.keyboard.press('ArrowUp'); await expect(page.locator('[id^="DndLiveRegion"]').filter({ hasText: '«Элемент 2» над «Элемент 1».' })).toHaveCount(1);
   await page.keyboard.press('Space'); await expect(page.getByLabel('Название ответа 1', { exact: true })).toHaveValue('Да');
   server.fail(500); await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Не удалось сохранить');
