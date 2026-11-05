@@ -1,4 +1,5 @@
 import { AppearanceBlock, itemCardStyle } from '../shared/AppearanceBlock.js';
+import { checklistLabel, checklistNumbers } from '@lms/shared/checklist-numbering';
 import { RichDescription } from '../shared/RichDescription.js';
 import { ObserverSessionsBlock } from './ObserverSessionsBlock.js';
 import { useRef, useState } from 'react';
@@ -257,6 +258,7 @@ function ChecklistTaking({
   const [pendingAnswers, setPendingAnswers] = useState<Record<string, { checked?: boolean; scaleLevel?: number }>>({});
 
   if (!checklist) return null;
+  const numbering = checklistNumbers(checklist.items, checklist.itemGroups ?? []);
   const resultFor = (itemId: string) => findResultForItem(instance.results, itemId);
   const { completedRequired, requiredCount } = getRequiredChecklistProgress(
     checklist.items,
@@ -372,7 +374,7 @@ function ChecklistTaking({
               }, COLORS.success, isDone)}
             >
               <p style={{ fontWeight: 600, marginTop: 0 }}>
-                {item.text}{' '}
+                {checklistLabel(item.text, numbering.itemNumbers.get(item.id), checklist.showNumbering)}{' '}
                 <span style={{ color: isDone ? COLORS.text : COLORS.muted, fontSize: 12, fontWeight: 500 }}>
                   {item.isRequired
                     ? t('checklists.requiredItem', 'Required')

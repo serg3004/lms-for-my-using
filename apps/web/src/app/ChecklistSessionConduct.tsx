@@ -1,3 +1,4 @@
+import { checklistNumbers } from '@lms/shared/checklist-numbering';
 import { RichDescription } from '../shared/RichDescription.js';
 import { readFeedbackAnswers, isCustomFeedback, firstMissingRequiredFeedback } from '@lms/shared/checklist-feedback';
 import { useEffect, useId, useRef, useState } from 'react';
@@ -422,7 +423,7 @@ export function ConductScreen({
             <section id={overviewId} hidden={!overviewOpen} aria-label={t('checklistSessions.conduct.overview', 'Sheet overview')}>
               <p role="status" style={{ fontSize: 13 }}>{t('checklistSessions.conduct.overviewProgress', '{{completed}} of {{total}} addressed', { completed: items.length - unanswered.length, total: items.length })}</p>
               {isContextStep && !contextComplete && <p style={{ fontSize: 13, color: COLORS.muted }}>{t('checklistSessions.conduct.completeContextFirst', 'Complete the required general information before moving to a criterion.')}</p>}
-              {overviewOpen && <ChecklistConductOverview criteria={criteria} groups={checklist.itemGroups ?? []} hideAnswered={hideAnswered} currentItemIndex={itemIndex} disabled={navigationLocked || (isContextStep && !contextComplete)} onSelect={(index) => void navigateToStep(index + (contextFields.length > 0 ? 1 : 0))} t={t} />}
+              {overviewOpen && <ChecklistConductOverview criteria={criteria} groups={checklist.itemGroups ?? []} showNumbering={checklist.showNumbering} hideAnswered={hideAnswered} currentItemIndex={itemIndex} disabled={navigationLocked || (isContextStep && !contextComplete)} onSelect={(index) => void navigateToStep(index + (contextFields.length > 0 ? 1 : 0))} t={t} />}
               <Button type="button" variant="secondary" disabled={navigationLocked} onClick={() => { focusStep.current = true; setOverviewOpen(false); }} style={{ minHeight: 44, marginTop: 12 }}>
                 {t('checklistSessions.conduct.returnToStep', 'Return to current step')}
               </Button>
@@ -434,7 +435,7 @@ export function ConductScreen({
                   ? t('checklistSessions.conduct.contextTitle', 'General information')
                   : isFeedbackStep
                   ? t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')
-                  : t('checklistSessions.conduct.criterionOf', 'Criterion {{index}} / {{total}}', { index: itemIndex + 1, total: items.length })}
+                  : checklist.showNumbering === false ? t('checklistSessions.conduct.criterion', 'Criterion') : t('checklistSessions.conduct.criterionOf', 'Criterion {{index}} / {{total}}', { index: itemIndex + 1, total: items.length })}
               </p>
 
               {isContextStep ? (
@@ -484,6 +485,7 @@ export function ConductScreen({
                       key={currentItem.id}
                       instanceId={instance.id}
                       item={currentItem}
+                      number={checklist.showNumbering === false ? '' : checklistNumbers(items, checklist.itemGroups ?? []).itemNumbers.get(currentItem.id)}
                       result={currentResult}
                       comment={commentDrafts[currentItem.id] ?? currentResult?.comment ?? ''}
                       onCommentChange={(comment) => setCommentDrafts((current) => ({ ...current, [currentItem.id]: comment }))}
@@ -644,6 +646,7 @@ export function formatElapsed(ms: number) {
 
 // PR 415: a click on an answer that needs a required explanation waits until the explanation is filled.
 function CriterionCard({
+  number,
   instanceId,
   item,
   result,
@@ -660,6 +663,7 @@ function CriterionCard({
 }: {
   instanceId: string;
   item: ChecklistItemSummary;
+  number?: string;
   result: ChecklistItemResultSummary | undefined;
   comment: string;
   onCommentChange: (comment: string) => void;
@@ -710,7 +714,7 @@ function CriterionCard({
 
   return (
     <div>
-      <CriterionHeading text={item.text} required={item.isRequired} t={t} />
+      <CriterionHeading text={item.text} number={number} required={item.isRequired} t={t} />
       <ChecklistItemDescription item={item} t={t} />
 
       {error && (

@@ -1,3 +1,4 @@
+import { checklistLabel } from '@lms/shared/checklist-numbering';
 import { descriptionText } from '@lms/shared/checklist-description';
 import { feedbackRows, isCustomFeedback, defaultFeedbackLayout } from '@lms/shared/checklist-feedback';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
@@ -116,9 +117,9 @@ export function buildSessionSummary(reports: ChecklistSessionReport[], locale: R
       if (criterion.groupId !== previousGroup) {
         previousGroup = criterion.groupId;
         const group = first.groups.find(({ id }) => id === criterion.groupId);
-        if (group) layout.headerRows.push(scoreRow(`${group.number} ${group.title}`, observations.map((report) => (report.summary.scoringMode === 'none' ? null : report.groups.find(({ id }) => id === group.id) ?? null))));
+        if (group) layout.headerRows.push(scoreRow(checklistLabel(group.title, group.number), observations.map((report) => (report.summary.scoringMode === 'none' ? null : report.groups.find(({ id }) => id === group.id) ?? null))));
       }
-      scoreRow(`${criterion.number} ${criterion.text}`, observations.map((report) => {
+      scoreRow(checklistLabel(criterion.text, criterion.number), observations.map((report) => {
         const row = report.criteria.find(({ id }) => id === criterion.id);
         return row && row.score !== null && row.maxScore !== null ? { score: row.score, maxScore: row.maxScore } : null;
       }), observations.map((report) => {
@@ -150,7 +151,7 @@ export function buildSessionSummary(reports: ChecklistSessionReport[], locale: R
       section({ ru: 'Описание', en: 'Description', kk: 'Сипаттама', zh: '描述' }[locale]);
       if (observations.some((report) => report.checklist.description)) detail(label.sheet, observations.map((report) => descriptionText(report.checklist.description ?? '')));
       const described = new Map(observations.flatMap((report) => report.criteria.filter((criterion) => criterion.description || criterion.levelDescription)).map((criterion) => [criterion.id, criterion]));
-      for (const criterion of described.values()) detail(`${criterion.number} ${criterion.text}`, observations.map((report) => {
+      for (const criterion of described.values()) detail(checklistLabel(criterion.text, criterion.number), observations.map((report) => {
         const row = report.criteria.find((candidate) => candidate.id === criterion.id);
         return [row?.description, row?.levelDescription].filter(Boolean).map((value) => descriptionText(value!)).join('\n');
       }));

@@ -1118,7 +1118,8 @@
         "allowSkipAll": "Add a “Skip” answer option",
         "recordLocation": "Record location at the start and end of the observation",
         "feedbackEnabled": "Add a “Feedback” section",
-        "feedbackRequired": "Feedback is required"
+        "feedbackRequired": "Feedback is required",
+        "showNumbering": "Number criteria and groups"
       },
       "itemsTitle": "Checklist items",
       "noItems": "No items yet.",
@@ -1793,6 +1794,7 @@
         "moveError": "Unable to change the order of the photos.",
         "removeError": "Unable to remove the photo."
       },
+      "showNumberingHint": "Show numbers in preview, when filling in the sheet and in reports. The editor keeps numbers for orientation. Applies to new assignments after saving.",
       "appearance": {
         "title": "Appearance",
         "hint": "Text colour, background and border of the sheet blocks. The employee sees the sheet in this look; the report PDF does not repeat it.",
@@ -3101,7 +3103,8 @@
         "unanswered": "Unanswered"
       },
       "completeContextFirst": "Complete the required general information before moving to a criterion.",
-      "feedbackRequiredHint": "Save the strengths and development areas before completing."
+      "feedbackRequiredHint": "Save the strengths and development areas before completing.",
+      "criterion": "Criterion"
     },
     "learner": {
       "title": "My training sessions",

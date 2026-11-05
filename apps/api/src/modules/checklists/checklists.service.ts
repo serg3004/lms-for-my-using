@@ -126,6 +126,7 @@ const checklistSelect = {
   feedbackLayout: true,
   appearance: true,
   allowSkipAll: true,
+  showNumbering: true,
   accessMode: true,
   pinned: true,
   allowEditByAll: true,
@@ -302,6 +303,7 @@ type ChecklistRuntime = {
   // PR 422 -- optional: older snapshots read as the standard look.
   appearance?: Appearance | null;
   allowSkipAll?: boolean;
+  showNumbering?: boolean;
   itemGroups?: ChecklistSnapshotItemGroup[];
   items: ChecklistSnapshotItem[];
 };
@@ -795,6 +797,7 @@ export class ChecklistsService {
           // PR 422: the copy keeps the look of each block kind; per-group/criterion overrides refer to ids the copy does not have.
           appearance: kindAppearance(source.appearance) ?? undefined,
           allowSkipAll: source.allowSkipAll,
+          showNumbering: source.showNumbering,
           // PR 366: only an administrator's copy of a free checklist stays free.
           accessMode: keepFreeAccess ? source.accessMode : 'assigned',
           allowEditByAll: source.allowEditByAll,
@@ -2108,6 +2111,7 @@ export class ChecklistsService {
         passThreshold: checklist.passThreshold,
         scaleLevels: checklist.scaleLevels as ScaleLevel[] | null,
         feedbackEnabled: checklist.feedbackEnabled ?? true,
+        ...(checklist.showNumbering === false ? { showNumbering: false } : {}),
         itemGroups: groups.map((group) => ({ id: group.id, title: group.title, order: group.order })),
       },
       rows,
@@ -2629,6 +2633,7 @@ export class ChecklistsService {
       feedbackLayout?: Prisma.JsonValue | null;
       appearance?: Prisma.JsonValue | null;
       allowSkipAll?: boolean;
+      showNumbering?: boolean;
       itemGroups?: ChecklistSnapshotItemGroup[];
     },
     items: ChecklistSnapshotItem[],
@@ -2653,6 +2658,7 @@ export class ChecklistsService {
       feedbackLayout: parseFeedbackLayout(checklist.feedbackLayout),
       appearance: sanitizeAppearance(checklist.appearance),
       allowSkipAll: checklist.allowSkipAll,
+      showNumbering: checklist.showNumbering ?? true,
       itemGroups: checklist.itemGroups?.map((group) => ({ ...group })),
       items: items.map((item) => ({ ...item })),
     };
@@ -2797,6 +2803,7 @@ export class ChecklistsService {
           appearance: snapshot.checklist.appearance ?? null,
           feedbackAnswerSets: snapshot.checklist.feedbackAnswerSets ?? {},
           allowSkipAll: snapshot.checklist.allowSkipAll ?? false,
+          showNumbering: snapshot.checklist.showNumbering ?? true,
         }
       : instance.checklist;
 

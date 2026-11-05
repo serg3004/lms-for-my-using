@@ -481,6 +481,7 @@ export type ChecklistSummary = {
   feedbackEnabled?: boolean;
   feedbackRequired?: boolean;
   allowSkipAll?: boolean;
+  showNumbering?: boolean;
   // PR 353 -- optional because older payloads never carried it (read as 'assigned').
   accessMode?: ChecklistAccessMode;
   // PR 354 -- optional for the same reason (read as false).
@@ -736,7 +737,7 @@ export type ChecklistReportPerson = {
 export type ChecklistSessionReport = {
   sessionId: string;
   instanceId: string;
-  checklist: { id: string; title: string; description?: string };
+  checklist: { id: string; title: string; description?: string; showNumbering?: boolean };
   visible: boolean;
   header: {
     status: ChecklistSessionStatus;

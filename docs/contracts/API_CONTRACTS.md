@@ -2074,3 +2074,21 @@ Author preview shows all content, bypasses Continue conditions explicitly, and n
 filters remain. The admin report shows lesson, version and per-chapter reasons in an expandable full-width card below the table; CSV adds these fields when longread
 rows are present and retains the ordinary export shape when absent. File-state changes appear after the next server
 reader/check refresh; the persisted report is the same checked snapshot, not a second calculation.
+
+### Checklist numbering (PR 423)
+
+`Checklist.showNumbering` is a boolean, default `true`. POST `/checklists` and PATCH `/checklists/:id`
+accept it; staff/learner checklist responses expose it. The settings editor saves/discards it with the
+other sheet settings. The author’s “Groups and criteria” editor keeps its navigation numbers.
+
+Copies and organization templates retain this flag. Assignment freezes it in `templateSnapshot`;
+subsequent edits do not change an assigned/started session. Historical snapshots/templates without the
+field read as `true`. A legacy instance with no snapshot keeps its existing live-template fallback.
+
+Generated group/criterion prefixes are hidden when `false` in preview (including radio group accessible
+names), learner filling, session conduct/overview, detailed report and PDF. The step heading says only
+“Criterion”; answer counts and progress totals remain visible. Numbers typed into titles stay intact.
+Visible session reports include `checklist.showNumbering`; `groups[].number` and `criteria[].number`
+are empty strings when disabled. CSV/XLSX summary labels omit those prefixes too. Scores, ordering,
+identifiers and permissions are unaffected. The shared label function controls generated prefixes;
+filtering answered items never renumbers the sheet.

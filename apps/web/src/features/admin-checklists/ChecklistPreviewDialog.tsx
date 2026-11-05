@@ -1,3 +1,4 @@
+import { checklistLabel, checklistNumbers } from '@lms/shared/checklist-numbering';
 import { RichDescription } from '../../shared/RichDescription.js';
 import { collectFeedbackFields, isCustomFeedback, firstMissingRequiredFeedback, type FeedbackLayout, type FeedbackAnswerSetSnapshot } from '@lms/shared/checklist-feedback';
 import { listChecklistAnswerSets } from '../../shared/api/checklists.js';
@@ -20,7 +21,7 @@ type PreviewProps = {
   // PR 421: the sheet's extra pictures, shown under the description like the employee sees them.
   checklistId?: string; photos?: ChecklistPhotoSummary[];
   contextFields: ContextField[]; scoringMode: ChecklistScoringMode; scaleLevels: ChecklistScaleLevel[];
-  passThreshold: number; feedbackEnabled: boolean; feedbackRequired: boolean; allowSkipAll: boolean;
+  showNumbering?: boolean; passThreshold: number; feedbackEnabled: boolean; feedbackRequired: boolean; allowSkipAll: boolean;
   feedbackLayout?: FeedbackLayout | null;
   // PR 422: the look of the sheet blocks, as the employee sees it.
   appearance?: Appearance | null;
@@ -31,7 +32,7 @@ const emptyFeedback: FeedbackDraft = { strengths: '', developmentAreas: '', next
 
 /** Local draft only: this component never loads a session or invokes a mutation/upload. */
 export function ChecklistPreviewDialog(props: PreviewProps) {
-  const { title, description, items, groups, contextFields, scoringMode, scaleLevels, passThreshold, feedbackEnabled, feedbackRequired, allowSkipAll, cameraOnly, onClose, t } = props;
+  const { title, description, items, groups, showNumbering = true, contextFields, scoringMode, scaleLevels, passThreshold, feedbackEnabled, feedbackRequired, allowSkipAll, cameraOnly, onClose, t } = props;
   const dialog = useRef<HTMLDialogElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const titleId = useId();
@@ -57,6 +58,7 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
     };
   }, []);
 
+  const numbering = checklistNumbers(items, groups);
   const result = computePreviewResult(items, scoringMode, scaleLevels, passThreshold, answers, allowSkipAll, true);
   const complete = result.allAnswered && contextFields.every((field) => !field.required || values[field.id]?.trim())
     && (!feedbackEnabled || (isCustomFeedback(props.feedbackLayout) ? !firstMissingRequiredFeedback(props.feedbackLayout!, feedback.answers ?? {}) : !feedbackRequired || Boolean(feedback.strengths.trim() && feedback.developmentAreas.trim())));
@@ -99,9 +101,9 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
           {groupItems(items, groups).map(({ group, items: groupCriteria }, groupIndex) => (
             <AppearanceBlock key={group?.id ?? 'ungrouped'} appearance={props.appearance} kind="group" id={group?.id} style={{ marginBottom: 8 }}>
             <section aria-labelledby={`${titleId}-group-${groupIndex}`}>
-              <h3 id={`${titleId}-group-${groupIndex}`}>{groupIndex + 1} {group?.title ?? t('admin.checklists.ungroupedItems', 'Ungrouped criteria')}</h3>
-              {groupCriteria.map((item, index) => (
-                <PreviewCriterion key={item.id} item={item} number={`${groupIndex + 1}.${index + 1}`} answer={answers[item.id]}
+              <h3 id={`${titleId}-group-${groupIndex}`}>{checklistLabel(group?.title ?? t('admin.checklists.ungroupedItems', 'Ungrouped criteria'), group ? numbering.groupNumbers.get(group.id) : undefined, showNumbering)}</h3>
+              {groupCriteria.map((item) => (
+                <PreviewCriterion key={item.id} item={item} number={showNumbering ? numbering.itemNumbers.get(item.id) ?? '' : ''} answer={answers[item.id]}
                   levels={checklistItemLevels(item, scoringMode, scaleLevels)} scoringMode={scoringMode} allowSkip={allowSkipAll || item.allowSkip === true}
                   cameraOnly={cameraOnly} appearance={props.appearance} onChange={(patch) => updateAnswer(item.id, patch)} t={t} />
               ))}
@@ -151,9 +153,9 @@ function PreviewCriterion({ item, number, answer, levels, scoringMode, allowSkip
   ];
   const noteShown = isNoteOffered(item, answer && !answer.skipped ? answer : undefined, levels !== null);
   return <div style={itemCardStyle(appearance, item.id, { padding: '20px 0', borderBottom: '1px solid var(--color-border)' }, '#166534', answer?.answered === true)}>
-    <CriterionHeading text={`${number} ${item.text}`} required={item.isRequired} t={t} />
+    <CriterionHeading text={item.text} number={number} required={item.isRequired} t={t} />
     <ChecklistItemDescription item={item} t={t} />
-    <div role="radiogroup" aria-required={item.isRequired} aria-label={`${number} ${item.text}`} style={{ display: 'grid', gap: 6, marginBottom: 12 }}>
+    <div role="radiogroup" aria-required={item.isRequired} aria-label={checklistLabel(item.text, number)} style={{ display: 'grid', gap: 6, marginBottom: 12 }}>
       {options.map((level) => <label key={level.level} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, cursor: 'pointer' }}>
         <input type="radio" style={{ width: 'auto', flex: 'none' }} name={id} checked={!answer?.skipped && (levels ? answer?.scaleLevel === level.level : answer?.answered === true && answer.checked === (level.level === 1))}
           onChange={() => onChange(levels ? { scaleLevel: level.level, skipped: false, answered: true } : { checked: level.level === 1, skipped: false, answered: true })} />

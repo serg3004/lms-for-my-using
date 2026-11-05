@@ -116,6 +116,7 @@ export function ChecklistBuilder({
   const [feedbackEnabled, setFeedbackEnabled] = useState(checklist.feedbackEnabled ?? true);
   const [feedbackRequired, setFeedbackRequired] = useState(checklist.feedbackRequired ?? false);
   const [allowSkipAll, setAllowSkipAll] = useState(checklist.allowSkipAll ?? false);
+  const [showNumbering, setShowNumbering] = useState(checklist.showNumbering ?? true);
   const [accessMode, setAccessMode] = useState<ChecklistAccessMode>(checklist.accessMode ?? 'assigned');
   const [pinned, setPinned] = useState(checklist.pinned ?? false);
   // PR 362в: the creator and admins decide who may edit; everyone else sees the sheet read-only when it is closed.
@@ -153,7 +154,7 @@ export function ChecklistBuilder({
     title: checklist.title, description: checklist.description ?? '', scoringMode: checklist.scoringMode, passThreshold: checklist.passThreshold,
     requiresReview: checklist.requiresReview, scaleLevels: checklist.scaleLevels ?? createDefaultScale(t), defaultLocationCapturePolicy: checklist.defaultLocationCapturePolicy ?? '',
     preSessionVisibility: checklist.preSessionVisibility ?? 'structure_only', allowFinishIncomplete: checklist.allowFinishIncomplete ?? false, forbidGalleryPhotos: checklist.forbidGalleryPhotos ?? false,
-    feedbackLayout: checklist.feedbackLayout ?? null, appearance: sanitizeAppearance(checklist.appearance), feedbackEnabled: checklist.feedbackEnabled ?? true, feedbackRequired: checklist.feedbackRequired ?? false, allowSkipAll: checklist.allowSkipAll ?? false,
+    feedbackLayout: checklist.feedbackLayout ?? null, appearance: sanitizeAppearance(checklist.appearance), feedbackEnabled: checklist.feedbackEnabled ?? true, feedbackRequired: checklist.feedbackRequired ?? false, allowSkipAll: checklist.allowSkipAll ?? false, showNumbering: checklist.showNumbering ?? true,
     accessMode: checklist.accessMode ?? 'assigned', pinned: (checklist.accessMode ?? 'assigned') === 'free' && (checklist.pinned ?? false),
     allowEditByAll: canManageEditAccess ? (checklist.allowEditByAll ?? true) : undefined,
     moduleSettings: storedModuleSettings,
@@ -194,7 +195,7 @@ export function ChecklistBuilder({
     listChecklistItemGroups(checklist.id).then(setItemGroups).catch(() => setItemGroups([]));
     listChecklistScales().then(setScales).catch(() => setScales([]));
   }, [checklist.id]);
-  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, feedbackLayout, appearance, feedbackEnabled, feedbackRequired, allowSkipAll, accessMode, pinned, allowEditByAll: canManageEditAccess ? allowEditByAll : undefined, moduleSettings });
+  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, feedbackLayout, appearance, feedbackEnabled, feedbackRequired, allowSkipAll, showNumbering, accessMode, pinned, allowEditByAll: canManageEditAccess ? allowEditByAll : undefined, moduleSettings });
   const hasUnsavedChanges = JSON.stringify(settingsPayload) !== savedSnapshot;
   function settingsErrorMessage(error: unknown) {
     return error instanceof ApiClientError && error.status === 409
@@ -237,6 +238,7 @@ export function ChecklistBuilder({
     setFeedbackEnabled(checklist.feedbackEnabled ?? true);
     setFeedbackRequired(checklist.feedbackRequired ?? false);
     setAllowSkipAll(checklist.allowSkipAll ?? false);
+    setShowNumbering(checklist.showNumbering ?? true);
     setAccessMode(checklist.accessMode ?? 'assigned');
     setPinned(checklist.pinned ?? false);
     setAllowEditByAll(checklist.allowEditByAll ?? true);
@@ -595,6 +597,11 @@ export function ChecklistBuilder({
           </ChecklistSettingsForm>
           <section className="admin-card admin-settings-block" aria-labelledby="checklist-settings-title">
             <h3 id="checklist-settings-title">{t('admin.checklists.settingsBlockTitle', 'Settings')}</h3>
+            <ChecklistCheckboxOption
+              label={t('admin.checklists.field.showNumbering', 'Number criteria and groups')}
+              hint={t('admin.checklists.showNumberingHint', 'Show numbers in preview, when filling in the sheet and in reports. The editor keeps numbers for orientation. Applies to new assignments after saving.')}
+              checked={showNumbering} disabled={!canEdit} onChange={setShowNumbering}
+            />
             <ChecklistCheckboxOption
               label={t('admin.checklists.field.allowSkipAll', 'Add a “Skip” answer option')}
               hint={t('admin.checklists.allowSkipAllHint', 'The observer can skip any criterion. Skipped criteria are left out of the result. Applies to sessions assigned after you save.')}
@@ -1175,6 +1182,7 @@ export function ChecklistBuilder({
           feedbackEnabled={feedbackEnabled}
           feedbackRequired={feedbackRequired}
           allowSkipAll={allowSkipAll}
+          showNumbering={showNumbering}
           cameraOnly={forbidGalleryPhotos}
           onClose={() => setPreviewOpen(false)}
           t={t}

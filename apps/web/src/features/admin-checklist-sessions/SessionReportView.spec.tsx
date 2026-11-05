@@ -155,3 +155,12 @@ describe('ReportCriteria', () => {
     expect(renderToStaticMarkup(<ReportCriteria report={makeReport({ visible: false })} t={t} />)).toContain('The result will be shown');
   });
 });
+
+it('keeps criterion text separate and omits generated prefixes when numbering is off (PR 423)', () => {
+  const report = makeReport();
+  report.checklist.showNumbering = false;
+  report.criteria[0]!.text = '7. Author criterion';
+  const html = renderToStaticMarkup(<ReportCriteria report={report} t={t} />);
+  expect(html).toContain('<span>7. Author criterion</span>');
+  expect(html).not.toContain(`<strong>${report.criteria[0]!.number}</strong>`);
+});

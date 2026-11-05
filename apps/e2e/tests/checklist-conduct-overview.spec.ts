@@ -6,7 +6,7 @@ const first = 'Observe the greeting';
 const second = 'Already answered criterion';
 const third = 'Explicitly skipped criterion';
 const fourth = 'Final unanswered criterion';
-async function setup(page: Page, options: { hold?: 'answer' | 'photo' | 'feedback' | 'context'; photo?: boolean; context?: boolean; allowIncomplete?: boolean; rejectAnswer?: boolean } = {}) {
+async function setup(page: Page, options: { showNumbering?: boolean; hold?: 'answer' | 'photo' | 'feedback' | 'context'; photo?: boolean; context?: boolean; allowIncomplete?: boolean; rejectAnswer?: boolean } = {}) {
   let release = () => {};
   const gate = new Promise<void>((resolve) => { release = resolve; });
   const calls: string[] = [];
@@ -16,6 +16,7 @@ async function setup(page: Page, options: { hold?: 'answer' | 'photo' | 'feedbac
     status: 'in_progress', totalScore: 0, maxScore: 10, percentage: 0, passed: false, dueAt: null, submittedAt: null, completedAt: null, createdAt: '2026-10-01T12:00:00Z', updatedAt: '2026-10-01T12:00:00Z',
     checklist: { id: 'sheet', organizationId: 'org', title: 'Observation sheet', description: null, status: 'published', scoringMode: 'sum_points', passThreshold: 80, scaleLevels: null, requiresReview: false, createdBy: 'observer', createdAt: '2026-10-01T12:00:00Z', updatedAt: '2026-10-01T12:00:00Z',
       allowFinishIncomplete: options.allowIncomplete === true,
+      showNumbering: options.showNumbering,
       contextFields: options.context ? [{ id: 'workplace', label: 'Workplace', required: true, type: 'text', order: 0 }] : [],
       itemGroups: [{ id: 'group-a', checklistId: 'sheet', title: 'Greeting', order: 0 }, { id: 'group-b', checklistId: 'sheet', title: 'Checks', order: 1 }],
       items: [first, second, third, fourth].map((text, index) => ({ id: `item-${index + 1}`, checklistId: 'sheet', order: index, text, points: 10, isRequired: index === 0, photoRequired: index === 0 && options.photo === true, allowSkip: index > 0, groupId: index < 2 ? 'group-a' : index === 2 ? 'group-b' : null })),
@@ -216,4 +217,13 @@ test.describe('conduct sheet overview (PR 347)', () => {
     await expect(overview(page).getByRole('button', { name: new RegExp(third) })).toHaveCount(0);
     await expect(overview(page).getByRole('button', { name: new RegExp(first) })).toBeVisible();
   });
+});
+
+test('numbering off removes spoken step numbers and overview prefixes (PR 423)', async ({ page }) => {
+  await setup(page, { showNumbering: false });
+  await expect(page.getByText('Критерий', { exact: true })).toBeVisible();
+  await expect(page.getByText('Критерий 1 / 4', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Обзор листа', exact: true }).click();
+  await expect(overview(page).getByRole('heading', { name: 'Greeting', exact: true })).toBeVisible();
+  await expect(overview(page).getByRole('button', { name: /Observe the greeting/ })).not.toContainText('1.1');
 });
