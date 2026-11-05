@@ -99,6 +99,7 @@ export const createChecklistSchema = z.object({
   // PR 405: configurable feedback section; absent/null = the classic three text fields.
   feedbackLayout: feedbackLayoutSchema.nullable().optional(),
   allowSkipAll: z.boolean().default(false),
+  showNumbering: z.boolean().default(true),
   accessMode: checklistAccessModeSchema.default('assigned'),
   allowEditByAll: z.boolean().default(false),
 });
@@ -163,6 +164,7 @@ export const updateChecklistSchema = z
     feedbackRequired: z.boolean(),
     feedbackLayout: feedbackLayoutSchema.nullable(),
     allowSkipAll: z.boolean(),
+    showNumbering: z.boolean(),
     accessMode: checklistAccessModeSchema,
     pinned: z.boolean(),
     allowEditByAll: z.boolean(),

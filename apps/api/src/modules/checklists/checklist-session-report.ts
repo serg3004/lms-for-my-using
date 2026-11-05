@@ -1,3 +1,4 @@
+import { checklistNumbers } from '@lms/shared/checklist-numbering';
 import type { Prisma } from '@prisma/client';
 
 import {
@@ -93,7 +94,7 @@ export function buildSessionReport(input: SessionReportInput) {
     learner: input.learner,
     observer: input.observer,
   };
-  const base = { sessionId: session.id, instanceId: instance.id, checklist: { id: input.checklistId, title: breakdown.checklist.title }, header };
+  const base = { sessionId: session.id, instanceId: instance.id, checklist: { id: input.checklistId, title: breakdown.checklist.title, ...(input.visible ? { showNumbering: breakdown.checklist.showNumbering ?? true } : {}) }, header };
 
   if (!input.visible) {
     return {
@@ -104,21 +105,15 @@ export function buildSessionReport(input: SessionReportInput) {
 
   // Group numbers follow the sheet order and skip groups without criteria; ungrouped criteria are numbered on their own.
   const groupById = new Map(breakdown.checklist.itemGroups.map((group) => [group.id, group]));
-  const groupNumbers = new Map<string | null, number>();
-  const criteriaCounters = new Map<string | null, number>();
+  const { groupNumbers, itemNumbers } = checklistNumbers(breakdown.rows.map(({ item }) => item), breakdown.checklist.itemGroups);
   const groupTotals = new Map<string | null, { earned: number; max: number; count: number }>();
-  let ungroupedCounter = 0;
 
   // PR 416: a sheet without points reports answers only -- no score, maximum, percentage or verdict anywhere.
   const withoutPoints = breakdown.checklist.scoringMode === 'none';
 
   const criteria = breakdown.rows.map(({ item, result, state, earned, max }) => {
     const groupId = item.groupId && groupById.has(item.groupId) ? item.groupId : null;
-    if (!groupNumbers.has(groupId)) groupNumbers.set(groupId, groupId === null ? 0 : [...groupNumbers.keys()].filter((key) => key !== null).length + 1);
-    const inGroup = (criteriaCounters.get(groupId) ?? 0) + 1;
-    criteriaCounters.set(groupId, inGroup);
-    ungroupedCounter += groupId === null ? 1 : 0;
-    const number = groupId === null ? String(ungroupedCounter) : `${groupNumbers.get(groupId)}.${inGroup}`;
+    const number = breakdown.checklist.showNumbering === false ? '' : itemNumbers.get(item.id)!;
 
     const totals = groupTotals.get(groupId) ?? { earned: 0, max: 0, count: 0 };
     groupTotals.set(groupId, { earned: totals.earned + earned, max: totals.max + max, count: totals.count + 1 });
@@ -157,7 +152,7 @@ export function buildSessionReport(input: SessionReportInput) {
     .map(([groupId, totals]) => {
       const percentage = withoutPoints ? null : percentOf(totals.earned, totals.max);
       return {
-        id: groupId, number: String(groupNumbers.get(groupId)), title: groupById.get(groupId as string)!.title,
+        id: groupId, number: breakdown.checklist.showNumbering === false ? '' : groupNumbers.get(groupId as string)!, title: groupById.get(groupId as string)!.title,
         score: round2(totals.earned), maxScore: round2(totals.max), percentage, criteriaCount: totals.count,
         color: rangeColor(percentage, settings),
       };

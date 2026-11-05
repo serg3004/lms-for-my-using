@@ -1,6 +1,7 @@
 module.exports = {
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
+    '^@lms/shared/checklist-numbering$': '<rootDir>/../../packages/shared/src/checklist-numbering.ts',
     '^@lms/shared/checklist-description$': '<rootDir>/../../packages/shared/src/checklist-description.ts',
     '^@lms/shared/checklist-feedback$': '<rootDir>/../../packages/shared/src/checklist-feedback.ts',
     '^@lms/shared/longread-progress$': '<rootDir>/../../packages/shared/src/longread-progress.ts',

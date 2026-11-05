@@ -31,6 +31,7 @@ export type ChecklistTemplatePayload = {
   // PR 405: configurable feedback section; templates saved before it have none (= the classic three fields).
   feedbackLayout?: Prisma.JsonValue | null;
   allowSkipAll?: boolean;
+  showNumbering?: boolean;
   // PR 397: per-sheet module-settings overrides; templates saved before it have none (= as in the organization).
   moduleSettings?: ModuleSettingsOverridesView;
   groups: Array<{ title: string; order: number }>;
@@ -72,6 +73,7 @@ export class ChecklistOrgTemplates {
       feedbackRequired: source.feedbackRequired,
       feedbackLayout: (source.feedbackLayout as Prisma.JsonValue | null) ?? null,
       allowSkipAll: source.allowSkipAll,
+      showNumbering: source.showNumbering,
       moduleSettings: presentOverrides(source),
       groups: source.itemGroups.map((group) => ({ title: group.title, order: group.order })),
       items: source.items.map((item) => ({
@@ -156,6 +158,7 @@ export class ChecklistOrgTemplates {
           feedbackEnabled: payload.feedbackEnabled ?? true, feedbackRequired: payload.feedbackRequired ?? false,
           ...(feedbackLayout ? { feedbackLayout: feedbackLayout as unknown as Prisma.InputJsonValue } : {}),
           allowSkipAll: payload.allowSkipAll ?? false,
+          showNumbering: payload.showNumbering ?? true,
           ...(payload.moduleSettings ? overridesToColumns({ thresholds: payload.moduleSettings.thresholds, resultColors: payload.moduleSettings.resultColors, feedbackVisibility: payload.moduleSettings.feedbackVisibility, observers: payload.moduleSettings.observers }) as Prisma.ChecklistUncheckedCreateInput : {}),
           createdBy: actorId, folderId,
         },

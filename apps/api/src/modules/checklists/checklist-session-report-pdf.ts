@@ -1,3 +1,4 @@
+import { checklistLabel } from '@lms/shared/checklist-numbering';
 import { descriptionRuns, descriptionText, type DescriptionRun } from '@lms/shared/checklist-description';
 import { feedbackRows, isCustomFeedback } from '@lms/shared/checklist-feedback';
 import PDFDocument from 'pdfkit';
@@ -257,7 +258,7 @@ class ReportPainter {
     this.section(this.labels.groups);
     for (const group of this.report.groups) {
       const titleWidth = 250;
-      const title = `${group.number}. ${group.title}`;
+      const title = checklistLabel(group.title, group.number ? `${group.number}.` : '', this.report.checklist.showNumbering);
       const height = Math.max(22, this.measure(title, titleWidth, { size: 10 }) + 6);
       this.ensureSpace(height + 4);
       const color = group.color?.color ?? NEUTRAL_STRIPE;
@@ -314,7 +315,7 @@ class ReportPainter {
       const highlight: Highlight = criterion.color;
       const status = criterionStatus(criterion);
       const ink = highlight?.light.text ?? INK;
-      const title = `${criterion.number}  ${criterion.text}`;
+      const title = checklistLabel(criterion.text, criterion.number, this.report.checklist.showNumbering, '  ');
       const scoreText = withoutPoints
         ? (criterion.state === 'skipped' ? this.labels.skippedCriterion : criterion.state === 'answered' ? this.labels.answered : this.labels.unanswered)
         : criterion.score === null || criterion.maxScore === null
@@ -389,7 +390,7 @@ class ReportPainter {
     if (!this.report.visible) return;
     const descriptions = [
       ...(this.report.checklist.description ? [{ title: this.report.checklist.title, value: this.report.checklist.description }] : []),
-      ...this.report.criteria.flatMap((criterion) => [criterion.description, criterion.levelDescription].filter((value): value is string => !!value).map((value) => ({ title: `${criterion.number} ${criterion.text}`, value }))),
+      ...this.report.criteria.flatMap((criterion) => [criterion.description, criterion.levelDescription].filter((value): value is string => !!value).map((value) => ({ title: checklistLabel(criterion.text, criterion.number, this.report.checklist.showNumbering), value }))),
     ];
     if (!descriptions.length) return;
     this.section({ ru: 'Описание', en: 'Description', kk: 'Сипаттама', zh: '描述' }[this.options.locale]);

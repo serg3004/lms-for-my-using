@@ -123,6 +123,7 @@ const checklistSelect = {
   feedbackRequired: true,
   feedbackLayout: true,
   allowSkipAll: true,
+  showNumbering: true,
   accessMode: true,
   pinned: true,
   allowEditByAll: true,
@@ -297,6 +298,7 @@ type ChecklistRuntime = {
   feedbackLayout?: FeedbackLayout | null;
   feedbackAnswerSets?: Record<string, FeedbackAnswerSetSnapshot>;
   allowSkipAll?: boolean;
+  showNumbering?: boolean;
   itemGroups?: ChecklistSnapshotItemGroup[];
   items: ChecklistSnapshotItem[];
 };
@@ -787,6 +789,7 @@ export class ChecklistsService {
           feedbackRequired: source.feedbackRequired,
           feedbackLayout: source.feedbackLayout ?? undefined,
           allowSkipAll: source.allowSkipAll,
+          showNumbering: source.showNumbering,
           // PR 366: only an administrator's copy of a free checklist stays free.
           accessMode: keepFreeAccess ? source.accessMode : 'assigned',
           allowEditByAll: source.allowEditByAll,
@@ -2100,6 +2103,7 @@ export class ChecklistsService {
         passThreshold: checklist.passThreshold,
         scaleLevels: checklist.scaleLevels as ScaleLevel[] | null,
         feedbackEnabled: checklist.feedbackEnabled ?? true,
+        ...(checklist.showNumbering === false ? { showNumbering: false } : {}),
         itemGroups: groups.map((group) => ({ id: group.id, title: group.title, order: group.order })),
       },
       rows,
@@ -2620,6 +2624,7 @@ export class ChecklistsService {
       feedbackRequired?: boolean;
       feedbackLayout?: Prisma.JsonValue | null;
       allowSkipAll?: boolean;
+      showNumbering?: boolean;
       itemGroups?: ChecklistSnapshotItemGroup[];
     },
     items: ChecklistSnapshotItem[],
@@ -2643,6 +2648,7 @@ export class ChecklistsService {
       feedbackRequired: checklist.feedbackRequired,
       feedbackLayout: parseFeedbackLayout(checklist.feedbackLayout),
       allowSkipAll: checklist.allowSkipAll,
+      showNumbering: checklist.showNumbering ?? true,
       itemGroups: checklist.itemGroups?.map((group) => ({ ...group })),
       items: items.map((item) => ({ ...item })),
     };
@@ -2786,6 +2792,7 @@ export class ChecklistsService {
           feedbackLayout: snapshot.checklist.feedbackLayout ?? null,
           feedbackAnswerSets: snapshot.checklist.feedbackAnswerSets ?? {},
           allowSkipAll: snapshot.checklist.allowSkipAll ?? false,
+          showNumbering: snapshot.checklist.showNumbering ?? true,
         }
       : instance.checklist;
 

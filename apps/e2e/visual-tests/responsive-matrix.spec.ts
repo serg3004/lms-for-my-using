@@ -1251,3 +1251,11 @@ for (const width of [320, 390, 1440]) test(`checklist text formatting window at 
   await expectNoPageOverflow(page);
   await expect(popup).toHaveScreenshot(`checklist-text-formatting-${width}.png`, { maxDiffPixels: 3000 });
 });
+
+for (const width of [320, 1440]) test(`checklist numbering disabled at ${width}px`, async ({ page }) => {
+  const { openUnnumberedPreview } = await import('../fixtures/checklist-numbering.js');
+  await page.setViewportSize({ width, height });
+  const { dialog } = await openUnnumberedPreview(page);
+  await expectNoPageOverflow(page);
+  await expect(dialog).toHaveScreenshot(`checklist-numbering-disabled-${width}.png`, { maxDiffPixels: 3000 });
+});
