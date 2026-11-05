@@ -1,3 +1,4 @@
+import { RichDescriptionEditor } from '../../shared/RichDescriptionEditor.js';
 import type { FeedbackLayout } from '@lms/shared/checklist-feedback';
 import { FeedbackBuilder } from '../checklist-feedback/FeedbackBuilder.js';
 import { useEffect, useRef, useState } from 'react';
@@ -575,14 +576,12 @@ export function ChecklistBuilder({
         </p>
       )}
       <div className="admin-builder__grid">
-        <div className="admin-builder__column">
+        <div className="admin-builder__column" style={{ minWidth: 0 }}>
           <ChecklistSettingsForm>
             <FormField id="checklist-title" label={t('admin.checklists.field.title', 'Title')}>
               <input id="checklist-title" value={title} onChange={(e) => setTitle(e.target.value)} />
             </FormField>
-            <FormField id="checklist-description" label={t('admin.checklists.field.description', 'Description')}>
-              <textarea id="checklist-description" value={description} onChange={(e) => setDescription(e.target.value)} />
-            </FormField>
+            <RichDescriptionEditor id="checklist-description" label={t('admin.checklists.field.description', 'Description')} value={description} onChange={setDescription} disabled={!canEdit} />
             <ChecklistCoverField checklistId={checklist.id} title={checklist.title} coverUpdatedAt={checklist.coverUpdatedAt} />
           </ChecklistSettingsForm>
           <section className="admin-card admin-settings-block" aria-labelledby="checklist-settings-title">
@@ -935,7 +934,7 @@ export function ChecklistBuilder({
           </ChecklistItemsEditor>
           {feedbackEnabled && <fieldset disabled={!canEdit} style={{ border: 0, padding: 0, minWidth: 0 }}><legend className="ui-visually-hidden">{t('admin.checklists.feedbackSectionTitle')}</legend><FeedbackBuilder value={feedbackLayout} onChange={setFeedbackLayout} required={feedbackRequired} /></fieldset>}
         </div>
-        <div className="admin-builder__column">
+        <div className="admin-builder__column" style={{ minWidth: 0 }}>
           <ChecklistSettingsForm>
             <h3 className="admin-heading-tip">
               {t('admin.checklists.scoringTitle', 'Scoring')}
@@ -967,15 +966,10 @@ export function ChecklistBuilder({
                         <button disabled={index === scaleLevels.length - 1} onClick={() => moveScaleLevelTo(index, index + 1)} type="button" aria-label={t('admin.checklists.moveNamedDown', 'Move down: {{name}}', { name: scaleLevelName(index) })}>↓</button>
                       </div>
                     </div>
-                    <input
+                    <input style={{ gridColumn: '2 / 4' }}
                       value={level.label}
                       onChange={(e) => updateScaleLevel(index, { label: e.target.value })}
                       placeholder={t('admin.checklists.scaleLevelLabel', 'Label')}
-                    />
-                    <input
-                      value={level.description ?? ''}
-                      onChange={(e) => updateScaleLevel(index, { description: e.target.value })}
-                      placeholder={t('admin.checklists.scaleLevelDescription', 'Description (optional)')}
                     />
                     <input
                       type="number"
@@ -983,6 +977,7 @@ export function ChecklistBuilder({
                       onChange={(e) => updateScaleLevel(index, { points: Number(e.target.value) })}
                     />
                     <button type="button" className="admin-scale-level-row__remove" onClick={() => removeScaleLevel(index)} aria-label={t('admin.checklists.delete', 'Delete')}>×</button>
+                    <div style={{ gridColumn: '1 / -1', minWidth: 0 }}><RichDescriptionEditor value={level.description ?? ''} onChange={(value) => updateScaleLevel(index, { description: value })} label={t('admin.checklists.scaleLevelDescription', 'Description (optional)')} maxLength={500} disabled={!canEdit} compact /></div>
                   </>)}</SortableBox>
                 ))}
                 </ItemsSortable>

@@ -1,3 +1,4 @@
+import { RichDescription } from '../shared/RichDescription.js';
 import type { TFunction } from 'i18next';
 
 import type { ChecklistItemSummary } from '../shared/api/types.js';
@@ -9,7 +10,7 @@ export function ChecklistItemDescription({ item, t }: { item: Pick<ChecklistItem
   return (
     <details style={{ margin: '4px 0 10px', fontSize: 13 }}>
       <summary style={{ cursor: 'pointer', minHeight: 32 }}>{t('checklists.itemDescription', 'Description')}</summary>
-      <p style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap' }}>{item.description}</p>
+      <p style={{ margin: '6px 0 0', whiteSpace: 'pre-wrap' }}><RichDescription value={item.description} /></p>
     </details>
   );
 }

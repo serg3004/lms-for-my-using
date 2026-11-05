@@ -37,10 +37,10 @@ describe('ItemDetailsDialog (PR 415)', () => {
     const { onSave } = mount();
     expect(document.querySelector('textarea')).toBeNull();
     click(document.querySelector('input[role="switch"]')!);
-    const area = document.querySelector('textarea')!;
-    act(() => {
-      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(area, '  Ценники совпадают  ');
-      area.dispatchEvent(new Event('input', { bubbles: true }));
+    const area = document.querySelector('[contenteditable="true"]')!;
+    await act(async () => {
+      area.innerHTML = '<p>  Ценники совпадают  </p>';
+      await new Promise((resolve) => setTimeout(resolve, 0));
     });
     await act(async () => { saveButton().click(); });
     expect(onSave).toHaveBeenCalledWith({ descriptionEnabled: true, description: 'Ценники совпадают', noteRule: 'off', noteAnswers: null, noteRequired: false });

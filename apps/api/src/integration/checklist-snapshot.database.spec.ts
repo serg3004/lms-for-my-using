@@ -1,6 +1,7 @@
 /// <reference types="jest" />
 
 import { randomUUID } from 'node:crypto';
+import { updateChecklistSchema, updateChecklistItemSchema } from '../modules/checklists/checklists.schemas.js';
 
 import { PrismaService } from '../database/prisma.service.js';
 import { ChecklistsService } from '../modules/checklists/checklists.service.js';
@@ -209,6 +210,21 @@ describe('checklist assignment snapshots — database', () => {
     await prisma.checklistItemGroup.update({ where: { id: replacement.id }, data: { title: 'Bulk renamed' } });
     expect((await service.getInstance(bulkRow.id, organizationId)).checklist.itemGroups).toMatchObject([{ title: 'Bulk group' }]);
     expect((await prisma.checklistInstance.findUniqueOrThrow({ where: { id: original.id } })).templateSnapshot).toEqual(before.templateSnapshot);
+  });
+
+  it('PR 420: sanitized descriptions survive assignment and later edits do not rewrite the snapshot', async () => {
+    const service = new ChecklistsService(prisma, {} as UploadService);
+    const description = updateChecklistSchema.parse({ description: '<p><strong>Safety</strong><script>bad()</script></p>' }).description!;
+    const itemPatch = updateChecklistItemSchema.parse({ description: '<span style="font-size:20px;color:#166534">Check here</span>', descriptionEnabled: true });
+    await prisma.checklist.update({ where: { id: checklistId }, data: { description, scoringMode: 'scale', scaleLevels: [{ level: 1, label: 'Yes', points: 1, description: '<p><strong>Level hint</strong></p>' }] } });
+    await prisma.checklistItem.update({ where: { id: itemId }, data: { description: itemPatch.description, descriptionEnabled: true } });
+    const assigned = await service.assignChecklist(checklistId, organizationId, { userId: learnerId }, assignerId);
+    await prisma.checklist.update({ where: { id: checklistId }, data: { description: 'Changed' } });
+    await prisma.checklistItem.update({ where: { id: itemId }, data: { description: 'Changed' } });
+    const frozen = await service.getScoreBreakdown(assigned.id, organizationId);
+    expect(frozen.checklist.description).toBe('<p><strong>Safety</strong></p>');
+    expect(frozen.rows[0]!.item.description).toContain('font-size:20px;color:#166534');
+    expect(frozen.checklist.scaleLevels?.[0]?.description).toBe('<p><strong>Level hint</strong></p>');
   });
 
 });

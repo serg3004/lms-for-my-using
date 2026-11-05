@@ -3546,5 +3546,28 @@
     "usedSetWarning": "更改适用于尚未开始的会话。已开始的会话保留其答案快照。",
     "requiredFields": "请填写并保存必填的反馈字段。",
     "item": "第{{number}}项"
+  },
+  "richDescription": {
+    "title": "文字格式",
+    "hint": "选择文字后，右键单击、长按或按 Shift+F10。Ctrl+B/I/U 更改字形。",
+    "bold": "粗体",
+    "italic": "斜体",
+    "underline": "下划线",
+    "uppercase": "大写",
+    "boldShort": "粗",
+    "italicShort": "斜",
+    "underlineShort": "下",
+    "uppercaseShort": "AA",
+    "size": "字号",
+    "size0": "小",
+    "size1": "正常",
+    "size2": "大",
+    "size3": "标题",
+    "color": "颜色",
+    "customColor": "自定义颜色",
+    "lowContrast": "与白色背景的对比度较低，建议至少为 4.5:1。",
+    "reset": "清除格式",
+    "close": "关闭",
+    "limit": "最多 {{count}} 个字符。"
   }
 }

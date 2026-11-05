@@ -728,7 +728,7 @@ export type ChecklistReportPerson = {
 export type ChecklistSessionReport = {
   sessionId: string;
   instanceId: string;
-  checklist: { id: string; title: string };
+  checklist: { id: string; title: string; description?: string };
   visible: boolean;
   header: {
     status: ChecklistSessionStatus;
@@ -762,6 +762,7 @@ export type ChecklistSessionReport = {
   criteria: Array<{
     id: string; number: string; groupId: string | null; text: string; state: 'answered' | 'skipped' | 'unanswered' | string;
     score: number | null; maxScore: number | null; levelLabel: string | null; comment: string | null;
+    description?: string; levelDescription?: string;
     photo: { fileName: string | null } | null; reviewStatus: string | null; color: ChecklistReportHighlight | null;
   }>;
   feedbackForm?: (FeedbackConfig & { answers: FeedbackAnswers }) | null;
