@@ -1,3 +1,4 @@
+import { descriptionText } from '@lms/shared/checklist-description';
 import { feedbackRows, isCustomFeedback, defaultFeedbackLayout } from '@lms/shared/checklist-feedback';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 
@@ -145,6 +146,16 @@ export function buildSessionSummary(reports: ChecklistSessionReport[], locale: R
       detail(label.development, observations.map((report) => report.feedback?.developmentAreas ?? '—'));
       detail(label.comment, observations.map((report) => report.feedback?.comment ?? '—'));
     }
+    if (observations.some((report) => report.checklist.description || report.criteria.some((criterion) => criterion.description || criterion.levelDescription))) {
+      section({ ru: 'Описание', en: 'Description', kk: 'Сипаттама', zh: '描述' }[locale]);
+      if (observations.some((report) => report.checklist.description)) detail(label.sheet, observations.map((report) => descriptionText(report.checklist.description ?? '')));
+      const described = new Map(observations.flatMap((report) => report.criteria.filter((criterion) => criterion.description || criterion.levelDescription)).map((criterion) => [criterion.id, criterion]));
+      for (const criterion of described.values()) detail(`${criterion.number} ${criterion.text}`, observations.map((report) => {
+        const row = report.criteria.find((candidate) => candidate.id === criterion.id);
+        return [row?.description, row?.levelDescription].filter(Boolean).map((value) => descriptionText(value!)).join('\n');
+      }));
+    }
+
   }
   return { rows: rows.map((row) => Array.from({ length: layout.columnWidths.length }, (_, column) => row[column] ?? '')), layout, sessionIds: visible.map((report) => report.sessionId), rowCount: rows.length };
 }

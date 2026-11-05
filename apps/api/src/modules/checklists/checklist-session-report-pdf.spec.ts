@@ -1,3 +1,5 @@
+import { jest } from '@jest/globals';
+import { PdfFontBook } from './checklist-report-pdf-fonts.js';
 import { splitIntoFontRuns } from './checklist-report-pdf-fonts.js';
 import { renderSessionReportPdf, type ReportPdfPhoto } from './checklist-session-report-pdf.js';
 import { PDF_LABELS, type PdfLocale } from './checklist-session-report-pdf-labels.js';
@@ -163,4 +165,18 @@ it('PR 405: PDF renders frozen custom sections, choices and descriptions', async
   data.feedbackForm = { layout: { title: 'Custom coaching', fields: [], sections: [{ id: 's', title: 'Practice plan', sections: [], fields: [{ id: 'f', kind: 'choice', title: 'Outcome', required: true, answerSetId: 'set' }] }] }, answerSets: { set: { id: 'set', name: 'Outcome', options: [{ id: 'good', name: 'Ready', description: 'Independent work' }] } }, answers: { f: ['good'] } };
   const trace: string[] = []; await renderSessionReportPdf(data, { locale: 'en', photos: [], omittedPhotos: 0, trace });
   expect(trace.join('\n')).toContain('Custom coaching'); expect(trace.join('\n')).toContain('Practice plan'); expect(trace.join('\n')).toContain('Ready — Independent work');
+});
+
+it('PR 420: carries safe emphasis, uppercase, size and colour to PDF and plain text to summary exports', async () => {
+  const data = report([row('c', null, 'Criterion', 1, 1)]);
+  if (!data.visible) throw new Error('Expected visible report');
+  data.checklist.description = '<p><strong>Important</strong> <span style="font-size:26px;color:#1D4ED8;text-transform:uppercase"><em><u>Read me</u></em></span></p>';
+  data.criteria[0]!.description = '<strong>Check carefully</strong>';
+  const spy = jest.spyOn(PdfFontBook.prototype, 'writeInline');
+  try {
+    const buffer = await renderSessionReportPdf(data, { locale: 'en', photos: [], omittedPhotos: 0 });
+    expect(buffer.subarray(0, 4).toString()).toBe('%PDF');
+    expect(spy).toHaveBeenCalledWith('Important', expect.objectContaining({ weight: 700 }));
+    expect(spy).toHaveBeenCalledWith('READ', expect.objectContaining({ size: 19.5, color: '#1D4ED8', italic: true, underline: true }));
+  } finally { spy.mockRestore(); }
 });

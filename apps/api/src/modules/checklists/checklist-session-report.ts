@@ -139,6 +139,8 @@ export function buildSessionReport(input: SessionReportInput) {
       number,
       groupId,
       text: item.text,
+      ...(item.descriptionEnabled && item.description ? { description: item.description } : {}),
+      ...(level && 'description' in level && typeof level.description === 'string' && level.description ? { levelDescription: level.description } : {}),
       state,
       score: state === 'skipped' || withoutPoints ? null : round2(earned),
       maxScore: state === 'skipped' || withoutPoints ? null : round2(max),
@@ -180,6 +182,7 @@ export function buildSessionReport(input: SessionReportInput) {
   return {
     ...base,
     visible: true as const,
+    checklist: { ...base.checklist, ...(breakdown.checklist.description ? { description: breakdown.checklist.description } : {}) },
     generalInfo: contextEntries(session),
     summary,
     groups,

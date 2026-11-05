@@ -1,3 +1,4 @@
+import { RichDescription } from '../../shared/RichDescription.js';
 import { useEffect, useId, useState } from 'react';
 import type { TFunction } from 'i18next';
 
@@ -131,7 +132,7 @@ export function ChecklistTemplateDialog({ open, locale, folderId, onClose, onCre
             <div>
               <b>{template.title}</b>
               <span className="admin-form__hint"> {t('admin.checklists.templates.summary', '{{groups}} groups · {{items}} criteria', { groups: template.groupCount, items: template.itemCount })}</span>
-              <p className="admin-form__hint">{template.description}</p>
+              <p className="admin-form__hint"><RichDescription value={template.description} /></p>
             </div>
             <Button disabled={busyKey !== null} onClick={() => void use(template)} type="button" variant="primary">{t('admin.checklists.templates.use', 'Use')}</Button>
           </li>

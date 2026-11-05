@@ -1,3 +1,4 @@
+import { RichDescription } from '../shared/RichDescription.js';
 import { readFeedbackAnswers, isCustomFeedback, firstMissingRequiredFeedback } from '@lms/shared/checklist-feedback';
 import { useEffect, useId, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
@@ -362,6 +363,7 @@ export function ConductScreen({
       <h1 style={{ margin: '2px 0 0', fontSize: 20 }}>{t('checklistSessions.conduct.screenTitle', 'Conduct session')}</h1>
 
       <Header session={session} instance={instance} t={t} />
+      {instance.checklist?.description && <p><RichDescription value={instance.checklist.description} /></p>}
 
       {error && (
         <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 13 }}>
@@ -718,6 +720,7 @@ function CriterionCard({
               }}
             >
               {level.label}
+              {'description' in level && typeof level.description === 'string' && level.description && <RichDescription value={level.description} />}
             </button>
           ))}
         </div>
@@ -742,6 +745,7 @@ function CriterionCard({
               }}
             >
               {level.label}
+              {'description' in level && typeof level.description === 'string' && level.description && <RichDescription value={level.description} />}
             </button>
           ))}
         </div>

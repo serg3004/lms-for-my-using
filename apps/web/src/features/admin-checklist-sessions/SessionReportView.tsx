@@ -1,3 +1,4 @@
+import { RichDescription } from '../../shared/RichDescription.js';
 import { isCustomFeedback } from '@lms/shared/checklist-feedback';
 import { FeedbackReadOnly } from '../checklist-feedback/FeedbackFields.js';
 import type { ReactNode } from 'react';
@@ -234,6 +235,7 @@ export function ReportSummary({ report, t }: { report: Report; t: TFunction }) {
           {report.header.status !== 'completed' && (
             <p style={{ ...muted, margin: '0 0 12px' }}>{t('admin.checklists.report.notFinished', 'The session is not finished yet: the result is not final.')}</p>
           )}
+          {report.checklist.description && <p><RichDescription value={report.checklist.description} /></p>}
           <ReportTotal summary={report.summary} t={t} />
           {report.feedbackForm && isCustomFeedback(report.feedbackForm.layout) ? <div className="admin-card"><FeedbackReadOnly config={report.feedbackForm} answers={report.feedbackForm.answers} t={t} /></div> : report.feedback && <ReportFeedback feedback={report.feedback} t={t} />}
           {report.summary?.scoringMode !== 'none' && <ReportGroups groups={report.groups} t={t} />}
@@ -285,6 +287,7 @@ export function ReportCriteria({ report, t }: { report: Report; t: TFunction }) 
       <tr key={criterion.id}>
         <td style={{ ...cell, borderLeft: `6px solid ${criterion.color?.color ?? '#e3e8ef'}` }}>
           <strong>{criterion.number}</strong> <span>{criterion.text}</span>
+          {criterion.description && <p><RichDescription value={criterion.description} /></p>}
         </td>
         <td style={{ ...cell, whiteSpace: 'nowrap' }}>
           <span aria-hidden>{STATUS_SYMBOL[status]} </span>
@@ -299,7 +302,7 @@ export function ReportCriteria({ report, t }: { report: Report; t: TFunction }) 
             </>
           )}
         </td>
-        <td style={cell}>{criterion.levelLabel ?? '—'}</td>
+        <td style={cell}>{criterion.levelLabel ?? '—'}{criterion.levelDescription && <p><RichDescription value={criterion.levelDescription} /></p>}</td>
         <td style={cell}>
           {criterion.comment || '—'}
           {criterion.photo && (

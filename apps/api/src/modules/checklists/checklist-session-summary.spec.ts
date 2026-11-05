@@ -86,3 +86,11 @@ it('PR 405: custom feedback survives the styled summary rows and CSV with frozen
   for (const value of ['Custom coaching', 'Advice', 'Keep practicing', 'Practice plan', 'Outcome', 'Ready — Independent work']) expect(text).toContain(value);
   expect(serializeReportCsv(table.rows)).toContain('Ready — Independent work');
 });
+
+it('PR 420: strips description markup and uses displayed uppercase in tabular exports', () => {
+  const data = report(); if (!data.visible) throw new Error('Expected visible report');
+  data.checklist.description = '<p><strong>Safe</strong> <span style="text-transform:uppercase">text</span></p>';
+  const table = buildSessionSummary([data], 'en');
+  expect(JSON.stringify(table.rows)).toContain('Safe TEXT');
+  expect(JSON.stringify(table.rows)).not.toContain('<strong>');
+});

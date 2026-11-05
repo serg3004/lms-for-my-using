@@ -1243,3 +1243,11 @@ for (const width of [375, 1440]) for (const screen of ['builder', 'answer-set', 
     await expectVisualMatch(page, `checklist-feedback-${screen}-${width}`, false, { maxDiffPixels: 3000 });
   }
 });
+
+for (const width of [320, 390, 1440]) test(`checklist text formatting window at ${width}px`, async ({ page }) => {
+  const { openFormattingPopup } = await import('../fixtures/checklist-formatting.js');
+  await page.setViewportSize({ width, height });
+  const { popup } = await openFormattingPopup(page);
+  await expectNoPageOverflow(page);
+  await expect(popup).toHaveScreenshot(`checklist-text-formatting-${width}.png`, { maxDiffPixels: 3000 });
+});

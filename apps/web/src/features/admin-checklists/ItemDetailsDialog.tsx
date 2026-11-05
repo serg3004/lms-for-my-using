@@ -1,8 +1,9 @@
+import { RichDescriptionEditor } from '../../shared/RichDescriptionEditor.js';
 import { useId, useState } from 'react';
 import type { TFunction } from 'i18next';
 
 import type { ChecklistItemSummary } from '../../shared/api/types.js';
-import { Button, Dialog, Select, Textarea } from '../../shared/ui.js';
+import { Button, Dialog, Select } from '../../shared/ui.js';
 import { NOTE_ANSWER_UNCHECKED } from '../../app/checklistItemNote.js';
 
 const OPTION = { display: 'flex', alignItems: 'center', gap: 8, minHeight: 44 } as const;
@@ -65,13 +66,7 @@ export function ItemDetailsDialog({ item, options, open, onClose, onSave, t }: {
         {t('admin.checklists.itemDetails.descriptionSwitch', 'Description (a hint for whoever fills the sheet)')}
       </label>
       {descriptionEnabled && (
-        <Textarea
-          label={t('admin.checklists.itemDetails.descriptionLabel', 'What to check and how to assess it')}
-          maxLength={2000}
-          onChange={(event) => setDescription(event.target.value)}
-          rows={4}
-          value={description}
-        />
+        <RichDescriptionEditor label={t('admin.checklists.itemDetails.descriptionLabel', 'What to check and how to assess it')} value={description} onChange={setDescription} />
       )}
       <Select
         label={t('admin.checklists.itemDetails.ruleLabel', 'Explanation field')}
