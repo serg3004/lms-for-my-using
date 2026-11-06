@@ -8,8 +8,8 @@
 set -euo pipefail
 
 mode="${1:-deps}"
-attempts="${PLAYWRIGHT_DEPS_ATTEMPTS:-3}"
-limit_seconds="${PLAYWRIGHT_DEPS_TIMEOUT_SECONDS:-150}"
+attempts="${PLAYWRIGHT_DEPS_ATTEMPTS:-4}"
+limit_seconds="${PLAYWRIGHT_DEPS_TIMEOUT_SECONDS:-90}"
 
 if [ "$mode" = "full" ]; then
   command=(pnpm exec playwright install --with-deps chromium)
@@ -36,12 +36,26 @@ cleanup_apt() {
   sudo dpkg --configure -a || true
 }
 
+# The default Azure mirror sometimes trickles a few KB/s (apt timeouts do not fire while data
+# still arrives). After a failed attempt switch to the Canonical archive host.
+switch_mirror() {
+  command -v sudo >/dev/null 2>&1 || return 0
+  local f
+  for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list; do
+    [ -f "$f" ] || continue
+    sudo sed -i -E \
+      -e 's#mirror\+file:/etc/apt/apt-mirrors\.txt#http://archive.ubuntu.com/ubuntu/#g' \
+      -e 's#https?://azure\.archive\.ubuntu\.com/ubuntu/?#http://archive.ubuntu.com/ubuntu/#g' "$f" || true
+  done
+}
+
 for attempt in $(seq 1 "$attempts"); do
   if timeout "$limit_seconds" "${command[@]}"; then
     exit 0
   fi
   echo "::warning::Playwright dependency install attempt ${attempt}/${attempts} failed or timed out after ${limit_seconds}s"
   cleanup_apt
+  switch_mirror
 done
 
 echo "::error::Playwright dependency install failed after ${attempts} attempts"
