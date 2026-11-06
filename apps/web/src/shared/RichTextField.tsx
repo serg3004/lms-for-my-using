@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useEffect, useId, useMemo, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent, FocusEventHandler, KeyboardEventHandler } from 'react';
 import { Mark, mergeAttributes, type Editor, type JSONContent } from '@tiptap/core';
 import { EditorContent, useEditor } from '@tiptap/react';
@@ -46,9 +46,11 @@ const tool: CSSProperties = { minHeight: 32, height: 32, padding: '0 8px', fontS
 
 type Popup = { from: number; to: number; x: number; y: number };
 
-export function RichTextField({ value, onChange, label, id, maxLength = 2000, disabled = false, compact = false, singleLine = false, hideLabel = false, onBlur, onFocus, onKeyDown, invalid, describedBy, className }: {
+type RichTextFieldProps = {
   value: string; onChange: (value: string) => void; label: string; id?: string; maxLength?: number; disabled?: boolean; compact?: boolean; singleLine?: boolean; hideLabel?: boolean; onBlur?: FocusEventHandler<HTMLDivElement>; onFocus?: FocusEventHandler<HTMLDivElement>; onKeyDown?: KeyboardEventHandler<HTMLDivElement>; invalid?: boolean; describedBy?: string; className?: string;
-}) {
+};
+
+const RichTextFieldInner = memo(function RichTextFieldInner({ value, onChange, label, id, maxLength = 2000, disabled = false, compact = false, singleLine = false, hideLabel = false, onBlur, onFocus, onKeyDown, invalid, describedBy, className }: RichTextFieldProps) {
   const { t } = useTranslation(), uid = useId(), labelId = `${uid}-label`, hintId = `${uid}-hint`;
   const [popup, setPopup] = useState<Popup | null>(null), [placement, setPlacement] = useState<CSSProperties>({}), [color, setColor] = useState<string>(DESCRIPTION_COLORS[0]), [lengthError, setLengthError] = useState(false), [focused, setFocused] = useState(false);
   const panel = useRef<HTMLDivElement>(null), timer = useRef<ReturnType<typeof setTimeout> | null>(null), touch = useRef<{ x: number; y: number } | null>(null);
@@ -159,4 +161,20 @@ export function RichTextField({ value, onChange, label, id, maxLength = 2000, di
       <div style={row}><button type="button" className="admin-btn admin-btn--secondary" style={tool} onClick={() => { if (popup) editor?.chain().setTextSelection({ from: popup.from, to: popup.to }).unsetAllMarks().run(); }}>{t('richDescription.reset')}</button></div>
     </div>}
   </div>;
+});
+
+/**
+ * Handlers are passed to the editor through stable wrappers that call the latest ones, so the (costly) editor is only
+ * re-rendered when its own data changes -- not on every render of a parent such as a long list that is being dragged.
+ */
+export function RichTextField(props: RichTextFieldProps) {
+  const latest = useRef(props);
+  useLayoutEffect(() => { latest.current = props; });
+  const handlers = useMemo(() => ({
+    onChange: (value: string) => latest.current.onChange(value),
+    onBlur: (event: Parameters<FocusEventHandler<HTMLDivElement>>[0]) => latest.current.onBlur?.(event),
+    onFocus: (event: Parameters<FocusEventHandler<HTMLDivElement>>[0]) => latest.current.onFocus?.(event),
+    onKeyDown: (event: Parameters<KeyboardEventHandler<HTMLDivElement>>[0]) => latest.current.onKeyDown?.(event),
+  }), []);
+  return <RichTextFieldInner {...props} {...handlers} />;
 }
