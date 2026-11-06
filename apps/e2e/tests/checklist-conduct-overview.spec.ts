@@ -33,6 +33,11 @@ async function setup(page: Page, options: { showNumbering?: boolean; hold?: 'ans
     if (path === '/checklist-instances/instance') return route.fulfill({ json: instance });
     if (path.startsWith('/checklist-instances/instance/items/')) {
       const itemId = path.split('/')[4]!;
+      if (method === 'DELETE' && path.endsWith('/answer')) {
+        calls.push('clear');
+        instance.results = instance.results.map((row) => (row.itemId === itemId ? { ...row, checked: false, scaleLevel: null, points: 0, answerState: 'unanswered' as const } : row));
+        return route.fulfill({ json: instance });
+      }
       const kind = path.endsWith('/photo') ? 'photo' : 'answer';
       calls.push(kind);
       if (options.hold === kind) await gate;
@@ -226,4 +231,23 @@ test('numbering off removes spoken step numbers and overview prefixes (PR 423)',
   await page.getByRole('button', { name: 'Обзор листа', exact: true }).click();
   await expect(overview(page).getByRole('heading', { name: 'Greeting', exact: true })).toBeVisible();
   await expect(overview(page).getByRole('button', { name: /Observe the greeting/ })).not.toContainText('1.1');
+});
+
+test.describe('conduct answer: colour and taking back (PR 425)', () => {
+  for (const width of [320, 390]) test(`a done criterion is painted, "Clear answer" returns it to unanswered at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const requests = await setup(page);
+    await select(page, second);
+    const done = page.locator('label', { hasText: 'Выполнено' }).first();
+    await expect(done).toHaveCSS('border-top-color', 'rgb(46, 125, 50)');
+    expect((await done.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    const clear = page.getByRole('button', { name: 'Снять ответ', exact: true });
+    expect((await clear.boundingBox())!.height).toBeGreaterThanOrEqual(36);
+    await clear.click();
+    await expect(page.getByRole('checkbox', { name: 'Выполнено', exact: true })).not.toBeChecked();
+    await expect(clear).toHaveCount(0);
+    await expect(page.getByRole('status').filter({ hasText: 'Ответ снят' })).toBeVisible();
+    expect(requests.calls).toContain('clear');
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  });
 });

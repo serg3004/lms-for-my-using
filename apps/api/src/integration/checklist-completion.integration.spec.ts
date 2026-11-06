@@ -86,7 +86,7 @@ function patchJson(url: string, body: unknown): Promise<HttpTestResponse> {
 
 describe('Checklist completion HTTP contract', () => {
   let app: INestApplication;
-  const instance: { status: string } = { status: 'assigned' };
+  const instance: InstancePatch & { status: string } = { status: 'assigned' };
   const results: TestResult[] = [];
 
   beforeEach(async () => {
@@ -223,7 +223,13 @@ describe('Checklist completion HTTP contract', () => {
     expect(response.body).toMatchObject({
       id: instanceId,
       status: 'in_progress',
-      totalScore: 10,
+      percentage: null,
+      passed: null,
     });
+    expect(response.body).not.toHaveProperty('totalScore');
+    expect(response.body).not.toHaveProperty('maxScore');
+    expect(response.body).not.toHaveProperty('results.0.points');
+    expect(instance.totalScore).toBe(10);
+    expect(results[0]?.points).toBe(10);
   });
 });

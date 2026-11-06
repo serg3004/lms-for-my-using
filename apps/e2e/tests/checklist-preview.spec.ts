@@ -128,3 +128,42 @@ for (const width of [320, 390]) test(`Finish, Reset and Close fit the preview fo
   await footer.getByRole('button', { name: 'Сбросить', exact: true }).click();
   await expect(dialog.getByRole('alert')).toHaveCount(0);
 });
+
+for (const width of [320, 390]) test(`an answer is painted with its level colour, can be taken back, and options are at least 44px at ${width}px (PR 425)`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 800 });
+  const sheet = previewSheet(); sheet.contextFields = []; sheet.feedbackEnabled = false;
+  await openPreviewBuilder(page, sheet);
+  const dialog = await openSheetPreview(page);
+  const group = dialog.getByRole('radiogroup').first();
+  // The first criterion has a scale without owner colours: the colour follows the score (0 red, between orange, best green).
+  const none = group.getByRole('radio').first();
+  const noneOption = group.locator('label').first();
+  const partial = group.getByRole('radio').nth(1);
+  const partialOption = group.locator('label').nth(1);
+  const full = group.getByRole('radio').nth(2);
+  const fullOption = group.locator('label').nth(2);
+  for (const option of [noneOption, partialOption, fullOption]) expect((await option.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await none.click();
+  await expect(noneOption).toContainText('✓');
+  await expect(noneOption).toHaveCSS('border-top-color', 'rgb(198, 40, 40)');
+  await partial.click();
+  await expect(partialOption).toHaveCSS('border-top-color', 'rgb(230, 81, 0)');
+  await expect(noneOption).not.toContainText('✓');
+  await full.click();
+  await expect(fullOption).toHaveCSS('border-top-color', 'rgb(46, 125, 50)');
+  // The Yes/No criterion (the last one) is green for "Да" and red for "Нет".
+  const yesNo = dialog.getByRole('radiogroup').last();
+  await yesNo.getByRole('radio').first().click();
+  await expect(yesNo.locator('label').first()).toHaveCSS('border-top-color', 'rgb(46, 125, 50)');
+  await yesNo.getByRole('radio').nth(1).click();
+  await expect(yesNo.locator('label').nth(1)).toHaveCSS('border-top-color', 'rgb(198, 40, 40)');
+  // A second click on the chosen option takes the answer back ...
+  await full.click();
+  await expect(group.getByRole('radio', { checked: true })).toHaveCount(0);
+  // ... and so does the "Clear answer" button, which each answered criterion has (here only the Yes/No one is still answered).
+  await expect(dialog.getByRole('button', { name: 'Снять ответ', exact: true })).toHaveCount(1);
+  await partial.click();
+  await dialog.getByRole('button', { name: 'Снять ответ', exact: true }).first().click();
+  await expect(group.getByRole('radio', { checked: true })).toHaveCount(0);
+  await expect.poll(() => dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+});

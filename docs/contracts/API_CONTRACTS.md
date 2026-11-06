@@ -219,6 +219,15 @@ otherwise); clears any previously checked/scale-level answer and deletes a previ
 object. Answering a skipped item afterward (`PATCH .../items/:itemId`) un-skips it (`answerState`
 reverts to `'answered'`).
 
+PR 425: `DELETE /checklist-instances/:instanceId/items/:itemId/answer` takes an answer back. Same roles, instance-ownership
+and reviewer-access checks and the same writability rules as `PATCH .../items/:itemId` (the executor, the assigned observer
+of a session, privileged roles; another tenant's instance or a foreign user is rejected like for an answer write; an expired
+instance answers 400). A submitted or completed instance answers 409 `A finished checklist cannot be changed`; an unknown
+criterion answers 404. The criterion goes back to `answerState = 'unanswered'` (`checked = false`, `scaleLevel = null`,
+`points = 0`; a skip mark is removed too) and its review status returns to `pending`; the photo and the comment stay. The
+instance total and the required-criteria progress are recomputed and the response is the updated instance (same shape as
+`PATCH .../items/:itemId`). The audit trail gets one `item_answered` event, as for any other answer change.
+
 Scoring formula: `earned = sum(item.weight * result.points)` and `max = sum(item.weight * itemMax)`,
 both computed **only over items whose `answerState !== 'skipped'`** -- a skip is excluded from both
 the numerator and the denominator, never counted as a zero. `ChecklistInstance.percentage` /
@@ -2098,7 +2107,7 @@ source edits do not rewrite assigned/started sessions. Historical snapshots with
 as `false`; instances without a snapshot use the existing live-sheet fallback.
 
 Employee wire projection applies to `/checklist-instances/mine`, instance detail, free self-start,
-answer/skip/photo mutations and explicit finish. Until completion it withholds point fields even if
+answer/clear-answer/skip/photo mutations and explicit finish. Until completion it withholds point fields even if
 the opt-in is on, and nulls aggregate percentage/verdict/scored. Once completed, percentage and
 verdict are available; point fields are present only for an explicit frozen opt-in. When withheld,
 `totalScore`, `maxScore`, criterion/result `points`, scale-level `score`/`points` and scoring `weight`

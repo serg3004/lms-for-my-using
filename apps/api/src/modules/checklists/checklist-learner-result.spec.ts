@@ -43,7 +43,7 @@ it('removes report point fields but retains percentages and verdicts; staff repo
 
 function controller(observer = false) {
   const source = instance();
-  const service = { getInstance: jest.fn(async () => source), listMyInstances: jest.fn(async () => [source]), finishInstance: jest.fn(async () => source), submitItemResult: jest.fn(async () => source), skipItem: jest.fn(async () => source) };
+  const service = { getInstance: jest.fn(async () => source), listMyInstances: jest.fn(async () => [source]), finishInstance: jest.fn(async () => source), submitItemResult: jest.fn(async () => source), skipItem: jest.fn(async () => source), clearItemAnswer: jest.fn(async () => source) };
   const access = { isAssignedObserver: jest.fn(async () => observer), assertReviewerCanAccess: jest.fn(async () => undefined) };
   return { source, target: new ChecklistsController(service as never, {} as never, access as never, {} as never, {} as never, {} as never, {} as never) };
 }
@@ -51,7 +51,7 @@ const request = (roles: string[], id = 'learner') => ({ currentUser: { id, roles
 
 it('enforces learner masking on detail, list and mutation responses', async () => {
   const { target } = controller(); const req = request(['learner']);
-  const responses = [await target.getInstance('instance', req), ...(await target.listMyInstances(req)), await target.finishInstance('instance', req), await target.submitItemResult('instance', 'criterion', { checked: true }, req), await target.skipItem('instance', 'criterion', {}, req)];
+  const responses = [await target.getInstance('instance', req), ...(await target.listMyInstances(req)), await target.finishInstance('instance', req), await target.submitItemResult('instance', 'criterion', { checked: true }, req), await target.skipItem('instance', 'criterion', {}, req), await target.clearItemAnswer('instance', 'criterion', req)];
   for (const value of responses) expect(JSON.stringify(value)).not.toMatch(/"(?:totalScore|maxScore|points)":\d/);
 });
 

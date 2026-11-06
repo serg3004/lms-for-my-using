@@ -14,7 +14,8 @@
     "cannotFinish": "清单暂时无法完成",
     "missingContext": "基本信息：必填项 {{count}} 个",
     "missingMore": "还有 {{count}} 条标准",
-    "simulation": "模拟：未保存任何内容，也未发送给任何人。"
+    "simulation": "模拟：未保存任何内容，也未发送给任何人。",
+    "clearAnswer": "撤销答案"
   },
   "sessionImport": {
     "done": "导入完成",
@@ -3115,7 +3116,9 @@
       },
       "completeContextFirst": "跳转到标准前，请填写必填的基本信息。",
       "feedbackRequiredHint": "完成前请先保存优势和待发展领域。",
-      "criterion": "标准"
+      "criterion": "标准",
+      "clearAnswer": "撤销答案",
+      "answerCleared": "答案已撤销：该标准恢复为未回答。"
     },
     "learner": {
       "title": "我的培训会话",

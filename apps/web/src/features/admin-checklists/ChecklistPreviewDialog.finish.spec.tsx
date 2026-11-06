@@ -57,9 +57,15 @@ describe('preview "Finish" (PR 424)', () => {
     await answerYes(1);
     const status = container.querySelector('[data-testid="preview-finish-result"]')!;
     expect(status.textContent).toContain('Лист завершён');
-    expect(status.textContent).toContain('4 / 4 (100%)');
-    expect(status.textContent).toContain('Зачёт');
+    expect(status.textContent).toContain('100%');
+    expect(status.textContent).not.toContain('4 / 4');
+    expect(status.textContent).toContain('Зачтено');
     expect(container.querySelector('footer')!.textContent).toContain('Симуляция: ничего не сохранено');
+  });
+  it('shows point totals only with explicit opt-in after Finish (PR 426)', async () => {
+    await render('sum_points', [item(1), item(2)], { showPointsToLearner: true });
+    await answerYes(0); await answerYes(1); await click(button('Завершить'));
+    expect(container.querySelector('[data-testid="preview-finish-result"]')?.textContent).toContain('4 / 4 (100%)');
   });
   it('shows "Completed" without percentages in the no-points mode', async () => {
     await render('none');

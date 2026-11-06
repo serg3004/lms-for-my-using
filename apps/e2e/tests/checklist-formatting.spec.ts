@@ -28,7 +28,9 @@ test('keyboard shortcuts, selection-only context menu and safe paste from Word',
   await expect(editor.locator('em')).toHaveText('Важный текст'); await expect(editor.locator('u')).toHaveText('Важный текст');
   await page.keyboard.press('Shift+F10'); await expect(page.getByRole('dialog', { name: 'Форматирование текста' })).toBeVisible();
   await page.keyboard.press('Escape'); await expect(editor).toBeFocused();
-  await editor.press('ArrowRight');
+  await expect.poll(() => editor.evaluate(() => window.getSelection()?.toString())).toBe('Важный текст');
+  // Set up an empty selection explicitly and notify the editor before testing native context-menu behaviour.
+  await editor.evaluate(() => { window.getSelection()?.collapseToEnd(); document.dispatchEvent(new Event('selectionchange')); });
   expect(await editor.evaluate((element) => { const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true }); return element.dispatchEvent(event); })).toBe(true);
   await selectDescription(editor);
   await editor.evaluate((element) => { const data = new DataTransfer(); data.setData('text/html', '<p><span style="font-weight:700;color:#166534;position:fixed">Word</span><img src=x onerror=alert(1)><script>bad()</script></p>'); element.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true })); });
