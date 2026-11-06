@@ -39,19 +39,19 @@ function PhotoRow({ checklistId, photo, index, count, title, disabled, onCaption
   return (
     <li ref={setNodeRef} style={style}>
       {!disabled && (
-        <button ref={setActivatorNodeRef} className="admin-drag" type="button" aria-label={t('admin.checklists.photos.drag', 'Drag photo {{n}}', { n })} {...attributes} {...listeners}>⋮⋮</button>
+        <button ref={setActivatorNodeRef} className="admin-drag" type="button" aria-label={t('admin.checklists.photos.drag', 'Drag image {{n}}', { n })} {...attributes} {...listeners}>⋮⋮</button>
       )}
       <div style={{ width: 88, aspectRatio: '4 / 3', flex: 'none', borderRadius: 8, overflow: 'hidden', background: 'var(--color-surface-muted, #eef2ff)' }}>
-        <ChecklistPhotoImage checklistId={checklistId} photo={photo} alt={t('admin.checklists.photos.alt', 'Photo {{n}} of the sheet “{{title}}”', { n, title })} />
+        <ChecklistPhotoImage checklistId={checklistId} photo={photo} alt={t('admin.checklists.photos.alt', 'Image {{n}} of the sheet “{{title}}”', { n, title })} />
       </div>
       <div style={{ flex: '1 1 160px', minWidth: 0 }}><RichTextField value={caption} maxLength={CHECKLIST_PHOTO_CAPTION_MAX_LENGTH} disabled={disabled} singleLine compact
-        label={t('admin.checklists.photos.caption', 'Caption of photo {{n}}', { n })}
+        label={t('admin.checklists.photos.caption', 'Caption of image {{n}}', { n })}
         onChange={setCaption} onBlur={() => { if (caption.trim() !== photo.caption) onCaption(photo.id, caption.trim()); }} /></div>
       {!disabled && (
         <div style={{ display: 'flex', gap: 4 }}>
-          <button className="ds-button ds-button--secondary ds-button--sm" style={tapTarget} type="button" disabled={index === 0} aria-label={t('admin.checklists.photos.up', 'Photo {{n}} up', { n })} onClick={() => onMove(index, index - 1)}>↑</button>
-          <button className="ds-button ds-button--secondary ds-button--sm" style={tapTarget} type="button" disabled={index === count - 1} aria-label={t('admin.checklists.photos.down', 'Photo {{n}} down', { n })} onClick={() => onMove(index, index + 1)}>↓</button>
-          <button className="ds-button ds-button--secondary ds-button--sm" style={tapTarget} type="button" aria-label={t('admin.checklists.photos.remove', 'Remove photo {{n}}', { n })} onClick={() => onRemove(photo.id)}>×</button>
+          <button className="ds-button ds-button--secondary ds-button--sm" style={tapTarget} type="button" disabled={index === 0} aria-label={t('admin.checklists.photos.up', 'Image {{n}} up', { n })} onClick={() => onMove(index, index - 1)}>↑</button>
+          <button className="ds-button ds-button--secondary ds-button--sm" style={tapTarget} type="button" disabled={index === count - 1} aria-label={t('admin.checklists.photos.down', 'Image {{n}} down', { n })} onClick={() => onMove(index, index + 1)}>↓</button>
+          <button className="ds-button ds-button--secondary ds-button--sm" style={tapTarget} type="button" aria-label={t('admin.checklists.photos.remove', 'Remove image {{n}}', { n })} onClick={() => onRemove(photo.id)}>×</button>
         </div>
       )}
     </li>
@@ -59,7 +59,7 @@ function PhotoRow({ checklistId, photo, index, count, title, disabled, onCaption
 }
 
 /**
- * PR 421: "Extra photos" of the sheet in the builder -- upload (up to 6), caption, order (arrows and drag),
+ * PR 421/433: "Checklist form image" -- the extra pictures of the sheet in the builder -- upload (up to 6), caption, order (arrows and drag),
  * remove with confirmation. Every change is saved at once, like the cover; own state keeps the builder's form untouched.
  */
 export function ChecklistPhotosField({ checklistId, title, photos: initial, disabled = false, onChange }: {
@@ -101,7 +101,7 @@ export function ChecklistPhotosField({ checklistId, title, photos: initial, disa
     try {
       apply([...photos, await uploadChecklistPhoto(checklistId, file)]);
     } catch (err) {
-      setError(checklistUploadErrorMessage(err, t('admin.checklists.photos.uploadError', 'Unable to upload the photo.'), t));
+      setError(checklistUploadErrorMessage(err, t('admin.checklists.photos.uploadError', 'Unable to upload the image.'), t));
       setRetryFile(isRetryableUploadError(err) ? file : null);
     } finally {
       setBusy(false);
@@ -130,7 +130,7 @@ export function ChecklistPhotosField({ checklistId, title, photos: initial, disa
       await reorderChecklistPhotos(checklistId, next.map((photo) => photo.id));
     } catch (err) {
       apply(before);
-      fail(err, t('admin.checklists.photos.moveError', 'Unable to change the order of the photos.'));
+      fail(err, t('admin.checklists.photos.moveError', 'Unable to change the order of the images.'));
     }
   }
 
@@ -141,7 +141,7 @@ export function ChecklistPhotosField({ checklistId, title, photos: initial, disa
       await deleteChecklistPhoto(checklistId, id);
       apply(photos.filter((photo) => photo.id !== id).map((photo, order) => ({ ...photo, order })));
     } catch (err) {
-      fail(err, t('admin.checklists.photos.removeError', 'Unable to remove the photo.'));
+      fail(err, t('admin.checklists.photos.removeError', 'Unable to remove the image.'));
     } finally {
       setBusy(false);
       setToRemove(null);
@@ -150,7 +150,7 @@ export function ChecklistPhotosField({ checklistId, title, photos: initial, disa
 
   const dnd = useFlatListDnd({
     ids: photos.map((photo) => photo.id),
-    nameOf: (id) => t('admin.checklists.photos.caption', 'Caption of photo {{n}}', { n: photos.findIndex((photo) => photo.id === id) + 1 }),
+    nameOf: (id) => t('admin.checklists.photos.caption', 'Caption of image {{n}}', { n: photos.findIndex((photo) => photo.id === id) + 1 }),
     onMove: (from, to) => void move(from, to),
     t,
   });
@@ -159,12 +159,12 @@ export function ChecklistPhotosField({ checklistId, title, photos: initial, disa
 
   return (
     <div role="group" aria-labelledby={headingId} style={{ display: 'grid', gap: 8 }}>
-      <strong id={headingId}>{t('admin.checklists.photos.title', 'Extra photos')} <span className="admin-form__hint">({photos.length}/{MAX_CHECKLIST_PHOTOS})</span></strong>
+      <strong id={headingId}>{t('admin.checklists.photos.title', 'Checklist form image')} <span className="admin-form__hint">({photos.length}/{MAX_CHECKLIST_PHOTOS})</span></strong>
       <p className="admin-form__hint" style={{ margin: 0 }}>
-        {t('admin.checklists.photos.hint', 'Up to {{max}} photos: JPEG, PNG, GIF or WEBP, up to {{maxMb}} MB each. The employee sees them on the sheet during the pass.', { max: MAX_CHECKLIST_PHOTOS, maxMb: CHECKLIST_PHOTO_MAX_MB })}
+        {t('admin.checklists.photos.hint', 'Up to {{max}} images: JPEG, PNG, GIF or WEBP, up to {{maxMb}} MB each. The employee sees them on the sheet during the pass.', { max: MAX_CHECKLIST_PHOTOS, maxMb: CHECKLIST_PHOTO_MAX_MB })}
       </p>
       {photos.length === 0 ? (
-        <p className="admin-form__hint" style={{ margin: 0 }}>{t('admin.checklists.photos.empty', 'No photos yet.')}</p>
+        <p className="admin-form__hint" style={{ margin: 0 }}>{t('admin.checklists.photos.empty', 'No images yet.')}</p>
       ) : (
         <DndContext {...dnd}>
           <SortableContext items={photos.map((photo) => photo.id)} strategy={verticalListSortingStrategy}>
@@ -177,12 +177,12 @@ export function ChecklistPhotosField({ checklistId, title, photos: initial, disa
           </SortableContext>
         </DndContext>
       )}
-      <input ref={inputRef} type="file" accept={CHECKLIST_PHOTO_ACCEPT} onChange={(event) => void onFile(event)} hidden aria-label={t('admin.checklists.photos.file', 'Photo file')} />
+      <input ref={inputRef} type="file" accept={CHECKLIST_PHOTO_ACCEPT} onChange={(event) => void onFile(event)} hidden aria-label={t('admin.checklists.photos.file', 'Image file')} />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         <Button type="button" variant="secondary" size="sm" disabled={disabled || busy || full} onClick={() => inputRef.current?.click()} style={tapTarget}>
-          {t('admin.checklists.photos.add', 'Add photo')}
+          {t('admin.checklists.photos.add', 'Add image')}
         </Button>
-        {full && <span className="admin-form__hint">{t('admin.checklists.photos.full', 'The maximum of {{max}} photos is uploaded.', { max: MAX_CHECKLIST_PHOTOS })}</span>}
+        {full && <span className="admin-form__hint">{t('admin.checklists.photos.full', 'The maximum of {{max}} images is uploaded.', { max: MAX_CHECKLIST_PHOTOS })}</span>}
       </div>
       {error && (
         <p role="alert" style={{ color: 'var(--color-danger, #dc2626)', margin: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
@@ -192,8 +192,8 @@ export function ChecklistPhotosField({ checklistId, title, photos: initial, disa
       )}
       <ConfirmDialog
         open={toRemove !== null}
-        title={t('admin.checklists.photos.removeTitle', 'Remove the photo?')}
-        message={t('admin.checklists.photos.removeMessage', 'Photo {{n}} will disappear from the sheet. This cannot be undone.', { n: removeIndex + 1 })}
+        title={t('admin.checklists.photos.removeTitle', 'Remove the image?')}
+        message={t('admin.checklists.photos.removeMessage', 'Image {{n}} will disappear from the sheet. This cannot be undone.', { n: removeIndex + 1 })}
         confirmLabel={t('admin.checklists.photos.removeConfirm', 'Remove')}
         cancelLabel={t('admin.checklists.close', 'Close')}
         danger

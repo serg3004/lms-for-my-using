@@ -43,7 +43,7 @@ export function ChecklistCoverField({ checklistId, title, coverUpdatedAt }: {
       const saved = await uploadChecklistCover(checklistId, file);
       setCurrent(saved.coverUpdatedAt);
     } catch (err) {
-      setError(checklistUploadErrorMessage(err, t('admin.checklists.cover.uploadError', 'Unable to upload the cover.'), t));
+      setError(checklistUploadErrorMessage(err, t('admin.checklists.cover.uploadError', 'Unable to upload the thumbnail.'), t));
       setRetryFile(isRetryableUploadError(err) ? file : null);
     } finally {
       setBusy(false);
@@ -57,7 +57,7 @@ export function ChecklistCoverField({ checklistId, title, coverUpdatedAt }: {
       await deleteChecklistCover(checklistId);
       setCurrent(null);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t('admin.checklists.cover.removeError', 'Unable to remove the cover.'));
+      setError(err instanceof ApiClientError ? err.message : t('admin.checklists.cover.removeError', 'Unable to remove the thumbnail.'));
     } finally {
       setBusy(false);
     }
@@ -65,19 +65,19 @@ export function ChecklistCoverField({ checklistId, title, coverUpdatedAt }: {
 
   return (
     <div role="group" aria-labelledby="checklist-cover-title" style={{ display: 'grid', gap: 8, maxWidth: 360 }}>
-      <strong id="checklist-cover-title">{t('admin.checklists.cover.title', 'Checklist picture')}</strong>
+      <strong id="checklist-cover-title">{t('admin.checklists.cover.title', 'Checklist thumbnail')}</strong>
       <ChecklistCover checklistId={checklistId} coverUpdatedAt={current} retryable title={title} />
       <p className="admin-form__hint" style={{ margin: 0 }}>
-        {t('admin.checklists.cover.hint', 'JPEG, PNG, GIF or WEBP, up to {{max}} MB. Without a picture a default illustration is shown.', { max: CHECKLIST_PHOTO_MAX_MB })}
+        {t('admin.checklists.cover.hint', 'JPEG, PNG, GIF or WEBP, up to {{max}} MB. Shown on the checklist tile. Without a thumbnail a default illustration is shown.', { max: CHECKLIST_PHOTO_MAX_MB })}
       </p>
-      <input ref={inputRef} type="file" accept={CHECKLIST_PHOTO_ACCEPT} onChange={(event) => void onFile(event)} hidden aria-label={t('admin.checklists.cover.file', 'Picture file')} />
+      <input ref={inputRef} type="file" accept={CHECKLIST_PHOTO_ACCEPT} onChange={(event) => void onFile(event)} hidden aria-label={t('admin.checklists.cover.file', 'Thumbnail file')} />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => inputRef.current?.click()}>
-          {current ? t('admin.checklists.cover.replace', 'Replace picture') : t('admin.checklists.cover.upload', 'Upload picture')}
+          {current ? t('admin.checklists.cover.replace', 'Replace thumbnail') : t('admin.checklists.cover.upload', 'Upload thumbnail')}
         </Button>
         {current && (
           <Button type="button" variant="secondary" size="sm" disabled={busy} onClick={() => void remove()}>
-            {t('admin.checklists.cover.remove', 'Remove picture')}
+            {t('admin.checklists.cover.remove', 'Remove thumbnail')}
           </Button>
         )}
       </div>

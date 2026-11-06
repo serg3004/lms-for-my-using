@@ -610,8 +610,11 @@ export function ChecklistBuilder({
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}><BlockGear target={{ kind: 'header', id: null, name: t('admin.checklists.appearance.kind.header') }} active={blockTarget?.kind === 'header'} onOpen={openBlockSettings} t={t} /></div>
             <RichTextField id="checklist-title" label={t('admin.checklists.field.title', 'Title')} value={title} onChange={setTitle} maxLength={200} singleLine compact disabled={!canEdit} />
             <RichDescriptionEditor id="checklist-description" label={t('admin.checklists.field.description', 'Description')} value={description} onChange={setDescription} disabled={!canEdit} />
-            <ChecklistCoverField checklistId={checklist.id} title={checklist.title} coverUpdatedAt={checklist.coverUpdatedAt} />
-            <ChecklistPhotosField checklistId={checklist.id} title={checklist.title} photos={checklist.photos} disabled={!canEdit} onChange={setSheetPhotos} />
+            {/* PR 433: the thumbnail on the left, the images of the form on the right; one under the other on a narrow screen. */}
+            <div data-testid="checklist-images" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 16, alignItems: 'start' }}>
+              <ChecklistCoverField checklistId={checklist.id} title={checklist.title} coverUpdatedAt={checklist.coverUpdatedAt} />
+              <ChecklistPhotosField checklistId={checklist.id} title={checklist.title} photos={checklist.photos} disabled={!canEdit} onChange={setSheetPhotos} />
+            </div>
           </ChecklistSettingsForm>
           <section className="admin-card admin-settings-block" aria-labelledby="checklist-settings-title">
             <h3 id="checklist-settings-title">{t('admin.checklists.settingsBlockTitle', 'Settings')}</h3>

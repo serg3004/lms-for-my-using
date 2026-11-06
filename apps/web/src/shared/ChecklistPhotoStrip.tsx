@@ -31,7 +31,7 @@ export function ChecklistPhotoImage({ checklistId, photo, alt, fit = 'cover' }: 
   if (image.status === 'error') {
     return (
       <div role="alert" style={{ display: 'grid', placeItems: 'center', alignContent: 'center', gap: 6, padding: 8, textAlign: 'center', width: '100%', height: '100%', fontSize: 12 }}>
-        <span>{t('checklists.photos.loadError', 'Unable to show the photo.')}</span>
+        <span>{t('checklists.photos.loadError', 'Unable to show the image.')}</span>
         <button className="ds-button ds-button--secondary ds-button--sm" type="button" onClick={image.retry}>{t('checklists.photos.retry', 'Retry')}</button>
       </div>
     );
@@ -53,19 +53,19 @@ export function ChecklistPhotoStrip({ checklistId, photos, title, collapsible = 
   const sorted = [...photos].sort((a, b) => a.order - b.order);
   const alt = (index: number) => {
     const photo = sorted[index]!;
-    const base = t('checklists.photos.alt', 'Photo {{n}} of the sheet “{{title}}”', { n: index + 1, title: plainText(title) });
+    const base = t('checklists.photos.alt', 'Image {{n}} of the sheet “{{title}}”', { n: index + 1, title: plainText(title) });
     return photo.caption ? `${base}: ${plainText(photo.caption)}` : base;
   };
   const opened = openIndex === null ? null : sorted[openIndex] ?? null;
 
-  const heading = t('checklists.photos.title', 'Sheet photos');
+  const heading = t('checklists.photos.title', 'Checklist form image');
   const list = (
     <ul style={{ listStyle: 'none', margin: collapsible ? '8px 0 0' : 0, padding: 0, display: 'grid', gap: 8, gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 140px), 1fr))' }}>
       {sorted.map((photo, index) => (
         <li key={photo.id} style={{ minWidth: 0 }}>
           <button
             type="button"
-            aria-label={t('checklists.photos.open', 'Open photo {{n}} larger', { n: index + 1 })}
+            aria-label={t('checklists.photos.open', 'Open image {{n}} larger', { n: index + 1 })}
             onClick={() => setOpenIndex(index)}
             style={{ display: 'block', width: '100%', minHeight: 44, padding: 0, border: '1px solid var(--color-border, #d9deea)', borderRadius: 10, overflow: 'hidden', background: 'var(--color-surface-muted, #eef2ff)', cursor: 'zoom-in', aspectRatio: '4 / 3' }}
           >
@@ -96,7 +96,7 @@ export function ChecklistPhotoStrip({ checklistId, photos, title, collapsible = 
           {opened && openIndex !== null && (
             <div style={{ display: 'grid', gap: 10, width: 'min(92vw, 720px)', maxWidth: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <h2 id={dialogHeadingId} style={{ margin: 0, fontSize: 16, minWidth: 0, overflowWrap: 'anywhere' }}><RichText value={opened.caption || t('checklists.photos.title', 'Sheet photos')} /></h2>
+                <h2 id={dialogHeadingId} style={{ margin: 0, fontSize: 16, minWidth: 0, overflowWrap: 'anywhere' }}><RichText value={opened.caption || t('checklists.photos.title', 'Checklist form image')} /></h2>
                 <button ref={closeRef} className="ds-button ds-button--secondary ds-button--sm" style={{ minWidth: 44, minHeight: 44 }} type="button" onClick={() => setOpenIndex(null)}>
                   {t('checklists.photos.close', 'Close')}
                 </button>
