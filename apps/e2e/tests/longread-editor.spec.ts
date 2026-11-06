@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { fillRich } from '../fixtures/rich-fill.js';
 import { longreadCompositeFixture, longreadCourseId, longreadEditorServer, longreadFixture, longreadLessonId } from '../fixtures/longread-editor.js';
 
 test('creating a longread from the lesson form opens its draft editor', async ({ page }) => {
@@ -27,7 +28,7 @@ test('creates H1-H3, quote, note, divider and code with their properties', async
       await page.getByRole('textbox', { name: 'Текст', exact: true }).fill('Правила');
       for (const level of ['1', '3', '2']) await page.getByLabel('Уровень заголовка', { exact: true }).selectOption(level);
     }
-    if (type === 'quote') { await page.getByRole('textbox', { name: 'Текст', exact: true }).fill('Сначала безопасность'); await page.getByLabel('Автор цитаты', { exact: true }).fill('Инструктор'); }
+    if (type === 'quote') { await page.getByRole('textbox', { name: 'Текст', exact: true }).fill('Сначала безопасность'); await fillRich(page, page.getByRole('textbox', { name: 'Автор цитаты', exact: true }), 'Инструктор'); }
     if (type === 'note') { await page.getByRole('textbox', { name: 'Текст', exact: true }).fill('Проверьте питание'); await page.getByLabel('Вид заметки', { exact: true }).selectOption('warning'); }
     if (type === 'code') { await page.getByLabel('Текст кода', { exact: true }).fill('print("safe")'); await page.getByLabel('Язык кода', { exact: true }).fill('python'); }
   }
@@ -35,7 +36,7 @@ test('creates H1-H3, quote, note, divider and code with their properties', async
   const blocks = server.snapshot().chapters[1]!.blocks;
   expect(blocks.map((block) => block.type)).toEqual(['heading', 'quote', 'note', 'divider', 'code']);
   expect(blocks[0]!.content).toMatchObject({ level: 2, runs: [{ text: 'Правила' }] });
-  expect(blocks[1]!.content).toMatchObject({ caption: 'Инструктор' });
+  expect(blocks[1]!.content).toMatchObject({ caption: expect.stringContaining('Инструктор') });
   expect(blocks[2]!.content).toMatchObject({ tone: 'warning' });
   await page.reload(); await expect(page.getByRole('navigation', { name: 'Главы', exact: true })).toBeVisible();
 });
@@ -185,13 +186,13 @@ test('table: add row and column, merge and split cells keep every text after rel
   await page.getByRole('navigation', { name: 'Главы', exact: true }).getByRole('button', { name: '2. Практика', exact: true }).click();
   await page.getByLabel('Тип нового блока', { exact: true }).selectOption('table');
   await page.getByRole('button', { name: 'Добавить блок', exact: true }).click();
-  const cell = (row: number, column: number) => page.getByLabel(`Ячейка: строка ${row}, столбец ${column}`, { exact: true });
-  await cell(1, 1).fill('A'); await cell(1, 2).fill('B'); await cell(2, 1).fill('C'); await cell(2, 2).fill('D');
+  const cell = (row: number, column: number) => page.getByRole('textbox', { name: `Ячейка: строка ${row}, столбец ${column}`, exact: true });
+  await fillRich(page, cell(1, 1), 'A'); await fillRich(page, cell(1, 2), 'B'); await fillRich(page, cell(2, 1), 'C'); await fillRich(page, cell(2, 2), 'D');
   await page.getByRole('button', { name: 'Строка ниже', exact: true }).click();
   await page.getByRole('button', { name: 'Столбец справа', exact: true }).click();
   await cell(1, 1).focus();
   await page.getByRole('button', { name: 'Объединить с ячейкой справа', exact: true }).click();
-  await expect(cell(1, 1)).toHaveValue('A B');
+  await expect(cell(1, 1)).toHaveText('A B');
   await expect(cell(1, 2)).toHaveCount(0);
   await page.getByRole('checkbox', { name: 'Закрепить первую строку' }).check();
   await expect.poll(() => (server.snapshot().chapters[1]!.blocks[0]?.content as { rows?: unknown[]; headerRow?: boolean } | undefined)?.headerRow === true && (server.snapshot().chapters[1]!.blocks[0]!.content as { rows: unknown[] }).rows.length === 4).toBe(true);
@@ -201,11 +202,11 @@ test('table: add row and column, merge and split cells keep every text after rel
   expect(saved.rows[0]!.cells[1]).toMatchObject({ covered: true, runs: [] });
   await page.reload();
   await page.getByRole('navigation', { name: 'Главы', exact: true }).getByRole('button', { name: '2. Практика', exact: true }).click();
-  await expect(cell(1, 1)).toHaveValue('A B');
+  await expect(cell(1, 1)).toHaveText('A B');
   await cell(1, 1).focus();
   await page.getByRole('button', { name: 'Разъединить ячейку', exact: true }).click();
-  await expect(cell(1, 1)).toHaveValue('A B'); await expect(cell(1, 2)).toHaveValue('');
-  await expect(cell(2, 2)).toHaveValue('D');
+  await expect(cell(1, 1)).toHaveText('A B'); await expect(cell(1, 2)).toHaveText('');
+  await expect(cell(2, 2)).toHaveText('D');
 });
 
 test('tabs convert to an accordion and back without losing order, titles or nested blocks', async ({ page }) => {
@@ -243,7 +244,25 @@ test('nested blocks can be added to a tab and a column, a tab can be removed, an
 test('composite blocks fit a 375px screen without page scrolling', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 900 });
   const server = longreadEditorServer(longreadCompositeFixture()); await server.attach(page);
-  await expect(page.getByLabel('Ячейка: строка 2, столбец 1', { exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Ячейка: строка 2, столбец 1', exact: true })).toBeVisible();
   const { clientWidth, scrollWidth } = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
   expect(scrollWidth).toBeLessThanOrEqual(clientWidth);
+});
+
+test('the formatting window of the sheets opens on selected longread text and its colour, size and capitals are saved', async ({ page }) => {
+  const server = longreadEditorServer(); await server.attach(page);
+  await page.getByRole('navigation', { name: 'Главы', exact: true }).getByRole('button', { name: '2. Практика', exact: true }).click();
+  await page.getByLabel('Тип нового блока', { exact: true }).selectOption('paragraph');
+  await page.getByRole('button', { name: 'Добавить блок', exact: true }).click();
+  const text = page.getByRole('textbox', { name: 'Текст', exact: true });
+  await fillRich(page, text, 'Важно');
+  await page.keyboard.press('ControlOrMeta+A'); await page.keyboard.press('Shift+F10');
+  const window = page.getByRole('dialog', { name: 'Форматирование текста' });
+  await window.getByRole('button', { name: 'Цвет #B91C1C', exact: true }).click();
+  await window.getByRole('button', { name: 'Размер: Крупный', exact: true }).click();
+  await window.getByRole('button', { name: 'Прописные', exact: true }).click();
+  await page.keyboard.press('Escape');
+  await expect.poll(() => JSON.stringify(server.snapshot().chapters[1]!.blocks[0]?.content)).toContain('#B91C1C');
+  expect(server.snapshot().chapters[1]!.blocks[0]!.content).toMatchObject({ runs: [{ text: 'Важно', color: '#B91C1C', size: 20, uppercase: true }] });
+  await page.reload(); await expect(page.getByRole('navigation', { name: 'Главы', exact: true })).toBeVisible();
 });

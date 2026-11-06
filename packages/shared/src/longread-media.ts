@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { richTextSchema } from './rich-text.js';
 
 /** External media is loaded by the browser only; the API never fetches an author's URL. */
 export function canonicalVideoUrl(raw: string): string | null {
@@ -39,8 +40,8 @@ export function resolveEmbedUrl(raw: string): EmbedSource | null {
 }
 
 const fileId = z.string().uuid().nullable().default(null);
-const presentation = { caption: z.string().max(2000).default(''), width: z.number().int().min(10).max(100).default(100) };
-export const audioContentSchema = z.object({ fileId, caption: z.string().max(2000).default('') }).strict();
+const presentation = { caption: richTextSchema(2000).default(''), width: z.number().int().min(10).max(100).default(100) };
+export const audioContentSchema = z.object({ fileId, caption: richTextSchema(2000).default('') }).strict();
 const videoPresentation = { ...presentation, poster: z.object({ fileId }).strict().nullable().default(null) };
 export const videoContentSchema = z.discriminatedUnion('source', [
   z.object({ source: z.literal('file'), fileId, ...videoPresentation }).strict(),

@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react';
+import { RichTextField } from '../../shared/RichTextField.js';
 import { useTranslation } from 'react-i18next';
 import { questionTypeSchema, questionDefinitionSchema, type QuestionType } from '@lms/shared/assessment-question-types';
 import { exerciseContentSchema, writeLongreadQuestionSchema, type ExerciseContent, type WriteLongreadQuestion } from '@lms/shared/longread-exercises';
@@ -70,7 +71,7 @@ export function ExerciseEditor({ lessonId, content, onChange, ready, revision, a
     {form && <section style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: 12 }} aria-label={t('longreadExercises.questionForm')}>
       <label htmlFor={`${id}-type`}>{t('longreadExercises.questionType')}</label><select id={`${id}-type`} value={form.type} onChange={(e) => setForm({ ...emptyQuestion(e.target.value as QuestionType), ...(form.questionId ? { questionId: form.questionId, updatedAt: form.updatedAt } : {}), ...(form.assessmentId ? { assessmentId: form.assessmentId } : {}), title: form.title, text: form.text, assessmentPassingScore: form.assessmentPassingScore, assessmentMaxAttempts: form.assessmentMaxAttempts })}>{questionTypeSchema.options.map((type) => <option value={type} key={type}>{t(`longreadExercises.types.${type}`)}</option>)}</select>
       <label style={{ display: 'block' }}>{t('longreadExercises.title')}<input value={form.title} maxLength={200} onChange={(e) => setForm({ ...form, title: e.target.value })} /></label>
-      <label style={{ display: 'block' }}>{t('longreadExercises.text')}<textarea value={form.text} maxLength={4000} onChange={(e) => setForm({ ...form, text: e.target.value })} /></label>
+      <RichTextField id={`${id}-text`} label={t('longreadExercises.text')} value={form.text} maxLength={4000} onChange={(next) => setForm({ ...form, text: next })} />
       <QuestionAuthorFields value={form} onChange={setForm} />
       <label style={{ display: 'block' }}>{t('longreadExercises.scoringMode')}<select value={form.scoringMode} onChange={(e) => setForm({ ...form, scoringMode: e.target.value as WriteLongreadQuestion['scoringMode'] })}><option value="all_or_nothing">{t('longreadExercises.allOrNothing')}</option><option value="proportional">{t('longreadExercises.partialScoring')}</option><option value="proportional_with_penalty">{t('longreadExercises.penaltyScoring')}</option><option value="per_option">{t('longreadExercises.perOptionScoring')}</option></select></label>
       <label style={{ display: 'block' }}>{t('longreadExercises.testPassingScore')}<input type="number" min={0} max={100} value={form.assessmentPassingScore} onChange={(e) => setForm({ ...form, assessmentPassingScore: e.target.valueAsNumber })} /></label>
@@ -83,7 +84,7 @@ export function ExerciseEditor({ lessonId, content, onChange, ready, revision, a
     <label style={{ display: 'block' }}>{t('longreadExercises.mode')}<select value={config.mode} onChange={(e) => patch({ mode: e.target.value })}><option value="practice">{t('longreadExercises.practice')}</option><option value="graded">{t('longreadExercises.graded')}</option></select></label>
     <label><input type="checkbox" checked={config.required} onChange={(e) => patch({ required: e.target.checked })} /> {t('longreadExercises.required')}</label>
     {number('weight', 1, 1_000_000)}{number('maxAttempts', 1, 100)}{number('passingScore', 0, 100)}
-    <label style={{ display: 'block' }}>{t('longreadExercises.hint')}<textarea maxLength={2000} value={config.hint} onChange={(e) => patch({ hint: e.target.value })} /></label>
+    <RichTextField id={`${id}-hint`} label={t('longreadExercises.hint')} value={config.hint} maxLength={2000} onChange={(next) => patch({ hint: next })} />
     <label style={{ display: 'block' }}>{t('longreadExercises.feedback')}<select value={config.feedback} onChange={(e) => patch({ feedback: e.target.value })}><option value="result">{t('longreadExercises.feedbackResult')}</option><option value="answers">{t('longreadExercises.feedbackAnswers')}</option></select></label>
     {error && <p role="alert">{t(error)}</p>}
   </fieldset>;

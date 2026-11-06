@@ -1,4 +1,5 @@
 import { ContinueBlock } from '../longread-progress/CompletionRuntime.js';
+import { RichText, plainText } from '../../shared/RichText.js';
 import { ExerciseBlock } from '../longread-exercises/ExerciseBlock.js';
 import { MediaImage, MediaAttachment } from '../longread-files/Media.js';
 import { MediaPlayer, EmbeddedVideo } from '../longread-media/MediaPlayback.js';
@@ -12,6 +13,7 @@ const textStyle: CSSProperties = { overflowWrap: 'anywhere', whiteSpace: 'pre-wr
 function Runs({ runs, navigate }: { runs: Run[]; navigate: (chapter: string) => void }) {
   return <>{runs.map((run, index) => {
     let node: ReactNode = run.text;
+    if (run.color || run.size || run.uppercase) node = <span style={{ color: run.color, fontSize: run.size, textTransform: run.uppercase ? 'uppercase' : undefined }}>{node}</span>;
     if (run.bold) node = <strong>{node}</strong>;
     if (run.italic) node = <em>{node}</em>;
     if (run.underline) node = <u>{node}</u>;
@@ -67,7 +69,7 @@ export function LongreadContent({ blocks, chapter, allowCopy, navigate, t }: { b
       const Heading = `h${value.content.level}` as 'h1' | 'h2' | 'h3';
       return <Heading key={index} id={headingId(chapter, index)} data-reader-heading={index} tabIndex={-1} style={{ overflowWrap: 'anywhere', scrollMarginTop: 100 }}>{body}</Heading>;
     }
-    if (value.type === 'quote') return <blockquote key={index} style={{ ...textStyle, marginInline: 0, paddingInlineStart: 20, borderInlineStart: '3px solid var(--color-primary)' }}>{body}{value.content.caption && <footer>{value.content.caption}</footer>}</blockquote>;
+    if (value.type === 'quote') return <blockquote key={index} style={{ ...textStyle, marginInline: 0, paddingInlineStart: 20, borderInlineStart: '3px solid var(--color-primary)' }}>{body}{plainText(value.content.caption ?? '') && <footer><RichText value={value.content.caption ?? ''} /></footer>}</blockquote>;
     if (value.type === 'note') return <aside key={index} role="note" style={{ ...textStyle, padding: 16, border: '1px solid var(--color-border)', borderRadius: 12 }}>{body}</aside>;
     return <p key={index} style={textStyle}>{body}</p>;
   })}</>;

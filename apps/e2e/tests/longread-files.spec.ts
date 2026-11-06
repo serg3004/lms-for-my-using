@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { fillRich } from '../fixtures/rich-fill.js';
 import { expect, test } from '@playwright/test';
 import { longreadFileServer, mediaId } from '../fixtures/longread-files.js';
 const png = readFileSync(new URL('../fixtures/assets/longread-safety.png', import.meta.url));
@@ -17,11 +18,11 @@ test('image replacement keeps its caption/alt/geometry after saving and reloadin
   const files = longreadFileServer(), server = await files.editor(page);
   const block = page.getByRole('article', { name: '1. Изображение', exact: true });
   await block.getByLabel('Альтернативный текст', { exact: false }).fill('Новая схема 123');
-  await block.getByLabel('Подпись', { exact: true }).fill('Новая подпись'); await block.getByLabel('Ширина, %').fill(''); await expect(block.getByLabel('Ширина, %')).toBeVisible(); await block.getByLabel('Ширина, %').fill('60');
+  await fillRich(page, block.getByRole('textbox', { name: 'Подпись', exact: true }), 'Новая подпись'); await block.getByLabel('Ширина, %').fill(''); await expect(block.getByLabel('Ширина, %')).toBeVisible(); await block.getByLabel('Ширина, %').fill('60');
   await block.getByLabel('Выравнивание').selectOption('end');
   await block.getByLabel('Загрузить или заменить изображение').setInputFiles(imageFile());
   await expect.poll(() => files.uploaded.length).toBe(1);
-  await expect.poll(() => server.snapshot().chapters[0]!.blocks[0]!.content).toMatchObject({ alt: 'Новая схема 123', caption: 'Новая подпись', width: 60, align: 'end', fileId: files.uploaded[0] });
+  await expect.poll(() => server.snapshot().chapters[0]!.blocks[0]!.content).toMatchObject({ alt: 'Новая схема 123', caption: expect.stringContaining('Новая подпись'), width: 60, align: 'end', fileId: files.uploaded[0] });
   await page.reload(); await expect(block.getByAltText('Новая схема 123')).toBeVisible(); await expect(block.locator('figcaption').filter({ hasText: 'Новая подпись' })).toBeVisible();
 });
 test('document and chapter covers can be removed and remain removed after reload', async ({ page }) => {

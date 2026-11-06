@@ -1,11 +1,15 @@
 import { isImageContent, isAttachmentsContent } from '../longread-files/model.js';
+import { DESCRIPTION_SIZES } from '@lms/shared/checklist-description';
 import { continueContentSchema } from '@lms/shared/longread-progress';
 import { exerciseContentSchema } from '@lms/shared/longread-exercises';
 import { audioContentSchema, videoContentSchema, embedContentSchema } from '@lms/shared/longread-media';
 import type { LongreadDraft, SaveLongread } from '../../shared/api/longreads.js';
 import { containerDepth, countNested, emptyTable, MAX_CONTAINER_DEPTH, MAX_ITEMS, MAX_NESTED_BLOCKS, MAX_SLOT_BLOCKS, slotsOf, tableValid, type NestedBlock, type TableContent } from './composite.js';
 
-export type Run = { text: string; bold?: boolean; italic?: boolean; underline?: boolean; code?: boolean; href?: string };
+export type Run = { text: string; bold?: boolean; italic?: boolean; underline?: boolean; code?: boolean; href?: string; color?: string; size?: number; uppercase?: boolean };
+/** Colour, size and capitals of a run: only the values the formatting window can produce are valid. */
+export const runStyleValid = (run: Run) => (run.color === undefined || typeof run.color === 'string' && /^#[0-9A-Fa-f]{6}$/.test(run.color))
+  && (run.size === undefined || (DESCRIPTION_SIZES as readonly number[]).includes(run.size as number)) && (run.uppercase === undefined || typeof run.uppercase === 'boolean');
 export type TextBlockType = 'paragraph' | 'heading' | 'list' | 'quote' | 'note' | 'divider' | 'code';
 export type CompositeBlockType = 'table' | 'columns' | 'tabs' | 'accordion';
 export type AddableBlockType = TextBlockType | CompositeBlockType | 'image' | 'attachments' | 'audio' | 'video' | 'embed' | 'exercise' | 'continue';
@@ -89,7 +93,7 @@ export function documentValid(document: EditorDocument): boolean {
 function contentValid(block: EditorBlock): boolean {
   if (!editableBlock(block)) return true;
   if (compositeTypes.includes(block.type)) return compositeValid(block);
-  const runsValid = (runs: unknown) => Array.isArray(runs) && runs.length <= 500 && runs.every((run: Run) => typeof run.text === 'string' && run.text.length <= 20_000 && (!run.href || safeHref(run.href)));
+  const runsValid = (runs: unknown) => Array.isArray(runs) && runs.length <= 500 && runs.every((run: Run) => typeof run.text === 'string' && run.text.length <= 20_000 && (!run.href || safeHref(run.href)) && runStyleValid(run));
   if (block.type === 'continue') return continueContentSchema.safeParse(block.content).success;
   if (block.type === 'exercise') return exerciseContentSchema.safeParse(block.content).success;
   if (block.type === 'image') return isImageContent(block.content);

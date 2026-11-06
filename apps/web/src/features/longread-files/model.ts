@@ -27,7 +27,7 @@ const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function isImageContent(raw: unknown): raw is LongreadImage {
   if (!raw || typeof raw !== 'object') return false;
   const image = raw as LongreadImage;
-  return (image.fileId === null || typeof image.fileId === 'string' && uuid.test(image.fileId)) && typeof image.alt === 'string' && image.alt.length <= 2000 && typeof image.caption === 'string' && image.caption.length <= 2000 && Number.isInteger(image.width) && image.width >= 10 && image.width <= 100 && ['start', 'center', 'end'].includes(image.align);
+  return (image.fileId === null || typeof image.fileId === 'string' && uuid.test(image.fileId)) && typeof image.alt === 'string' && image.alt.length <= 2000 && typeof image.caption === 'string' && image.caption.length <= 24000 && Number.isInteger(image.width) && image.width >= 10 && image.width <= 100 && ['start', 'center', 'end'].includes(image.align);
 }
 export function isAttachmentsContent(raw: unknown): raw is { files: { fileId: string; label?: string }[] } {
   if (!raw || typeof raw !== 'object') return false;

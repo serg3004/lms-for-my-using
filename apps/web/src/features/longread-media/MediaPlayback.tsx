@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type ReactNode, type CSSProperties } from 'react';
+import { RichText, plainText } from '../../shared/RichText.js';
 import { useTranslation } from 'react-i18next';
 import { canonicalVideoUrl, embedUrl, embedWatchUrl, type LongreadAudio, type LongreadVideo, type LongreadEmbed } from '@lms/shared/longread-media';
 import { getLongreadFile, getLongreadFileUrl } from '../../shared/api/longreads.js';
@@ -87,7 +88,7 @@ export function MediaPlayer({ type, content }: { type: 'audio' | 'video'; conten
   }
   const mediaProps = {
     ref: bind, src: source || undefined, preload: 'metadata' as const,
-    'aria-label': content.caption || t(`longread.types.${type}`),
+    'aria-label': plainText(content.caption) || t(`longread.types.${type}`),
     onLoadedMetadata: () => {
       const node = element.current; if (!node) return;
       setError(false); setDuration(Number.isFinite(node.duration) ? node.duration : 0);
@@ -119,7 +120,7 @@ export function MediaPlayer({ type, content }: { type: 'audio' | 'video'; conten
     </div>}
     {(error || file.error) && <div role="alert"><p>{t('longreadMedia.unavailable')}</p><button type="button" className="admin-btn admin-btn--secondary" style={buttonStyle} onClick={retry}>{t('longread.retry')}</button></div>}
     {video?.source === 'url' && source && <a href={source} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44 }}>{t('longreadMedia.openSource')}</a>}
-    {content.caption && <figcaption>{content.caption}</figcaption>}
+    {plainText(content.caption) && <figcaption><RichText value={content.caption} /></figcaption>}
   </figure>;
 }
 
@@ -136,6 +137,6 @@ export function EmbeddedVideo({ content }: { content: LongreadEmbed }) {
     {!open ? <button type="button" className="admin-btn admin-btn--secondary" style={buttonStyle} onClick={() => setOpen(true)}>{t('longreadMedia.loadEmbed', { provider: source.provider === 'youtube' ? 'YouTube' : 'Vimeo' })}</button> : <iframe key={attempt} src={embedUrl(source)} title={content.caption || t('longreadMedia.embeddedVideo')} sandbox="allow-scripts allow-same-origin allow-presentation" allow="fullscreen; picture-in-picture; encrypted-media" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" onLoad={() => { setLoaded(true); setFailed(false); }} onError={() => setFailed(true)} style={{ display: 'block', width: '100%', maxWidth: '100%', border: 0, aspectRatio: '16 / 9' }} />}
     {failed && <div role="alert"><p>{t('longreadMedia.embedUnavailable')}</p><button type="button" className="admin-btn admin-btn--secondary" style={buttonStyle} onClick={() => { setLoaded(false); setFailed(false); setAttempt((value) => value + 1); }}>{t('longread.retry')}</button></div>}
     <a href={embedWatchUrl(source)} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', minHeight: 44 }}>{t('longreadMedia.openSource')}</a>
-    {content.caption && <figcaption>{content.caption}</figcaption>}
+    {plainText(content.caption) && <figcaption><RichText value={content.caption} /></figcaption>}
   </figure>;
 }

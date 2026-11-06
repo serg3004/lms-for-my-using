@@ -351,7 +351,7 @@ export function AdminAssessmentBuilderPage() {
             {previewQuestions.map((question) => (
               <li key={question.id} className="admin-preview__question">
                 <p className="admin-preview__question-title">{question.title} <span className="admin-preview__points">{question.points}pt</span></p>
-                {question.text && <p className="admin-preview__question-text">{question.text}</p>}
+                {question.text && <p className="admin-preview__question-text"><RichText value={question.text} /></p>}
                 <ul className="admin-preview__options">
                   {(previewOptions[question.id] ?? []).map((option) => {
                     const checked = question.type === 'multiple_choice'

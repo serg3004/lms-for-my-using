@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { richTextSchema } from './rich-text.js';
 import { assessmentAnswerSchema, questionTypeSchema, questionDefinitionSchema, scoringModeSchema, publicQuestionDefinitionSchema } from './assessment-question-types.js';
 
 export const exerciseContentSchema = z.object({
@@ -6,7 +7,7 @@ export const exerciseContentSchema = z.object({
   mode: z.enum(['practice', 'graded']).default('practice'),
   required: z.boolean().default(true),
   weight: z.number().int().min(1).max(1000000).default(1),
-  hint: z.string().max(2000).default(''),
+  hint: richTextSchema(2000).default(''),
   maxAttempts: z.number().int().min(1).max(100).default(3),
   passingScore: z.number().int().min(0).max(100).default(70),
   feedback: z.enum(['result', 'answers']).default('result'),
@@ -25,7 +26,7 @@ export const writeLongreadQuestionSchema = z.object({
   updatedAt: z.string().datetime().optional(),
   type: questionTypeSchema,
   title: z.string().trim().min(1).max(200),
-  text: z.string().max(4000).default(''),
+  text: richTextSchema(4000).default(''),
   definition: questionDefinitionSchema.nullable().default(null),
   scoringMode: scoringModeSchema.default('all_or_nothing'),
   options: z.array(z.object({ id: z.string().uuid().optional(), text: z.string().trim().min(1).max(2000), isCorrect: z.boolean() }).strict()).max(50).default([]),

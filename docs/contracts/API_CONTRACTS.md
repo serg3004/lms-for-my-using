@@ -751,6 +751,13 @@ PR 429 extends the same sanitized markup contract to descriptions and messages o
 and position (1000) descriptions. Entity names stay plain text; certificates, emails, lists and search use `plainText`.
 Legacy plain strings are returned unchanged.
 
+PR 430 brings the same formatting window to longread blocks. A text run (`runs` of paragraph, heading, quote, note, list
+items and table cells) may now carry `color` (`#RRGGBB`), `size` (one of 14, 16, 20, 26) and `uppercase` next to the
+existing `bold`, `italic`, `underline`, `code` and `href`; any other value is rejected. Captions of quote, image, audio,
+video and embed blocks and the text and hint of an exercise (`text` of a longread question, `hint` of the exercise block)
+use the sanitized markup contract of `richTextSchema` (visible-length limits unchanged). Old documents with plain strings
+and runs without styles stay valid and are shown unchanged.
+
 `RichTextField` supports single-line and multiline author fields using the same localized formatting controls. Single-line
 Enter inserts no paragraph and pasted lines are joined with spaces. Inline rename retains commit-on-blur/Enter, Escape,
 retry and validation; opening formatting does not commit the field. Read-only author fields disable editing explicitly.
