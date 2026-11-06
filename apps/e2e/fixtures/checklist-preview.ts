@@ -1,4 +1,3 @@
-import { plainText } from '@lms/shared/rich-text';
 import { expect, type Page } from '@playwright/test';
 import type { ChecklistSummary } from '../../web/src/shared/api/types.js';
 
@@ -30,6 +29,9 @@ export function previewSheet(): ChecklistSummary {
     })),
   };
 }
+
+// Fixtures must not import runtime code from @lms/shared (its dist is not built in e2e/visual jobs).
+const plainText = (html: string) => html.replace(/<[^>]*>/g, '');
 
 export async function openPreviewBuilder(page: Page, sheet = previewSheet(), locale = 'ru', answerSets: unknown[] = []) {
   await page.route('**/api/v1/**', (route) => {
