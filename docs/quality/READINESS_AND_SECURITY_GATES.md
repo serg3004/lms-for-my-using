@@ -27,7 +27,11 @@ On failed required dependency, the public readiness contract uses the canonical 
 
 Workflow implementation is owned by `.github/workflows/ci.yml` and `.github/workflows/codeql.yml`. The current CI chain includes documentation consistency together with security, lint/typecheck/tests/build and other configured repository gates; exact job topology must be read from the workflow when making a current claim.
 
-The Browser E2E job has a 25-minute overall budget, including dependency installation and Playwright browser setup. This job budget does not change individual test timeouts, retries or the test set; an incomplete browser run does not satisfy the gate.
+Browser E2E runs as three parallel Playwright shards and Visual regression as two; every shard executes a distinct part of the same test set (Playwright `--shard`), none is skipped, and `Checks` requires all shards to succeed. Failure artifacts carry the shard number in their name.
+
+Playwright system packages are installed through `scripts/install-playwright-deps.sh`: apt network time limits and up to three attempts of at most four minutes each replace an unbounded wait on a stalled package mirror; it installs the same packages and the same browser version.
+
+Each Browser E2E shard has a 25-minute overall budget, including dependency installation and Playwright browser setup. This job budget does not change individual test timeouts, retries or the test set; an incomplete browser run does not satisfy the gate.
 
 CI runs unit tests (with coverage and script checks) and database tests (migrations plus API database integration tests) as two parallel jobs; the aggregate `Checks` job requires both, so the executed test set is unchanged. The container build and Trivy scan depend only on the application build and run in parallel with the other jobs; `Checks` still requires them. Jobs that run Playwright cache the downloaded browser by operating system, architecture and Playwright version; system packages are still installed on every run, and a cache miss installs the browser as before.
 
