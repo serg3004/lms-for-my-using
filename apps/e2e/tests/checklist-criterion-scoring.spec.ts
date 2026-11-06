@@ -1,3 +1,4 @@
+import { fillRich } from '../fixtures/rich-fill.js';
 import { expect, test } from '@playwright/test';
 import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 
@@ -12,7 +13,7 @@ for (const role of ['learner', 'instructor'] as const) {
       expect(writes.at(-1)).toEqual({ itemId: 'quality', body: { scaleLevel: 1 } });
       if (role === 'instructor') {
         await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
-        await page.getByLabel('Комментарий', { exact: true }).fill('A zero score is still an answer');
+        await fillRich(page, page.getByLabel('Комментарий', { exact: true }), 'A zero score is still an answer');
         await page.getByRole('button', { name: 'Сохранить комментарий', exact: true }).click();
         await expect(no).toHaveAttribute('aria-pressed', 'true');
         await page.getByRole('button', { name: 'Далее', exact: true }).click();

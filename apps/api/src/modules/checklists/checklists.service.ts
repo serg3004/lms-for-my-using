@@ -2973,7 +2973,7 @@ export class ChecklistsService {
       return !item.isRequired;
     }
 
-    if (isNoteRequired(item, result, Boolean(item.scale)) && !(result?.comment ?? '').trim()) {
+    if (isNoteRequired(item, result, Boolean(item.scale)) && !plainText(result?.comment ?? '').trim()) {
       return false;
     }
 

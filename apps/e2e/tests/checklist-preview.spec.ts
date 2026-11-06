@@ -1,3 +1,4 @@
+import { fillRich } from '../fixtures/rich-fill.js';
 import { expect, test } from '@playwright/test';
 import { openPreviewBuilder, openSheetPreview, previewSheet } from '../fixtures/checklist-preview.js';
 
@@ -11,13 +12,13 @@ for (const width of [375, 1440]) {
     await expect(dialog.getByText('Имя Фамилия / Подразделение')).toBeVisible();
     await expect(dialog.getByRole('heading', { name: '1 Подготовка рабочего места' })).toBeVisible();
     await expect(dialog.getByRole('heading', { name: '2 Порядок и безопасность' })).toHaveCount(1);
-    await expect(dialog.locator('textarea')).toHaveCount(4);
+    await expect(dialog.locator('[role=textbox]')).toHaveCount(4);
     await expect(dialog.locator('input[type=date]')).toHaveCount(1);
     await expect(dialog.getByLabel('Рабочее место')).toBeVisible();
-    const fieldOrder = await dialog.locator('.admin-card label').allTextContents();
+    const fieldOrder = await dialog.locator('.admin-card > * > span:first-child').allTextContents();
     expect(fieldOrder.map((value) => value.trim())).toEqual(['Рабочее место *', 'Дата наблюдения', 'Условия наблюдения']);
     await dialog.getByLabel('Рабочее место').fill('Учебный участок');
-    await dialog.getByLabel('Условия наблюдения').fill('Тест');
+    await fillRich(page, dialog.getByLabel('Условия наблюдения'), 'Тест');
     await dialog.getByLabel('Дата наблюдения').fill('2026-10-29');
     const first = dialog.getByRole('radiogroup').first();
     await first.getByRole('radio').first().focus();
@@ -33,7 +34,7 @@ for (const width of [375, 1440]) {
     await skip.click();
     await expect(skip).toHaveAttribute('aria-pressed', 'true');
     await dialog.getByRole('radiogroup').last().getByRole('radio', { name: 'Нет', exact: false }).check();
-    await dialog.getByLabel('Сильные стороны', { exact: true }).fill('Порядок');
+    await fillRich(page, dialog.getByLabel('Сильные стороны', { exact: true }), 'Порядок');
     await expect.poll(() => dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
     const close = dialog.getByRole('button', { name: 'Закрыть', exact: true }).last();
     await close.focus();
@@ -44,7 +45,7 @@ for (const width of [375, 1440]) {
     await dialog.getByRole('button', { name: 'Сбросить', exact: true }).click();
     await expect(dialog.getByRole('radio', { checked: true })).toHaveCount(0);
     await expect(dialog.getByLabel('Рабочее место')).toHaveValue('');
-    await expect(dialog.getByLabel('Сильные стороны', { exact: true })).toHaveValue('');
+    await expect(dialog.getByLabel('Сильные стороны', { exact: true })).toHaveText('');
     await expect(dialog.getByText('evidence.png', { exact: true })).toHaveCount(0);
     await first.getByRole('radio').last().check();
     await page.keyboard.press('Escape');
@@ -106,8 +107,8 @@ test('preview completion requires configured general information, photo and feed
   await dialog.getByRole('button', { name: 'Завершить', exact: true }).click();
   await expect(dialog.getByRole('alert')).toContainText('Структурированная обратная связь');
   await expect(dialog.getByRole('status')).toHaveCount(0);
-  await dialog.getByLabel('Сильные стороны', { exact: true }).fill('Порядок');
-  await dialog.getByLabel('Зоны роста', { exact: true }).fill('Маркировка');
+  await fillRich(page, dialog.getByLabel('Сильные стороны', { exact: true }), 'Порядок');
+  await fillRich(page, dialog.getByLabel('Зоны роста', { exact: true }), 'Маркировка');
   await expect(dialog.getByRole('status')).toContainText('Лист завершён');
   await expect(dialog.getByRole('status')).toContainText('Зачтено');
   await expect(dialog.getByRole('status')).toContainText('100%');

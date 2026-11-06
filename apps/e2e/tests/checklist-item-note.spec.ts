@@ -1,3 +1,4 @@
+import { fillRich } from '../fixtures/rich-fill.js';
 import { expect, test, type Page } from '@playwright/test';
 
 // PR 415: a criterion's description and explanation rule, in the editor and while filling the sheet.
@@ -125,7 +126,7 @@ test.describe('Explanation while filling a sheet (PR 415)', () => {
     const note = page.getByRole('textbox', { name: 'Пояснение (обязательно)' });
     await expect(note).toBeVisible();
     await expect(page.getByRole('button', { name: 'Сохранить пояснение' })).toBeDisabled();
-    await note.fill('Нет ценников');
+    await fillRich(page, note, 'Нет ценников');
     await page.getByRole('button', { name: 'Сохранить пояснение' }).click();
     await expect.poll(() => posts.length).toBe(2);
     expect(posts[1]).toEqual({ scaleLevel: 1, comment: 'Нет ценников' });

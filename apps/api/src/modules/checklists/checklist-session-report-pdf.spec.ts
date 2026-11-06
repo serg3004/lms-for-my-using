@@ -81,6 +81,15 @@ describe('renderSessionReportPdf (PR 372)', () => {
     expect(text).toContain('Стр. 2 из 2');
   });
 
+  it('PR 428: a formatted comment and feedback are drawn as styled text, not as markup', async () => {
+    const rows = [row('c1', 'g1', 'First criterion', 1, 1, { comment: '<p><strong>Важно</strong> и <em>курсив</em></p>' })];
+    const data = report(rows, { session: { id: 'sess', instanceId: 'inst', status: 'completed', scheduledAt: new Date('2026-10-01T10:00:00Z'), durationMinutes: 60, startedAt: new Date('2026-10-01T10:05:00Z'), timezone: 'Asia/Almaty', locationCapturePolicy: 'off', strengths: '<p><strong>Сильные</strong> стороны</p>', developmentAreas: null, nextSteps: null, contextFieldsSnapshot: [], contextValues: {} } as never });
+    const { text } = await render(data);
+    expect(text).toContain('Важно и курсив');
+    expect(text).toContain('Сильные стороны');
+    expect(text).not.toMatch(/<\/?(strong|em|p)>/);
+  });
+
   it('prints "Завершено" and the answer count for a sheet without points (PR 416): no ring, percentage, points, verdict or groups', async () => {
     const rows = sample5s().map((entry) => ({ ...entry, earned: 0, max: 0 }));
     const base = report(rows);

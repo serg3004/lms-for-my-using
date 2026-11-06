@@ -597,6 +597,20 @@ describe('ChecklistSessionService', () => {
       }));
     });
 
+    it('PR 428: a multi-line value keeps its formatting but loses foreign markup; other types stay as typed', async () => {
+      const areaId = '99999999-9999-4999-8999-999999999999';
+      const mixed = [{ id: fieldId, label: 'Visit date', type: 'date', required: false, order: 0 }, { id: areaId, label: 'Notes', type: 'textarea', required: false, order: 1 }];
+      const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'in_progress', contextFieldsSnapshot: mixed })) } });
+      const service = new ChecklistSessionService(prisma, fakeChecklists());
+
+      await service.submitContext(sessionId, organizationId, { values: { [fieldId]: '2026-09-27', [areaId]: '<p><strong>Важно</strong><script>bad()</script> <img src=x onerror=1></p>' }, version: 1 }, {}, observerId);
+
+      const data = (prisma.checklistSession.updateMany as jest.Mock).mock.calls[0]![0] as { data: { contextValues: Record<string, string> } };
+      expect(data.data.contextValues[fieldId]).toBe('2026-09-27');
+      expect(data.data.contextValues[areaId]).toContain('<strong>Важно</strong>');
+      expect(data.data.contextValues[areaId]).not.toMatch(/script|img|onerror/);
+    });
+
     it('rejects unknown fields, invalid dates, and stale versions', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => baseSession({ status: 'paused', version: 2, contextFieldsSnapshot: fields })) } });
       const service = new ChecklistSessionService(prisma, fakeChecklists());

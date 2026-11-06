@@ -1,4 +1,5 @@
 import { richTextSchema, plainText } from '@lms/shared/rich-text';
+import { DESCRIPTION_MARKUP_LIMIT, sanitizeDescription } from '@lms/shared/checklist-description';
 import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
 
@@ -135,9 +136,10 @@ export function normalizeFeedbackPatch(
       normalized[fieldId] = null;
     } else if (field.kind === 'text') {
       if (typeof value !== 'string') throw new BadRequestException(`Feedback field expects text: ${fieldId}`);
-      const text = value.trim();
-      if (text.length > FEEDBACK_TEXT_MAX_LENGTH) throw new BadRequestException(`Feedback text is too long: ${fieldId}`);
-      normalized[fieldId] = text === '' ? null : text;
+      // PR 428: text answers may carry formatting; strip foreign markup, count visible characters.
+      const text = sanitizeDescription(value.trim());
+      if (value.length > DESCRIPTION_MARKUP_LIMIT || plainText(text).length > FEEDBACK_TEXT_MAX_LENGTH) throw new BadRequestException(`Feedback text is too long: ${fieldId}`);
+      normalized[fieldId] = plainText(text).trim() === '' ? null : text;
     } else {
       if (!Array.isArray(value)) throw new BadRequestException(`Feedback field expects a list of options: ${fieldId}`);
       const ids = [...new Set(value)];

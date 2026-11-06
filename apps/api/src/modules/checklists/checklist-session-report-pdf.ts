@@ -1,6 +1,6 @@
 import { checklistLabel } from '@lms/shared/checklist-numbering';
 import { isRichDescription, descriptionRuns, descriptionText, type DescriptionRun } from '@lms/shared/checklist-description';
-import { feedbackRows, isCustomFeedback, collectFeedbackFields } from '@lms/shared/checklist-feedback';
+import { feedbackRows, isCustomFeedback } from '@lms/shared/checklist-feedback';
 import PDFDocument from 'pdfkit';
 
 import type { HighlightStyle } from './checklist-colors.js';
@@ -268,10 +268,10 @@ class ReportPainter {
     this.section(this.labels.generalInfo);
     for (const entry of entries) {
       const valueWidth = CONTENT_WIDTH - 170;
-      const height = Math.max(this.measure(entry.value!, valueWidth, { size: 10 }), this.measure(entry.label, 160, { rich: true, size: 9 })) + 4;
+      const height = Math.max(this.measure(entry.value!, valueWidth, { rich: true, size: 10 }), this.measure(entry.label, 160, { rich: true, size: 9 })) + 4;
       this.ensureSpace(height);
       this.text(entry.label, PAGE.margin, 160, { rich: true, size: 9, color: MUTED });
-      this.text(entry.value!, PAGE.margin + 170, valueWidth, { size: 10 });
+      this.text(entry.value!, PAGE.margin + 170, valueWidth, { rich: true, size: 10 });
       this.y += height;
     }
   }
@@ -349,11 +349,12 @@ class ReportPainter {
       const photoLine = !criterion.photo || photo?.drawn ? null
         : photo?.unavailable ? this.labels.photoUnavailable : `${this.labels.photoFile}: ${fileLine}`.trim();
       const detailParts = [
-        level ? { value: level, weight: 700 as PdfFontWeight } : null,
-        ...(criterion.comment ?? '').split('\n').filter(Boolean).map((value) => ({ value, weight: 400 as PdfFontWeight })),
-        photoLine ? { value: photoLine, weight: 400 as PdfFontWeight } : null,
-      ].filter((part): part is { value: string; weight: PdfFontWeight } => part !== null);
-      const textHeight = detailParts.reduce((sum, part) => sum + this.measure(part.value, widths.detail, { weight: part.weight, size: 9 }) + 2, 0);
+        level ? { value: level, weight: 700 as PdfFontWeight, rich: false } : null,
+        // PR 428: the comment keeps its formatting; plain legacy comments keep their line breaks.
+        criterion.comment?.trim() ? { value: criterion.comment, weight: 400 as PdfFontWeight, rich: true } : null,
+        photoLine ? { value: photoLine, weight: 400 as PdfFontWeight, rich: false } : null,
+      ].filter((part): part is { value: string; weight: PdfFontWeight; rich: boolean } => part !== null);
+      const textHeight = detailParts.reduce((sum, part) => sum + this.measure(part.value, widths.detail, { weight: part.weight, size: 9, rich: part.rich }) + 2, 0);
       const detailHeight = textHeight + (photo?.drawn ? photo.height + 4 : 0);
       const height = Math.max(this.measure(title, widths.text, { rich: true, size: 10 }), detailHeight, 16) + 12;
 
@@ -370,8 +371,8 @@ class ReportPainter {
       this.text(scoreText, column.score + 16, widths.score - 16, { weight: 700, size: 10, color: ink }, top);
       let detailY = top;
       for (const part of detailParts) {
-        this.text(part.value, column.detail, widths.detail, { weight: part.weight, size: 9, color: ink }, detailY);
-        detailY += this.measure(part.value, widths.detail, { weight: part.weight, size: 9 }) + 2;
+        this.text(part.value, column.detail, widths.detail, { weight: part.weight, size: 9, color: ink, rich: part.rich }, detailY);
+        detailY += this.measure(part.value, widths.detail, { weight: part.weight, size: 9, rich: part.rich }) + 2;
       }
       if (photo?.drawn) this.doc.image(photo.buffer, column.detail, detailY + 2, { width: photo.width, height: photo.height });
       this.y += height;
@@ -425,14 +426,13 @@ class ReportPainter {
     const form = this.report.feedbackForm;
     if (form && isCustomFeedback(form.layout)) {
       const rows = feedbackRows(form, form.answers, this.labels);
-      const choices = new Set(collectFeedbackFields(form.layout).filter((field) => field.kind === 'choice').map((field) => field.id));
       if (!rows.some((row) => row.kind === 'field' && row.value)) return;
       this.section(form.layout.title || this.labels.feedback);
       for (const row of rows) {
         this.ensureSpace(24);
         const indent = row.depth * 10;
         if (row.kind === 'section') this.paragraph(row.title, { rich: true, weight: 700, size: 10 }, PAGE.margin + indent, CONTENT_WIDTH - indent);
-        else { this.paragraph(row.title, { rich: true, weight: 700, size: 9, color: MUTED }, PAGE.margin + indent, CONTENT_WIDTH - indent); this.paragraph(row.value || '—', { rich: choices.has(row.id), size: 10 }, PAGE.margin + indent, CONTENT_WIDTH - indent); }
+        else { this.paragraph(row.title, { rich: true, weight: 700, size: 9, color: MUTED }, PAGE.margin + indent, CONTENT_WIDTH - indent); this.paragraph(row.value || '—', { rich: true, size: 10 }, PAGE.margin + indent, CONTENT_WIDTH - indent); }
       }
       return;
     }
@@ -448,7 +448,7 @@ class ReportPainter {
       this.ensureSpace(24);
       this.text(label, PAGE.margin, CONTENT_WIDTH, { weight: 700, size: 9, color: MUTED });
       this.y += 13;
-      this.paragraph(value, { size: 10 });
+      this.paragraph(value, { rich: true, size: 10 });
     }
   }
 

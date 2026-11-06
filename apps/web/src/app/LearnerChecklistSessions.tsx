@@ -1,3 +1,4 @@
+import { RichText } from '../shared/RichText.js';
 import { plainText } from '@lms/shared/rich-text';
 import { checklistResultText } from '../shared/checklistResultText.js';
 import { isCustomFeedback } from '@lms/shared/checklist-feedback';
@@ -166,11 +167,11 @@ export function LearnerChecklistSessions({ t, linkedSessionId, onLinkedSessionBa
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16, marginTop: 10 }}>
             <div>
               <div style={{ color: COLORS.muted, fontSize: 12 }}>{t('checklistSessions.conduct.strengths', 'Strengths')}</div>
-              <strong style={{ fontSize: 13 }}>{feedbackSession.strengths || '—'}</strong>
+              <strong style={{ fontSize: 13 }}><RichText value={feedbackSession.strengths || '—'} /></strong>
             </div>
             <div>
               <div style={{ color: COLORS.muted, fontSize: 12 }}>{t('checklistSessions.conduct.developmentAreas', 'Development areas')}</div>
-              <strong style={{ fontSize: 13 }}>{feedbackSession.developmentAreas || '—'}</strong>
+              <strong style={{ fontSize: 13 }}><RichText value={feedbackSession.developmentAreas || '—'} /></strong>
             </div>
           </div>
         </div>
@@ -292,13 +293,13 @@ export function LearnerSessionDetail({ session, onBack, t }: { session: Checklis
             <div style={{ marginTop: 20, display: 'grid', gap: 10 }}>
               <h3 style={{ color: COLORS.text, fontSize: 14, margin: 0 }}>{t('checklistSessions.learner.feedbackTitle', 'Feedback from your observer')}</h3>
               {session.strengths && (
-                <p style={{ margin: 0 }}><strong>{t('checklistSessions.conduct.strengths', 'Strengths')}:</strong> {session.strengths}</p>
+                <p style={{ margin: 0 }}><strong>{t('checklistSessions.conduct.strengths', 'Strengths')}:</strong> <RichText value={session.strengths} /></p>
               )}
               {session.developmentAreas && (
-                <p style={{ margin: 0 }}><strong>{t('checklistSessions.conduct.developmentAreas', 'Development areas')}:</strong> {session.developmentAreas}</p>
+                <p style={{ margin: 0 }}><strong>{t('checklistSessions.conduct.developmentAreas', 'Development areas')}:</strong> <RichText value={session.developmentAreas} /></p>
               )}
               {session.nextSteps && (
-                <p style={{ margin: 0 }}><strong>{t('checklistSessions.conduct.nextSteps', 'Next steps')}:</strong> {session.nextSteps}</p>
+                <p style={{ margin: 0 }}><strong>{t('checklistSessions.conduct.nextSteps', 'Next steps')}:</strong> <RichText value={session.nextSteps} /></p>
               )}
             </div>
           )}
@@ -323,7 +324,7 @@ export function LearnerSessionDetail({ session, onBack, t }: { session: Checklis
               >
                 <p style={{ fontWeight: 600, margin: 0 }}>{item.text}</p>
                 {(session.feedbackVisible ?? session.result.visible) && result?.comment && (
-                  <p style={{ color: COLORS.muted, fontSize: 12.5, margin: '4px 0 0' }}>{result.comment}</p>
+                  <p style={{ color: COLORS.muted, fontSize: 12.5, margin: '4px 0 0' }}><RichText value={result.comment} /></p>
                 )}
               </div>
             );

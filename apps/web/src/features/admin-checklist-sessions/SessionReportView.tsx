@@ -179,7 +179,7 @@ function ReportFeedback({ feedback, t }: { feedback: NonNullable<Report['feedbac
         {entries.map(([label, value]) => (
           <div key={label}>
             <dt style={muted}>{label}</dt>
-            <dd style={{ margin: '4px 0 0', fontWeight: 600 }}>{value || '—'}</dd>
+            <dd style={{ margin: '4px 0 0', fontWeight: 600 }}><RichText value={value || '—'} /></dd>
           </div>
         ))}
       </dl>
@@ -222,7 +222,7 @@ export function ReportSummary({ report, t }: { report: Report; t: TFunction }) {
             {report.generalInfo.map((field) => (
               <div key={field.id}>
                 <dt style={muted}><RichText value={field.label} /></dt>
-                <dd style={{ margin: '4px 0 0', fontWeight: 600 }}>{field.value || '—'}</dd>
+                <dd style={{ margin: '4px 0 0', fontWeight: 600 }}><RichText value={field.value || '—'} /></dd>
               </div>
             ))}
           </dl>
@@ -306,7 +306,7 @@ export function ReportCriteria({ report, t }: { report: Report; t: TFunction }) 
         </td>
         <td style={cell}>{criterion.levelLabel ?? '—'}{criterion.levelDescription && <p><RichDescription value={criterion.levelDescription} /></p>}</td>
         <td style={cell}>
-          {criterion.comment || '—'}
+          {criterion.comment ? <RichText value={criterion.comment} /> : '—'}
           {criterion.photo && (
             <div style={{ marginTop: 6 }}>
               <CriterionPhoto fileName={criterion.photo.fileName} instanceId={report.instanceId} itemId={criterion.id} t={t} />

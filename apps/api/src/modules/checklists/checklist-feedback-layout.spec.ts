@@ -70,6 +70,12 @@ describe('feedback layout (PR 405)', () => {
     it('validates text, single and multiple choice answers', () => {
       expect(normalizeFeedbackPatch(layout, sets, { note: '  hi  ', verdict: ['a'], tags: ['a', 'b', 'a'] })).toEqual({ note: 'hi', verdict: ['a'], tags: ['a', 'b'] });
       expect(normalizeFeedbackPatch(layout, sets, { note: '   ', verdict: [], tags: null })).toEqual({ note: null, verdict: null, tags: null });
+      // PR 428: formatting survives, foreign markup does not, an empty paragraph counts as no answer.
+      const rich = normalizeFeedbackPatch(layout, sets, { note: '<p><em>Важно</em><script>bad()</script></p>' });
+      expect(rich['note']).toContain('<em>Важно</em>');
+      expect(String(rich['note'])).not.toContain('script');
+      expect(normalizeFeedbackPatch(layout, sets, { note: '<p> </p>' })).toEqual({ note: null });
+      expect(() => normalizeFeedbackPatch(layout, sets, { note: `<strong>${'x'.repeat(4001)}</strong>` })).toThrow(BadRequestException);
     });
     it.each([
       [{ nope: 'x' }],
