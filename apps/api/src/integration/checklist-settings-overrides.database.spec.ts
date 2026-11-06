@@ -172,7 +172,7 @@ describe('checklist module-settings overrides (PR 397) — database', () => {
     expect((await make(inherits.id)).locationCapturePolicy).toBe('optional');
   });
 
-  it('the feedback visibility of a sheet hides or shows the result to the learner', async () => {
+  it('sheet feedback visibility controls feedback independently of the unfinished learner result (PR 426)', async () => {
     const hidden = await sheet();
     const shown = await sheet({ feedbackVisibilityOverride: 'live' });
     const learnerView = (visibility: Map<string, 'after_completion' | 'live'>) => ({ isLearnerOnly: true, feedbackVisibility: 'after_completion' as const, feedbackVisibilityBySheet: visibility });
@@ -183,13 +183,17 @@ describe('checklist module-settings overrides (PR 397) — database', () => {
       const created = await sessionService.create(organizationId, { instanceId: instance.id, observerId, timezone: 'UTC' } as never, observerId);
       const started = await sessionService.transition(created.id, organizationId, 'start', created.version, observerId, {});
       await checklistsService.submitItemResult(instance.id, checklist.itemId, organizationId, observerId, true, { checked: true });
+      await prisma.checklistSession.update({ where: { id: started.id }, data: { strengths: 'Live feedback' } });
       return started.id;
     };
     const hiddenId = await prepare(hidden);
     const shownId = await prepare(shown);
     const overrides = await checklistsService.feedbackVisibilityOverrides(organizationId);
     expect((await sessionService.get(hiddenId, organizationId, {}, learnerView(overrides))).result.visible).toBe(false);
-    expect((await sessionService.get(shownId, organizationId, {}, learnerView(overrides))).result.visible).toBe(true);
+    const live = await sessionService.get(shownId, organizationId, {}, learnerView(overrides));
+    expect(live.result).toMatchObject({ visible: false, percentage: null, passed: null });
+    expect(live.strengths).toBe('Live feedback');
+    expect(live.feedbackVisible).toBe(true);
   });
 
   it('a copy keeps the overrides of the original', async () => {
