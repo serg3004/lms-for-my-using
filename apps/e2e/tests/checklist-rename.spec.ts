@@ -141,12 +141,14 @@ test.describe('Rename in the checklist editor (PR 413)', () => {
     await section.fill('Итоги наблюдения');
     await expect(page.getByRole('heading', { name: 'Итоги наблюдения' })).toBeVisible();
     const field = page.getByLabel('Название поля', { exact: true }).first();
-    await field.click();
-    await field.fill('');
+    // The field is a rich-text editor: real key presses keep its selection and the DOM in step (fill() races with it).
+    const replaceWith = async (text: string) => { await field.click(); await page.keyboard.press('ControlOrMeta+A'); await (text ? page.keyboard.type(text) : page.keyboard.press('Backspace')); };
+    await replaceWith('');
     await expect(field).toHaveText('');
-    await field.fill('Зоны');
+    await replaceWith('Зоны');
     await expect(field).toHaveText('Зоны');
-    await field.fill('');
+    await replaceWith('');
+    await expect(field).toHaveText('');
     await field.blur();
     await expect(field).toHaveText('Сильные стороны');
     await page.locator('.admin-feedback-block').getByRole('button', { name: 'Переименовать', exact: true }).first().click();

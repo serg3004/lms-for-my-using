@@ -50,7 +50,7 @@ export function RichTextField({ value, onChange, label, id, maxLength = 2000, di
   value: string; onChange: (value: string) => void; label: string; id?: string; maxLength?: number; disabled?: boolean; compact?: boolean; singleLine?: boolean; hideLabel?: boolean; onBlur?: FocusEventHandler<HTMLDivElement>; onFocus?: FocusEventHandler<HTMLDivElement>; onKeyDown?: KeyboardEventHandler<HTMLDivElement>; invalid?: boolean; describedBy?: string; className?: string;
 }) {
   const { t } = useTranslation(), uid = useId(), labelId = `${uid}-label`, hintId = `${uid}-hint`;
-  const [popup, setPopup] = useState<Popup | null>(null), [placement, setPlacement] = useState<CSSProperties>({}), [color, setColor] = useState<string>(DESCRIPTION_COLORS[0]), [lengthError, setLengthError] = useState(false);
+  const [popup, setPopup] = useState<Popup | null>(null), [placement, setPlacement] = useState<CSSProperties>({}), [color, setColor] = useState<string>(DESCRIPTION_COLORS[0]), [lengthError, setLengthError] = useState(false), [focused, setFocused] = useState(false);
   const panel = useRef<HTMLDivElement>(null), timer = useRef<ReturnType<typeof setTimeout> | null>(null), touch = useRef<{ x: number; y: number } | null>(null);
   const editor = useEditor({
     immediatelyRender: false, shouldRerenderOnTransaction: true, editable: !disabled,
@@ -86,7 +86,9 @@ export function RichTextField({ value, onChange, label, id, maxLength = 2000, di
       setLengthError(false); if (clean !== sanitizeDescription(value)) onChange(clean);
     },
   });
-  useEffect(() => { if (editor && editorValue(editor) !== sanitizeDescription(value)) editor.commands.setContent(descriptionHtml(value), { emitUpdate: false }); }, [editor, value]);
+  // A value that arrives while the author is typing may be older than the editor text (React renders after the keystroke); the
+  // field is only re-synchronised with the outside value while it is not focused, and once more when it loses the focus.
+  useEffect(() => { if (editor && !focused && editorValue(editor) !== sanitizeDescription(value)) editor.commands.setContent(descriptionHtml(value), { emitUpdate: false }); }, [editor, value, focused]);
   useEffect(() => { editor?.setEditable(!disabled, false); }, [editor, disabled]);
   function open(x: number, y: number) {
     if (!editor || editor.state.selection.empty) return;
@@ -142,7 +144,7 @@ export function RichTextField({ value, onChange, label, id, maxLength = 2000, di
     else if (kind === 'bold') chain.toggleBold().run(); else if (kind === 'italic') chain.toggleItalic().run(); else chain.toggleUnderline().run();
   }
   function style(attributes: Record<string, unknown>) { if (popup) editor?.chain().setTextSelection({ from: popup.from, to: popup.to }).setMark('descriptionStyle', attributes).run(); }
-  return <div onFocus={onFocus} onKeyDown={onKeyDown} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onBlur?.(event); }} style={{ minWidth: 0, maxWidth: '100%', width: '100%', display: 'grid', gap: 6 }}>
+  return <div onFocus={(event) => { setFocused(true); onFocus?.(event); }} onKeyDown={onKeyDown} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) { setFocused(false); onBlur?.(event); } }} style={{ minWidth: 0, maxWidth: '100%', width: '100%', display: 'grid', gap: 6 }}>
     <div id={labelId} className={hideLabel ? 'ui-visually-hidden' : undefined}>{descriptionText(label)}</div>
     <p id={hintId} className={compact ? 'ui-visually-hidden' : 'admin-form__hint'} style={{ marginBlock: 4, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{t('richDescription.hint')}</p>
     <div onPointerDown={touchDown} onPointerUp={cancelTouch} onPointerCancel={cancelTouch} onPointerMove={(event) => { if (touch.current && Math.hypot(event.clientX - touch.current.x, event.clientY - touch.current.y) > 10) cancelTouch(); }}>
