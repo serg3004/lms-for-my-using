@@ -62,7 +62,8 @@ async function openEditor(page: Page, photoCount = 2): Promise<Server> {
   return server;
 }
 
-const captions = (page: Page) => page.locator('input[aria-label^="Подпись к фото"]').evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value));
+// The caption is a rich single-line field (PR 427): read its visible text.
+const captions = (page: Page) => page.getByRole('textbox', { name: /^Подпись к фото/ }).evaluateAll((fields) => fields.map((field) => field.textContent ?? ''));
 
 test.describe('Extra sheet photos (PR 421)', () => {
   test('shows the saved photos with captions and the counter', async ({ page }) => {
