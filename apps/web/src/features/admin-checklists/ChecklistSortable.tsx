@@ -32,9 +32,10 @@ export function DragHandle({ handle, label }: { handle: HandleProps; label: stri
   return <button aria-label={label} className="admin-drag" type="button" {...handle}>⋮⋮</button>;
 }
 
-export function SortableBox({ id, className, role, extra, children }: { id: string; className: string; role?: string; /** PR 413: more handlers of the box (the context menu). */ extra?: HTMLAttributes<HTMLDivElement>; children: (handle: HandleProps) => ReactNode }) {
+export function SortableBox({ id, className, role, extra, style: ownStyle, children }: { id: string; className: string; role?: string; /** PR 431: the author's look of the block. */ style?: CSSProperties; /** PR 413: more handlers of the box (the context menu). */ extra?: HTMLAttributes<HTMLDivElement>; children: (handle: HandleProps) => ReactNode }) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style: CSSProperties = {
+    ...ownStyle,
     transform: CSS.Translate.toString(transform),
     transition,
     ...(isDragging ? { opacity: 0.6, position: 'relative', zIndex: 2, boxShadow: '0 4px 16px rgb(0 0 0 / .2)' } : {}),
@@ -53,9 +54,9 @@ export function UngroupedZone({ className, children }: { className: string; chil
 }
 
 /** A group card: sortable for real groups, a plain drop zone for the "without a group" bucket. */
-export function GroupShell({ groupId, children }: { groupId: string | null; children: (handle: HandleProps | null) => ReactNode }) {
+export function GroupShell({ groupId, style, children }: { groupId: string | null; style?: CSSProperties; children: (handle: HandleProps | null) => ReactNode }) {
   return groupId
-    ? <SortableBox className="admin-group-card" id={groupId}>{children}</SortableBox>
+    ? <SortableBox className="admin-group-card" id={groupId} style={style}>{children}</SortableBox>
     : <UngroupedZone className="admin-group-card">{children(null)}</UngroupedZone>;
 }
 

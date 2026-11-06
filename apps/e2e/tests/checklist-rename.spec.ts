@@ -109,8 +109,9 @@ test.describe('Rename in the checklist editor (PR 413)', () => {
     await page.keyboard.type('Включить свет в зале');
     await page.keyboard.press('Enter');
     await expect.poll(() => server.calls.find((call) => call.path === '/checklist-items/i1')?.body).toEqual({ text: 'Включить свет в зале' });
+    await expect(text).toContainText('Включить свет в зале');
     await text.dblclick();
-    expect(await text.evaluate(() => window.getSelection()?.toString().length ?? 0)).toBeGreaterThan(0);
+    await expect.poll(() => text.evaluate(() => window.getSelection()?.toString().length ?? 0)).toBeGreaterThan(0);
   });
 
   test('the right button on a group opens a menu with "Переименовать"', async ({ page }) => {

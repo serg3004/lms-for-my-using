@@ -3,10 +3,12 @@ import { plainText } from '@lms/shared/rich-text';
 import { RichTextField } from '../../shared/RichTextField.js';
 import { RichDescriptionEditor } from '../../shared/RichDescriptionEditor.js';
 import type { FeedbackLayout } from '@lms/shared/checklist-feedback';
-import { ChecklistAppearanceEditor } from './ChecklistAppearanceEditor.js';
-import { sanitizeAppearance, type Appearance } from '@lms/shared/checklist-appearance';
+import { BlockGear, BlockSettingsWindow, sameTarget, useNarrowScreen, type BlockTarget } from './ChecklistBlockSettings.js';
+import { appearanceCss } from '../../shared/AppearanceBlock.js';
+import { resolveBlockStyle, sanitizeAppearance, type Appearance, type BlockKind } from '@lms/shared/checklist-appearance';
 import { FeedbackBuilder } from '../checklist-feedback/FeedbackBuilder.js';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useOptionalSession } from '../../shared/session.js';
 import type { TFunction } from 'i18next';
@@ -116,6 +118,18 @@ export function ChecklistBuilder({
   const [forbidGalleryPhotos, setForbidGalleryPhotos] = useState(checklist.forbidGalleryPhotos ?? false);
   const [feedbackLayout, setFeedbackLayout] = useState<FeedbackLayout | null>(checklist.feedbackLayout ?? null);
   const [appearance, setAppearance] = useState<Appearance | null>(() => sanitizeAppearance(checklist.appearance));
+  // PR 431: the block whose "Settings" window is open (none: the window does not exist and the sheet uses the full width).
+  const [blockTarget, setBlockTarget] = useState<BlockTarget | null>(null);
+  const blockTrigger = useRef<HTMLElement | null>(null);
+  const narrowScreen = useNarrowScreen();
+  function openBlockSettings(target: BlockTarget, trigger: HTMLElement) { blockTrigger.current = trigger; setBlockTarget(target); }
+  const closeBlockSettings = useCallback(() => { setBlockTarget(null); blockTrigger.current?.focus(); }, []);
+  /** The author's look of a block of the editor, with a selection frame (separate from the look) on the block being set. */
+  function blockLook(kind: BlockKind, id: string | null, options: { keepPadding?: boolean } = {}): CSSProperties {
+    const css = appearanceCss(resolveBlockStyle(appearance, kind, id));
+    if (options.keepPadding) delete css.padding;
+    return sameTarget(blockTarget, { kind, id, name: '' }) ? { ...css, outline: '3px solid var(--color-primary, #1D4ED8)', outlineOffset: 2 } : css;
+  }
   const [feedbackEnabled, setFeedbackEnabled] = useState(checklist.feedbackEnabled ?? true);
   const [feedbackRequired, setFeedbackRequired] = useState(checklist.feedbackRequired ?? false);
   const [allowSkipAll, setAllowSkipAll] = useState(checklist.allowSkipAll ?? false);
@@ -574,7 +588,7 @@ export function ChecklistBuilder({
         }
       />
       {unsavedGuard && (
-        <div className="ui-state ui-state--warning admin-inline-banner" role="status" data-testid="checklist-unsaved-bar" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+        <div className="ui-state ui-state--warning admin-inline-banner" role="status" data-testid="checklist-unsaved-bar" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, ...(blockTarget && !narrowScreen ? { marginInlineEnd: 356 } : {}) }}>
           <span style={{ marginRight: 'auto' }}>{t('admin.checklists.unsavedBar', 'There are unsaved changes')}</span>
           <Button type="button" variant="secondary" size="sm" disabled={saveState.status === 'saving'} onClick={discardChanges}>{t('admin.checklists.discardChanges', 'Discard')}</Button>
           <Button type="button" variant="primary" size="sm" disabled={saveState.status === 'saving'} onClick={() => void saveSettings('header')}>
@@ -590,9 +604,10 @@ export function ChecklistBuilder({
           {t('admin.checklists.needItemsHint', 'Preview and Publish become available after you add at least one criterion.')}
         </p>
       )}
-      <div className="admin-builder__grid">
+      <div className="admin-builder__grid" style={blockTarget && !narrowScreen ? { paddingInlineEnd: 356 } : undefined}>
         <div className="admin-builder__column" style={{ minWidth: 0 }}>
-          <ChecklistSettingsForm>
+          <ChecklistSettingsForm style={blockLook('header', null)}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}><BlockGear target={{ kind: 'header', id: null, name: t('admin.checklists.appearance.kind.header') }} active={blockTarget?.kind === 'header'} onOpen={openBlockSettings} t={t} /></div>
             <RichTextField id="checklist-title" label={t('admin.checklists.field.title', 'Title')} value={title} onChange={setTitle} maxLength={200} singleLine compact disabled={!canEdit} />
             <RichDescriptionEditor id="checklist-description" label={t('admin.checklists.field.description', 'Description')} value={description} onChange={setDescription} disabled={!canEdit} />
             <ChecklistCoverField checklistId={checklist.id} title={checklist.title} coverUpdatedAt={checklist.coverUpdatedAt} />
@@ -655,8 +670,11 @@ export function ChecklistBuilder({
               />
             )}
           </section>
-          <ChecklistItemsEditor>
-            <h3>{t('admin.checklists.contextFieldsTitle', 'General information')} <Badge variant="neutral">{contextFields.length}</Badge></h3>
+          <ChecklistItemsEditor style={blockLook('info', null)}>
+            <div className="admin-builder-section-head">
+              <h3>{t('admin.checklists.contextFieldsTitle', 'General information')} <Badge variant="neutral">{contextFields.length}</Badge></h3>
+              <BlockGear target={{ kind: 'info', id: null, name: t('admin.checklists.appearance.kind.info') }} active={blockTarget?.kind === 'info'} onOpen={openBlockSettings} t={t} />
+            </div>
             <p className="admin-form__hint">{t('admin.checklists.contextFieldsHint', 'Filled in by the observer before the criteria.')}</p>
             <div className="admin-context-fields">
               <DndContext {...contextDnd}>
@@ -761,7 +779,7 @@ export function ChecklistBuilder({
             <SortableContext items={itemGroups.map((entry) => entry.id)} strategy={verticalListSortingStrategy}>
             {(layoutDnd.dragging ? layoutDnd.buckets : groupItems(items, itemGroups)).map(({ group, items: groupedItems }, groupIndex, allGroups) => {
               return (
-              <GroupShell key={group?.id ?? 'ungrouped'} groupId={group?.id ?? null}>{(groupHandle) => (<>
+              <GroupShell key={group?.id ?? 'ungrouped'} groupId={group?.id ?? null} style={group ? blockLook('group', group.id) : undefined}>{(groupHandle) => (<>
                 <div className="admin-group-card__head" {...(group ? rowMenu.triggerProps({ kind: 'group', id: group.id }) : {})}>
                   {group && groupHandle && <DragHandle handle={groupHandle} label={t('admin.checklists.dnd.dragGroup', 'Drag group: {{name}}', { name: plainText(group.title) })} />}
                   <div className="admin-group-card__title">
@@ -784,6 +802,7 @@ export function ChecklistBuilder({
                   <div className="admin-group-card__actions">
                     {group && (
                       <>
+                        <BlockGear target={{ kind: 'group', id: group.id, name: plainText(group.title) }} active={sameTarget(blockTarget, { kind: 'group', id: group.id, name: '' })} onOpen={openBlockSettings} t={t} />
                         <button className="admin-btn admin-btn--sm" disabled={groupIndex === 0} onClick={() => void moveGroupDirection(group.id, 'up')} type="button" aria-label={t('admin.checklists.moveNamedUp', 'Move up: {{name}}', { name: plainText(group.title) })}>↑</button>
                         <button className="admin-btn admin-btn--sm" disabled={groupIndex === allGroups.filter((b) => b.group).length - 1} onClick={() => void moveGroupDirection(group.id, 'down')} type="button" aria-label={t('admin.checklists.moveNamedDown', 'Move down: {{name}}', { name: plainText(group.title) })}>↓</button>
                         <button className="admin-btn admin-btn--sm" disabled={!canEdit} onClick={() => focusNameField(`group-title-${group.id}`)} type="button" aria-label={t('admin.checklists.rename.namedGroup', 'Rename group: {{name}}', { name: plainText(group.title) })}>{t('admin.checklists.rename.action', 'Rename')}</button>
@@ -811,7 +830,7 @@ export function ChecklistBuilder({
                     </div>
                     <ItemsSortable ids={groupedItems.map((entry) => entry.id)}>
                     {groupedItems.map((item, itemIndex) => (
-                      <SortableBox className="admin-criteria-row" id={item.id} key={item.id} role="row" extra={rowMenu.triggerProps({ kind: 'item', id: item.id })}>{(itemHandle) => (<>
+                      <SortableBox className="admin-criteria-row" id={item.id} key={item.id} role="row" style={blockLook('item', item.id, { keepPadding: true })} extra={rowMenu.triggerProps({ kind: 'item', id: item.id })}>{(itemHandle) => (<>
                         <DragHandle handle={itemHandle} label={t('admin.checklists.dnd.dragCriterion', 'Drag criterion: {{name}}', { name: plainText(item.text) })} />
                         <div className="admin-criteria-row__order">
                           <button disabled={itemIndex === 0} onClick={() => void moveItemDirection(item.id, 'up')} type="button" aria-label={t('admin.checklists.moveNamedUp', 'Move up: {{name}}', { name: plainText(item.text) })}>↑</button>
@@ -922,10 +941,11 @@ export function ChecklistBuilder({
                             aria-label={t('admin.checklists.field.photoRequired', 'Photo required')}
                           />
                         </label>
+                        <span className="admin-criteria-row__menu" style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                        <BlockGear target={{ kind: 'item', id: item.id, name: plainText(item.text) }} active={sameTarget(blockTarget, { kind: 'item', id: item.id, name: '' })} onOpen={openBlockSettings} t={t} />
                         <Menu
                           align="end"
                           buttonClassName="admin-btn admin-btn--sm"
-                          className="admin-criteria-row__menu"
                           label={<><span aria-hidden="true">⋮</span><span className="ui-visually-hidden">{t('admin.checklists.rowActions', 'Actions')}</span></>}
                         >
                           <button disabled={!canEdit} onClick={() => focusNameField(`item-text-${item.id}`)} role="menuitem" type="button">
@@ -938,6 +958,7 @@ export function ChecklistBuilder({
                             {t('admin.checklists.delete', 'Delete')}
                           </button>
                         </Menu>
+                        </span>
                         {describeItemDetails(item) && <p className="admin-criteria-row__meta">{describeItemDetails(item)}</p>}
                       </>)}</SortableBox>
                     ))}
@@ -951,7 +972,6 @@ export function ChecklistBuilder({
             </SortableContext>
             </DndContext>
           </ChecklistItemsEditor>
-          <ChecklistAppearanceEditor value={appearance} onChange={setAppearance} groups={itemGroups} items={items} disabled={!canEdit} t={t} />
           {feedbackEnabled && <fieldset disabled={!canEdit} style={{ border: 0, padding: 0, minWidth: 0 }}><legend className="ui-visually-hidden">{t('admin.checklists.feedbackSectionTitle')}</legend><FeedbackBuilder disabled={!canEdit} value={feedbackLayout} onChange={setFeedbackLayout} required={feedbackRequired} /></fieldset>}
         </div>
         <div className="admin-builder__column" style={{ minWidth: 0 }}>
@@ -1225,6 +1245,13 @@ export function ChecklistBuilder({
             t={t}
           />
         ) : null;
+      })()}
+      {blockTarget && (() => {
+        // The window follows renames and closes when its block is gone (deleted group or criterion).
+        const live = blockTarget.kind === 'group' ? itemGroups.find((entry) => entry.id === blockTarget.id)?.title
+          : blockTarget.kind === 'item' ? items.find((entry) => entry.id === blockTarget.id)?.text : t(`admin.checklists.appearance.kind.${blockTarget.kind}`);
+        if (live === undefined) return null;
+        return <BlockSettingsWindow target={{ ...blockTarget, name: plainText(live) }} appearance={appearance} onChange={setAppearance} onClose={closeBlockSettings} disabled={!canEdit} t={t} />;
       })()}
       <ContextMenu label={rowMenuView.label} onClose={rowMenu.close} state={rowMenu.state}>{rowMenuView.items}</ContextMenu>
     </div>

@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
-export function ChecklistSettingsForm({ children }: { children: ReactNode }) {
-  return <section className="admin-card">{children}</section>;
+export function ChecklistSettingsForm({ children, style }: { children: ReactNode; style?: CSSProperties }) {
+  return <section className="admin-card" style={style}>{children}</section>;
 }
