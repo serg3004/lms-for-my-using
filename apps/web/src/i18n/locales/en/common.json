@@ -14,7 +14,8 @@
     "cannotFinish": "The sheet cannot be completed yet",
     "missingContext": "General information: {{count}} required fields",
     "missingMore": "and {{count}} more criteria",
-    "simulation": "Simulation: nothing was saved or sent."
+    "simulation": "Simulation: nothing was saved or sent.",
+    "clearAnswer": "Clear answer"
   },
   "sessionImport": {
     "done": "Import complete",
@@ -3110,7 +3111,9 @@
       },
       "completeContextFirst": "Complete the required general information before moving to a criterion.",
       "feedbackRequiredHint": "Save the strengths and development areas before completing.",
-      "criterion": "Criterion"
+      "criterion": "Criterion",
+      "clearAnswer": "Clear answer",
+      "answerCleared": "Answer cleared: the criterion is unanswered again."
     },
     "learner": {
       "title": "My training sessions",

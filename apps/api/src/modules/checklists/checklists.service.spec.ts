@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
@@ -206,6 +206,11 @@ function createFakePrisma() {
         if (!result) throw new Error('not found');
         Object.assign(result, data);
         return result;
+      },
+      updateMany: async ({ where, data }: { where: Record<string, unknown>; data: Record<string, unknown> }) => {
+        const matched = results.filter((r) => r.instanceId === where['instanceId'] && r.itemId === where['itemId']);
+        matched.forEach((r) => Object.assign(r, data));
+        return { count: matched.length };
       },
     },
     user: {
@@ -711,6 +716,49 @@ describe('ChecklistsService — skip, weight, and scoring v1 (PR 290)', () => {
     const { service, instance, items } = await setUpTwoItemChecklist(prisma);
 
     await expect(service.skipItem(instance.id, items[0].id, organizationId, learnerId, false, {})).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('takes an answer back: the criterion is unanswered again and the total is recomputed (PR 425)', async () => {
+    const prisma = createFakePrisma();
+    const { service, instance, items } = await setUpTwoItemChecklist(prisma);
+
+    await service.submitItemResult(instance.id, items[0].id, organizationId, learnerId, false, { checked: true, comment: 'ok' });
+    const cleared = await service.clearItemAnswer(instance.id, items[0].id, organizationId, learnerId, false);
+
+    const stored = await prisma.checklistItemResult.findUnique({ where: { instanceId_itemId: { instanceId: instance.id, itemId: items[0].id } } });
+    expect(stored).toMatchObject({ checked: false, scaleLevel: null, points: 0, answerState: 'unanswered', comment: 'ok' });
+    expect(cleared.totalScore).toBe(0);
+    expect(cleared.status).not.toBe('completed');
+  });
+
+  it('puts the instance back to unfinished when the last required answer is taken back (PR 425)', async () => {
+    const prisma = createFakePrisma();
+    const { service, instance, items } = await setUpTwoItemChecklist(prisma);
+
+    await service.submitItemResult(instance.id, items[0].id, organizationId, learnerId, false, { checked: true });
+    await service.clearItemAnswer(instance.id, items[0].id, organizationId, learnerId, false);
+    const result = await service.submitItemResult(instance.id, items[1].id, organizationId, learnerId, false, { checked: true });
+
+    // A is unanswered again, so B alone cannot complete the sheet.
+    expect(result.status).not.toBe('completed');
+  });
+
+  it('refuses to take an answer back from a finished instance with 409 (PR 425)', async () => {
+    const prisma = createFakePrisma();
+    const { service, instance, items } = await setUpTwoItemChecklist(prisma);
+
+    await service.submitItemResult(instance.id, items[0].id, organizationId, learnerId, false, { checked: true });
+    await service.submitItemResult(instance.id, items[1].id, organizationId, learnerId, false, { checked: true });
+
+    await expect(service.clearItemAnswer(instance.id, items[0].id, organizationId, learnerId, false)).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('does not let someone else take back a learner answer, and rejects an unknown criterion (PR 425)', async () => {
+    const prisma = createFakePrisma();
+    const { service, instance, items } = await setUpTwoItemChecklist(prisma);
+
+    await expect(service.clearItemAnswer(instance.id, items[0].id, organizationId, 'someone-else', false)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(service.clearItemAnswer(instance.id, 'no-such-item', organizationId, learnerId, false)).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('lets every criterion be skipped when the sheet turns on allowSkipAll (PR 368)', async () => {
