@@ -1,3 +1,4 @@
+import { checklistResultText } from '../../shared/checklistResultText.js';
 import { checklistLabel, checklistNumbers } from '@lms/shared/checklist-numbering';
 import { RichDescription } from '../../shared/RichDescription.js';
 import { collectFeedbackFields, isCustomFeedback, firstMissingRequiredFeedback, type FeedbackLayout, type FeedbackAnswerSetSnapshot } from '@lms/shared/checklist-feedback';
@@ -21,7 +22,7 @@ type PreviewProps = {
   // PR 421: the sheet's extra pictures, shown under the description like the employee sees them.
   checklistId?: string; photos?: ChecklistPhotoSummary[];
   contextFields: ContextField[]; scoringMode: ChecklistScoringMode; scaleLevels: ChecklistScaleLevel[];
-  showNumbering?: boolean; passThreshold: number; feedbackEnabled: boolean; feedbackRequired: boolean; allowSkipAll: boolean;
+  showPointsToLearner?: boolean; showNumbering?: boolean; passThreshold: number; feedbackEnabled: boolean; feedbackRequired: boolean; allowSkipAll: boolean;
   feedbackLayout?: FeedbackLayout | null;
   // PR 422: the look of the sheet blocks, as the employee sees it.
   appearance?: Appearance | null;
@@ -146,8 +147,8 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
                 <strong>{t('checklists.finishedNoPoints', 'Completed')}</strong>
               ) : (
                 <>
-                  <span>{result.passed ? t('admin.checklists.previewPassed', 'Pass') : t('admin.checklists.previewFailed', 'Fail')}</span>
-                  <strong>{result.totalScore} / {result.maxScore} ({result.percentage}%)</strong>
+                  <span>{result.passed ? t('checklists.resultPassed', 'Passed') : t('checklists.resultNotPassed', 'Not passed')}</span>
+                  <strong>{checklistResultText(result, props.showPointsToLearner === true, t)}</strong>
                 </>
               )}
             </div>

@@ -1,3 +1,4 @@
+import { checklistResultText } from '../shared/checklistResultText.js';
 import { isCustomFeedback } from '@lms/shared/checklist-feedback';
 import { FeedbackReadOnly } from '../features/checklist-feedback/FeedbackFields.js';
 import { useState, type CSSProperties } from 'react';
@@ -181,7 +182,7 @@ const tableHeadStyle: CSSProperties = { textAlign: 'left', padding: '10px 14px',
 const tableCellStyle: CSSProperties = { padding: '12px 14px', fontSize: 13, color: COLORS.text };
 
 function renderResultCell(session: ChecklistSessionSummary, t: TFunction) {
-  if (!session.result.visible) {
+  if (!session.result.visible || session.result.instanceStatus !== 'completed') {
     return (
       <Badge variant={CHECKLIST_SESSION_STATUS_BADGE_VARIANT[session.status]}>
         {t(`checklistSessions.status.${session.status}`, session.status)}
@@ -192,7 +193,7 @@ function renderResultCell(session: ChecklistSessionSummary, t: TFunction) {
   if (result.kind === 'scored') {
     return (
       <Badge variant={result.passed ? 'success' : 'warning'}>
-        {t('checklistSessions.learner.percentage', '{{percentage}}%', { percentage: result.percentage })}
+        {result.passed ? t('checklists.resultPassed', 'Passed') : t('checklists.resultNotPassed', 'Not passed')}{' — '}{checklistResultText(session.result, session.checklist.showPointsToLearner === true, t)}
       </Badge>
     );
   }
@@ -253,13 +254,13 @@ export function LearnerSessionDetail({ session, onBack, t }: { session: Checklis
       </p>
       {session.scheduledAt && <p style={{ color: COLORS.muted, margin: '4px 0' }}>{formatDate(session.scheduledAt, undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: session.timezone })}</p>}
 
-      {!session.result.visible ? (
+      {!(session.feedbackVisible ?? session.result.visible) ? (
         <p style={{ color: COLORS.muted, marginTop: 16 }}>
           {t('checklistSessions.learner.resultHidden', 'Your result will be visible once the session is completed.')}
         </p>
       ) : (
         <>
-          {describeChecklistSessionResult(session.result).kind === 'scored' && (
+          {session.result.instanceStatus === 'completed' && describeChecklistSessionResult(session.result).kind === 'scored' && (
             <div
               style={{
                 marginTop: 16,
@@ -272,16 +273,16 @@ export function LearnerSessionDetail({ session, onBack, t }: { session: Checklis
                 alignItems: 'center',
               }}
             >
-              <span>{session.result.passed ? t('checklists.passed', 'Passed') : t('checklists.notPassed', 'Not passed')}</span>
-              <strong>{session.result.percentage}%</strong>
+              <span>{session.result.passed ? t('checklists.resultPassed', 'Passed') : t('checklists.resultNotPassed', 'Not passed')}</span>
+              <strong>{checklistResultText(session.result, session.checklist.showPointsToLearner === true, t)}</strong>
             </div>
           )}
-          {describeChecklistSessionResult(session.result).kind === 'finished' && (
+          {session.result.instanceStatus === 'completed' && describeChecklistSessionResult(session.result).kind === 'finished' && (
             <div style={{ marginTop: 16, borderRadius: 14, padding: '16px 18px', background: COLORS.successSoft, color: COLORS.success }}>
               {t('checklists.finishedNoPointsDone', 'The check is completed')}
             </div>
           )}
-          {describeChecklistSessionResult(session.result).kind === 'notScored' && (
+          {session.result.instanceStatus === 'completed' && describeChecklistSessionResult(session.result).kind === 'notScored' && (
             <div style={{ marginTop: 16, borderRadius: 14, padding: '16px 18px', background: COLORS.warningSoft, color: COLORS.warning }}>
               {t('checklistSessions.learner.notScored', 'Not scored (all skipped)')}
             </div>
@@ -308,7 +309,7 @@ export function LearnerSessionDetail({ session, onBack, t }: { session: Checklis
           <h3 style={{ color: COLORS.text, fontSize: 14, margin: 0 }}>{t('checklistSessions.learner.criteriaTitle', 'Criteria')}</h3>
           {state.data.checklist.items.map((item) => {
             const result = findResultForItem(state.data.results, item.id);
-            const isDone = session.result.visible && isChecklistAnswerComplete(item, state.data.checklist!.scoringMode, checklistResultToAnswer(result));
+            const isDone = (session.feedbackVisible ?? session.result.visible) && isChecklistAnswerComplete(item, state.data.checklist!.scoringMode, checklistResultToAnswer(result));
             return (
               <div
                 key={item.id}
@@ -320,7 +321,7 @@ export function LearnerSessionDetail({ session, onBack, t }: { session: Checklis
                 }}
               >
                 <p style={{ fontWeight: 600, margin: 0 }}>{item.text}</p>
-                {session.result.visible && result?.comment && (
+                {(session.feedbackVisible ?? session.result.visible) && result?.comment && (
                   <p style={{ color: COLORS.muted, fontSize: 12.5, margin: '4px 0 0' }}>{result.comment}</p>
                 )}
               </div>

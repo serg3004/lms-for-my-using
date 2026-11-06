@@ -80,6 +80,7 @@ export function buildChecklistSettingsPayload(form: {
   appearance?: Appearance | null;
   allowSkipAll?: boolean;
   showNumbering?: boolean;
+  showPointsToLearner?: boolean;
   accessMode: ChecklistAccessMode;
   pinned: boolean;
   /** Left out for people who may not change it (only the creator and admins can). */
@@ -105,6 +106,7 @@ export function buildChecklistSettingsPayload(form: {
     feedbackRequired: (form.feedbackEnabled ?? true) && (form.feedbackRequired ?? false),
     allowSkipAll: form.allowSkipAll ?? false,
     showNumbering: form.showNumbering ?? true,
+    showPointsToLearner: form.showPointsToLearner ?? false,
     accessMode: form.accessMode,
     // Only a free checklist can be pinned; switching the mode back clears the pin in the same save.
     pinned: form.accessMode === 'free' && form.pinned,
@@ -177,10 +179,10 @@ export function computePreviewResult(
     const levels = checklistItemLevels(item, scoringMode, scaleLevels);
     const weight = item.weight ?? 1;
     if (levels !== null) {
-      maxScore += weight * levels.reduce((max, level) => Math.max(max, level.points), 0);
+      maxScore += weight * levels.reduce((max, level) => Math.max(max, level.points ?? 0), 0);
       totalScore += weight * (levels.find((level) => level.level === answers[item.id]?.scaleLevel)?.points ?? 0);
     } else {
-      const maximum = scoringMode === 'all_required' ? 1 : item.points;
+      const maximum = scoringMode === 'all_required' ? 1 : item.points ?? 0;
       maxScore += maximum * weight;
       totalScore += answers[item.id]?.checked ? maximum * weight : 0;
     }

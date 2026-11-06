@@ -94,3 +94,14 @@ it('PR 420: strips description markup and uses displayed uppercase in tabular ex
   expect(JSON.stringify(table.rows)).toContain('Safe TEXT');
   expect(JSON.stringify(table.rows)).not.toContain('<strong>');
 });
+
+it('keeps raw scores out of learner CSV/XLSX cells while keeping percentages (PR 426)', () => {
+  const data = report(); data.pointsVisible = false;
+  const table = buildSessionSummary([data], 'en');
+  const serialized = JSON.stringify(table.rows);
+  expect(serialized).toContain('90%');
+  expect(serialized).not.toContain('71 of 79');
+  expect(serialized).not.toContain('71 из 79');
+  const result = table.rows.find((row) => row[0] === SUMMARY_LABELS.en.results)!;
+  expect(result[2]).toBe(''); expect(result[3]).toBe('90%');
+});

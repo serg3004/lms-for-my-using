@@ -336,7 +336,7 @@ export type ChecklistScaleLevel = {
   level: number;
   label: string;
   description?: string;
-  points: number;
+  points?: number;
 };
 
 export type ChecklistScoringMode = 'sum_points' | 'all_required' | 'scale' | 'none';
@@ -349,7 +349,7 @@ export type ChecklistItemSummary = {
   checklistId: string;
   order: number;
   text: string;
-  points: number;
+  points?: number;
   isRequired: boolean;
   photoRequired: boolean;
   // PR 290/293/296 fields -- optional so pre-existing test fixtures across the codebase that
@@ -482,6 +482,7 @@ export type ChecklistSummary = {
   feedbackRequired?: boolean;
   allowSkipAll?: boolean;
   showNumbering?: boolean;
+  showPointsToLearner?: boolean;
   // PR 353 -- optional because older payloads never carried it (read as 'assigned').
   accessMode?: ChecklistAccessMode;
   // PR 354 -- optional for the same reason (read as false).
@@ -516,7 +517,7 @@ export type ChecklistScaleStatus = 'active' | 'archived';
 export type ChecklistScaleLevelSummary = {
   value: number;
   label: string;
-  score: number;
+  score?: number;
   /** PR 369б: highlight colour `#RRGGBB`. The scale API always resolves it; a snapshot taken earlier has none. */
   color?: string;
 };
@@ -546,7 +547,7 @@ export type ChecklistItemResultSummary = {
   itemId: string;
   checked: boolean;
   scaleLevel: number | null;
-  points: number;
+  points?: number;
   photoUrl: string | null;
   photoFileName: string | null;
   comment: string | null;
@@ -571,10 +572,10 @@ export type ChecklistInstanceSummary = {
   reviewAssignedAt: string | null;
   reviewAssignedBy: string | null;
   status: ChecklistInstanceStatus;
-  totalScore: number;
-  maxScore: number;
-  percentage: number;
-  passed: boolean;
+  totalScore?: number;
+  maxScore?: number;
+  percentage: number | null;
+  passed: boolean | null;
   dueAt: string | null;
   submittedAt: string | null;
   completedAt: string | null;
@@ -713,13 +714,13 @@ export type ChecklistSessionSummary = {
   observerUnavailableAt: string | null;
   createdAt: string;
   updatedAt: string;
-  checklist: { id: string; title: string };
+  checklist: { id: string; title: string; showPointsToLearner?: boolean };
+  feedbackVisible?: boolean;
   learner: { id: string; firstName: string; lastName: string; email: string };
   observer: { id: string; firstName: string; lastName: string; email: string };
-  // PR 298: masked (percentage/passed/scored nulled, visible=false) for the learner while the
-  // tenant's `feedbackVisibility` is `after_completion` and the instance isn't `completed` yet --
-  // never masked for admin/manager/instructor, nor once the instance completes.
-  result: { instanceStatus: ChecklistInstanceStatus; percentage: number | null; passed: boolean | null; scored: boolean | null; withoutPoints?: boolean; visible: boolean };
+  // PR 426: employee results stay hidden until completion; feedbackVisible independently follows
+  // the feedback policy. Point totals exist only for the frozen opt-in after completion.
+  result: { totalScore?: number; maxScore?: number; instanceStatus: ChecklistInstanceStatus; percentage: number | null; passed: boolean | null; scored: boolean | null; withoutPoints?: boolean; visible: boolean };
 };
 
 /** PR 370/371: colours arrive ready from the server; the client never derives them. */
@@ -735,6 +736,7 @@ export type ChecklistReportPerson = {
 };
 
 export type ChecklistSessionReport = {
+  pointsVisible?: boolean;
   sessionId: string;
   instanceId: string;
   checklist: { id: string; title: string; description?: string; showNumbering?: boolean };

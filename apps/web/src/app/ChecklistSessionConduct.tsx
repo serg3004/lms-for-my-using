@@ -1,3 +1,4 @@
+import { checklistResultText } from '../shared/checklistResultText.js';
 import { checklistNumbers } from '@lms/shared/checklist-numbering';
 import { RichDescription } from '../shared/RichDescription.js';
 import { readFeedbackAnswers, isCustomFeedback, firstMissingRequiredFeedback } from '@lms/shared/checklist-feedback';
@@ -593,9 +594,9 @@ export function ConductScreen({
             alignItems: 'center',
           }}
         >
-          <span>{instance.passed ? t('checklists.passed', 'Passed') : t('checklists.notPassed', 'Not passed')}</span>
+          <span>{instance.passed ? t('checklists.resultPassed', 'Passed') : t('checklists.resultNotPassed', 'Not passed')}</span>
           <strong>
-            {instance.totalScore} / {instance.maxScore} ({instance.percentage}%)
+            {checklistResultText(instance, true, t)}
           </strong>
         </div>
       )}
@@ -668,7 +669,7 @@ function CriterionCard({
   comment: string;
   onCommentChange: (comment: string) => void;
   scoringMode: string;
-  scaleLevels: { level: number; label: string; points: number }[] | null;
+  scaleLevels: { level: number; label: string; points?: number }[] | null;
   cameraOnly: boolean;
   editable: boolean;
   onSaved: (instance: ChecklistInstanceSummary) => void;

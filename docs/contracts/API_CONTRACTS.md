@@ -979,18 +979,14 @@ the existing `/learn/checklists` (`LearnerChecklistsPage`) -- no new route/nav-i
 cancelled) and a detail view that additionally fetches the instance via the existing `GET
 /checklist-instances/:id` for a read-only per-criterion comment list.
 
-**`feedbackVisibility` server-side enforcement**: PR 286 introduced `ChecklistWorkplaceSettings.
-feedbackVisibility` (`after_completion` default / `live`) but nothing ever consumed it -- this is
-the first read path that actually needs to decide what a learner sees before their result exists.
-`GET /checklist-sessions` and `GET /checklist-sessions/:id` now mask their `result` (`percentage`/
-`passed`/`scored` nulled, a new `visible: false` flag added) and the PR 297 structured-feedback
-fields (`strengths`/`developmentAreas`/`nextSteps`, nulled) whenever the caller is a plain learner,
-the tenant's policy is `after_completion`, and the underlying `ChecklistInstance.status` isn't yet
-`completed`. Admin/manager/instructor callers are never masked, and `live` never masks anything --
-this is specifically about hiding a result from the person being evaluated until it's meant to be
-shown, not a general-purpose field restriction. Numbers are nulled outright, not merely flagged, so
-an unauthorized value never reaches the response body in the first place. No new role policy --
-enforcement is caller-identity-based inside the existing `checklistSessionsRead` handlers.
+**Current visibility (PR 298, extended by PR 426)**: a plain employee never receives a result before
+`ChecklistInstance.status=completed`, including when `feedbackVisibility=live`: `percentage`,
+`passed` and `scored` are null and `result.visible=false`. `feedbackVisible` follows the separate
+feedback policy: `live` permits structured feedback while the result is still hidden;
+`after_completion` masks feedback answers, context values and the three legacy feedback fields until
+completion. Admin/manager/instructor/mentor and the assigned observer retain their authorized view.
+Completed employee results use the frozen `showPointsToLearner` setting below. There is no new role
+policy: masking happens after the existing ownership/observer/team checks.
 
 ## Manager checklist analytics (PR 299)
 
@@ -2092,3 +2088,35 @@ Visible session reports include `checklist.showNumbering`; `groups[].number` and
 are empty strings when disabled. CSV/XLSX summary labels omit those prefixes too. Scores, ordering,
 identifiers and permissions are unaffected. The shared label function controls generated prefixes;
 filtering answered items never renumbers the sheet.
+
+### Employee result and point visibility (PR 426)
+
+`Checklist.showPointsToLearner` is a boolean with default `false` in the database and creation schema;
+PATCH is partial. The scoring panel saves/discards it with the other sheet settings (PR 417).
+Copies and organization templates retain the flag. Assignment freezes it in `templateSnapshot`;
+source edits do not rewrite assigned/started sessions. Historical snapshots without the field read
+as `false`; instances without a snapshot use the existing live-sheet fallback.
+
+Employee wire projection applies to `/checklist-instances/mine`, instance detail, free self-start,
+answer/skip/photo mutations and explicit finish. Until completion it withholds point fields even if
+the opt-in is on, and nulls aggregate percentage/verdict/scored. Once completed, percentage and
+verdict are available; point fields are present only for an explicit frozen opt-in. When withheld,
+`totalScore`, `maxScore`, criterion/result `points`, scale-level `score`/`points` and scoring `weight`
+are **omitted**, including nested sheet/snapshot data. Answer identifiers, required-answer checks,
+photos and explanations still work. Context values and feedback answers remain user content.
+Client instance/scoring types therefore allow absent point values and a null unfinished result.
+
+Session list/detail expose the frozen flag on `checklist.showPointsToLearner`; optional
+`result.totalScore/maxScore` are supplied for completed opt-in results. JSON reports expose
+`pointsVisible`; employee reports with `false` omit point fields recursively while keeping
+percentages/verdicts. Employee PDF and CSV/XLSX summary cells follow that projection. Internal
+calculation/report models retain scores so aggregation remains exact. Staff and assigned observers
+keep their existing points in instance reads, reports, PDF and exports regardless of the employee flag.
+Recalculation/event history cannot reveal numeric results before completion; staff history is unchanged.
+Result notification/email copy and its metadata remain content-free (no result values or points).
+
+The employee list/detail and preview show no numeric result before completion. Preview uses the
+explicit Finish action from PR 424. Afterwards a scored sheet shows percentage and Pass/Fail; opting
+in adds earned/maximum points. A sheet without points still shows only Completed. Observer conduct
+is an authorized staff view and retains points. Stored scores, scoring formulas and access scopes
+are unchanged.

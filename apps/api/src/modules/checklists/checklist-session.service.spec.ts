@@ -1214,15 +1214,32 @@ describe('ChecklistSessionService', () => {
       expect(result.strengths).toBe('Great work');
     });
 
-    it('never masks under the live policy, even mid-session', async () => {
+    it('keeps live feedback but hides the result until completion (PR 426)', async () => {
       const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => sessionWithStatus('in_progress')) } });
       const service = new ChecklistSessionService(prisma, fakeChecklists());
       const learnerViewer = { isLearnerOnly: true, feedbackVisibility: 'live' as const };
 
       const result = await service.get(sessionId, organizationId, {}, learnerViewer);
 
-      expect(result.result.visible).toBe(true);
-      expect(result.result.percentage).toBe(90);
+      expect(result.result.visible).toBe(false);
+      expect(result.feedbackVisible).toBe(true);
+      expect(result.strengths).toBe('Great work');
+      expect(result.result.percentage).toBeNull();
+    });
+
+
+    it('uses the frozen points opt-in and treats older snapshots as off (PR 426)', async () => {
+      for (const frozen of [true, undefined]) {
+        const data = sessionWithStatus('completed');
+        Object.assign(data.instance, { totalScore: 71, maxScore: 79, templateSnapshot: { checklist: { ...(frozen ? { showPointsToLearner: true } : {}) } } });
+        Object.assign(data.instance.checklist, { showPointsToLearner: true });
+        const prisma = createPrisma({ checklistSession: { findFirst: jest.fn(async () => data) } });
+        const service = new ChecklistSessionService(prisma, fakeChecklists());
+        const result = await service.get(sessionId, organizationId, {}, { isLearnerOnly: true, feedbackVisibility: 'live' });
+        expect(result.checklist.showPointsToLearner).toBe(frozen === true);
+        if (frozen) expect(result.result).toMatchObject({ totalScore: 71, maxScore: 79 });
+        else expect(result.result).not.toHaveProperty('totalScore');
+      }
     });
 
     it('never masks for a non-learner caller (admin/manager/instructor), regardless of policy', async () => {

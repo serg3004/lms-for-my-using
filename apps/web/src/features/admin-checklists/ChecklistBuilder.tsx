@@ -117,6 +117,7 @@ export function ChecklistBuilder({
   const [feedbackRequired, setFeedbackRequired] = useState(checklist.feedbackRequired ?? false);
   const [allowSkipAll, setAllowSkipAll] = useState(checklist.allowSkipAll ?? false);
   const [showNumbering, setShowNumbering] = useState(checklist.showNumbering ?? true);
+  const [showPointsToLearner, setShowPointsToLearner] = useState(checklist.showPointsToLearner ?? false);
   const [accessMode, setAccessMode] = useState<ChecklistAccessMode>(checklist.accessMode ?? 'assigned');
   const [pinned, setPinned] = useState(checklist.pinned ?? false);
   // PR 362в: the creator and admins decide who may edit; everyone else sees the sheet read-only when it is closed.
@@ -154,7 +155,7 @@ export function ChecklistBuilder({
     title: checklist.title, description: checklist.description ?? '', scoringMode: checklist.scoringMode, passThreshold: checklist.passThreshold,
     requiresReview: checklist.requiresReview, scaleLevels: checklist.scaleLevels ?? createDefaultScale(t), defaultLocationCapturePolicy: checklist.defaultLocationCapturePolicy ?? '',
     preSessionVisibility: checklist.preSessionVisibility ?? 'structure_only', allowFinishIncomplete: checklist.allowFinishIncomplete ?? false, forbidGalleryPhotos: checklist.forbidGalleryPhotos ?? false,
-    feedbackLayout: checklist.feedbackLayout ?? null, appearance: sanitizeAppearance(checklist.appearance), feedbackEnabled: checklist.feedbackEnabled ?? true, feedbackRequired: checklist.feedbackRequired ?? false, allowSkipAll: checklist.allowSkipAll ?? false, showNumbering: checklist.showNumbering ?? true,
+    feedbackLayout: checklist.feedbackLayout ?? null, appearance: sanitizeAppearance(checklist.appearance), feedbackEnabled: checklist.feedbackEnabled ?? true, feedbackRequired: checklist.feedbackRequired ?? false, allowSkipAll: checklist.allowSkipAll ?? false, showNumbering: checklist.showNumbering ?? true, showPointsToLearner: checklist.showPointsToLearner ?? false,
     accessMode: checklist.accessMode ?? 'assigned', pinned: (checklist.accessMode ?? 'assigned') === 'free' && (checklist.pinned ?? false),
     allowEditByAll: canManageEditAccess ? (checklist.allowEditByAll ?? true) : undefined,
     moduleSettings: storedModuleSettings,
@@ -195,7 +196,7 @@ export function ChecklistBuilder({
     listChecklistItemGroups(checklist.id).then(setItemGroups).catch(() => setItemGroups([]));
     listChecklistScales().then(setScales).catch(() => setScales([]));
   }, [checklist.id]);
-  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, feedbackLayout, appearance, feedbackEnabled, feedbackRequired, allowSkipAll, showNumbering, accessMode, pinned, allowEditByAll: canManageEditAccess ? allowEditByAll : undefined, moduleSettings });
+  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, feedbackLayout, appearance, feedbackEnabled, feedbackRequired, allowSkipAll, showNumbering, showPointsToLearner, accessMode, pinned, allowEditByAll: canManageEditAccess ? allowEditByAll : undefined, moduleSettings });
   const hasUnsavedChanges = JSON.stringify(settingsPayload) !== savedSnapshot;
   function settingsErrorMessage(error: unknown) {
     return error instanceof ApiClientError && error.status === 409
@@ -239,6 +240,7 @@ export function ChecklistBuilder({
     setFeedbackRequired(checklist.feedbackRequired ?? false);
     setAllowSkipAll(checklist.allowSkipAll ?? false);
     setShowNumbering(checklist.showNumbering ?? true);
+    setShowPointsToLearner(checklist.showPointsToLearner ?? false);
     setAccessMode(checklist.accessMode ?? 'assigned');
     setPinned(checklist.pinned ?? false);
     setAllowEditByAll(checklist.allowEditByAll ?? true);
@@ -1009,6 +1011,12 @@ export function ChecklistBuilder({
             {scoringMode === 'none' ? (
               <p className="admin-form__hint">{t('admin.checklists.scoring.noneHint', 'Without points: the check is only completed. No percentage, pass threshold or “passed / not passed” is shown.')}</p>
             ) : (
+              <>
+              <ChecklistCheckboxOption
+                label={t('admin.checklists.field.showPointsToLearner', 'Show points to the employee')}
+                hint={t('admin.checklists.showPointsToLearnerHint', 'After completion show points alongside the percentage. New assignments only. Staff reports keep their points.')}
+                checked={showPointsToLearner} disabled={!canEdit} onChange={setShowPointsToLearner}
+              />
               <FormField id="checklist-threshold" label={t('admin.checklists.field.passThreshold', 'Pass threshold, %')}>
                 <input
                   id="checklist-threshold"
@@ -1019,6 +1027,7 @@ export function ChecklistBuilder({
                   onChange={(e) => setPassThreshold(Number(e.target.value))}
                 />
               </FormField>
+              </>
             )}
             {scoringMode !== checklist.scoringMode && (checklist.status !== 'draft') && (
               <p className="admin-form__hint" role="note">{t('admin.checklists.scoring.changeNote', 'The new mode will not affect checks that are already assigned: they keep the mode they were assigned with.')}</p>
@@ -1183,6 +1192,7 @@ export function ChecklistBuilder({
           feedbackRequired={feedbackRequired}
           allowSkipAll={allowSkipAll}
           showNumbering={showNumbering}
+          showPointsToLearner={showPointsToLearner}
           cameraOnly={forbidGalleryPhotos}
           onClose={() => setPreviewOpen(false)}
           t={t}

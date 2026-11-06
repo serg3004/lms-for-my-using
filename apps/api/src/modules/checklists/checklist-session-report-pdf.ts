@@ -221,7 +221,7 @@ class ReportPainter {
 
     const x = PAGE.margin + 120;
     const width = CONTENT_WIDTH - 120;
-    this.text(`${this.labels.points}: ${formatNumber(summary.totalScore)} / ${formatNumber(summary.maxScore)}`, x, width, { weight: 700, size: 13 }, top + 2);
+    if (this.report.pointsVisible !== false) this.text(`${this.labels.points}: ${formatNumber(summary.totalScore)} / ${formatNumber(summary.maxScore)}`, x, width, { weight: 700, size: 13 }, top + 2);
     let verdict = this.labels.notScored;
     if (summary.scored && summary.passed === true) verdict = this.labels.passed;
     else if (summary.scored && summary.passed === false) verdict = this.labels.notPassed;
@@ -268,7 +268,7 @@ class ReportPainter {
       const barWidth = 130;
       this.doc.rect(barX, this.y + 5, barWidth, 9).fill(TRACK);
       if (group.percentage !== null && group.percentage > 0) this.doc.rect(barX, this.y + 5, barWidth * Math.min(group.percentage, 100) / 100, 9).fill(color);
-      const label = group.percentage === null ? `${formatNumber(group.score)} / ${formatNumber(group.maxScore)}` : `${group.percentage}%  (${formatNumber(group.score)} / ${formatNumber(group.maxScore)})`;
+      const label = this.report.pointsVisible === false ? (group.percentage === null ? '–' : `${group.percentage}%`) : group.percentage === null ? `${formatNumber(group.score)} / ${formatNumber(group.maxScore)}` : `${group.percentage}%  (${formatNumber(group.score)} / ${formatNumber(group.maxScore)})`;
       this.text(label, barX + barWidth + 8, PAGE.margin + CONTENT_WIDTH - (barX + barWidth + 8), { size: 9, color: MUTED }, this.y + 4);
       this.y += height + 4;
     }
@@ -300,7 +300,7 @@ class ReportPainter {
     const column = { stripe: PAGE.margin, text: PAGE.margin + 12, score: PAGE.margin + 262, detail: PAGE.margin + 372 };
     const widths = { text: 244, score: 104, detail: PAGE.margin + CONTENT_WIDTH - (PAGE.margin + 372) };
 
-    const withoutPoints = this.report.summary?.scoringMode === 'none';
+    const withoutPoints = this.report.summary?.scoringMode === 'none' || this.report.pointsVisible === false;
     const drawHead = () => {
       this.ensureSpace(24);
       this.text(this.labels.criterion, column.text, widths.text, { weight: 700, size: 9, color: MUTED });

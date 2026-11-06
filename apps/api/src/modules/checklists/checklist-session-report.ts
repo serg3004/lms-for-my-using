@@ -40,6 +40,8 @@ export type SessionReportInput = {
   settings: { highPerformanceThreshold: number; lowThreshold: number | null; resultColors: ResultColors };
   /** False when the viewer is the learner and the feedback policy still hides the result (see applyFeedbackVisibility). */
   visible: boolean;
+  /** Learner wire/PDF/summary projection; staff retain points. */
+  pointsVisible?: boolean;
   locationCaptures: ReportLocationCapture[];
   /** PR 405: the feedback section frozen with the instance; null/absent = switched off. */
   feedbackConfig?: { layout: FeedbackLayout; answerSets: Record<string, FeedbackAnswerSetSnapshot> } | null;
@@ -94,7 +96,7 @@ export function buildSessionReport(input: SessionReportInput) {
     learner: input.learner,
     observer: input.observer,
   };
-  const base = { sessionId: session.id, instanceId: instance.id, checklist: { id: input.checklistId, title: breakdown.checklist.title, ...(input.visible ? { showNumbering: breakdown.checklist.showNumbering ?? true } : {}) }, header };
+  const base = { pointsVisible: input.pointsVisible ?? true, sessionId: session.id, instanceId: instance.id, checklist: { id: input.checklistId, title: breakdown.checklist.title, ...(input.visible ? { showNumbering: breakdown.checklist.showNumbering ?? true } : {}) }, header };
 
   if (!input.visible) {
     return {

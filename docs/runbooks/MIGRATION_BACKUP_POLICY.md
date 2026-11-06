@@ -785,3 +785,21 @@ This is additive: an older API ignores the column. Application rollback leaves i
 intact (the old interface shows numbering). Follow the normal verified production backup policy before
 deployment. The disposable PostgreSQL suite exercises migration defaults, copy/template retention and
 immutable assignment snapshots; it is not evidence of a production backup/restore.
+
+### Employee checklist points (PR 426)
+
+Migration `20261106100000_checklist_learner_points` adds
+`checklists.show_points_to_learner BOOLEAN NOT NULL DEFAULT false`. Existing sheets default to hiding
+points from employees. No stored score/result is recalculated or removed, and no JSON backfill is
+needed; historical snapshots without the flag read as off.
+
+Apply the additive migration under the normal verified production backup policy. Deploy the web
+client that handles optional score fields before enabling the new API wire projection; roll out
+API/web as one coordinated release. Older cached clients may need a refresh because the API omits
+withheld point fields. An older application can ignore the new column, but an older API does not
+enforce the new employee privacy guarantee: retain/backport the projection when rolling back, or
+retain the new API. Leave the column, snapshots and all learning results intact.
+
+Disposable PostgreSQL checks cover migration defaults, copy/template retention, assignment snapshots
+and staff reporting. They are not production backup/restore evidence. This PR does not deploy or
+modify production data.

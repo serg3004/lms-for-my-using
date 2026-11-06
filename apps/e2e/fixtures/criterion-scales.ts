@@ -49,8 +49,8 @@ export async function installCriterionScaleMocks(page: Page, role: 'learner' | '
         result.answerState = 'answered';
       }
       if (body.comment !== undefined) result.comment = body.comment;
-      instance.totalScore = instance.results.reduce((sum, result) => sum + result.points * (checklist.items.find((item) => item.id === result.itemId)!.weight ?? 1), 0);
-      instance.percentage = Math.round(instance.totalScore / instance.maxScore * 100);
+      instance.totalScore = instance.results.reduce((sum, result) => sum + (result.points ?? 0) * (checklist.items.find((item) => item.id === result.itemId)!.weight ?? 1), 0);
+      instance.percentage = Math.round(instance.totalScore / (instance.maxScore ?? 0) * 100);
       return route.fulfill({ json: instance });
     }
     return route.fulfill({ json: { items: [], total: 0, page: 1, pageSize: 50 } });

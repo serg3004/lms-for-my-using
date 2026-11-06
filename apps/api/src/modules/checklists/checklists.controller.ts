@@ -1,3 +1,4 @@
+import { presentLearnerInstance, presentLearnerReport, withoutLearnerPoints } from './checklist-learner-result.js';
 import { MAX_SESSION_IMPORT_BYTES, type SessionImportFile } from './checklist-session-import.js';
 import { BadRequestException, Body, Controller, ForbiddenException, NotFoundException, Get, Headers, Param, Patch, Post, Put, Delete, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -247,9 +248,9 @@ export class ChecklistsController {
   }
   @Post('checklists/:id/start')
   @Roles(...rolePolicies.checklistsStartFree)
-  startFreeChecklist(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {
+  async startFreeChecklist(@Param('id') checklistId: string, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
-    return this.checklistsService.startFreeChecklist(checklistId, user.organizationId, user.id);
+    return presentLearnerInstance(await this.checklistsService.startFreeChecklist(checklistId, user.organizationId, user.id), !isLearnerOnly(user.roles));
   }
 
   @Get('checklists/:id')
@@ -585,8 +586,9 @@ export class ChecklistsController {
   }
   @Get('checklist-instances/mine')
   @Roles(...rolePolicies.checklistInstancesRead)
-  listMyInstances(@Req() request: AuthenticatedRequest) {
-    return this.checklistsService.listMyInstances(request.currentUser!.id, request.currentUser!.organizationId);
+  async listMyInstances(@Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return (await this.checklistsService.listMyInstances(user.id, user.organizationId)).map((instance) => presentLearnerInstance(instance, !isLearnerOnly(user.roles)));
   }
   @Get('checklist-instances/pending-review')
   @Roles(...rolePolicies.checklistReviewWrite)
@@ -635,7 +637,7 @@ export class ChecklistsController {
       await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
     }
 
-    return instance;
+    return presentLearnerInstance(instance, isObserver || !isLearnerOnly(user.roles));
   }
   @Patch('checklist-instances/:instanceId/items/:itemId')
   @Roles(...rolePolicies.checklistItemResultsWrite, ...rolePolicies.checklistSessionsRunOwn)
@@ -654,14 +656,14 @@ export class ChecklistsController {
     if (!isLearnerOnly(user.roles) && !isObserver) {
       await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
     }
-    return this.checklistsService.submitItemResult(
+    return presentLearnerInstance(await this.checklistsService.submitItemResult(
       instanceId,
       itemId,
       user.organizationId,
       user.id,
       isObserver || !isLearnerOnly(user.roles),
       input,
-    );
+    ), isObserver || !isLearnerOnly(user.roles));
   }
   @Post('checklist-instances/:instanceId/items/:itemId/skip')
   @Roles(...rolePolicies.checklistItemResultsWrite, ...rolePolicies.checklistSessionsRunOwn)
@@ -680,14 +682,14 @@ export class ChecklistsController {
     if (!isLearnerOnly(user.roles) && !isObserver) {
       await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
     }
-    return this.checklistsService.skipItem(
+    return presentLearnerInstance(await this.checklistsService.skipItem(
       instanceId,
       itemId,
       user.organizationId,
       user.id,
       isObserver || !isLearnerOnly(user.roles),
       input,
-    );
+    ), isObserver || !isLearnerOnly(user.roles));
   }
   @Post('checklist-instances/:instanceId/items/:itemId/photo')
   @Roles(...rolePolicies.checklistItemResultsWrite, ...rolePolicies.checklistSessionsRunOwn)
@@ -722,14 +724,14 @@ export class ChecklistsController {
     );
     const uploaded = await this.uploadService.uploadChecklistItemPhoto(file, user.organizationId, instanceId, itemId);
     try {
-      return await this.checklistsService.attachItemPhoto(
+      return presentLearnerInstance(await this.checklistsService.attachItemPhoto(
         instanceId,
         itemId,
         user.organizationId,
         user.id,
         isPrivileged,
         uploaded,
-      );
+      ), isPrivileged);
     } catch (error) {
       await this.uploadService.deleteObject(uploaded.objectKey).catch(() => undefined);
       throw error;
@@ -742,7 +744,7 @@ export class ChecklistsController {
     const user = request.currentUser!;
     const isPrivileged = !isLearnerOnly(user.roles);
     if (isPrivileged) await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
-    return this.checklistsService.finishInstance(instanceId, user.organizationId, user.id, isPrivileged);
+    return presentLearnerInstance(await this.checklistsService.finishInstance(instanceId, user.organizationId, user.id, isPrivileged), isPrivileged);
   }
   // PR 406а: same access rules as the upload above; only while the sheet is still writable.
   @Delete('checklist-instances/:instanceId/items/:itemId/photo')
@@ -761,7 +763,7 @@ export class ChecklistsController {
     if (isPrivileged && !isObserver) {
       await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
     }
-    return this.checklistsService.removeItemPhoto(instanceId, itemId, user.organizationId, user.id, isPrivileged);
+    return presentLearnerInstance(await this.checklistsService.removeItemPhoto(instanceId, itemId, user.organizationId, user.id, isPrivileged), isPrivileged);
   }
   @Get('checklist-instances/:instanceId/items/:itemId/photo')
   @Roles(...rolePolicies.checklistInstancesRead)
@@ -917,7 +919,7 @@ export class ChecklistsController {
   async getSessionReport(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     const [scope, viewer] = await Promise.all([this.reviewAccess.sessionScope(user), this.sessionViewerContext(user)]);
-    return this.sessions.getReport(sessionId, user.organizationId, scope, viewer, { id: user.id, isAdmin: user.roles.includes('admin') });
+    return presentLearnerReport(await this.sessions.getReport(sessionId, user.organizationId, scope, viewer, { id: user.id, isAdmin: user.roles.includes('admin') }));
   }
   // PR 372: PDF of the same report; the file language is the downloader's interface language.
   @Get('checklist-sessions/:id/report.pdf')
@@ -948,7 +950,7 @@ export class ChecklistsController {
   async listSessionEvents(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     const scope = await this.reviewAccess.sessionScope(user);
-    return this.sessions.listEvents(sessionId, user.organizationId, scope);
+    return this.presentLearnerHistory(await this.sessions.listEvents(sessionId, user.organizationId, scope), sessionId, user, scope);
   }
   @Patch('checklist-sessions/:id')
   @Roles(...rolePolicies.checklistSessionsManage)
@@ -1077,7 +1079,14 @@ export class ChecklistsController {
   async listScoreRevisions(@Param('id') sessionId: string, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     const scope = await this.reviewAccess.sessionScope(user);
-    return this.sessions.listScoreRevisions(sessionId, user.organizationId, scope);
+    return this.presentLearnerHistory(await this.sessions.listScoreRevisions(sessionId, user.organizationId, scope), sessionId, user, scope);
+  }
+
+  private async presentLearnerHistory<T>(value: T, sessionId: string, user: NonNullable<AuthenticatedRequest['currentUser']>, scope: object): Promise<T> {
+    if (!isLearnerOnly(user.roles)) return value;
+    const session = await this.sessions.get(sessionId, user.organizationId, scope, await this.sessionViewerContext(user));
+    if (session.observerId === user.id) return value;
+    return session.result.visible && session.checklist.showPointsToLearner ? value : withoutLearnerPoints(value, !session.result.visible);
   }
 
   private async transitionSession(

@@ -59,7 +59,7 @@ export function buildSessionSummary(reports: ChecklistSessionReport[], locale: R
   visible.sort((a, b) => (observationTime(a)?.getTime() ?? 0) - (observationTime(b)?.getTime() ?? 0) || a.sessionId.localeCompare(b.sessionId));
   for (const report of visible) {
     const shape = JSON.stringify({
-      learner: report.header.learner.id, title: report.checklist.title, formula: report.summary.formula,
+      pointsVisible: report.pointsVisible, learner: report.header.learner.id, title: report.checklist.title, formula: report.summary.formula,
       groups: report.groups.map(({ id, title, number }) => ({ id, title, number })),
       criteria: report.criteria.map(({ id, text, number, groupId }) => ({ id, text, number, groupId })),
       generalInfo: report.generalInfo.map(({ id, label, type }) => ({ id, label, type })),
@@ -89,7 +89,7 @@ export function buildSessionSummary(reports: ChecklistSessionReport[], locale: R
     ]) { const row = append([caption!, value!]); merge(row, 2, columns); }
     append([]);
     const aggregate = aggregateReportScores(observations.map((report) => report.summary.scored ? { score: report.summary.totalScore, maxScore: report.summary.maxScore, percentage: report.summary.percentage } : null));
-    const header = append([label.overall, scored(aggregate.score, aggregate.maxScore, aggregate.percentage), '',
+    const header = append([label.overall, first.pointsVisible === false ? percent(aggregate.percentage) : scored(aggregate.score, aggregate.maxScore, aggregate.percentage), '',
       ...observations.map((report, index) => `${label.observation} ${index + 1}, ${formatDate(observationTime(report), report.header.timezone)}`)]);
     merge(header, 2, 3); layout.headerRows.push(header);
     const section = (caption: string) => { const row = append([caption]); merge(row, 1, columns); layout.headerRows.push(row); };
@@ -106,8 +106,9 @@ export function buildSessionSummary(reports: ChecklistSessionReport[], locale: R
     }
     const scoreRow = (caption: string, values: Array<{ score: number; maxScore: number; percentage?: number | null } | null>, details?: string[]) => {
       const total = aggregateReportScores(values);
-      return append([caption, percent(total.percentage), points(total.score, total.maxScore), ...values.map((value, index) => value
-        ? `${scored(value.score, value.maxScore, value.percentage === undefined ? aggregateReportScores([value]).percentage : value.percentage)}${details?.[index] ? `\n${details[index]}` : ''}`
+      const showPoints = first.pointsVisible !== false;
+      return append([caption, percent(total.percentage), showPoints ? points(total.score, total.maxScore) : '', ...values.map((value, index) => value
+        ? `${showPoints ? scored(value.score, value.maxScore, value.percentage === undefined ? aggregateReportScores([value]).percentage : value.percentage) : percent(value.percentage === undefined ? aggregateReportScores([value]).percentage : value.percentage)}${details?.[index] ? `\n${details[index]}` : ''}`
         : details?.[index] || label.notScored)]);
     };
     layout.headerRows.push(scoreRow(label.results, observations.map((report) => report.summary.scored
