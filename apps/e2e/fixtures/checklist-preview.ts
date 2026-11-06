@@ -31,7 +31,16 @@ export function previewSheet(): ChecklistSummary {
 }
 
 // Fixtures must not import runtime code from @lms/shared (its dist is not built in e2e/visual jobs).
-const plainText = (html: string) => html.replace(/<[^>]*>/g, '');
+function plainText(html: string): string {
+  let out = '';
+  let inTag = false;
+  for (const char of html) {
+    if (char === '<') inTag = true;
+    else if (char === '>' && inTag) inTag = false;
+    else if (!inTag) out += char;
+  }
+  return out;
+}
 
 export async function openPreviewBuilder(page: Page, sheet = previewSheet(), locale = 'ru', answerSets: unknown[] = []) {
   await page.route('**/api/v1/**', (route) => {
