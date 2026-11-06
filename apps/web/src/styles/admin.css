@@ -1693,7 +1693,7 @@
 
 .admin-criteria-row {
   display: grid;
-  grid-template-columns: 24px 24px minmax(0, 1fr) 160px 72px 72px 96px 72px 44px;
+  grid-template-columns: 24px 24px minmax(0, 1fr) 160px 72px 72px 96px 72px 88px;
   align-items: center;
   gap: 8px;
   padding: 10px 13px;
@@ -1702,7 +1702,7 @@
 }
 
 .admin-criteria-table--no-points .admin-criteria-row {
-  grid-template-columns: 24px 24px minmax(0, 1fr) 160px 72px 96px 72px 44px;
+  grid-template-columns: 24px 24px minmax(0, 1fr) 160px 72px 96px 72px 88px;
 }
 
 .admin-criteria-row:last-child {

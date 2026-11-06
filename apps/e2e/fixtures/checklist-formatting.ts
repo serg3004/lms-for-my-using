@@ -1,11 +1,12 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import { openPreviewBuilder, previewSheet } from './checklist-preview.js';
 
-export async function openFormattingEditor(page: Page, locale = 'ru') {
+export async function openFormattingEditor(page: Page, locale = 'ru', adjust?: (sheet: ReturnType<typeof previewSheet>) => void) {
   const sheet = previewSheet();
   sheet.description = 'Важный текст'; sheet.scoringMode = 'scale'; sheet.feedbackEnabled = false; sheet.contextFields = []; sheet.itemGroups = [];
   sheet.scaleLevels = [{ level: 1, label: 'Нет', points: 0, description: 'Нужна практика' }, { level: 2, label: 'Да', points: 1, description: 'Готов к работе' }];
   sheet.items = sheet.items.slice(0, 1).map((item) => ({ ...item, scale: null, scaleId: null, groupId: null, photoRequired: false, descriptionEnabled: true, description: 'Проверьте маркировку' }));
+  adjust?.(sheet);
   await openPreviewBuilder(page, sheet, locale);
   const editor = page.locator('#checklist-description[contenteditable="true"]');
   await expect(editor).toBeVisible();

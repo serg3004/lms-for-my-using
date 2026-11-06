@@ -1834,7 +1834,17 @@
           "calm": "柔和",
           "contrast": "高对比"
         },
-        "badge": "单独设置"
+        "badge": "单独设置",
+        "settings": "设置",
+        "close": "关闭设置",
+        "openFor": "区块外观：{{name}}",
+        "apply": "应用于",
+        "scopeKind": "此类型的所有区块",
+        "scopeOwn": "仅此区块",
+        "sectionBlock": "区块",
+        "sectionBorder": "边框",
+        "sectionText": "文字",
+        "customColor": "自定义颜色"
       },
       "showPointsToLearnerHint": "完成后在百分比旁显示分数。保存后适用于新的分配。工作人员报告保留分数。"
     },

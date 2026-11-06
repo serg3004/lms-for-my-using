@@ -1834,7 +1834,17 @@
           "calm": "Calm",
           "contrast": "High contrast"
         },
-        "badge": "Styled separately"
+        "badge": "Styled separately",
+        "settings": "Settings",
+        "close": "Close settings",
+        "openFor": "Block appearance: {{name}}",
+        "apply": "Apply to",
+        "scopeKind": "all blocks of this kind",
+        "scopeOwn": "this block only",
+        "sectionBlock": "Block",
+        "sectionBorder": "Border",
+        "sectionText": "Text",
+        "customColor": "Custom colour"
       },
       "showPointsToLearnerHint": "After completion show points alongside the percentage. Applies to new assignments after saving. Staff reports retain their points."
     },
