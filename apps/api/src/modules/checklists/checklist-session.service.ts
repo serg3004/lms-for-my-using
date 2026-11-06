@@ -1,4 +1,5 @@
 import { plainText } from '@lms/shared/rich-text';
+import { DESCRIPTION_MARKUP_LIMIT, sanitizeDescription } from '@lms/shared/checklist-description';
 import { buildSessionSummary, MAX_SUMMARY_OBSERVATIONS } from './checklist-session-summary.js';
 import { createHash } from 'node:crypto';
 import {
@@ -1216,7 +1217,17 @@ export class ChecklistSessionService {
         }
       }
 
-      const merged = { ...parseContextValues(session.contextValues), ...values };
+      // PR 428: only multi-line fields carry formatting; everything else is stored as typed.
+      const cleaned: Record<string, string> = {};
+      for (const [fieldId, value] of Object.entries(values)) {
+        const rich = byId.get(fieldId)?.type === 'textarea';
+        const stored = rich ? sanitizeDescription(value.trim()) : value;
+        if (value.length > (rich ? DESCRIPTION_MARKUP_LIMIT : 4000) || (rich ? plainText(stored) : stored).length > 4000) {
+          throw new BadRequestException(`Context value is too long: ${byId.get(fieldId)?.label}`);
+        }
+        cleaned[fieldId] = rich && plainText(stored).trim() === '' ? '' : stored;
+      }
+      const merged = { ...parseContextValues(session.contextValues), ...cleaned };
       const result = await tx.checklistSession.updateMany({
         where: { id: sessionId, organizationId, version: expectedVersion, status: { in: ['in_progress', 'paused'] } },
         data: { contextValues: merged as Prisma.InputJsonValue, version: { increment: 1 } },

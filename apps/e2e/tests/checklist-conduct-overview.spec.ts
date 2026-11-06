@@ -1,3 +1,4 @@
+import { fillRich } from '../fixtures/rich-fill.js';
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistSessionSummary } from '../../web/src/shared/api/types.js';
@@ -82,36 +83,36 @@ test.describe('conduct sheet overview (PR 347)', () => {
   test.use({ viewport: { width: 375, height: 900 } });
   test('exposes grouped text statuses and keyboard navigation, preserves drafts and filter across pause/resume', async ({ page }) => {
     const requests = await setup(page);
-    await page.getByLabel('Комментарий', { exact: true }).fill('Unsaved first comment');
+    await fillRich(page, page.getByLabel('Комментарий', { exact: true }), 'Unsaved first comment');
     await page.getByRole('button', { name: 'Обзор листа', exact: true }).click();
     await expect(overview(page)).toContainText('Обработано 2 из 4');
     for (const text of ['Greeting', 'Checks', 'Другие критерии', 'Отвечен', 'Пропущен', 'Не отвечен']) await expect(overview(page)).toContainText(text);
     const target = overview(page).getByRole('button', { name: new RegExp(fourth) });
     await target.focus(); await page.keyboard.press('Enter');
     await expect(page.getByText('Критерий 4 / 4', { exact: true })).toBeFocused();
-    await page.getByLabel('Комментарий', { exact: true }).fill('Unsaved last comment');
+    await fillRich(page, page.getByLabel('Комментарий', { exact: true }), 'Unsaved last comment');
     await next(page);
-    await page.getByLabel('Сильные стороны', { exact: true }).fill('Unsaved feedback');
+    await fillRich(page, page.getByLabel('Сильные стороны', { exact: true }), 'Unsaved feedback');
     await expect(page.getByText('Неотвеченных критериев: 2', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Завершить', exact: true })).toBeDisabled();
     await page.getByRole('button', { name: 'К первому неотвеченному', exact: true }).click();
-    await expect(page.getByLabel('Комментарий', { exact: true })).toHaveValue('Unsaved first comment');
+    await expect(page.getByLabel('Комментарий', { exact: true })).toHaveText('Unsaved first comment');
     await page.getByRole('checkbox', { name: 'Скрыть отвеченное', exact: true }).check();
     await next(page);
-    await expect(page.getByLabel('Комментарий', { exact: true })).toHaveValue('Unsaved last comment');
+    await expect(page.getByLabel('Комментарий', { exact: true })).toHaveText('Unsaved last comment');
     await page.getByRole('button', { name: 'Пауза', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Продолжить', exact: true })).toBeVisible();
     await expect(page.getByRole('checkbox', { name: 'Скрыть отвеченное', exact: true })).toBeChecked();
     await page.getByRole('button', { name: 'Продолжить', exact: true }).click();
-    await expect(page.getByLabel('Комментарий', { exact: true })).toHaveValue('Unsaved last comment');
+    await expect(page.getByLabel('Комментарий', { exact: true })).toHaveText('Unsaved last comment');
     await next(page);
-    await expect(page.getByLabel('Сильные стороны', { exact: true })).toHaveValue('Unsaved feedback');
+    await expect(page.getByLabel('Сильные стороны', { exact: true })).toHaveText('Unsaved feedback');
     expect(requests.calls).toEqual(['pause', 'resume']);
     await select(page, first);
     await page.getByRole('button', { name: 'Сохранить комментарий', exact: true }).click();
     await expect.poll(() => requests.instance.results.find((row) => row.itemId === 'item-1')?.comment).toBe('Unsaved first comment');
     await select(page, fourth);
-    await expect(page.getByLabel('Комментарий', { exact: true })).toHaveValue('Unsaved last comment');
+    await expect(page.getByLabel('Комментарий', { exact: true })).toHaveText('Unsaved last comment');
   });
 
   test('keeps navigation locked during an answer save and uses the saved state on Next', async ({ page }) => {
@@ -151,12 +152,12 @@ test.describe('conduct sheet overview (PR 347)', () => {
 
   test('keeps a draft after failed autosave and unlocks overview without changing status', async ({ page }) => {
     await setup(page, { rejectAnswer: true });
-    await page.getByLabel('Комментарий', { exact: true }).fill('Keep me after failure');
+    await fillRich(page, page.getByLabel('Комментарий', { exact: true }), 'Keep me after failure');
     await page.getByRole('checkbox', { name: 'Выполнено', exact: true }).click();
     await expect(page.getByRole('alert')).toBeVisible();
     await select(page, fourth);
     await select(page, first);
-    await expect(page.getByLabel('Комментарий', { exact: true })).toHaveValue('Keep me after failure');
+    await expect(page.getByLabel('Комментарий', { exact: true })).toHaveText('Keep me after failure');
     await page.getByRole('button', { name: 'Обзор листа', exact: true }).click();
     await expect(overview(page)).toContainText('Обработано 2 из 4');
   });
@@ -199,14 +200,14 @@ test.describe('conduct sheet overview (PR 347)', () => {
     await select(page, fourth); await next(page);
     await expect(page.getByText('Неотвеченных критериев: 2', { exact: true })).toBeVisible();
     await expect(page.getByText('Критерии, на которые вы не ответили, будут записаны как пропущенные и не войдут в результат.', { exact: true })).toBeVisible();
-    await page.getByLabel('Сильные стороны', { exact: true }).fill('Saved feedback');
+    await fillRich(page, page.getByLabel('Сильные стороны', { exact: true }), 'Saved feedback');
     await page.getByRole('button', { name: 'Сохранить обратную связь', exact: true }).click();
     await expect.poll(() => requests.calls).toContain('feedback');
     await assertLocked(page);
     await expect(page.getByRole('button', { name: 'Завершить', exact: true })).toBeDisabled();
     requests.release();
     await expect(page.getByRole('button', { name: 'Завершить', exact: true })).toBeEnabled();
-    await expect(page.getByLabel('Сильные стороны', { exact: true })).toHaveValue('Saved feedback');
+    await expect(page.getByLabel('Сильные стороны', { exact: true })).toHaveText('Saved feedback');
   });
 
   for (const width of [320, 375, 768]) test(`overview remains accessible at ${width}px`, async ({ page }, testInfo) => {
@@ -248,6 +249,24 @@ test.describe('conduct answer: colour and taking back (PR 425)', () => {
     await expect(clear).toHaveCount(0);
     await expect(page.getByRole('status').filter({ hasText: 'Ответ снят' })).toBeVisible();
     expect(requests.calls).toContain('clear');
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  });
+});
+
+test.describe('conduct comment formatting (PR 428)', () => {
+  for (const width of [320, 390]) test(`the comment is formatted with the window, saved as markup and shown formatted at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const requests = await setup(page);
+    const comment = page.getByRole('textbox', { name: 'Комментарий', exact: true });
+    await fillRich(page, comment, 'Важный итог');
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.keyboard.press('ControlOrMeta+b');
+    await expect(comment.locator('strong')).toHaveText('Важный итог');
+    await page.keyboard.press('Shift+F10');
+    await expect(page.getByRole('dialog', { name: 'Форматирование текста' })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Сохранить комментарий', exact: true }).click();
+    await expect.poll(() => String(requests.instance.results.find((row) => row.itemId === 'item-1')?.comment)).toContain('<strong>Важный итог</strong>');
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 });

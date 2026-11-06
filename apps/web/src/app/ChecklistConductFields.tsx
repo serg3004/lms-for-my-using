@@ -5,7 +5,8 @@ import { isCustomFeedback } from '@lms/shared/checklist-feedback';
 import { FeedbackFields as ConfiguredFeedbackFields } from '../features/checklist-feedback/FeedbackFields.js';
 import type { TFunction } from 'i18next';
 import type { ContextField } from '../shared/api/types.js';
-import { Textarea } from '../shared/ui.js';
+import { RichFillField } from './ChecklistItemNote.js';
+import { RichTextField } from '../shared/RichTextField.js';
 
 export type FeedbackDraft = { answers?: FeedbackAnswers; strengths: string; developmentAreas: string; nextSteps: string };
 
@@ -24,22 +25,33 @@ export function ContextFields({
 }) {
   return (
     <div className="admin-card" style={{ display: 'grid', gap: 12 }}>
-      {fields.map((field) => (
-        <label key={field.id} style={{ display: 'grid', gap: 5, fontSize: 13, fontWeight: 600 }}>
+      {fields.map((field) => {
+        const caption = (
           <span>
             <RichText value={field.label} />{field.required ? ` ${t('common.requiredMark', '*')}` : ''}
           </span>
-          {field.type === 'textarea' ? (
-            <textarea
-              disabled={disabled}
-              maxLength={4000}
-              required={field.required}
-              rows={3}
-              value={values[field.id] ?? ''}
-              onChange={(event) => onChange(field.id, event.target.value)}
-              style={{ minHeight: 88, resize: 'vertical' }}
-            />
-          ) : (
+        );
+        const wrapper = { display: 'grid', gap: 5, fontSize: 13, fontWeight: 600 } as const;
+        // PR 428: a multi-line field is a formatted editor, so it is labelled by aria-labelledby, not wrapped in a <label>.
+        if (field.type === 'textarea') {
+          return (
+            <div key={field.id} style={wrapper}>
+              {caption}
+              <RichTextField
+                id={`context-${field.id}`}
+                label={field.label}
+                hideLabel
+                disabled={disabled}
+                maxLength={4000}
+                value={values[field.id] ?? ''}
+                onChange={(value) => onChange(field.id, value)}
+              />
+            </div>
+          );
+        }
+        return (
+          <label key={field.id} style={wrapper}>
+            {caption}
             <input
               disabled={disabled}
               maxLength={field.type === 'date' ? undefined : 4000}
@@ -48,9 +60,9 @@ export function ContextFields({
               value={values[field.id] ?? ''}
               onChange={(event) => onChange(field.id, event.target.value)}
             />
-          )}
-        </label>
-      ))}
+          </label>
+        );
+      })}
     </div>
   );
 }
@@ -71,26 +83,8 @@ export function FeedbackFields({ draft, disabled = false, onDraftChange, t, conf
 }) {
   if (config && isCustomFeedback(config.layout)) return <ConfiguredFeedbackFields config={config} answers={draft.answers ?? {}} disabled={disabled} onChange={(answers) => onDraftChange({ ...draft, answers })} t={t} />;
   return <>
-        <Textarea
-          label={t('checklistSessions.conduct.strengths', 'Strengths')}
-          value={draft.strengths}
-          disabled={disabled}
-          onChange={(e) => onDraftChange({ ...draft, strengths: e.target.value })}
-          rows={2}
-        />
-        <Textarea
-          label={t('checklistSessions.conduct.developmentAreas', 'Development areas')}
-          value={draft.developmentAreas}
-          disabled={disabled}
-          onChange={(e) => onDraftChange({ ...draft, developmentAreas: e.target.value })}
-          rows={2}
-        />
-        <Textarea
-          label={t('checklistSessions.conduct.nextSteps', 'Next steps')}
-          value={draft.nextSteps}
-          disabled={disabled}
-          onChange={(e) => onDraftChange({ ...draft, nextSteps: e.target.value })}
-          rows={2}
-        />
+        <RichFillField id="conduct-strengths" label={t('checklistSessions.conduct.strengths', 'Strengths')} value={draft.strengths} disabled={disabled} maxLength={4000} onChange={(value) => onDraftChange({ ...draft, strengths: value })} />
+        <RichFillField id="conduct-developmentAreas" label={t('checklistSessions.conduct.developmentAreas', 'Development areas')} value={draft.developmentAreas} disabled={disabled} maxLength={4000} onChange={(value) => onDraftChange({ ...draft, developmentAreas: value })} />
+        <RichFillField id="conduct-nextSteps" label={t('checklistSessions.conduct.nextSteps', 'Next steps')} value={draft.nextSteps} disabled={disabled} maxLength={4000} onChange={(value) => onDraftChange({ ...draft, nextSteps: value })} />
   </>;
 }

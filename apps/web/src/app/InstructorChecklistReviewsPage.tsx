@@ -379,7 +379,7 @@ function ReviewDetail({
                   </button>
                 </div>
               </div>
-              {result.comment && <p style={{ color: COLORS.text, fontSize: 12.5 }}>{t('checklistReview.learnerComment', 'Learner comment')}: {result.comment}</p>}
+              {result.comment && <p style={{ color: COLORS.text, fontSize: 12.5 }}>{t('checklistReview.learnerComment', 'Learner comment')}: <RichText value={result.comment} /></p>}
               {result.reviewComment && <p style={{ color: COLORS.muted, fontSize: 12.5 }}>{t('checklistReview.previousReviewComment', 'Review comment')}: {result.reviewComment}</p>}
               {hasEvidence && <ChecklistReviewPhotoEvidence instanceId={instance.id} itemId={item.id} result={result} t={t} />}
               {result.reviewStatus === 'pending' && (

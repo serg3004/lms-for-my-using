@@ -1,6 +1,6 @@
 import { checklistLabel } from '@lms/shared/checklist-numbering';
 import { descriptionText } from '@lms/shared/checklist-description';
-import { feedbackRows, isCustomFeedback, defaultFeedbackLayout, collectFeedbackFields } from '@lms/shared/checklist-feedback';
+import { feedbackRows, isCustomFeedback, defaultFeedbackLayout } from '@lms/shared/checklist-feedback';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 
 import { exportLocale, MAX_EXPORT_ROWS, type ReportCell } from './checklist-report-csv.js';
@@ -102,7 +102,7 @@ export function buildSessionSummary(reports: ChecklistSessionReport[], locale: R
     detail(label.composition, observations.map((report) => name(report.header.learner)));
     if (first.generalInfo.length) {
       section(label.general);
-      for (const field of first.generalInfo) detail(field.label, observations.map((report) => report.generalInfo.find(({ id }) => id === field.id)?.value ?? '—'));
+      for (const field of first.generalInfo) detail(field.label, observations.map((report) => descriptionText(report.generalInfo.find(({ id }) => id === field.id)?.value ?? '—')));
     }
     const scoreRow = (caption: string, values: Array<{ score: number; maxScore: number; percentage?: number | null } | null>, details?: string[]) => {
       const total = aggregateReportScores(values);
@@ -125,15 +125,14 @@ export function buildSessionSummary(reports: ChecklistSessionReport[], locale: R
         return row && row.score !== null && row.maxScore !== null ? { score: row.score, maxScore: row.maxScore } : null;
       }), observations.map((report) => {
         const row = report.criteria.find(({ id }) => id === criterion.id)!;
-        return [row.state === 'skipped' ? label.skipped : row.state === 'unanswered' ? label.unanswered : '', row.levelLabel, row.comment].filter(Boolean).join('\n');
+        return [row.state === 'skipped' ? label.skipped : row.state === 'unanswered' ? label.unanswered : '', row.levelLabel, descriptionText(row.comment ?? '')].filter(Boolean).join('\n');
       }));
     }
     if (observations.some((report) => report.feedbackForm && isCustomFeedback(report.feedbackForm.layout))) {
       const projected = observations.map((report) => {
         const form = report.feedbackForm ?? { layout: defaultFeedbackLayout(false), answerSets: {} };
         const rows = feedbackRows(form, report.feedbackForm?.answers ?? { strengths: report.feedback?.strengths ?? '', developmentAreas: report.feedback?.developmentAreas ?? '', nextSteps: report.feedback?.comment ?? '' }, { strengths: label.strengths, developmentAreas: label.development, nextSteps: label.comment });
-        const choices = new Set(collectFeedbackFields(form.layout).filter((field) => field.kind === 'choice').map((field) => field.id));
-        return { title: form.layout.title || label.feedback, rows: rows.map((row) => row.kind === 'field' && choices.has(row.id) ? { ...row, value: descriptionText(row.value) } : row) };
+        return { title: form.layout.title || label.feedback, rows: rows.map((row) => row.kind === 'field' ? { ...row, value: descriptionText(row.value) } : row) };
       });
       for (const title of new Set(projected.map((value) => value.title))) {
         section(title);
@@ -145,9 +144,9 @@ export function buildSessionSummary(reports: ChecklistSessionReport[], locale: R
       }
     } else if (observations.some((report) => report.feedback)) {
       section(label.feedback);
-      detail(label.strengths, observations.map((report) => report.feedback?.strengths ?? '—'));
-      detail(label.development, observations.map((report) => report.feedback?.developmentAreas ?? '—'));
-      detail(label.comment, observations.map((report) => report.feedback?.comment ?? '—'));
+      detail(label.strengths, observations.map((report) => descriptionText(report.feedback?.strengths ?? '—')));
+      detail(label.development, observations.map((report) => descriptionText(report.feedback?.developmentAreas ?? '—')));
+      detail(label.comment, observations.map((report) => descriptionText(report.feedback?.comment ?? '—')));
     }
     if (observations.some((report) => report.checklist.description || report.criteria.some((criterion) => criterion.description || criterion.levelDescription))) {
       section({ ru: 'Описание', en: 'Description', kk: 'Сипаттама', zh: '描述' }[locale]);

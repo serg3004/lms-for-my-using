@@ -1,3 +1,4 @@
+import { fillRich } from '../fixtures/rich-fill.js';
 import { expect, test } from '@playwright/test';
 import { answerSetServer, openFeedbackBuilder, openFeedbackConduct } from '../fixtures/checklist-feedback.js';
 import { openPreviewBuilder, previewSheet } from '../fixtures/checklist-preview.js';
@@ -32,7 +33,7 @@ test('preview renders custom sections and choice descriptions without saving ans
   await page.getByRole('button', { name: 'Предпросмотр', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog.getByRole('heading', { name: 'План развития', exact: true })).toBeVisible();
-  await dialog.getByLabel('Рекомендация *', { exact: true }).fill('Практика на смене');
+  await fillRich(page, dialog.getByLabel('Рекомендация *', { exact: true }), 'Практика на смене');
   await dialog.getByRole('checkbox', { name: /Готов Работает самостоятельно/ }).check();
   await expect(dialog.getByRole('heading', { name: 'Следующая смена', exact: true })).toBeVisible();
   expect(writes).toEqual([]);
@@ -42,13 +43,13 @@ test('observer autosaves custom answers, cannot complete before required fields 
   const data = await openFeedbackConduct(page);
   const complete = page.getByRole('button', { name: 'Завершить', exact: true });
   await expect(complete).toBeDisabled();
-  await page.getByRole('textbox', { name: 'Рекомендация *', exact: true }).fill('Повторить завтра');
+  await fillRich(page, page.getByRole('textbox', { name: 'Рекомендация *', exact: true }), 'Повторить завтра');
   await expect.poll(() => data.saves.length).toBe(1);
   await expect(complete).toBeDisabled();
   await page.getByRole('checkbox', { name: /Готов Работает самостоятельно/ }).check();
   await expect(complete).toBeEnabled();
   expect(data.session.feedbackAnswers).toEqual({ note: 'Повторить завтра', verdict: ['ready'] });
-  await page.getByRole('textbox', { name: 'Рекомендация *', exact: true }).fill('Повторить завтра и послезавтра');
+  await fillRich(page, page.getByRole('textbox', { name: 'Рекомендация *', exact: true }), 'Повторить завтра и послезавтра');
   await expect(complete).toBeDisabled();
   await expect(complete).toBeEnabled();
   await complete.click();

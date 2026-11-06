@@ -1,3 +1,4 @@
+import { RichText } from '../shared/RichText.js';
 import type { TFunction } from 'i18next';
 import { listChecklistSessions } from '../shared/api/checklistSessions.js';
 import type { ChecklistSessionSummary } from '../shared/api/types.js';
@@ -90,13 +91,13 @@ function PastSessionCard({ past, t }: { past: ChecklistSessionSummary; t: TFunct
           {past.strengths && (
             <div>
               <dt style={{ fontWeight: 600 }}>{t('checklistSessions.conduct.strengths', 'Strengths')}</dt>
-              <dd style={{ margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{past.strengths}</dd>
+              <dd style={{ margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}><RichText value={past.strengths} /></dd>
             </div>
           )}
           {past.developmentAreas && (
             <div>
               <dt style={{ fontWeight: 600 }}>{t('checklistSessions.conduct.developmentAreas', 'Development areas')}</dt>
-              <dd style={{ margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{past.developmentAreas}</dd>
+              <dd style={{ margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}><RichText value={past.developmentAreas} /></dd>
             </div>
           )}
         </dl>

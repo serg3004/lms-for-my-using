@@ -1,4 +1,5 @@
 import { richTextSchema } from '@lms/shared/rich-text';
+import { DESCRIPTION_MARKUP_LIMIT } from '@lms/shared/checklist-description';
 import { z } from 'zod';
 import { UserRole } from '@prisma/client';
 
@@ -310,7 +311,7 @@ export const submitChecklistItemResultSchema = z
     checked: z.boolean(),
     scaleLevel: z.number().int().min(1),
     photoUrl: z.string().trim().url().max(2000),
-    comment: z.string().trim().max(1000),
+    comment: richTextSchema(1000),
   })
   .partial();
 export type SubmitChecklistItemResultInput = z.infer<typeof submitChecklistItemResultSchema>;
@@ -460,9 +461,9 @@ export type MarkChecklistSessionObserverUnavailableInput = z.infer<typeof markCh
 // concurrency contract.
 export const submitChecklistSessionFeedbackSchema = z
   .object({
-    strengths: z.string().trim().max(4000).nullable().optional(),
-    developmentAreas: z.string().trim().max(4000).nullable().optional(),
-    nextSteps: z.string().trim().max(4000).nullable().optional(),
+    strengths: richTextSchema(4000).nullable().optional(),
+    developmentAreas: richTextSchema(4000).nullable().optional(),
+    nextSteps: richTextSchema(4000).nullable().optional(),
     // PR 405: answers by field id of the sheet's feedback layout -- text, or option ids of a choice field.
     answers: z
       .record(
@@ -478,7 +479,7 @@ export type SubmitChecklistSessionFeedbackInput = z.infer<typeof submitChecklist
 
 export const submitChecklistSessionContextSchema = z
   .object({
-    values: z.record(z.string().uuid(), z.string().max(4000)).refine((values) => Object.keys(values).length <= 20, 'At most 20 context values are allowed'),
+    values: z.record(z.string().uuid(), z.string().max(DESCRIPTION_MARKUP_LIMIT)).refine((values) => Object.keys(values).length <= 20, 'At most 20 context values are allowed'),
     version: z.number().int().min(1),
   })
   .strict();

@@ -26,7 +26,7 @@ import type {
   ChecklistSessionSummary,
 } from '../shared/api/types.js';
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT } from '../shared/checklistStatus.js';
-import { Avatar, Badge, Button, InlineFeedback, PageState, ProgressBar, Textarea } from '../shared/ui.js';
+import { Avatar, Badge, Button, InlineFeedback, PageState, ProgressBar } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { DEFAULT_LEVEL_COLORS, defaultLevelColor, levelPaint, NEUTRAL_LEVEL_COLOR } from '../shared/levelPaint.js';
 import { PastSessions } from './ChecklistSessionHistory.js';
@@ -39,6 +39,7 @@ import { isNoteRequired, pendingAnswer } from './checklistItemNote.js';
 import { conductCriteria, nextConductStep } from './checklistConductOverview.js';
 import { localizeChecklistScaleError, checklistResultToAnswer, getRequiredChecklistProgress, isChecklistAnswerComplete } from './checklistCompletion.js';
 
+import { RichFillField } from './ChecklistItemNote.js';
 import { ContextFields, CriterionHeading, FeedbackFields, type FeedbackDraft } from './ChecklistConductFields.js';
 
 const COLORS = {
@@ -798,14 +799,15 @@ function CriterionCard({
       {cleared && !hasAnswer && <p role="status" className="admin-form__hint">{t('checklistSessions.conduct.answerCleared', 'Answer cleared: the criterion is unanswered again.')}</p>}
 
       <div style={{ marginTop: 12 }}>
-        <Textarea
+        <RichFillField
+          id={`conduct-comment-${item.id}`}
           label={noteRequired ? t('checklists.noteRequired', 'Explanation (required)') : t('checklistSessions.conduct.comment', 'Comment')}
           hint={heldAnswer ? t('checklists.notePending', 'Fill in the explanation and save it: your answer is saved together with it.') : undefined}
-          aria-required={noteRequired || undefined}
+          required={noteRequired}
           value={comment}
           disabled={!editable}
-          onChange={(e) => onCommentChange(e.target.value)}
-          rows={2}
+          onChange={onCommentChange}
+          maxLength={1000}
         />
         <Button
           type="button"
