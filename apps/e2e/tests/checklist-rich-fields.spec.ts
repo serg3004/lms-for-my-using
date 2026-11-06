@@ -23,7 +23,10 @@ for (const width of [320, 390, 1440]) test(`author title and criterion formattin
   const criterionPoint = await selectDescription(field);
   await page.mouse.click(criterionPoint.x, criterionPoint.y, { button: 'right' });
   await popup.getByRole('button', { name: 'Курсив', exact: true }).click();
-  await page.keyboard.press('Escape'); await field.blur();
+  await page.keyboard.press('Escape');
+  // Closing the window gives the focus back to the editor on the next frame; blur only after that, or the editor takes it back.
+  await expect(field).toBeFocused();
+  await field.blur();
   await expect.poll(() => String(criterion?.text)).toContain('<em>Критерий</em>');
   await page.screenshot({ path: test.info().outputPath(`builder-${width}.png`) });
   await page.getByRole('button', { name: 'Предпросмотр', exact: true }).click();
