@@ -14,7 +14,7 @@ import { ChecklistPhotoStrip } from '../../shared/ChecklistPhotoStrip.js';
 import { Button } from '../../shared/ui.js';
 import { AppearanceBlock, itemCardStyle } from '../../shared/AppearanceBlock.js';
 import type { Appearance } from '@lms/shared/checklist-appearance';
-import { computePreviewResult, groupItems, type PreviewAnswer } from './domain.js';
+import { computePreviewResult, groupItems, previewUnfinishedItems, type PreviewAnswer } from './domain.js';
 
 type PreviewProps = {
   title: string; description: string; items: ChecklistItemSummary[]; groups: ChecklistItemGroup[];
@@ -44,6 +44,8 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
   useEffect(() => { if (!props.feedbackLayout || !collectFeedbackFields(props.feedbackLayout).some((field) => field.kind === 'choice')) return; let active = true; void listChecklistAnswerSets().then((sets) => { if (active && Array.isArray(sets)) setAnswerSets(Object.fromEntries(sets.map((set) => [set.id, set]))); }).catch(() => {}); return () => { active = false; }; }, [props.feedbackLayout]);
   const config = props.feedbackLayout ? { layout: props.feedbackLayout, answerSets } : null;
   const [resetKey, setResetKey] = useState(0);
+  // PR 424: the result is shown only after "Finish", like the employee sees it; nothing is saved.
+  const [finished, setFinished] = useState(false);
   useEffect(() => {
     const returnFocus = document.activeElement as HTMLElement | null;
     const element = dialog.current;
@@ -62,9 +64,29 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
   const result = computePreviewResult(items, scoringMode, scaleLevels, passThreshold, answers, allowSkipAll, true);
   const complete = result.allAnswered && contextFields.every((field) => !field.required || values[field.id]?.trim())
     && (!feedbackEnabled || (isCustomFeedback(props.feedbackLayout) ? !firstMissingRequiredFeedback(props.feedbackLayout!, feedback.answers ?? {}) : !feedbackRequired || Boolean(feedback.strengths.trim() && feedback.developmentAreas.trim())));
+  const unfinished = previewUnfinishedItems(items, scoringMode, scaleLevels, answers, allowSkipAll);
+  const missingContext = contextFields.filter((field) => field.required && !values[field.id]?.trim());
+  const feedbackMissing = feedbackEnabled && !(isCustomFeedback(props.feedbackLayout) ? !firstMissingRequiredFeedback(props.feedbackLayout!, feedback.answers ?? {}) : !feedbackRequired || Boolean(feedback.strengths.trim() && feedback.developmentAreas.trim()));
+  /** Moves to the first unfilled place and puts the keyboard focus there. */
+  function goTo(target: Element | null | undefined) {
+    if (!target) return;
+    target.scrollIntoView({ block: 'center' });
+    (target.querySelector<HTMLElement>('input, textarea, select, button') ?? (target as HTMLElement)).focus({ preventScroll: true });
+  }
+  const criterionElement = (id: string) => [...(dialog.current?.querySelectorAll('[data-criterion]') ?? [])].find((node) => (node as HTMLElement).dataset.criterion === id);
+  function finish() {
+    setFinished(true);
+    // The list renders after this update; the first unfilled place is the same one the list starts with.
+    requestAnimationFrame(() => {
+      if (missingContext[0]) goTo(dialog.current?.querySelector(`[id="${titleId}-info"]`));
+      else if (unfinished[0]) goTo(criterionElement(unfinished[0].id));
+      else if (feedbackMissing) goTo(dialog.current?.querySelector(`[id="${titleId}-feedback"]`));
+      else dialog.current?.querySelector('[data-testid="preview-finish-result"]')?.scrollIntoView({ block: 'center' });
+    });
+  }
   const updateAnswer = (id: string, patch: PreviewAnswer) => setAnswers((previous) => ({ ...previous, [id]: { ...previous[id], ...patch } }));
   function reset() {
-    setAnswers({}); setValues({}); setFeedback(emptyFeedback); setResetKey((key) => key + 1);
+    setAnswers({}); setValues({}); setFeedback(emptyFeedback); setFinished(false); setResetKey((key) => key + 1);
   }
   return (
     <dialog className="admin-preview-overlay" ref={dialog} aria-labelledby={titleId} aria-describedby={hintId}
@@ -92,7 +114,7 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
         {description && <p><RichDescription value={description} /></p>}
         {props.checklistId && props.photos && <ChecklistPhotoStrip checklistId={props.checklistId} photos={props.photos} title={title} />}
         </AppearanceBlock>
-        {contextFields.length > 0 && <AppearanceBlock appearance={props.appearance} kind="info" style={{ marginBottom: 8 }}><section aria-label={t('admin.checklists.contextFieldsTitle', 'General information')}>
+        {contextFields.length > 0 && <AppearanceBlock appearance={props.appearance} kind="info" style={{ marginBottom: 8 }}><section id={`${titleId}-info`} aria-label={t('admin.checklists.contextFieldsTitle', 'General information')}>
           <h3>{t('admin.checklists.contextFieldsTitle', 'General information')}</h3>
           <ContextFields fields={[...contextFields].sort((a, b) => a.order - b.order)} values={values} disabled={false}
             onChange={(id, value) => setValues((previous) => ({ ...previous, [id]: value }))} t={t} />
@@ -111,26 +133,42 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
             </AppearanceBlock>
           ))}
         </div>
-        {feedbackEnabled && <section aria-label={t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')}>
+        {feedbackEnabled && <section id={`${titleId}-feedback`} aria-label={t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')}>
           <h3>{props.feedbackLayout?.title || t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')}</h3>
           {feedbackRequired && <p className="admin-form__hint">{t('checklistPreview.feedbackRequired', 'Strengths and development areas are required.')}</p>}
           <div style={{ display: 'grid', gap: 10 }}><FeedbackFields config={config} draft={feedback} onDraftChange={setFeedback} t={t} /></div>
         </section>}
         <footer>
-          <div role="status" className={complete && result.passed ? 'admin-preview-result admin-preview-result--pass' : 'admin-preview-result'}>
-            {scoringMode === 'none' ? (
-              <strong>{complete ? t('checklists.finishedNoPoints', 'Completed') : t('checklistPreview.incomplete', 'Incomplete')}</strong>
-            ) : (
-              <>
-                <span>{complete ? (result.passed ? t('admin.checklists.previewPassed', 'Pass') : t('admin.checklists.previewFailed', 'Fail')) : t('checklistPreview.incomplete', 'Incomplete')}</span>
-                <strong>{result.totalScore} / {result.maxScore} ({result.percentage}%)</strong>
-              </>
-            )}
-          </div>
-          {scoringMode !== 'none' && <p className="admin-form__hint">{t('checklistPreview.scoreHint', 'The percentage is calculated from answered criteria. Skipped criteria are excluded.')}</p>}
+          {finished && (complete ? (
+            <div role="status" data-testid="preview-finish-result" className={result.passed ? 'admin-preview-result admin-preview-result--pass' : 'admin-preview-result'}>
+              <span>{t('checklistPreview.finished', 'Sheet completed')}</span>
+              {scoringMode === 'none' ? (
+                <strong>{t('checklists.finishedNoPoints', 'Completed')}</strong>
+              ) : (
+                <>
+                  <span>{result.passed ? t('admin.checklists.previewPassed', 'Pass') : t('admin.checklists.previewFailed', 'Fail')}</span>
+                  <strong>{result.totalScore} / {result.maxScore} ({result.percentage}%)</strong>
+                </>
+              )}
+            </div>
+          ) : (
+            <div role="alert" data-testid="preview-finish-missing" className="admin-preview-result">
+              <strong>{t('checklistPreview.cannotFinish', 'The sheet cannot be completed yet')}</strong>
+              <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
+                {missingContext.length > 0 && <li><button type="button" className="ds-button ds-button--ghost ds-button--sm" onClick={() => goTo(dialog.current?.querySelector(`[id="${titleId}-info"]`))}>{t('checklistPreview.missingContext', 'General information: {{count}} required', { count: missingContext.length })}</button></li>}
+                {unfinished.slice(0, 5).map((item) => <li key={item.id}><button type="button" className="ds-button ds-button--ghost ds-button--sm" onClick={() => goTo(criterionElement(item.id))}>{item.text}</button></li>)}
+                {unfinished.length > 5 && <li>{t('checklistPreview.missingMore', 'and {{count}} more criteria', { count: unfinished.length - 5 })}</li>}
+                {feedbackMissing && <li><button type="button" className="ds-button ds-button--ghost ds-button--sm" onClick={() => goTo(dialog.current?.querySelector(`[id="${titleId}-feedback"]`))}>{t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')}</button></li>}
+              </ul>
+              <p className="admin-form__hint" style={{ margin: '4px 0 0' }}>{t('checklistSessions.conduct.incompleteHint', 'All required criteria must be answered before completing.')}</p>
+            </div>
+          ))}
+          {finished && complete && scoringMode !== 'none' && <p className="admin-form__hint">{t('checklistPreview.scoreHint', 'The percentage is calculated from answered criteria. Skipped criteria are excluded.')}</p>}
+          {finished && <p className="admin-form__hint">{t('checklistPreview.simulation', 'Simulation: nothing was saved or sent.')}</p>}
           <div className="admin-form__actions">
+            <Button type="button" onClick={finish}>{t('checklistPreview.finish', 'Finish')}</Button>
             <Button type="button" variant="secondary" onClick={reset}>{t('admin.checklists.previewReset', 'Reset')}</Button>
-            <Button type="button" onClick={onClose}>{t('admin.checklists.close', 'Close')}</Button>
+            <Button type="button" variant="secondary" onClick={onClose}>{t('admin.checklists.close', 'Close')}</Button>
           </div>
         </footer>
       </div>
@@ -152,7 +190,7 @@ function PreviewCriterion({ item, number, answer, levels, scoringMode, allowSkip
     { level: 0, label: t('checklistPreview.no', 'No'), points: 0 },
   ];
   const noteShown = isNoteOffered(item, answer && !answer.skipped ? answer : undefined, levels !== null);
-  return <div style={itemCardStyle(appearance, item.id, { padding: '20px 0', borderBottom: '1px solid var(--color-border)' }, '#166534', answer?.answered === true)}>
+  return <div data-criterion={item.id} style={itemCardStyle(appearance, item.id, { padding: '20px 0', borderBottom: '1px solid var(--color-border)' }, '#166534', answer?.answered === true)}>
     <CriterionHeading text={item.text} number={number} required={item.isRequired} t={t} />
     <ChecklistItemDescription item={item} t={t} />
     <div role="radiogroup" aria-required={item.isRequired} aria-label={checklistLabel(item.text, number)} style={{ display: 'grid', gap: 6, marginBottom: 12 }}>

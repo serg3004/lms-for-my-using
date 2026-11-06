@@ -8,7 +8,13 @@
     "yes": "Yes",
     "no": "No",
     "points": "{{points}} pts",
-    "attachPhoto": "Attach photo (local preview)"
+    "attachPhoto": "Attach photo (local preview)",
+    "finish": "Finish",
+    "finished": "Sheet completed",
+    "cannotFinish": "The sheet cannot be completed yet",
+    "missingContext": "General information: {{count}} required fields",
+    "missingMore": "and {{count}} more criteria",
+    "simulation": "Simulation: nothing was saved or sent."
   },
   "sessionImport": {
     "done": "Import complete",

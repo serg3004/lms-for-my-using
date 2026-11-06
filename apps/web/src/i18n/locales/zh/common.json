@@ -8,7 +8,13 @@
     "yes": "是",
     "no": "否",
     "points": "{{points}} 分",
-    "attachPhoto": "添加照片（仅本地预览）"
+    "attachPhoto": "添加照片（仅本地预览）",
+    "finish": "完成",
+    "finished": "清单已完成",
+    "cannotFinish": "清单暂时无法完成",
+    "missingContext": "基本信息：必填项 {{count}} 个",
+    "missingMore": "还有 {{count}} 条标准",
+    "simulation": "模拟：未保存任何内容，也未发送给任何人。"
   },
   "sessionImport": {
     "done": "导入完成",
