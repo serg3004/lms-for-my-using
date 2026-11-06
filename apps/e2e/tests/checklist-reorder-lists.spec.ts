@@ -40,7 +40,7 @@ async function openEditor(page: Page, overrides: Record<string, unknown>, saved:
   await expect(page.getByRole('heading', { name: /Общая информация/ })).toBeVisible();
 }
 
-const labels = (page: Page) => page.locator('.admin-context-field-row input[type="text"]').evaluateAll((nodes) => nodes.map((node) => (node as HTMLInputElement).value));
+const labels = (page: Page) => page.locator('.admin-context-field-row [role="textbox"]').evaluateAll((nodes) => nodes.map((node) => node.textContent));
 const savedLabels = (body: Record<string, unknown>) => ((body.contextFields ?? []) as Array<{ label: string; order: number }>).map((field) => `${field.order}:${field.label}`);
 
 test.describe('Checklist editor: reorder (PR 418)', () => {

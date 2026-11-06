@@ -198,3 +198,17 @@ it('renders a learner PDF as percentage and verdict without point totals; staff 
   const staff = await render(report([row('c', 'g1', 'Criterion', 1, 3)]), 'en');
   expect(staff.text).toMatch(/71\s*\/\s*79/);
 });
+
+it('PR 427 formats author titles and criteria in PDF while summary cells contain visible text', async () => {
+  const data = report([row('c', null, '<em>Criterion</em>', 1, 1)]);
+  if (!data.visible) throw new Error('Expected visible report');
+  data.checklist.title = '<strong>Sheet</strong>';
+  const spy = jest.spyOn(PdfFontBook.prototype, 'writeInline');
+  try {
+    const { text } = await render(data);
+    expect(text).toContain('Sheet');
+    expect(text).not.toContain('<strong>');
+    expect(spy).toHaveBeenCalledWith('Sheet', expect.objectContaining({ weight: 700 }));
+    expect(spy).toHaveBeenCalledWith('Criterion', expect.objectContaining({ italic: true }));
+  } finally { spy.mockRestore(); }
+});

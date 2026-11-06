@@ -1,3 +1,4 @@
+import { richTextSchema, plainText } from '@lms/shared/rich-text';
 import { BadRequestException } from '@nestjs/common';
 import { z } from 'zod';
 
@@ -20,7 +21,7 @@ export const feedbackFieldSchema: z.ZodType<FeedbackFieldDef> = z
   .object({
     id: idSchema,
     kind: z.enum(['text', 'choice']),
-    title: z.string().trim().max(255),
+    title: richTextSchema(255),
     required: z.boolean().default(false),
     builtin: z.enum(FEEDBACK_BUILTIN_IDS).optional(),
     answerSetId: z.string().uuid().optional(),
@@ -32,7 +33,7 @@ export const feedbackFieldSchema: z.ZodType<FeedbackFieldDef> = z
       if (field.kind !== 'text' || field.id !== field.builtin) {
         ctx.addIssue({ code: 'custom', message: 'A built-in field must be a text field with its own id' });
       }
-    } else if (field.title.length === 0) {
+    } else if (plainText(field.title).trim().length === 0) {
       ctx.addIssue({ code: 'custom', path: ['title'], message: 'Field title is required' });
     }
     if (field.kind === 'choice' && !field.answerSetId) {
@@ -47,7 +48,7 @@ const feedbackSectionSchema: z.ZodType<FeedbackSectionDef> = z.lazy(() =>
   z
     .object({
       id: idSchema,
-      title: z.string().trim().min(1).max(255),
+      title: richTextSchema(255, 1),
       fields: z.array(feedbackFieldSchema).max(FEEDBACK_MAX_FIELDS).default([]),
       sections: z.array(feedbackSectionSchema).max(FEEDBACK_MAX_SECTIONS).default([]),
     })
@@ -56,7 +57,7 @@ const feedbackSectionSchema: z.ZodType<FeedbackSectionDef> = z.lazy(() =>
 
 export const feedbackLayoutSchema: z.ZodType<FeedbackLayout> = z
   .object({
-    title: z.string().trim().max(255).optional(),
+    title: richTextSchema(255).optional(),
     fields: z.array(feedbackFieldSchema).max(FEEDBACK_MAX_FIELDS).default([]),
     sections: z.array(feedbackSectionSchema).max(FEEDBACK_MAX_SECTIONS).default([]),
   })
@@ -182,7 +183,7 @@ export const answerOptionSchema = z
   .object({
     id: idSchema,
     name: z.string().trim().min(1).max(255),
-    description: z.string().trim().max(2000).nullable().optional(),
+    description: richTextSchema(2000).nullable().optional(),
   })
   .strict();
 

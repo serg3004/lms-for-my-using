@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import type { TFunction } from 'i18next';
 import { ApiClientError } from '../../shared/apiClient.js';
 import type { ChecklistFolder, ChecklistFolderDeleteImpact } from '../../shared/api/types.js';
@@ -96,7 +97,7 @@ export function deleteImpactMessage(name: string, impact: ChecklistFolderDeleteI
     name, folders: impact.folders, checklists: impact.checklists,
   });
   if (impact.movedToDraft.length === 0) return base;
-  const titles = impact.movedToDraft.map((sheet) => `«${sheet.title}»`).join(', ');
+  const titles = impact.movedToDraft.map((sheet) => `«${plainText(sheet.title)}»`).join(', ');
   return `${base} ${t('admin.checklists.folders.deleteMoved', 'Checklists with assignments in progress are not deleted but moved to drafts at the root: {{titles}}.', { titles })}`;
 }
 

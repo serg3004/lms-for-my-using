@@ -1,3 +1,5 @@
+import { RichTextField } from '../../shared/RichTextField.js';
+import { plainText } from '@lms/shared/rich-text';
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import type { TFunction } from 'i18next';
 
@@ -9,7 +11,7 @@ import { Button } from '../../shared/ui.js';
  * reason it was not saved, next to the field, with the typed text kept and a "Retry" button. Esc puts the old name back.
  * An empty name is never saved, and the field does not swap in a default while the text is being retyped.
  */
-export function InlineNameField({ id, value, label, maxLength, multiline = false, rows = 2, disabled, className, wrapperClassName, hintWhenEmpty = false, validate, onCommit, t }: {
+export function InlineNameField({ id, value, label, maxLength, multiline = false, disabled, className, wrapperClassName, hintWhenEmpty = false, validate, onCommit, t }: {
   /** DOM id: "Rename" in a menu focuses the field through `focusNameField(id)`. */
   id: string;
   /** The saved name. */
@@ -35,7 +37,7 @@ export function InlineNameField({ id, value, label, maxLength, multiline = false
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [retryable, setRetryable] = useState(false);
-  const fieldRef = useRef<HTMLInputElement & HTMLTextAreaElement>(null);
+
   const cancelled = useRef(false);
   const timer = useRef<number | null>(null);
 
@@ -43,17 +45,17 @@ export function InlineNameField({ id, value, label, maxLength, multiline = false
   const statusRef = useRef(status);
   statusRef.current = status;
   useEffect(() => {
-    if (document.activeElement !== fieldRef.current && (statusRef.current === 'idle' || statusRef.current === 'saved')) setDraft(value);
-  }, [value]);
+    if (document.activeElement?.id !== id && (statusRef.current === 'idle' || statusRef.current === 'saved')) setDraft(value);
+  }, [value, id]);
   useEffect(() => () => { if (timer.current !== null) window.clearTimeout(timer.current); }, []);
 
   async function commit() {
     if (cancelled.current) { cancelled.current = false; return; }
     const next = draft.trim();
     if (next === value && status !== 'error') { setDraft(value); return; }
-    const problem = !next
+    const problem = !plainText(next).trim()
       ? t('admin.checklists.rename.required', 'Enter a name')
-      : next.length > maxLength
+      : plainText(next).length > maxLength
         ? t('admin.checklists.rename.tooLong', 'No more than {{max}} characters', { max: maxLength })
         : validate?.(next) ?? null;
     if (problem) { setStatus('error'); setMessage(problem); setRetryable(false); return; }
@@ -73,40 +75,29 @@ export function InlineNameField({ id, value, label, maxLength, multiline = false
     }
   }
 
-  function keyDown(event: KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) {
+  function keyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === 'Enter') {
       event.preventDefault();
-      event.currentTarget.blur();
+      (document.getElementById(id) as HTMLElement | null)?.blur();
     } else if (event.key === 'Escape') {
       cancelled.current = true;
       setDraft(value);
       setStatus('idle');
-      event.currentTarget.blur();
+      (document.getElementById(id) as HTMLElement | null)?.blur();
       // A blur that does not happen (the field was not focused) must not leave the flag set.
       window.setTimeout(() => { cancelled.current = false; }, 0);
     }
   }
 
-  const empty = draft.trim() === '' && status === 'idle';
+  const empty = plainText(draft).trim() === '' && status === 'idle';
   const shown = status === 'idle' && hintWhenEmpty && empty ? t('admin.checklists.rename.required', 'Enter a name') : status === 'saving' ? t('admin.checklists.rename.saving', 'Saving…') : status === 'saved' ? t('admin.checklists.rename.saved', 'Saved') : status === 'error' ? message : '';
   const invalid = status === 'error' || (hintWhenEmpty && empty);
-  const common = {
-    id,
-    ref: fieldRef,
-    className: ['admin-name-field__input', className].filter(Boolean).join(' '),
-    value: draft,
-    disabled,
-    'aria-label': label,
-    'aria-invalid': invalid || undefined,
-    'aria-describedby': shown ? `${id}-status` : undefined,
-    onChange: (event: { target: { value: string } }) => { setDraft(event.target.value); if (status === 'error' || status === 'saved') setStatus('idle'); },
-    onBlur: () => void commit(),
-    onKeyDown: keyDown,
-    onDoubleClick: () => fieldRef.current?.select(),
-  };
   return (
-    <span className={['admin-name-field', wrapperClassName].filter(Boolean).join(' ')}>
-      {multiline ? <textarea rows={rows} {...common} /> : <input type="text" {...common} />}
+    <span onDoubleClick={(event) => { if ((event.target as HTMLElement).closest('[contenteditable]')) focusNameField(id); }} className={['admin-name-field', wrapperClassName].filter(Boolean).join(' ')}>
+      <RichTextField className={['admin-name-field__input', className].filter(Boolean).join(' ')} id={id} label={label} value={draft} maxLength={maxLength} singleLine={!multiline} compact hideLabel disabled={disabled}
+        invalid={invalid} describedBy={shown ? `${id}-status` : undefined}
+        onChange={(value) => { setDraft(value); if (status === 'error' || status === 'saved') setStatus('idle'); }}
+        onBlur={() => void commit()} onKeyDown={keyDown} />
       <span className={`admin-name-field__status${invalid ? ' admin-name-field__status--error' : ''}`} id={`${id}-status`} role="status" aria-live="polite">
         {shown}
         {status === 'error' && retryable && <> <Button onClick={() => void commit()} size="sm" type="button" variant="secondary">{t('admin.checklists.rename.retry', 'Retry')}</Button></>}
@@ -122,6 +113,7 @@ export function focusNameField(id: string) {
     if (!field) return;
     field.scrollIntoView?.({ block: 'nearest' });
     field.focus();
-    field.select();
+    if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) field.select();
+    else { const range = document.createRange(); range.selectNodeContents(field); const selection = window.getSelection(); selection?.removeAllRanges(); selection?.addRange(range); }
   }));
 }

@@ -38,7 +38,7 @@ test.describe('Checklist editor: General information block (PR 401)', () => {
       const rows = await page.locator('.admin-context-field-row').evaluateAll((nodes) => nodes.map((row) => {
         const box = (selector: string) => (row.querySelector(selector) as HTMLElement).getBoundingClientRect();
         const parent = (row.parentElement as HTMLElement).getBoundingClientRect();
-        const name = box('input[type="text"]');
+        const name = box('[role="textbox"]');
         const type = box('select');
         const required = box('.admin-context-field-row__required');
         const menu = box('.admin-context-field-row__menu');

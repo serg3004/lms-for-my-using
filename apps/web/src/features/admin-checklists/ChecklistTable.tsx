@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import type { KeyboardEvent, ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { Badge, Button, DataTable, Menu, type BadgeVariant, type Column, type DataTableSort } from '../../shared/ui.js';
@@ -161,7 +162,7 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
     }
     const checklist = only.checklist;
     return {
-      label: t('admin.checklists.contextMenu.rowLabel', 'Actions: {{name}}', { name: checklist.title }),
+      label: t('admin.checklists.contextMenu.rowLabel', 'Actions: {{name}}', { name: plainText(checklist.title) }),
       items: (
         <>
           <button onClick={() => onEdit(checklist)} role="menuitem" type="button">{t('admin.checklists.edit', 'Edit')}</button>
@@ -184,7 +185,7 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
     archived: t('admin.checklists.action.archive', 'Archive'),
   };
   const columns = [
-    { key: 'title', label: t('admin.checklists.col.title', 'Title'), priority: 'primary', sortable: Boolean(onSortChange), render: (row) => row.kind === 'sheet' ? row.checklist.title : (
+    { key: 'title', label: t('admin.checklists.col.title', 'Title'), priority: 'primary', sortable: Boolean(onSortChange), render: (row) => row.kind === 'sheet' ? plainText(row.checklist.title) : (
       <span className="checklist-library__folder">
         <span aria-hidden="true">📁</span>
         <button className="checklist-library__open" onClick={() => onOpenFolder?.(row.folder)} type="button" aria-label={t('admin.checklists.folders.openFolder', 'Open folder: {{name}}', { name: row.folder.name })}>{row.folder.name}</button>
@@ -281,7 +282,7 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
       onChange: onSelectionChange,
       selectedLabel: (count) => t('common.selectedCount', { count }),
       selectAllLabel: t('admin.checklists.bulk.selectAllRows', 'Select all folders and checklists in this folder'),
-      rowLabel: (row) => row.kind === 'sheet' ? t('admin.checklists.bulk.selectRow', 'Select checklist: {{title}}', { title: row.checklist.title }) : t('admin.checklists.bulk.selectFolderRow', 'Select folder: {{name}}', { name: row.folder.name }),
+      rowLabel: (row) => row.kind === 'sheet' ? t('admin.checklists.bulk.selectRow', 'Select checklist: {{title}}', { title: plainText(row.checklist.title) }) : t('admin.checklists.bulk.selectFolderRow', 'Select folder: {{name}}', { name: row.folder.name }),
     } : undefined}
     batchActions={batchActions ? (selectedRows: LibraryRow[]) => batchActions({
       sheets: selectedRows.flatMap((row) => (row.kind === 'sheet' ? [row.checklist] : [])),
@@ -291,8 +292,8 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
     keyExtractor={(row) => row.key} emptyMessage={emptyMessage ?? t('admin.checklists.empty', 'No checklists found.')}
     responsiveDetails={{
       label: t('courses.details'),
-      expandLabel: (row) => `${t('courses.details')}: ${row.kind === 'sheet' ? row.checklist.title : row.folder.name}`,
-      collapseLabel: (row) => `${t('courses.details')}: ${row.kind === 'sheet' ? row.checklist.title : row.folder.name}`,
+      expandLabel: (row) => `${t('courses.details')}: ${row.kind === 'sheet' ? plainText(row.checklist.title) : row.folder.name}`,
+      collapseLabel: (row) => `${t('courses.details')}: ${row.kind === 'sheet' ? plainText(row.checklist.title) : row.folder.name}`,
     }} />
     <ContextMenu label={menuContent.label} onClose={menu.close} state={menu.state}>{menuContent.items}</ContextMenu>
   </div>;

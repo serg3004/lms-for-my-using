@@ -1,3 +1,4 @@
+import { setRichText } from '../shared/richTextTest.js';
 // @vitest-environment jsdom
 import '../i18n/index.js';
 
@@ -29,6 +30,7 @@ afterEach(() => {
 });
 
 function setValue(input: HTMLInputElement, value: string) {
+  if (input.isContentEditable || input.getAttribute("role") === "textbox") { setRichText(input, value); return; }
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value);
   input.dispatchEvent(new Event('input', { bubbles: true }));
 }

@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import { buildSessionSummary, MAX_SUMMARY_OBSERVATIONS } from './checklist-session-summary.js';
 import { createHash } from 'node:crypto';
 import {
@@ -554,7 +555,9 @@ export class ChecklistSessionService {
     return { items, page: query.page, pageSize: query.pageSize, total };
   }
 
-  private buildListWhere(organizationId: string, query: ChecklistSessionQuery, scope: object): Prisma.ChecklistSessionWhereInput {
+  private async buildListWhere(organizationId: string, query: ChecklistSessionQuery, scope: object): Promise<Prisma.ChecklistSessionWhereInput> {
+    const matchingChecklistIds = query.search ? (await this.prisma.checklist.findMany({ where: { organizationId }, select: { id: true, title: true } }))
+      .filter((sheet) => plainText(sheet.title).toLocaleLowerCase().includes(query.search!.toLocaleLowerCase())).map((sheet) => sheet.id) : [];
     const overdueClause: Prisma.ChecklistSessionWhereInput =
       query.overdueOnly === 'true'
         ? { status: 'scheduled', scheduledAt: { lt: new Date() } }
@@ -574,7 +577,7 @@ export class ChecklistSessionService {
       ? {
           OR: [
             { instance: { user: { OR: [{ firstName: { contains: query.search, mode: 'insensitive' } }, { lastName: { contains: query.search, mode: 'insensitive' } }] } } },
-            { instance: { checklist: { title: { contains: query.search, mode: 'insensitive' } } } },
+            { instance: { checklistId: { in: matchingChecklistIds } } },
           ],
         }
       : {};
@@ -604,7 +607,7 @@ export class ChecklistSessionService {
   }
 
   async list(organizationId: string, query: ChecklistSessionQuery, scope: object, viewer: ChecklistSessionViewerContext) {
-    const where = this.buildListWhere(organizationId, query, scope);
+    const where = await this.buildListWhere(organizationId, query, scope);
 
     const [items, total] = await this.prisma.$transaction([
       this.prisma.checklistSession.findMany({
@@ -631,7 +634,7 @@ export class ChecklistSessionService {
    * and the row count, never with the rows themselves.
    */
   async exportCsv(organizationId: string, query: ChecklistSessionQuery, scope: object, actor: { id: string; locale: string | null }) {
-    const where = this.buildListWhere(organizationId, query, scope);
+    const where = await this.buildListWhere(organizationId, query, scope);
     const items = await this.prisma.checklistSession.findMany({
       where,
       include: sessionProjectionInclude,

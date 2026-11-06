@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
@@ -69,7 +70,7 @@ export class ChecklistSessionReminderDelivery {
         where: { id: message.sessionId, organizationId: message.organizationId },
         select: { scheduledAt: true, instance: { select: { checklist: { select: { title: true } }, user: { select: { firstName: true, lastName: true } } } } },
       });
-      const title = session?.instance.checklist.title ?? 'чек-лист';
+      const title = plainText(session?.instance.checklist.title ?? 'чек-лист');
       const learner = session ? `${session.instance.user.firstName} ${session.instance.user.lastName}`.trim() : '';
       const when = session?.scheduledAt ? ` Начало: ${session.scheduledAt.toISOString().replace('T', ' ').slice(0, 16)} UTC.` : '';
       const text =

@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import { useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -207,7 +208,7 @@ export function EmployeeSessionsDrilldown({ userId, from, to, t, onMessage }: { 
     <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>
       {state.data.map((session) => (
         <li key={session.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '8px 0', borderBottom: `1px solid ${COLORS.border}` }}>
-          <span>{session.checklist.title}</span>
+          <span>{plainText(session.checklist.title)}</span>
           {/* PR 303: rendered in the session's own timezone -- see AdminChecklistSessionsPage's list column for why. */}
           <span style={{ color: COLORS.muted }}>{session.scheduledAt ? formatDate(session.scheduledAt, undefined, { dateStyle: 'medium', timeZone: session.timezone }) : '—'}</span>
           <span>
@@ -222,7 +223,7 @@ export function EmployeeSessionsDrilldown({ userId, from, to, t, onMessage }: { 
           </span>
           {onMessage && canMessageParticipant(session) && (
             <Button
-              aria-label={`${t('manager.checklists.write', 'Write')}: ${session.checklist.title}`}
+              aria-label={`${t('manager.checklists.write', 'Write')}: ${plainText(session.checklist.title)}`}
               onClick={() => onMessage(session)}
               size="sm" type="button" variant="secondary"
             >
@@ -381,7 +382,7 @@ export function ManagerChecklistsPage({ Layout = ManagerPageLayout }: { Layout?:
           {t('manager.checklists.checklistFilter', 'Checklist')}
           <select className="ds-input" value={checklistId} onChange={(event) => updateParam('checklistId', event.target.value)}>
             <option value="">{t('manager.checklists.allChecklists', 'All checklists')}</option>
-            {checklists.map((checklist) => <option key={checklist.id} value={checklist.id}>{checklist.title}</option>)}
+            {checklists.map((checklist) => <option key={checklist.id} value={checklist.id}>{plainText(checklist.title)}</option>)}
           </select>
         </label>
         {departmentOptions.current.length > 0 && (

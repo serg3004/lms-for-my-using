@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import { expect, type Page } from '@playwright/test';
 import type { ChecklistSummary } from '../../web/src/shared/api/types.js';
 
@@ -48,7 +49,7 @@ export async function openPreviewBuilder(page: Page, sheet = previewSheet(), loc
     return route.fulfill({ json: { items: [], total: 0, page: 1, pageSize: 20 } });
   });
   await page.goto('/admin/checklists');
-  if (page.viewportSize()!.width <= 860) await page.getByRole('button', { name: new RegExp(`${sheet.title}$`) }).click();
+  if (page.viewportSize()!.width <= 860) await page.getByRole('button', { name: new RegExp(`${plainText(sheet.title)}$`) }).click();
   // The builder link is shared across locales; use its translated name from the actual locale.
   const edit = { ru: 'Редактировать', en: 'Edit', kk: 'Өзгерту', zh: '编辑' }[locale]!;
   await page.getByRole('button', { name: edit, exact: true }).click();

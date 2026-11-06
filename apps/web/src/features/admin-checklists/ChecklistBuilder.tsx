@@ -1,3 +1,6 @@
+import { RichText } from '../../shared/RichText.js';
+import { plainText } from '@lms/shared/rich-text';
+import { RichTextField } from '../../shared/RichTextField.js';
 import { RichDescriptionEditor } from '../../shared/RichDescriptionEditor.js';
 import type { FeedbackLayout } from '@lms/shared/checklist-feedback';
 import { ChecklistAppearanceEditor } from './ChecklistAppearanceEditor.js';
@@ -475,7 +478,7 @@ export function ChecklistBuilder({
       const group = itemGroups.find((entry) => entry.id === target.id);
       if (!group) return { label: '', items: null };
       return {
-        label: t('admin.checklists.contextMenu.rowLabel', 'Actions: {{name}}', { name: group.title }),
+        label: t('admin.checklists.contextMenu.rowLabel', 'Actions: {{name}}', { name: plainText(group.title) }),
         items: (
           <>
             {rename(`group-title-${group.id}`)}
@@ -489,7 +492,7 @@ export function ChecklistBuilder({
       const item = items.find((entry) => entry.id === target.id);
       if (!item) return { label: '', items: null };
       return {
-        label: t('admin.checklists.contextMenu.rowLabel', 'Actions: {{name}}', { name: item.text }),
+        label: t('admin.checklists.contextMenu.rowLabel', 'Actions: {{name}}', { name: plainText(item.text) }),
         items: (
           <>
             {rename(`item-text-${item.id}`)}
@@ -502,7 +505,7 @@ export function ChecklistBuilder({
     const field = contextFields.find((entry) => entry.id === target.id);
     if (!field) return { label: '', items: null };
     return {
-      label: t('admin.checklists.contextMenu.rowLabel', 'Actions: {{name}}', { name: field.label || t('admin.checklists.contextFieldLabel', 'Field label') }),
+      label: t('admin.checklists.contextMenu.rowLabel', 'Actions: {{name}}', { name: plainText(field.label) || t('admin.checklists.contextFieldLabel', 'Field label') }),
       items: (
         <>
           {rename(`context-field-${field.id}`)}
@@ -523,7 +526,7 @@ export function ChecklistBuilder({
       {!canEdit && <p className="ui-state ui-state--warning admin-inline-banner" role="status">{t('admin.checklists.readOnlyNotice', 'Only the creator or an administrator can edit this checklist. You can view it.')}</p>}
       <AdminPageHeader
         eyebrow={t('admin.checklists.builderEyebrow', 'Observation sheet')}
-        title={checklist.title}
+        title={<RichText value={checklist.title} />}
         subtitle={
           <>
             <Badge variant={STATUS_BADGE_VARIANT[checklist.status]}>{statusLabels[checklist.status]}</Badge>
@@ -590,9 +593,7 @@ export function ChecklistBuilder({
       <div className="admin-builder__grid">
         <div className="admin-builder__column" style={{ minWidth: 0 }}>
           <ChecklistSettingsForm>
-            <FormField id="checklist-title" label={t('admin.checklists.field.title', 'Title')}>
-              <input id="checklist-title" value={title} onChange={(e) => setTitle(e.target.value)} />
-            </FormField>
+            <RichTextField id="checklist-title" label={t('admin.checklists.field.title', 'Title')} value={title} onChange={setTitle} maxLength={200} singleLine compact disabled={!canEdit} />
             <RichDescriptionEditor id="checklist-description" label={t('admin.checklists.field.description', 'Description')} value={description} onChange={setDescription} disabled={!canEdit} />
             <ChecklistCoverField checklistId={checklist.id} title={checklist.title} coverUpdatedAt={checklist.coverUpdatedAt} />
             <ChecklistPhotosField checklistId={checklist.id} title={checklist.title} photos={checklist.photos} disabled={!canEdit} onChange={setSheetPhotos} />
@@ -715,7 +716,7 @@ export function ChecklistBuilder({
                   <Menu
                     align="end"
                     buttonClassName="admin-btn admin-btn--sm"
-                    label={<><span aria-hidden="true">⋮</span><span className="ui-visually-hidden">{t('admin.checklists.contextFieldActions', 'Field actions: {{name}}', { name: field.label || t('admin.checklists.contextFieldLabel', 'Field label') })}</span></>}
+                    label={<><span aria-hidden="true">⋮</span><span className="ui-visually-hidden">{t('admin.checklists.contextFieldActions', 'Field actions: {{name}}', { name: plainText(field.label) || t('admin.checklists.contextFieldLabel', 'Field label') })}</span></>}
                   >
                     <button disabled={!canEdit} onClick={() => focusNameField(`context-field-${field.id}`)} role="menuitem" type="button">
                       {t('admin.checklists.rename.action', 'Rename')}
@@ -762,7 +763,7 @@ export function ChecklistBuilder({
               return (
               <GroupShell key={group?.id ?? 'ungrouped'} groupId={group?.id ?? null}>{(groupHandle) => (<>
                 <div className="admin-group-card__head" {...(group ? rowMenu.triggerProps({ kind: 'group', id: group.id }) : {})}>
-                  {group && groupHandle && <DragHandle handle={groupHandle} label={t('admin.checklists.dnd.dragGroup', 'Drag group: {{name}}', { name: group.title })} />}
+                  {group && groupHandle && <DragHandle handle={groupHandle} label={t('admin.checklists.dnd.dragGroup', 'Drag group: {{name}}', { name: plainText(group.title) })} />}
                   <div className="admin-group-card__title">
                     {group ? (
                       <InlineNameField
@@ -771,7 +772,7 @@ export function ChecklistBuilder({
                         value={group.title}
                         maxLength={120}
                         disabled={!canEdit}
-                        validate={(name) => (itemGroups.some((other) => other.id !== group.id && other.title.trim().toLowerCase() === name.toLowerCase()) ? t('admin.checklists.rename.duplicateGroup', 'A group with this name already exists') : null)}
+                        validate={(name) => (itemGroups.some((other) => other.id !== group.id && plainText(other.title).trim().toLowerCase() === plainText(name).toLowerCase()) ? t('admin.checklists.rename.duplicateGroup', 'A group with this name already exists') : null)}
                         onCommit={(name) => persistGroupTitle(group.id, name)}
                         t={t}
                       />
@@ -783,11 +784,11 @@ export function ChecklistBuilder({
                   <div className="admin-group-card__actions">
                     {group && (
                       <>
-                        <button className="admin-btn admin-btn--sm" disabled={groupIndex === 0} onClick={() => void moveGroupDirection(group.id, 'up')} type="button" aria-label={t('admin.checklists.moveNamedUp', 'Move up: {{name}}', { name: group.title })}>↑</button>
-                        <button className="admin-btn admin-btn--sm" disabled={groupIndex === allGroups.filter((b) => b.group).length - 1} onClick={() => void moveGroupDirection(group.id, 'down')} type="button" aria-label={t('admin.checklists.moveNamedDown', 'Move down: {{name}}', { name: group.title })}>↓</button>
-                        <button className="admin-btn admin-btn--sm" disabled={!canEdit} onClick={() => focusNameField(`group-title-${group.id}`)} type="button" aria-label={t('admin.checklists.rename.namedGroup', 'Rename group: {{name}}', { name: group.title })}>{t('admin.checklists.rename.action', 'Rename')}</button>
+                        <button className="admin-btn admin-btn--sm" disabled={groupIndex === 0} onClick={() => void moveGroupDirection(group.id, 'up')} type="button" aria-label={t('admin.checklists.moveNamedUp', 'Move up: {{name}}', { name: plainText(group.title) })}>↑</button>
+                        <button className="admin-btn admin-btn--sm" disabled={groupIndex === allGroups.filter((b) => b.group).length - 1} onClick={() => void moveGroupDirection(group.id, 'down')} type="button" aria-label={t('admin.checklists.moveNamedDown', 'Move down: {{name}}', { name: plainText(group.title) })}>↓</button>
+                        <button className="admin-btn admin-btn--sm" disabled={!canEdit} onClick={() => focusNameField(`group-title-${group.id}`)} type="button" aria-label={t('admin.checklists.rename.namedGroup', 'Rename group: {{name}}', { name: plainText(group.title) })}>{t('admin.checklists.rename.action', 'Rename')}</button>
                         <button className="admin-btn admin-btn--sm" onClick={() => void copyGroup(group.id)} type="button">{t('admin.checklists.copyGroup', 'Copy')}</button>
-                        <button className="admin-btn admin-btn--sm" onClick={() => { setKeepItemsOnGroupDelete(false); setGroupToDelete(group); }} type="button" aria-label={t('admin.checklists.deleteNamedGroup', 'Delete group: {{name}}', { name: group.title })}>{t('admin.checklists.delete', 'Delete')}</button>
+                        <button className="admin-btn admin-btn--sm" onClick={() => { setKeepItemsOnGroupDelete(false); setGroupToDelete(group); }} type="button" aria-label={t('admin.checklists.deleteNamedGroup', 'Delete group: {{name}}', { name: plainText(group.title) })}>{t('admin.checklists.delete', 'Delete')}</button>
                       </>
                     )}
                     <button className="admin-btn admin-btn--sm admin-btn--primary" onClick={() => void addCriterionToGroup(group?.id ?? null)} type="button">
@@ -811,10 +812,10 @@ export function ChecklistBuilder({
                     <ItemsSortable ids={groupedItems.map((entry) => entry.id)}>
                     {groupedItems.map((item, itemIndex) => (
                       <SortableBox className="admin-criteria-row" id={item.id} key={item.id} role="row" extra={rowMenu.triggerProps({ kind: 'item', id: item.id })}>{(itemHandle) => (<>
-                        <DragHandle handle={itemHandle} label={t('admin.checklists.dnd.dragCriterion', 'Drag criterion: {{name}}', { name: item.text })} />
+                        <DragHandle handle={itemHandle} label={t('admin.checklists.dnd.dragCriterion', 'Drag criterion: {{name}}', { name: plainText(item.text) })} />
                         <div className="admin-criteria-row__order">
-                          <button disabled={itemIndex === 0} onClick={() => void moveItemDirection(item.id, 'up')} type="button" aria-label={t('admin.checklists.moveNamedUp', 'Move up: {{name}}', { name: item.text })}>↑</button>
-                          <button disabled={itemIndex === groupedItems.length - 1} onClick={() => void moveItemDirection(item.id, 'down')} type="button" aria-label={t('admin.checklists.moveNamedDown', 'Move down: {{name}}', { name: item.text })}>↓</button>
+                          <button disabled={itemIndex === 0} onClick={() => void moveItemDirection(item.id, 'up')} type="button" aria-label={t('admin.checklists.moveNamedUp', 'Move up: {{name}}', { name: plainText(item.text) })}>↑</button>
+                          <button disabled={itemIndex === groupedItems.length - 1} onClick={() => void moveItemDirection(item.id, 'down')} type="button" aria-label={t('admin.checklists.moveNamedDown', 'Move down: {{name}}', { name: plainText(item.text) })}>↓</button>
                         </div>
                         <InlineNameField
                           id={`item-text-${item.id}`}
@@ -837,7 +838,7 @@ export function ChecklistBuilder({
                               checked={!!item.scaleId}
                               disabled={!canEdit}
                               onChange={(e) => void setItemScaleEnabled(item, e.target.checked)}
-                              aria-label={t('admin.checklists.scaleSwitch.label', 'Scale: {{name}}', { name: item.text })}
+                              aria-label={t('admin.checklists.scaleSwitch.label', 'Scale: {{name}}', { name: plainText(item.text) })}
                             />
                             <span aria-hidden="true">{t('admin.checklists.field.scale', 'Scale')}</span>
                           </label>
@@ -854,7 +855,7 @@ export function ChecklistBuilder({
                                 void persistItem(item.id, { scaleId: e.target.value });
                               }}
                               title={describeScaleLevels(scales.find((s) => s.id === item.scaleId)?.levels ?? [])}
-                              aria-label={t('admin.checklists.scaleSwitch.choose', 'Scale of the criterion: {{name}}', { name: item.text })}
+                              aria-label={t('admin.checklists.scaleSwitch.choose', 'Scale of the criterion: {{name}}', { name: plainText(item.text) })}
                             >
                               <option value={CREATE_SCALE_OPTION}>+ {t('admin.checklists.scaleManager.createOption', 'Create scale')}</option>
                               {scales.filter((s) => s.status === 'active' || s.id === item.scaleId).map((s) => (
@@ -951,7 +952,7 @@ export function ChecklistBuilder({
             </DndContext>
           </ChecklistItemsEditor>
           <ChecklistAppearanceEditor value={appearance} onChange={setAppearance} groups={itemGroups} items={items} disabled={!canEdit} t={t} />
-          {feedbackEnabled && <fieldset disabled={!canEdit} style={{ border: 0, padding: 0, minWidth: 0 }}><legend className="ui-visually-hidden">{t('admin.checklists.feedbackSectionTitle')}</legend><FeedbackBuilder value={feedbackLayout} onChange={setFeedbackLayout} required={feedbackRequired} /></fieldset>}
+          {feedbackEnabled && <fieldset disabled={!canEdit} style={{ border: 0, padding: 0, minWidth: 0 }}><legend className="ui-visually-hidden">{t('admin.checklists.feedbackSectionTitle')}</legend><FeedbackBuilder disabled={!canEdit} value={feedbackLayout} onChange={setFeedbackLayout} required={feedbackRequired} /></fieldset>}
         </div>
         <div className="admin-builder__column" style={{ minWidth: 0 }}>
           <ChecklistSettingsForm>
@@ -1134,7 +1135,7 @@ export function ChecklistBuilder({
       <ConfirmDialog
         open={contextFieldToDelete !== null}
         title={t('admin.checklists.contextFieldDeleteTitle', 'Delete field')}
-        message={t('admin.checklists.contextFieldDeleteConfirm', 'Delete the field "{{name}}"? Sessions assigned from now on will no longer ask for it; sessions already started keep it.', { name: contextFieldToDelete?.label ?? '' })}
+        message={t('admin.checklists.contextFieldDeleteConfirm', 'Delete the field "{{name}}"? Sessions assigned from now on will no longer ask for it; sessions already started keep it.', { name: plainText(contextFieldToDelete?.label ?? '') })}
         confirmLabel={t('admin.checklists.delete', 'Delete')}
         cancelLabel={t('admin.checklists.cancel', 'Cancel')}
         variant="danger"
@@ -1153,8 +1154,8 @@ export function ChecklistBuilder({
           return (
             <>
               <p>{count > 0
-                ? t('admin.checklists.groupDeleteConfirm', 'Delete the group "{{name}}" and {{count}} criteria?', { name: groupToDelete?.title ?? '', count })
-                : t('admin.checklists.groupDeleteConfirmEmpty', 'Delete the empty group "{{name}}"?', { name: groupToDelete?.title ?? '' })}</p>
+                ? t('admin.checklists.groupDeleteConfirm', 'Delete the group "{{name}}" and {{count}} criteria?', { name: plainText(groupToDelete?.title ?? ''), count })
+                : t('admin.checklists.groupDeleteConfirmEmpty', 'Delete the empty group "{{name}}"?', { name: plainText(groupToDelete?.title ?? '') })}</p>
               {count > 0 && (
                 <label>
                   <input checked={keepItemsOnGroupDelete} onChange={(e) => setKeepItemsOnGroupDelete(e.target.checked)} type="checkbox" />

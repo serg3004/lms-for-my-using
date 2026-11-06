@@ -1,4 +1,4 @@
-import { sanitizeDescription, descriptionText, DESCRIPTION_MARKUP_LIMIT } from '@lms/shared/checklist-description';
+import { richTextSchema } from '@lms/shared/rich-text';
 import { z } from 'zod';
 import { UserRole } from '@prisma/client';
 
@@ -6,7 +6,6 @@ import { HIGHLIGHT_COLOR_PATTERN, normalizeHighlightColor } from './checklist-co
 import { APPEARANCE_MARKUP_LIMIT, sanitizeAppearance } from '@lms/shared/checklist-appearance';
 import { answerOptionSchema, feedbackLayoutSchema, FEEDBACK_TEXT_MAX_LENGTH } from './checklist-feedback-layout.js';
 
-const descriptionSchema = (limit: number) => z.string().trim().max(DESCRIPTION_MARKUP_LIMIT).transform(sanitizeDescription).refine((value) => value.length <= DESCRIPTION_MARKUP_LIMIT && descriptionText(value).length <= limit, `Description must be at most ${limit} characters`);
 
 // PR 369б: free colour choice, but only a strict #RRGGBB value is ever stored (no CSS injection).
 const highlightColorSchema = z.string().regex(HIGHLIGHT_COLOR_PATTERN, 'color must be #RRGGBB').transform(normalizeHighlightColor);
@@ -27,7 +26,7 @@ export const checklistContextFieldTypeSchema = z.enum(['text', 'textarea', 'date
 
 export const contextFieldSchema = z.object({
   id: z.string().uuid(),
-  label: z.string().trim().min(1).max(120),
+  label: richTextSchema(120, 1),
   type: checklistContextFieldTypeSchema,
   required: z.boolean(),
   order: z.number().int().min(0),
@@ -37,7 +36,7 @@ export type ContextField = z.infer<typeof contextFieldSchema>;
 export const scaleLevelSchema = z.object({
   level: z.number().int().min(1),
   label: z.string().trim().min(1).max(80),
-  description: descriptionSchema(500).optional(),
+  description: richTextSchema(500).optional(),
   points: z.number().int().min(0),
 });
 export type ScaleLevel = z.infer<typeof scaleLevelSchema>;
@@ -89,9 +88,9 @@ export const appearanceSchema = z
 
 export const createChecklistSchema = z.object({
   organizationId: z.string().uuid(),
-  title: z.string().trim().min(1).max(200),
+  title: richTextSchema(200, 1),
   folderId: z.string().uuid().nullable().optional(),
-  description: descriptionSchema(2000).optional(),
+  description: richTextSchema(2000).optional(),
   scoringMode: checklistScoringModeSchema.default('sum_points'),
   passThreshold: z.number().int().min(0).max(100).default(80),
   scaleLevels: z.array(scaleLevelSchema).max(20).optional(),
@@ -129,11 +128,11 @@ export const createChecklistFromTemplateSchema = z.object({
 export const deleteChecklistResultSchema = z.object({ reason: z.string().trim().min(3).max(500) });
 export const createChecklistOrgTemplateSchema = z.object({
   sourceChecklistId: z.string().uuid(),
-  title: z.string().trim().min(1).max(200).optional(),
-  description: descriptionSchema(2000).nullable().optional(),
+  title: richTextSchema(200, 1).optional(),
+  description: richTextSchema(2000).nullable().optional(),
 });
 export const updateChecklistOrgTemplateSchema = z
-  .object({ title: z.string().trim().min(1).max(200), description: descriptionSchema(2000).nullable() })
+  .object({ title: richTextSchema(200, 1), description: richTextSchema(2000).nullable() })
   .partial()
   .refine((input) => Object.keys(input).length > 0, { message: 'Nothing to update' });
 export const createChecklistFromOrgTemplateSchema = z.object({ templateId: z.string().uuid(), folderId: z.string().uuid().nullable().optional() });
@@ -158,8 +157,8 @@ export type ChecklistModuleSettingsInput = z.infer<typeof checklistModuleSetting
 
 export const updateChecklistSchema = z
   .object({
-    title: z.string().trim().min(1).max(200),
-    description: descriptionSchema(2000).nullable(),
+    title: richTextSchema(200, 1),
+    description: richTextSchema(2000).nullable(),
     status: checklistStatusSchema,
     scoringMode: checklistScoringModeSchema,
     passThreshold: z.number().int().min(0).max(100),
@@ -200,7 +199,7 @@ const AUTO_SKIP_REQUIRES_ALLOW_SKIP_ISSUE = {
 const noteAnswersSchema = z.array(z.string().regex(/^(unchecked|\d{1,4})$/)).max(50);
 function itemNoteShape() {
   return {
-    description: descriptionSchema(2000).nullable().optional(),
+    description: richTextSchema(2000).nullable().optional(),
     descriptionEnabled: z.boolean().default(false),
     noteRule: z.enum(['off', 'always', 'on_answers']).default('off'),
     noteAnswers: noteAnswersSchema.optional(),
@@ -210,7 +209,7 @@ function itemNoteShape() {
 
 export const createChecklistItemSchema = z
   .object({
-    text: z.string().trim().min(1).max(500),
+    text: richTextSchema(500, 1),
     points: z.number().int().min(0).max(1000).default(0),
     isRequired: z.boolean().default(true),
     photoRequired: z.boolean().default(false),
@@ -236,7 +235,7 @@ export type CreateChecklistItemInput = z.infer<typeof createChecklistItemSchema>
 // merged (current + incoming) state instead.
 export const updateChecklistItemSchema = z
   .object({
-    text: z.string().trim().min(1).max(500),
+    text: richTextSchema(500, 1),
     points: z.number().int().min(0).max(1000),
     isRequired: z.boolean(),
     photoRequired: z.boolean(),
@@ -246,7 +245,7 @@ export const updateChecklistItemSchema = z
     autoSkipUnanswered: z.boolean(),
     scaleId: z.string().uuid().nullable(),
     groupId: z.string().uuid().nullable(),
-    description: descriptionSchema(2000).nullable(),
+    description: richTextSchema(2000).nullable(),
     descriptionEnabled: z.boolean(),
     noteRule: z.enum(['off', 'always', 'on_answers']),
     noteAnswers: noteAnswersSchema.nullable(),
@@ -258,13 +257,13 @@ export type UpdateChecklistItemInput = z.infer<typeof updateChecklistItemSchema>
 // ---- PR 296: item groups ("Группы и критерии") ----
 
 export const createChecklistItemGroupSchema = z.object({
-  title: z.string().trim().min(1).max(120).default('Новая группа'),
+  title: richTextSchema(120, 1).default('Новая группа'),
 });
 export type CreateChecklistItemGroupInput = z.infer<typeof createChecklistItemGroupSchema>;
 
 export const updateChecklistItemGroupSchema = z
   .object({
-    title: z.string().trim().min(1).max(120),
+    title: richTextSchema(120, 1),
     order: z.number().int().min(0),
   })
   .partial();

@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -26,8 +27,8 @@ export function PinnedChecklistTiles({ items, title, action }: {
           <li key={item.id}>
             <Card compact>
               <div style={{ display: 'grid', gap: 10, height: '100%', alignContent: 'space-between' }}>
-                <ChecklistCover checklistId={item.id} coverUpdatedAt={item.coverUpdatedAt} title={item.title} ratio="16 / 9" />
-                <strong style={{ overflowWrap: 'anywhere' }}>{item.title}</strong>
+                <ChecklistCover checklistId={item.id} coverUpdatedAt={item.coverUpdatedAt} title={plainText(item.title)} ratio="16 / 9" />
+                <strong style={{ overflowWrap: 'anywhere' }}>{plainText(item.title)}</strong>
                 <div><ChecklistAccessBadge checklist={{ accessMode: 'free', pinned: true }} t={t} /></div>
                 {action(item)}
               </div>

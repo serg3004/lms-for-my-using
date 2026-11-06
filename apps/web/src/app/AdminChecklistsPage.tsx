@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -379,7 +380,7 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
   const filteredSheets = filterChecklists(sheetPool, search, statusFilter);
   const sortedSheets = !sort ? filteredSheets : [...filteredSheets].sort((a, b) => sort.key === 'createdAt'
     ? direction * a.createdAt.localeCompare(b.createdAt)
-    : direction * a.title.localeCompare(b.title));
+    : direction * plainText(a.title).localeCompare(plainText(b.title)));
   const shownFolders = searching ? [] : [...contents.folders].sort((a, b) => sort?.key === 'createdAt'
     ? direction * a.createdAt.localeCompare(b.createdAt)
     : direction * a.name.localeCompare(b.name));

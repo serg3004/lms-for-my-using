@@ -1,3 +1,4 @@
+import { richTextSchema } from '@lms/shared/rich-text';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { z } from 'zod';
 
@@ -8,8 +9,8 @@ import type { AuditLogService } from '../audit-log/public.js';
 export const MAX_SHEET_PHOTOS = 6;
 export const SHEET_PHOTO_CAPTION_MAX_LENGTH = 200;
 
-export const sheetPhotoCaptionSchema = z.object({ caption: z.string().trim().max(SHEET_PHOTO_CAPTION_MAX_LENGTH).default('') });
-export const updateSheetPhotoSchema = z.object({ caption: z.string().trim().max(SHEET_PHOTO_CAPTION_MAX_LENGTH) });
+export const sheetPhotoCaptionSchema = z.object({ caption: richTextSchema(SHEET_PHOTO_CAPTION_MAX_LENGTH).default('') });
+export const updateSheetPhotoSchema = z.object({ caption: richTextSchema(SHEET_PHOTO_CAPTION_MAX_LENGTH) });
 export const reorderSheetPhotosSchema = z.object({ ids: z.array(z.string().uuid()).max(MAX_SHEET_PHOTOS) });
 
 /** What the API shows of a picture: never the storage key or the MIME type. */

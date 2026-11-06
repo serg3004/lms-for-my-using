@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import { SessionEmployeeImport, SessionImportReport, sessionImportError } from './SessionEmployeeImport.js';
 import { useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
@@ -453,7 +454,7 @@ export function ChecklistSessionWizard({ open, importMode = false, fixedObserver
                         onChange={() => setSelectedChecklistId(checklist.id)}
                         type="radio"
                       />
-                      {checklist.title}
+                      {plainText(checklist.title)}
                     </label>
                   </li>
                 ))}

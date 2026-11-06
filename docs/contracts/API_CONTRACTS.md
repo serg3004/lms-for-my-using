@@ -717,8 +717,7 @@ view use the snapshot layout and option descriptions; user-authored labels are n
 ## Checklist description formatting (PR 420)
 
 The existing description strings of a sheet, criterion hint and checklist-level scale levels accept limited inline markup.
-No DDL or permission changes: sheet editing and snapshots retain their existing rules. Names, criterion titles and answers
-remain plain text. Creation/update of sheets, hints and organization-template descriptions sanitize input on the server.
+No DDL or permission changes: sheet editing and snapshots retain their existing rules. PR 427 extends this contract to author content below; answers remain plain text. Creation/update of sheets, hints and organization-template descriptions sanitize input on the server.
 Allowed output consists of paragraphs/line breaks, strong, emphasis, underline and spans with `font-size` (14, 16, 20 or 26 px),
 `color` (`#RRGGBB`) and `text-transform: uppercase`. Source character case is preserved. Scripts, foreign namespaces,
 links, images, event attributes and other styles are removed; Word emphasis is normalized. The same parser is used for
@@ -737,6 +736,25 @@ Session reports add optional `checklist.description`, criterion `description` an
 assignment snapshot and omitted while result visibility hides the report. Preview, learner cards, session conduct and
 report views render these styles. PDF includes a description section with the same emphasis, case, size and colour;
 CSV/XLSX append description rows as plain displayed text. Old reports without descriptions retain the previous layout.
+
+## Checklist author text fields (PR 427)
+
+`@lms/shared/rich-text` provides `richTextSchema(limit, minimum)` and `plainText`. The existing safe markup contract now
+also covers sheet/template titles (200 visible characters), group titles and general-information labels (120), criterion
+text (500), extra-photo captions (200), feedback section/field titles (255) and answer-option descriptions (2000).
+Required titles/labels must contain visible non-whitespace text after sanitization. The 24000-character raw/output bound
+is independent of visible-text limits. Answer-option names, answers, comments and context values retain their previous
+plain-text contracts (PR 428 is separate). Existing plain strings and assigned snapshots are not migrated or rewritten.
+
+`RichTextField` supports single-line and multiline author fields using the same localized formatting controls. Single-line
+Enter inserts no paragraph and pasted lines are joined with spaces. Inline rename retains commit-on-blur/Enter, Escape,
+retry and validation; opening formatting does not commit the field. Read-only author fields disable editing explicitly.
+`RichText` renders allowed marks in page titles, criteria, context labels, feedback, captions, preview and session reports.
+PDF uses the same marks and width-aware measurement in headings and table cells. Lists, selectors, accessible names,
+reminder messages and CSV/XLSX cells use visible plain text. Name search and client sorting operate on visible text;
+server session search selects tenant-scoped title/id candidates before applying the existing authorized paginated query.
+Copies, organization templates and assignment snapshots preserve markup as string content; later edits do not relabel
+existing snapshots. No role, scoring or database-schema changes are introduced.
 
 ## Checklist observation-sheet builder (PR 296)
 

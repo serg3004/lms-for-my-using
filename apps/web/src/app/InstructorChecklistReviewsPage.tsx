@@ -1,3 +1,4 @@
+import { RichText, plainText } from '../shared/RichText.js';
 import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -180,7 +181,7 @@ export function InstructorChecklistReviewsPage({ Layout = InstructorPageLayout }
                   style={{ border: `1px solid ${COLORS.warning}`, background: COLORS.warningSoft, borderRadius: 14, padding: 16, cursor: 'pointer' }}
                   onClick={() => setOpenInstance(instance)}
                 >
-                  <strong>{instance.checklist?.title}</strong>
+                  <strong>{plainText(instance.checklist?.title ?? '')}</strong>
                   <p style={{ color: COLORS.muted, marginBottom: 0 }}>{t('checklistReview.submittedBy', 'Submitted by user {{userId}}', { userId: instance.userId })}</p>
                   <p style={{ color: COLORS.muted, marginBottom: 0, fontSize: 12.5 }}>
                     {instance.reviewerId === null
@@ -283,7 +284,7 @@ function ReviewDetail({
         ← {t('checklistReview.backToList', 'All pending reviews')}
       </button>
 
-      <h2 style={{ color: COLORS.text, marginBottom: 4 }}>{checklist.title}</h2>
+      <h2 style={{ color: COLORS.text, marginBottom: 4 }}><RichText value={checklist.title} /></h2>
       <p style={{ color: COLORS.muted }}>{t('checklistReview.submittedBy', 'Submitted by user {{userId}}', { userId: instance.userId })}</p>
       <ChecklistDeadlineMeta instance={instance} />
 
@@ -326,7 +327,7 @@ function ReviewDetail({
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                 <div>
-                  <p style={{ fontWeight: 600, margin: '0 0 4px' }}>{item.text}</p>
+                  <p style={{ fontWeight: 600, margin: '0 0 4px' }}><RichText value={item.text} /></p>
                   <p style={{ color: flagged ? COLORS.warning : COLORS.muted, fontSize: 12.5, margin: 0 }}>
                     {item.isRequired ? t('checklistReview.required', 'Required') : t('checklistReview.optional', 'Optional')}
                     {' · '}

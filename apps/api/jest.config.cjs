@@ -1,6 +1,7 @@
 module.exports = {
   extensionsToTreatAsEsm: ['.ts'],
   moduleNameMapper: {
+    '^@lms/shared/rich-text$': '<rootDir>/../../packages/shared/src/rich-text.ts',
     '^@lms/shared/checklist-appearance$': '<rootDir>/../../packages/shared/src/checklist-appearance.ts',
     '^@lms/shared/checklist-numbering$': '<rootDir>/../../packages/shared/src/checklist-numbering.ts',
     '^@lms/shared/checklist-description$': '<rootDir>/../../packages/shared/src/checklist-description.ts',

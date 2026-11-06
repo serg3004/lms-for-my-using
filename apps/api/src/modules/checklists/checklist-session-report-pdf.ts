@@ -1,6 +1,6 @@
 import { checklistLabel } from '@lms/shared/checklist-numbering';
-import { descriptionRuns, descriptionText, type DescriptionRun } from '@lms/shared/checklist-description';
-import { feedbackRows, isCustomFeedback } from '@lms/shared/checklist-feedback';
+import { isRichDescription, descriptionRuns, descriptionText, type DescriptionRun } from '@lms/shared/checklist-description';
+import { feedbackRows, isCustomFeedback, collectFeedbackFields } from '@lms/shared/checklist-feedback';
 import PDFDocument from 'pdfkit';
 
 import type { HighlightStyle } from './checklist-colors.js';
@@ -102,13 +102,36 @@ class ReportPainter {
   }
 
   // ---- text helpers ----
-  private text(value: string, x: number, width: number, style: { weight?: PdfFontWeight; size: number; color?: string; align?: 'left' | 'center' | 'right' }, y = this.y) {
-    this.options.trace?.push(value);
+  private text(value: string, x: number, width: number, style: { rich?: boolean; weight?: PdfFontWeight; size: number; color?: string; align?: 'left' | 'center' | 'right' }, y = this.y) {
+    this.options.trace?.push(style.rich ? descriptionText(value) : value);
+    if (style.rich && isRichDescription(value)) { this.richLines(value, width, style, { x, y }); return; }
     this.fonts.write(value, { weight: style.weight, size: style.size, color: style.color ?? INK, x, y, width, align: style.align, lineGap: 2 });
   }
 
-  private measure(value: string, width: number, style: { weight?: PdfFontWeight; size: number }) {
+  private measure(value: string, width: number, style: { rich?: boolean; weight?: PdfFontWeight; size: number }) {
+    if (style.rich && isRichDescription(value)) return this.richLines(value, width, style);
     return this.fonts.height(value, { weight: style.weight, size: style.size, width, lineGap: 2 });
+  }
+
+  private richLines(value: string, width: number, style: { rich?: boolean; weight?: PdfFontWeight; size: number; color?: string }, at?: { x: number; y: number }) {
+    let x = 0, y = 0, lineHeight = style.size * 1.35 + 2;
+    for (const run of descriptionRuns(value)) {
+      const size = run.size ? run.size * 0.75 : style.size, weight = run.bold ? 700 : style.weight;
+      const tokens = (run.uppercase ? run.text.toUpperCase() : run.text).match(/\n|[^\S\n]+|[^\s]+/gu) ?? [];
+      const draw = (text: string) => {
+        const length = this.fonts.inlineWidth(text, weight ?? 400, size);
+        if (x && x + length > width) { y += lineHeight; x = 0; lineHeight = style.size * 1.35 + 2; }
+        lineHeight = Math.max(lineHeight, size * 1.35 + 2);
+        if (at) this.fonts.writeInline(text, { weight: weight ?? 400, size, color: run.color ?? style.color ?? INK, x: at.x + x, y: at.y + y, italic: run.italic, underline: run.underline });
+        x += length;
+      };
+      for (const token of tokens) {
+        if (token === '\n') { y += lineHeight; x = 0; lineHeight = style.size * 1.35 + 2; }
+        else if (this.fonts.inlineWidth(token, weight ?? 400, size) > width) for (const char of token) draw(char);
+        else draw(token);
+      }
+    }
+    return y + lineHeight;
   }
 
   private ensureSpace(height: number) {
@@ -117,7 +140,7 @@ class ReportPainter {
     this.y = PAGE.margin;
   }
 
-  private paragraph(value: string, style: { weight?: PdfFontWeight; size: number; color?: string }, x = PAGE.margin, width = CONTENT_WIDTH) {
+  private paragraph(value: string, style: { rich?: boolean; weight?: PdfFontWeight; size: number; color?: string }, x = PAGE.margin, width = CONTENT_WIDTH) {
     const height = this.measure(value, width, style);
     this.ensureSpace(height);
     this.text(value, x, width, style);
@@ -125,10 +148,10 @@ class ReportPainter {
   }
 
   private section(title: string) {
-    const height = Math.max(20, this.measure(title, CONTENT_WIDTH, { weight: 700, size: 13 }) + 4);
+    const height = Math.max(20, this.measure(title, CONTENT_WIDTH, { rich: true, weight: 700, size: 13 }) + 4);
     this.ensureSpace(height + 14);
     this.y += 8;
-    this.text(title, PAGE.margin, CONTENT_WIDTH, { weight: 700, size: 13 });
+    this.text(title, PAGE.margin, CONTENT_WIDTH, { rich: true, weight: 700, size: 13 });
     this.y += height;
     this.doc.moveTo(PAGE.margin, this.y - 4).lineTo(PAGE.margin + CONTENT_WIDTH, this.y - 4).lineWidth(0.6).strokeColor(TRACK).stroke();
   }
@@ -151,8 +174,8 @@ class ReportPainter {
     const { header, checklist } = this.report;
     this.text(this.labels.title.toUpperCase(), PAGE.margin, CONTENT_WIDTH, { weight: 700, size: 9, color: MUTED });
     this.y += 14;
-    const titleHeight = this.measure(checklist.title, CONTENT_WIDTH, { weight: 700, size: 20 });
-    this.text(checklist.title, PAGE.margin, CONTENT_WIDTH, { weight: 700, size: 20 });
+    const titleHeight = this.measure(checklist.title, CONTENT_WIDTH, { rich: true, weight: 700, size: 20 });
+    this.text(checklist.title, PAGE.margin, CONTENT_WIDTH, { rich: true, weight: 700, size: 20 });
     this.y += titleHeight + 8;
 
     const rows: Array<[string, string]> = [
@@ -245,9 +268,9 @@ class ReportPainter {
     this.section(this.labels.generalInfo);
     for (const entry of entries) {
       const valueWidth = CONTENT_WIDTH - 170;
-      const height = Math.max(this.measure(entry.value!, valueWidth, { size: 10 }), this.measure(entry.label, 160, { size: 9 })) + 4;
+      const height = Math.max(this.measure(entry.value!, valueWidth, { size: 10 }), this.measure(entry.label, 160, { rich: true, size: 9 })) + 4;
       this.ensureSpace(height);
-      this.text(entry.label, PAGE.margin, 160, { size: 9, color: MUTED });
+      this.text(entry.label, PAGE.margin, 160, { rich: true, size: 9, color: MUTED });
       this.text(entry.value!, PAGE.margin + 170, valueWidth, { size: 10 });
       this.y += height;
     }
@@ -259,11 +282,11 @@ class ReportPainter {
     for (const group of this.report.groups) {
       const titleWidth = 250;
       const title = checklistLabel(group.title, group.number ? `${group.number}.` : '', this.report.checklist.showNumbering);
-      const height = Math.max(22, this.measure(title, titleWidth, { size: 10 }) + 6);
+      const height = Math.max(22, this.measure(title, titleWidth, { rich: true, size: 10 }) + 6);
       this.ensureSpace(height + 4);
       const color = group.color?.color ?? NEUTRAL_STRIPE;
       this.doc.rect(PAGE.margin, this.y, 4, height).fill(color);
-      this.text(title, PAGE.margin + 12, titleWidth, { size: 10 }, this.y + 3);
+      this.text(title, PAGE.margin + 12, titleWidth, { rich: true, size: 10 }, this.y + 3);
       const barX = PAGE.margin + 275;
       const barWidth = 130;
       this.doc.rect(barX, this.y + 5, barWidth, 9).fill(TRACK);
@@ -332,7 +355,7 @@ class ReportPainter {
       ].filter((part): part is { value: string; weight: PdfFontWeight } => part !== null);
       const textHeight = detailParts.reduce((sum, part) => sum + this.measure(part.value, widths.detail, { weight: part.weight, size: 9 }) + 2, 0);
       const detailHeight = textHeight + (photo?.drawn ? photo.height + 4 : 0);
-      const height = Math.max(this.measure(title, widths.text, { size: 10 }), detailHeight, 16) + 12;
+      const height = Math.max(this.measure(title, widths.text, { rich: true, size: 10 }), detailHeight, 16) + 12;
 
       if (this.y + height > BOTTOM) {
         this.doc.addPage();
@@ -342,7 +365,7 @@ class ReportPainter {
       if (highlight) this.doc.rect(column.stripe, this.y, CONTENT_WIDTH, height).fill(highlight.light.fill);
       this.doc.rect(column.stripe, this.y, 4, height).fill(highlight?.color ?? NEUTRAL_STRIPE);
       const top = this.y + 6;
-      this.text(title, column.text, widths.text, { size: 10, color: ink }, top);
+      this.text(title, column.text, widths.text, { rich: true, size: 10, color: ink }, top);
       this.statusIcon(column.score + 5, top + 6, status, highlight?.color ?? ink);
       this.text(scoreText, column.score + 16, widths.score - 16, { weight: 700, size: 10, color: ink }, top);
       let detailY = top;
@@ -394,7 +417,7 @@ class ReportPainter {
     ];
     if (!descriptions.length) return;
     this.section({ ru: 'Описание', en: 'Description', kk: 'Сипаттама', zh: '描述' }[this.options.locale]);
-    for (const description of descriptions) { this.paragraph(description.title, { weight: 700, size: 10 }); this.richParagraph(description.value); }
+    for (const description of descriptions) { this.paragraph(description.title, { rich: true, weight: 700, size: 10 }); this.richParagraph(description.value); }
   }
 
   private feedback() {
@@ -402,13 +425,14 @@ class ReportPainter {
     const form = this.report.feedbackForm;
     if (form && isCustomFeedback(form.layout)) {
       const rows = feedbackRows(form, form.answers, this.labels);
+      const choices = new Set(collectFeedbackFields(form.layout).filter((field) => field.kind === 'choice').map((field) => field.id));
       if (!rows.some((row) => row.kind === 'field' && row.value)) return;
       this.section(form.layout.title || this.labels.feedback);
       for (const row of rows) {
         this.ensureSpace(24);
         const indent = row.depth * 10;
-        if (row.kind === 'section') this.paragraph(row.title, { weight: 700, size: 10 }, PAGE.margin + indent, CONTENT_WIDTH - indent);
-        else { this.paragraph(row.title, { weight: 700, size: 9, color: MUTED }, PAGE.margin + indent, CONTENT_WIDTH - indent); this.paragraph(row.value || '—', { size: 10 }, PAGE.margin + indent, CONTENT_WIDTH - indent); }
+        if (row.kind === 'section') this.paragraph(row.title, { rich: true, weight: 700, size: 10 }, PAGE.margin + indent, CONTENT_WIDTH - indent);
+        else { this.paragraph(row.title, { rich: true, weight: 700, size: 9, color: MUTED }, PAGE.margin + indent, CONTENT_WIDTH - indent); this.paragraph(row.value || '—', { rich: choices.has(row.id), size: 10 }, PAGE.margin + indent, CONTENT_WIDTH - indent); }
       }
       return;
     }

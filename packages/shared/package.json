@@ -58,6 +58,11 @@
       "types": "./src/checklist-numbering.ts",
       "development": "./src/checklist-numbering.ts",
       "import": "./dist/checklist-numbering.js"
+    },
+    "./rich-text": {
+      "types": "./src/rich-text.ts",
+      "development": "./src/rich-text.ts",
+      "import": "./dist/rich-text.js"
     }
   },
   "scripts": {

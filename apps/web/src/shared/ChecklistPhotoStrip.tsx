@@ -1,3 +1,4 @@
+import { RichText, plainText } from './RichText.js';
 import { useId, useRef, useState, type HTMLAttributes, type SyntheticEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -52,8 +53,8 @@ export function ChecklistPhotoStrip({ checklistId, photos, title, collapsible = 
   const sorted = [...photos].sort((a, b) => a.order - b.order);
   const alt = (index: number) => {
     const photo = sorted[index]!;
-    const base = t('checklists.photos.alt', 'Photo {{n}} of the sheet “{{title}}”', { n: index + 1, title });
-    return photo.caption ? `${base}: ${photo.caption}` : base;
+    const base = t('checklists.photos.alt', 'Photo {{n}} of the sheet “{{title}}”', { n: index + 1, title: plainText(title) });
+    return photo.caption ? `${base}: ${plainText(photo.caption)}` : base;
   };
   const opened = openIndex === null ? null : sorted[openIndex] ?? null;
 
@@ -70,7 +71,7 @@ export function ChecklistPhotoStrip({ checklistId, photos, title, collapsible = 
           >
             <ChecklistPhotoImage checklistId={checklistId} photo={photo} alt={alt(index)} />
           </button>
-          {photo.caption && <p style={{ margin: '4px 0 0', fontSize: 12.5, overflowWrap: 'anywhere' }}>{photo.caption}</p>}
+          {photo.caption && <p style={{ margin: '4px 0 0', fontSize: 12.5, overflowWrap: 'anywhere' }}><RichText value={photo.caption} /></p>}
         </li>
       ))}
     </ul>
@@ -95,7 +96,7 @@ export function ChecklistPhotoStrip({ checklistId, photos, title, collapsible = 
           {opened && openIndex !== null && (
             <div style={{ display: 'grid', gap: 10, width: 'min(92vw, 720px)', maxWidth: '100%' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <h2 id={dialogHeadingId} style={{ margin: 0, fontSize: 16, minWidth: 0, overflowWrap: 'anywhere' }}>{opened.caption || t('checklists.photos.title', 'Sheet photos')}</h2>
+                <h2 id={dialogHeadingId} style={{ margin: 0, fontSize: 16, minWidth: 0, overflowWrap: 'anywhere' }}><RichText value={opened.caption || t('checklists.photos.title', 'Sheet photos')} /></h2>
                 <button ref={closeRef} className="ds-button ds-button--secondary ds-button--sm" style={{ minWidth: 44, minHeight: 44 }} type="button" onClick={() => setOpenIndex(null)}>
                   {t('checklists.photos.close', 'Close')}
                 </button>

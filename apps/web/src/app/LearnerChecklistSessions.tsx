@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import { checklistResultText } from '../shared/checklistResultText.js';
 import { isCustomFeedback } from '@lms/shared/checklist-feedback';
 import { FeedbackReadOnly } from '../features/checklist-feedback/FeedbackFields.js';
@@ -147,7 +148,7 @@ export function LearnerChecklistSessions({ t, linkedSessionId, onLinkedSessionBa
                   onClick={() => setOpenSessionId(session.id)}
                   style={{ cursor: 'pointer', borderTop: `1px solid ${COLORS.border}`, minHeight: 44 }}
                 >
-                  <td style={tableCellStyle}><strong>{session.checklist.title}</strong></td>
+                  <td style={tableCellStyle}><strong>{plainText(session.checklist.title)}</strong></td>
                   <td style={{ ...tableCellStyle, whiteSpace: 'nowrap' }}>{`${session.observer.firstName} ${session.observer.lastName}`}</td>
                   <td style={{ ...tableCellStyle, color: COLORS.muted, fontSize: 12.5, whiteSpace: 'nowrap' }}>
                     {session.scheduledAt ? formatDate(session.scheduledAt, undefined, { dateStyle: 'medium', timeStyle: 'short', timeZone: session.timezone }) : '—'}
@@ -244,7 +245,7 @@ export function LearnerSessionDetail({ session, onBack, t }: { session: Checklis
         ← {t('checklistSessions.learner.backToList', 'My training sessions')}
       </button>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-        <h2 style={{ color: COLORS.text, margin: '4px 0' }}>{session.checklist.title}</h2>
+        <h2 style={{ color: COLORS.text, margin: '4px 0' }}>{plainText(session.checklist.title)}</h2>
         <Badge variant={CHECKLIST_SESSION_STATUS_BADGE_VARIANT[session.status]}>
           {t(`checklistSessions.status.${session.status}`, session.status)}
         </Badge>

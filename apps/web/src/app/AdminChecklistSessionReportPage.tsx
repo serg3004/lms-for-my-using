@@ -1,3 +1,4 @@
+import { RichText, plainText } from '../shared/RichText.js';
 import { EmployeeObservationsSummary } from '../features/admin-checklist-sessions/EmployeeObservationsSummary.js';
 import { ChecklistSummaryExport } from '../features/admin-checklist-sessions/ChecklistSummaryExport.js';
 import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
@@ -390,7 +391,7 @@ export function SessionReportBody({
 
   const navItems: AdminNavItem[] = [
     { label: t('admin.checklists.sessions.title', 'Sessions'), href: '/admin/checklists/sessions' },
-    { label: session.checklist.title, href: `/admin/checklists/sessions/${session.id}`, isCurrent: true },
+    { label: plainText(session.checklist.title), href: `/admin/checklists/sessions/${session.id}`, isCurrent: true },
   ];
   const tabs: { key: Tab; label: string }[] = [
     { key: 'summary', label: t('admin.checklists.report.tabSummary', 'Summary') },
@@ -409,7 +410,7 @@ export function SessionReportBody({
       {variant === 'observer' && <ObserverSessionsNav current="all" />}
       <AdminPageHeader
         eyebrow={t('admin.checklists.report.eyebrow', 'Session report')}
-        title={session.checklist.title}
+        title={<RichText value={session.checklist.title} />}
         subtitle={
           session.scheduledAt
             ? t('admin.checklists.report.subtitleDateEmployee', '{{date}} · {{employee}}', {

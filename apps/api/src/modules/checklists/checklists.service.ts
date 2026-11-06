@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { sanitizeAppearance, type Appearance } from '@lms/shared/checklist-appearance';
@@ -399,7 +400,6 @@ export class ChecklistsService {
         deletedAt: null,
         ...(status ? { status } : {}),
         ...(visible ? { OR: [{ folderId: null }, { folderId: { in: [...visible] } }] } : {}),
-        ...(search?.trim() ? { title: { contains: search.trim(), mode: 'insensitive' as const } } : {}),
       },
       orderBy: { createdAt: 'desc' },
       // PR 393: the list shows who created the sheet; a deleted author reads as null (creator relation is SetNull).
@@ -411,7 +411,7 @@ export class ChecklistsService {
       },
     });
     const byId = new Map(folders.map((folder) => [folder.id, folder]));
-    return rows.map((row) => {
+    return rows.filter((row) => !search?.trim() || plainText(row.title).toLocaleLowerCase().includes(search.trim().toLocaleLowerCase())).map((row) => {
       const folderPath: Array<{ id: string; name: string }> = [];
       const seen = new Set<string>();
       for (let folder = row.folderId ? byId.get(row.folderId) : undefined; folder && !seen.has(folder.id); folder = folder.parentId ? byId.get(folder.parentId) : undefined) {

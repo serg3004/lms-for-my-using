@@ -1,3 +1,4 @@
+import { RichText } from '../../shared/RichText.js';
 import { RichDescriptionEditor } from '../../shared/RichDescriptionEditor.js';
 import { useId, useState } from 'react';
 import type { TFunction } from 'i18next';
@@ -59,7 +60,7 @@ export function ItemDetailsDialog({ item, options, open, onClose, onSave, t }: {
   return (
     <Dialog labelledBy={titleId} onClose={onClose} open={open}>
       <h2 id={titleId}>{t('admin.checklists.itemDetails.title', 'Criterion: description and explanation')}</h2>
-      <p className="admin-form__hint">{item.text}</p>
+      <p className="admin-form__hint"><RichText value={item.text} /></p>
       {error && <p className="learner-quiz__submit-error" role="alert">{error}</p>}
       <label style={OPTION}>
         <input checked={descriptionEnabled} onChange={(event) => setDescriptionEnabled(event.target.checked)} role="switch" type="checkbox" />
