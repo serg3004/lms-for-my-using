@@ -8,8 +8,8 @@
 set -euo pipefail
 
 mode="${1:-deps}"
-attempts="${PLAYWRIGHT_DEPS_ATTEMPTS:-4}"
-limit_seconds="${PLAYWRIGHT_DEPS_TIMEOUT_SECONDS:-90}"
+attempts="${PLAYWRIGHT_DEPS_ATTEMPTS:-5}"
+limit_seconds="${PLAYWRIGHT_DEPS_TIMEOUT_SECONDS:-40}"
 
 if [ "$mode" = "full" ]; then
   command=(pnpm exec playwright install --with-deps chromium)

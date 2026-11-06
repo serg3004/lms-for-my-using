@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Started by update-visual-baselines.yml after its bot commit: the pull_request run for a
+  # bot-authored commit waits for manual approval ("Action required"), so the required
+  # "Analyze" check is produced by this dispatch instead.
+  workflow_dispatch:
 
 permissions:
   actions: read
