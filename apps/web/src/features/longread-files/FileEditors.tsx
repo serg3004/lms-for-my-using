@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { RichTextField } from '../../shared/RichTextField.js';
 import { useTranslation } from 'react-i18next';
 import { createLongreadFiles, getLongreadFile, type LongreadFile, type LongreadImage } from '../../shared/api/longreads.js';
 import { uploadMaterialFileWithProgress } from '../../shared/apiClient.js';
@@ -57,7 +58,7 @@ export function ImageFields({ lessonId, image, onChange }: { lessonId: string; i
     {image.fileId && <><FileStatus lessonId={lessonId} fileId={image.fileId} /><LongreadMediaContext.Provider value={{ lessonId, version: null }}><MediaImage image={image} /></LongreadMediaContext.Provider>
       <button type="button" className="admin-btn admin-btn--secondary" onClick={() => onChange({ fileId: null })}>{t('longreadFiles.removeImage')}</button></>}
     <label htmlFor={`${id}-alt`} style={{ display: 'block', marginBlockStart: 12 }}>{t('longreadFiles.alt')}</label><input id={`${id}-alt`} value={image.alt} maxLength={2000} onChange={(event) => onChange({ alt: event.target.value })} />
-    <label htmlFor={`${id}-caption`} style={{ display: 'block' }}>{t('longreadFiles.caption')}</label><textarea id={`${id}-caption`} value={image.caption} maxLength={2000} onChange={(event) => onChange({ caption: event.target.value })} style={{ width: '100%', maxWidth: '100%' }} />
+    <RichTextField id={`${id}-caption`} label={t('longreadFiles.caption')} value={image.caption} maxLength={2000} onChange={(next) => onChange({ caption: next })} />
     <label htmlFor={`${id}-width`} style={{ display: 'block' }}>{t('longreadFiles.width')}</label><input id={`${id}-width`} type="number" min={10} max={100} value={image.width} onChange={(event) => onChange({ width: Number(event.target.value) })} />
     <label htmlFor={`${id}-align`} style={{ display: 'block' }}>{t('longreadFiles.align')}</label><select id={`${id}-align`} value={image.align} onChange={(event) => onChange({ align: event.target.value as LongreadImage['align'] })}>{(['start', 'center', 'end'] as const).map((value) => <option value={value} key={value}>{t(`longreadFiles.${value}`)}</option>)}</select>
   </div>;

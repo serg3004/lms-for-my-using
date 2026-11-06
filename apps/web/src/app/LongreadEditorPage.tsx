@@ -1,4 +1,5 @@
 import { ContinueEditor } from '../features/longread-progress/ContinueEditor.js';
+import { RichTextField } from '../shared/RichTextField.js';
 import { ExerciseEditor } from '../features/longread-exercises/ExerciseEditor.js';
 import { publishLongread } from '../shared/api/longreads.js';
 import { exerciseError } from '../features/longread-exercises/ExerciseRuntime.js';
@@ -199,7 +200,7 @@ function Editor({ initial, title, back, reload }: { initial: LongreadDraft; titl
             {selected.type === 'heading' && <><label style={{ display: 'block', marginBlock: 12 }}><input type="checkbox" style={{ width: 'auto' }} checked={Boolean(selected.content.excludeFromToc)} onChange={(event) => updateBlock(selected.key, (item) => ({ ...item, content: { ...item.content, excludeFromToc: event.target.checked } }))} /> {t('longreadReader.excludeFromToc')}</label><label htmlFor="lr-level">{t('longread.headingLevel')}</label><select id="lr-level" value={Number(selected.content.level)} onChange={(event) => updateBlock(selected.key, (item) => ({ ...item, content: { ...item.content, level: Number(event.target.value) } }))}>{[1, 2, 3].map((n) => <option key={n} value={n}>H{n}</option>)}</select></>}
             {selected.type === 'list' && <label><input type="checkbox" checked={Boolean(selected.content.ordered)} onChange={(event) => updateBlock(selected.key, (item) => ({ ...item, content: { ...item.content, ordered: event.target.checked } }))} /> {t('longread.ordered')}</label>}
             {selected.type === 'note' && <><label htmlFor="lr-tone">{t('longread.noteTone')}</label><select id="lr-tone" value={String(selected.content.tone)} onChange={(event) => updateBlock(selected.key, (item) => ({ ...item, content: { ...item.content, tone: event.target.value } }))}>{['info', 'success', 'warning', 'danger'].map((tone) => <option key={tone} value={tone}>{t(`longread.tones.${tone}`)}</option>)}</select></>}
-            {selected.type === 'quote' && <><label htmlFor="lr-caption">{t('longread.caption')}</label><input id="lr-caption" maxLength={500} value={String(selected.content.caption ?? '')} onChange={(event) => updateBlock(selected.key, (item) => ({ ...item, content: { ...item.content, caption: event.target.value } }))} /></>}
+            {selected.type === 'quote' && <RichTextField id="lr-caption" label={t('longread.caption')} singleLine value={String(selected.content.caption ?? '')} maxLength={500} onChange={(next) => updateBlock(selected.key, (item) => ({ ...item, content: { ...item.content, caption: next } }))} />}
             {selected.type === 'code' && <><label htmlFor="lr-language">{t('longread.language')}</label><input id="lr-language" maxLength={40} value={String(selected.content.language ?? '')} onChange={(event) => updateBlock(selected.key, (item) => ({ ...item, content: { ...item.content, language: event.target.value } }))} /></>}
           </>}
         </>}

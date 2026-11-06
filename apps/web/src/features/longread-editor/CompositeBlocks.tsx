@@ -3,11 +3,11 @@ import type { TFunction } from 'i18next';
 import { TextPreview, ListPreview } from './BlockPreview.js';
 import { RichTextEditor } from './RichTextEditor.js';
 import {
-  addColumn, addItem, addRow, canMergeDown, canMergeRight, cellText, containerDepth, convertItems, deleteColumn, deleteRow, MAX_CONTAINER_DEPTH, MAX_ITEMS,
-  MAX_NESTED_BLOCKS, MAX_SLOT_BLOCKS, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS, mergeDown, mergeRight, removeItem, setCellText, setColumnCount, setColumnWidth, splitCell, countNested,
+  addColumn, addItem, addRow, canMergeDown, canMergeRight, containerDepth, convertItems, deleteColumn, deleteRow, MAX_CONTAINER_DEPTH, MAX_ITEMS,
+  MAX_NESTED_BLOCKS, MAX_SLOT_BLOCKS, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS, mergeDown, mergeRight, removeItem, setCellRuns, setColumnCount, setColumnWidth, splitCell, countNested,
   type ColumnsContent, type ItemsContent, type NestedBlock, type TableContent,
 } from './composite.js';
-import { copyContent, moveItem, newBlock, textBlockTypes, type AddableBlockType, type EditorBlock } from './model.js';
+import { copyContent, moveItem, newBlock, textBlockTypes, type AddableBlockType, type EditorBlock, type Run } from './model.js';
 
 const button = 'admin-btn admin-btn--secondary';
 const containers = ['columns', 'tabs', 'accordion'];
@@ -61,9 +61,10 @@ function TableEditor({ content, t, onChange }: EditorProps) {
         const Tag = table.headerRow && r === 0 ? 'th' : 'td';
         const selected = r === row && c === column;
         return <Tag key={c} scope={Tag === 'th' ? 'col' : undefined} colSpan={tableCell.colSpan} rowSpan={tableCell.rowSpan} style={{ border: `${selected ? 2 : 1}px solid ${selected ? 'var(--color-primary)' : 'var(--color-border, #c5cbd3)'}`, padding: 2, verticalAlign: 'top' }}>
-          <textarea style={{ width: '100%', minWidth: 0, boxSizing: 'border-box', fontWeight: Tag === 'th' ? 700 : undefined, overflowWrap: 'anywhere' }} rows={2} maxLength={20_000}
-            aria-label={t('longread.composite.cell', { row: r + 1, column: c + 1 })} value={cellText(tableCell)}
-            onFocus={() => setSel({ row: r, column: c })} onChange={(event) => change(setCellText(table, r, c, event.target.value))} />
+          <div onFocus={() => setSel({ row: r, column: c })} style={{ fontWeight: Tag === 'th' ? 700 : undefined, minWidth: 0 }}>
+            <RichTextEditor bare t={t} label={t('longread.composite.cell', { row: r + 1, column: c + 1 })} block={{ key: `cell-${r}-${c}`, type: 'paragraph', schemaVersion: 1, title: null, hidden: false, content: { runs: tableCell.runs } }}
+              onChange={(content) => change(setCellRuns(table, r, c, (content.runs as Run[]) ?? []))} />
+          </div>
         </Tag>;
       })}</tr>)}</tbody>
     </table>

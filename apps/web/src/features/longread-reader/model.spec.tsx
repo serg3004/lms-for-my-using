@@ -35,6 +35,11 @@ describe('safe longread reader and contents', () => {
   it.each(['javascript:alert(1)', 'data:text/html,hi', 'vbscript:bad'])('refuses a dangerous run URL: %s', (href) => {
     expect(safeBlock({ type: 'paragraph', schemaVersion: 1, content: { runs: [{ text: 'label', href }] } })).toBeNull();
   });
+  it('accepts only the colours and sizes the formatting window produces (PR 430)', () => {
+    expect(safeBlock({ type: 'paragraph', schemaVersion: 1, content: { runs: [{ text: 'x', color: '#B91C1C', size: 20, uppercase: true }] } })).not.toBeNull();
+    expect(safeBlock({ type: 'paragraph', schemaVersion: 1, content: { runs: [{ text: 'x', color: 'url(javascript:1)' }] } })).toBeNull();
+    expect(safeBlock({ type: 'paragraph', schemaVersion: 1, content: { runs: [{ text: 'x', size: 99 }] } })).toBeNull();
+  });
   it('treats unknown/future versions and malformed content as unsupported data', () => {
     expect(safeBlock({ type: 'future_widget', schemaVersion: 9, content: { html: '<iframe>' } })).toBeNull();
     expect(safeBlock({ ...heading(2, 'Future'), schemaVersion: 2 })).toBeNull();

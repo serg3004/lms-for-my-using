@@ -4,6 +4,7 @@ import { safeHref, type EditorBlock, type Run } from './model.js';
 export function inlineNodes(runs: Run[]): JSONContent[] {
   return runs.flatMap((run) => {
     const marks = [run.bold && { type: 'bold' }, run.italic && { type: 'italic' }, run.underline && { type: 'underline' }, run.code && { type: 'code' },
+      (run.color || run.size || run.uppercase) && { type: 'descriptionStyle', attrs: { color: run.color ?? null, size: run.size ?? null, uppercase: run.uppercase ?? false } },
       run.href && safeHref(run.href) && { type: 'link', attrs: { href: run.href } }].filter(Boolean) as NonNullable<JSONContent['marks']>;
     return run.text.split('\n').flatMap((text, index) => [...(index ? [{ type: 'hardBreak' }] : []), ...(text ? [{ type: 'text', text, marks }] : [])]);
   });
@@ -16,6 +17,11 @@ export function textRuns(node: JSONContent): Run[] {
       const run: Run = { text: part.text };
       for (const mark of part.marks ?? []) {
         if (mark.type === 'bold' || mark.type === 'italic' || mark.type === 'underline' || mark.type === 'code') run[mark.type] = true;
+        if (mark.type === 'descriptionStyle') {
+          if (typeof mark.attrs?.color === 'string') run.color = mark.attrs.color;
+          if (typeof mark.attrs?.size === 'number') run.size = mark.attrs.size;
+          if (mark.attrs?.uppercase === true) run.uppercase = true;
+        }
         if (mark.type === 'link' && typeof mark.attrs?.href === 'string' && safeHref(mark.attrs.href)) run.href = mark.attrs.href;
       }
       runs.push(run); return;

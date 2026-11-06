@@ -1,5 +1,7 @@
 import { continueContentSchema } from '@lms/shared/longread-progress';
 import { z } from 'zod';
+import { DESCRIPTION_SIZES } from '@lms/shared/checklist-description';
+import { richTextSchema } from '@lms/shared/rich-text';
 import { exerciseContentSchema } from '@lms/shared/longread-exercises';
 import { audioContentSchema, videoContentSchema, embedContentSchema } from '@lms/shared/longread-media';
 
@@ -23,6 +25,10 @@ export const runSchema = z.object({
   italic: z.boolean().optional(),
   underline: z.boolean().optional(),
   code: z.boolean().optional(),
+  /** PR 430: the same text styles as the sheet fields (colour, one of four sizes, capitals). */
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Colour must be #RRGGBB').optional(),
+  size: z.number().refine((value) => (DESCRIPTION_SIZES as readonly number[]).includes(value), 'Unsupported text size').optional(),
+  uppercase: z.boolean().optional(),
   href: z.string().max(2048).regex(SAFE_HREF, 'Only http(s), mailto and in-page links are allowed').optional(),
 }).strict();
 
@@ -30,7 +36,7 @@ const runsSchema = z.array(runSchema).max(500);
 
 const paragraphSchema = z.object({ runs: runsSchema }).strict();
 const headingSchema = z.object({ excludeFromToc: z.boolean().optional(), level: z.union([z.literal(1), z.literal(2), z.literal(3)]), runs: runsSchema }).strict();
-const quoteSchema = z.object({ runs: runsSchema, caption: z.string().max(500).optional() }).strict();
+const quoteSchema = z.object({ runs: runsSchema, caption: richTextSchema(500).optional() }).strict();
 const noteSchema = z.object({ runs: runsSchema, tone: z.enum(['info', 'success', 'warning', 'danger']).default('info') }).strict();
 const dividerSchema = z.object({}).strict();
 const codeSchema = z.object({ language: z.string().trim().max(40).default('javascript'), code: z.string().max(50_000) }).strict();
@@ -211,7 +217,7 @@ export function collectContentIds(value: unknown, found: string[] = []): string[
 
 export const imageContentSchema = z.object({
   fileId: z.string().uuid().nullable().default(null), alt: z.string().max(2000).default(''),
-  caption: z.string().max(2000).default(''), width: z.number().int().min(10).max(100).default(100),
+  caption: richTextSchema(2000).default(''), width: z.number().int().min(10).max(100).default(100),
   align: z.enum(['start', 'center', 'end']).default('center'),
 }).strict();
 const attachmentsSchema = z.object({ files: z.array(z.object({ fileId: z.string().uuid(), label: z.string().max(255).optional() }).strict()) }).strict();

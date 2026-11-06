@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { fillRich } from '../fixtures/rich-fill.js';
 import { longreadPlaybackServer, playbackFiles } from '../fixtures/longread-playback.js';
 
 const asset = (name: string) => new URL(`../fixtures/assets/${name}`, import.meta.url).pathname;
@@ -156,9 +157,9 @@ test('video upload, poster, caption, width and external source survive draft sav
   await page.getByLabel('Загрузить или заменить видео', { exact: true }).setInputFiles(asset('longread-video.mp4'));
   await page.locator('summary').filter({ hasText: /^Постер видео$/ }).click();
   await page.getByLabel('Загрузить или заменить изображение', { exact: true }).setInputFiles(asset('longread-safety.png'));
-  await page.getByLabel('Подпись', { exact: true }).fill('Описание видео'); await page.getByLabel('Ширина, %', { exact: true }).fill('75');
+  await fillRich(page, page.getByRole('textbox', { name: 'Подпись', exact: true }), 'Описание видео'); await page.getByLabel('Ширина, %', { exact: true }).fill('75');
   await expect.poll(() => editor.snapshot().chapters[1]!.blocks[0]?.content.width).toBe(75);
-  expect(editor.snapshot().chapters[1]!.blocks[0]!.content).toMatchObject({ caption: 'Описание видео', poster: { fileId: expect.any(String) } });
+  expect(editor.snapshot().chapters[1]!.blocks[0]!.content).toMatchObject({ caption: expect.stringContaining('Описание видео'), poster: { fileId: expect.any(String) } });
   await page.getByLabel('Источник видео', { exact: true }).selectOption('url');
   await page.getByLabel('Адрес видео MP4/WebM', { exact: true }).fill('javascript:alert(1)');
   await expect(page.getByRole('alert')).toContainText('Изменения пока не отправлены');

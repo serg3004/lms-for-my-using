@@ -1,4 +1,5 @@
 import { useId, useRef, useState } from 'react';
+import { RichTextField } from '../../shared/RichTextField.js';
 import { useTranslation } from 'react-i18next';
 import type { LongreadAudio, LongreadVideo, LongreadEmbed } from '@lms/shared/longread-media';
 import { resolveLongreadEmbed } from '../../shared/api/longreads.js';
@@ -13,7 +14,7 @@ export function AudioEditor({ lessonId, content, onChange }: Props) {
   return <div>
     <UploadPicker lessonId={lessonId} category="audio" onCreated={(files) => onChange({ ...content, fileId: files[0]!.id })} />
     {typeof content.fileId === 'string' && <><FileStatus lessonId={lessonId} fileId={content.fileId} /><button className="admin-btn admin-btn--secondary" type="button" onClick={() => onChange({ ...content, fileId: null })}>{t('longreadMedia.remove')}</button></>}
-    <label htmlFor={`${id}-caption`}>{t('longreadFiles.caption')}</label><textarea id={`${id}-caption`} value={content.caption} maxLength={2000} style={{ width: '100%' }} onChange={(event) => onChange({ ...content, caption: event.target.value })} />
+    <RichTextField id={`${id}-caption`} label={t('longreadFiles.caption')} value={content.caption} maxLength={2000} onChange={(next) => onChange({ ...content, caption: next })} />
     <LongreadMediaContext.Provider value={{ lessonId, version: null }}><MediaPlayer type="audio" content={content as LongreadAudio} /></LongreadMediaContext.Provider>
   </div>;
 }
@@ -39,7 +40,7 @@ export function VideoEditor({ lessonId, content, onChange }: Props) {
         <button type="button" className="admin-btn admin-btn--secondary" onClick={() => onChange({ ...content, poster: null })}>{t('longreadMedia.removePoster')}</button>
       </>}
     </details>
-    <label htmlFor={`${id}-caption`}>{t('longreadFiles.caption')}</label><textarea id={`${id}-caption`} maxLength={2000} value={video.caption} style={{ width: '100%' }} onChange={(event) => onChange({ ...content, caption: event.target.value })} />
+    <RichTextField id={`${id}-caption`} label={t('longreadFiles.caption')} value={video.caption} maxLength={2000} onChange={(next) => onChange({ ...content, caption: next })} />
     <label htmlFor={`${id}-width`}>{t('longreadFiles.width')}</label><input id={`${id}-width`} type="number" min={10} max={100} value={video.width} onChange={(event) => onChange({ ...content, width: Number(event.target.value) })} />
     <LongreadMediaContext.Provider value={{ lessonId, version: null }}><MediaPlayer type="video" content={video} /></LongreadMediaContext.Provider>
   </div>;
@@ -61,7 +62,7 @@ export function EmbedEditor({ lessonId, content, onChange }: Props) {
     }}>{t(busy ? 'common.saving' : 'longreadMedia.applyEmbed')}</button>
     {error && <p role="alert">{t('longreadMedia.embedInvalid')}</p>}
     {embed.source && <button type="button" className="admin-btn admin-btn--secondary" onClick={() => onChange({ ...content, source: null })}>{t('longreadMedia.remove')}</button>}
-    <label htmlFor={`${id}-caption`}>{t('longreadFiles.caption')}</label><textarea id={`${id}-caption`} maxLength={2000} value={embed.caption} style={{ width: '100%' }} onChange={(event) => onChange({ ...content, caption: event.target.value })} />
+    <RichTextField id={`${id}-caption`} label={t('longreadFiles.caption')} value={embed.caption} maxLength={2000} onChange={(next) => onChange({ ...content, caption: next })} />
     <label htmlFor={`${id}-width`}>{t('longreadFiles.width')}</label><input id={`${id}-width`} type="number" min={10} max={100} value={embed.width} onChange={(event) => onChange({ ...content, width: Number(event.target.value) })} />
     <EmbeddedVideo content={embed} />
   </div>;

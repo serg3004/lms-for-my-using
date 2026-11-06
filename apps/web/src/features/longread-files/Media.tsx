@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
+import { RichText, plainText } from '../../shared/RichText.js';
 import { useTranslation } from 'react-i18next';
 import { getLongreadFile, getLongreadFileUrl, type LongreadImage } from '../../shared/api/longreads.js';
 
@@ -37,7 +38,7 @@ export function MediaImage({ image }: { image: LongreadImage }) {
   return <figure style={{ width: `${image.width}%`, maxWidth: '100%', marginBlock: 16, marginInlineStart: image.align === 'start' ? 0 : 'auto', marginInlineEnd: image.align === 'end' ? 0 : 'auto', overflowWrap: 'anywhere' }}>
     {url ? <img src={url} alt={image.alt} loading="lazy" style={{ display: 'block', width: '100%', maxWidth: '100%', height: 'auto' }} onError={() => { setUrl(''); setError(true); }} />
       : <p role="status">{t(error ? 'longreadFiles.unavailable' : 'longreadFiles.checking')}{error && <button type="button" className="admin-btn admin-btn--secondary" style={{ minHeight: 44 }} onClick={() => setRetry((n) => n + 1)}>{t('longread.retry')}</button>}</p>}
-    {image.caption && <figcaption>{image.caption}</figcaption>}
+    {plainText(image.caption) && <figcaption><RichText value={image.caption} /></figcaption>}
   </figure>;
 }
 export function MediaAttachment({ fileId, label }: { fileId: string; label?: string }) {

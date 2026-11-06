@@ -6,6 +6,11 @@ import type { LongreadDraft } from '../../shared/api/longreads.js';
 
 const settings: LongreadDraft['settings'] = { readingOrder: 'free', requiredChapters: 0, tableOfContents: 'expanded', direction: 'ltr', allowCopy: true };
 describe('longread structured text boundary', () => {
+  it('round trips colour, size and capitals through the editor document', () => {
+    const block = newBlock('paragraph');
+    block.content = { runs: [{ text: 'Важно', bold: true, color: '#B91C1C', size: 20, uppercase: true }, { text: ' обычно' }] };
+    expect(fromRichDocument(toRichDocument(block), block)).toEqual(block.content);
+  });
   it('round trips formatted multilingual text and three nested list levels without HTML', () => {
     const block = newBlock('list');
     block.content = { ordered: true, items: [

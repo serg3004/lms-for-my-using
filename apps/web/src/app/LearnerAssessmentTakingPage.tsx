@@ -345,7 +345,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
                       <h3 className="learner-quiz__question-title">{question.title}</h3>
                       <span className="learner-quiz__question-points">{question.points} pt</span>
                     </div>
-                    {question.text ? <p className="learner-quiz__question-text">{question.text}</p> : null}
+                    {question.text ? <p className="learner-quiz__question-text"><RichText value={question.text} /></p> : null}
 
                     <ul className="learner-quiz__options">
                       {question.options.map((option) => {

@@ -107,3 +107,25 @@ describe('composite blocks (PR 384)', () => {
     expect((result as { message: string }).message).toContain('limited to 3');
   });
 });
+
+describe('longread text styles and rich captions (PR 430)', () => {
+  it('accepts colour, one of the four sizes and capitals on a run', () => {
+    expect(ok('paragraph', { runs: [{ text: 'x', color: '#B91C1C', size: 20, uppercase: true, bold: true }] }).ok).toBe(true);
+  });
+  it.each([{ color: 'red' }, { color: '#12345' }, { color: 'url(javascript:1)' }, { size: 99 }, { size: '20' }, { uppercase: 'yes' }])('rejects unsupported style %j', (style) => {
+    expect(ok('paragraph', { runs: [{ text: 'x', ...style }] }).ok).toBe(false);
+  });
+  it('applies the same styles to list items and table cells', () => {
+    expect(ok('list', { ordered: false, items: [{ level: 1, runs: [{ text: 'a', size: 14 }] }] }).ok).toBe(true);
+    expect(ok('list', { ordered: false, items: [{ level: 1, runs: [{ text: 'a', size: 15 }] }] }).ok).toBe(false);
+    expect(ok('table', { columns: 1, rows: [{ cells: [{ runs: [{ text: 'a', color: '#166534' }] }] }] }).ok).toBe(true);
+  });
+  it('cleans the markup of quote and image captions', () => {
+    const quote = ok('quote', { runs: [], caption: '<script>x</script><strong onclick="bad()">Автор</strong>' });
+    expect(quote.ok).toBe(true);
+    expect(JSON.stringify(quote)).not.toMatch(/script|onclick/);
+    const image = ok('image', { caption: '<img src=x onerror=bad()><em>Подпись</em>' });
+    expect(JSON.stringify(image)).not.toMatch(/onerror|<img/);
+    expect(JSON.stringify(image)).toContain('Подпись');
+  });
+});

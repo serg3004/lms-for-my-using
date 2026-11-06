@@ -22,9 +22,15 @@ export function emptyTable(rows = 3, columns = 3): TableContent {
   return { columns, headerRow: false, rows: Array.from({ length: rows }, () => ({ cells: Array.from({ length: columns }, blankCell) })) };
 }
 
+export function setCellRuns(table: TableContent, row: number, column: number, runs: Run[]): TableContent {
+  const next = cloneTable(table);
+  next.rows[row]!.cells[column]!.runs = runs;
+  return next;
+}
+
 export const cellText = (cell: TableCell) => cell.runs.map((run) => run.text).join('');
 
-/** Table cells are plain text in this release; the text is written back as one run. */
+/** Plain-text write (kept for callers that only have text). */
 export function setCellText(table: TableContent, row: number, column: number, text: string): TableContent {
   const next = cloneTable(table);
   next.rows[row]!.cells[column]!.runs = text ? [{ text: text.slice(0, 20_000) }] : [];

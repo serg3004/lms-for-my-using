@@ -1,7 +1,7 @@
 import { isImageContent as safeImage, isAttachmentsContent } from '../longread-files/model.js';
 import { audioContentSchema, videoContentSchema, embedContentSchema, type LongreadAudio, type LongreadVideo, type LongreadEmbed } from '@lms/shared/longread-media';
 import type { LongreadImage, ReaderBlock, ReaderChapter } from '../../shared/api/longreads.js';
-import { safeHref, type Run } from '../longread-editor/model.js';
+import { runStyleValid, safeHref, type Run } from '../longread-editor/model.js';
 
 export type TextContent = { runs: Run[]; level?: 1 | 2 | 3; excludeFromToc?: boolean; caption?: string; tone?: string };
 export type ListContent = { ordered: boolean; items: { level: number; runs: Run[] }[] };
@@ -11,7 +11,7 @@ export type SafeBlock = { type: 'audio'; content: LongreadAudio } | { type: 'vid
 function runsValid(raw: unknown): raw is Run[] {
   return Array.isArray(raw) && raw.length <= 500 && raw.every((run) => run && typeof run === 'object' && typeof run.text === 'string' && run.text.length <= 20_000
     && ['bold', 'italic', 'underline', 'code'].every((mark) => run[mark] === undefined || typeof run[mark] === 'boolean')
-    && (run.href === undefined || (typeof run.href === 'string' && safeHref(run.href))));
+    && (run.href === undefined || (typeof run.href === 'string' && safeHref(run.href))) && runStyleValid(run));
 }
 /** Rendering never interprets HTML, uses editor HTML or loads an editor engine. */
 export function safeBlock(block: ReaderBlock): SafeBlock | null {
