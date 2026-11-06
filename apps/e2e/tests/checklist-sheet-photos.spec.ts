@@ -96,7 +96,7 @@ test.describe('Extra sheet photos (PR 421)', () => {
     expect(server.calls.some((call) => call.method === 'DELETE')).toBe(false);
     await page.getByRole('dialog').getByRole('button', { name: 'Удалить', exact: true }).click();
     await expect.poll(() => server.calls.find((call) => call.method === 'DELETE')?.path).toBe('/checklists/c1/photos/p1');
-    expect(await captions(page)).toEqual(['Выход эвакуации', 'Схема 2']);
+    await expect.poll(() => captions(page)).toEqual(['Выход эвакуации', 'Схема 2']);
   });
 
   test('a failed reorder puts the list back and says so', async ({ page }) => {
