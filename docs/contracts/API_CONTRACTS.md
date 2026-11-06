@@ -828,7 +828,8 @@ and `pinned`; it is not stored. Audit actions `checklist.cover_updated` and `che
 
 PR 421 adds up to 6 extra pictures per checklist, shown to the employee during the pass. `POST
 /checklists/:id/photos` (`checklistsCreate`, multipart `file` plus optional `caption`, at most 200
-characters) takes the same image types, limits and signature check as the cover; a seventh picture is 409.
+characters) takes the same image types, limits and signature check as the cover; a seventh picture is 409. PR 432
+logs three timed steps per upload (received, stored, saved); the web client waits up to 180 s for a multipart upload.
 `PATCH /checklists/:id/photos/:photoId` changes the caption, `PUT /checklists/:id/photos/order` with
 `{ ids }` (every picture exactly once) sets the order, `DELETE /checklists/:id/photos/:photoId` removes one
 (the object is deleted best-effort). `GET /checklists/:id/photos/:photoId/file` returns the bytes with the

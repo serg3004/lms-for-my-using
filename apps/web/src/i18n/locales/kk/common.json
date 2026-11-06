@@ -2896,6 +2896,8 @@
     "photoLimitHint": "Фото: JPEG, PNG, GIF немесе WEBP, {{max}} МБ-тан аспайтын.",
     "photoCameraOnlyHint": "Фотоны тек камерамен түсіруге болады. Бұл интерфейс шектеуі, сервер тексеруі емес.",
     "photoTooLarge": "Файл {{max}} МБ-тан үлкен. Кішірек фото таңдаңыз.",
+    "photoUploadTimeout": "Сурет уақытында жүктелмеді. Желіні тексеріп, қайталаңыз.",
+    "photoRetry": "Қайталау",
     "photoEmpty": "Файл бос. Басқа фото таңдаңыз.",
     "photoUnsupportedType": "Тек JPEG, PNG, GIF және WEBP фотоларын тіркеуге болады.",
     "free": {

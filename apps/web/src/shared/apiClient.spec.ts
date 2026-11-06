@@ -61,6 +61,24 @@ describe('apiRequest', () => {
     vi.useRealTimers();
   });
 
+  it('gives a file upload three minutes instead of thirty seconds', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn<typeof fetch>((_url, init) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const body = new FormData();
+    body.append('file', new Blob(['x']), 'a.png');
+    let settled = false;
+    const request = apiRequest('/upload', { method: 'POST', body }).catch((error: unknown) => { settled = true; return error; });
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(settled).toBe(false);
+    await vi.advanceTimersByTimeAsync(150_000);
+    expect(await request).toMatchObject({ status: 408 });
+    vi.useRealTimers();
+  });
+
   it('throws ApiClientError with normalized 429 ApiErrorResponse details', async () => {
     const errorResponse = {
       statusCode: 429,

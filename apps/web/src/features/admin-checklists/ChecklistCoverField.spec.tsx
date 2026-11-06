@@ -85,6 +85,19 @@ describe('ChecklistCoverField (PR 355)', () => {
     expect(container.querySelector('img')).toBeNull();
   });
 
+  it('says that the upload timed out and uploads the same file again on "Повторить"', async () => {
+    api.uploadChecklistCover.mockRejectedValueOnce(new ApiClientError('Request timed out', 408));
+    await render();
+    const file = new File(['x'], 'cover.png', { type: 'image/png' });
+    await pick(file);
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Изображение не загрузилось за отведённое время');
+    api.uploadChecklistCover.mockResolvedValueOnce({ coverUpdatedAt: '2026-11-06T10:00:00Z' });
+    const retry = [...container.querySelectorAll('button')].find((b) => b.textContent === 'Повторить')!;
+    await act(async () => { retry.click(); });
+    expect(api.uploadChecklistCover).toHaveBeenLastCalledWith('c1', file);
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+
   it('shows the server message when the upload is rejected and keeps the previous state', async () => {
     api.uploadChecklistCover.mockRejectedValue(new ApiClientError('File content does not match declared file type', 400));
     await render();

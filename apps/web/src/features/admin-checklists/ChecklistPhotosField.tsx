@@ -15,7 +15,7 @@ import {
 } from '../../shared/api/checklists.js';
 import type { ChecklistPhotoSummary } from '../../shared/api/types.js';
 import { ChecklistPhotoImage } from '../../shared/ChecklistPhotoStrip.js';
-import { CHECKLIST_PHOTO_ACCEPT, CHECKLIST_PHOTO_CAPTION_MAX_LENGTH, CHECKLIST_PHOTO_MAX_MB, MAX_CHECKLIST_PHOTOS, checklistPhotoErrorMessage, validateChecklistPhoto } from '../../shared/checklistPhoto.js';
+import { CHECKLIST_PHOTO_ACCEPT, CHECKLIST_PHOTO_CAPTION_MAX_LENGTH, CHECKLIST_PHOTO_MAX_MB, MAX_CHECKLIST_PHOTOS, checklistPhotoErrorMessage, checklistUploadErrorMessage, isRetryableUploadError, validateChecklistPhoto } from '../../shared/checklistPhoto.js';
 import { Button, ConfirmDialog } from '../../shared/ui.js';
 
 const tapTarget: CSSProperties = { minWidth: 44, minHeight: 44 };
@@ -75,6 +75,7 @@ export function ChecklistPhotosField({ checklistId, title, photos: initial, disa
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toRemove, setToRemove] = useState<string | null>(null);
+  const [retryFile, setRetryFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const headingId = `checklist-photos-title-${checklistId}`;
 
@@ -90,12 +91,18 @@ export function ChecklistPhotosField({ checklistId, title, photos: initial, disa
     if (!file) return;
     const invalid = validateChecklistPhoto(file);
     if (invalid) { setError(checklistPhotoErrorMessage(invalid, t)); return; }
+    await upload(file);
+  }
+
+  async function upload(file: File) {
     setBusy(true);
     setError(null);
+    setRetryFile(null);
     try {
       apply([...photos, await uploadChecklistPhoto(checklistId, file)]);
     } catch (err) {
-      fail(err, t('admin.checklists.photos.uploadError', 'Unable to upload the photo.'));
+      setError(checklistUploadErrorMessage(err, t('admin.checklists.photos.uploadError', 'Unable to upload the photo.'), t));
+      setRetryFile(isRetryableUploadError(err) ? file : null);
     } finally {
       setBusy(false);
     }
@@ -177,7 +184,12 @@ export function ChecklistPhotosField({ checklistId, title, photos: initial, disa
         </Button>
         {full && <span className="admin-form__hint">{t('admin.checklists.photos.full', 'The maximum of {{max}} photos is uploaded.', { max: MAX_CHECKLIST_PHOTOS })}</span>}
       </div>
-      {error && <p role="alert" style={{ color: 'var(--color-danger, #dc2626)', margin: 0 }}>{error}</p>}
+      {error && (
+        <p role="alert" style={{ color: 'var(--color-danger, #dc2626)', margin: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+          <span>{error}</span>
+          {retryFile && <button type="button" className="admin-btn admin-btn--sm" disabled={busy} style={{ minHeight: 44 }} onClick={() => void upload(retryFile)}>{t('checklists.photoRetry', 'Retry')}</button>}
+        </p>
+      )}
       <ConfirmDialog
         open={toRemove !== null}
         title={t('admin.checklists.photos.removeTitle', 'Remove the photo?')}
