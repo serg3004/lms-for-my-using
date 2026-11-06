@@ -316,11 +316,11 @@ jobs:
 
       - name: Install Playwright browser
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: pnpm exec playwright install --with-deps chromium
+        run: scripts/install-playwright-deps.sh full
 
       - name: Install Playwright system dependencies
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: pnpm exec playwright install-deps chromium
+        run: scripts/install-playwright-deps.sh deps
 
       - name: Browser E2E
         shell: bash
@@ -421,11 +421,11 @@ jobs:
 
       - name: Install Playwright browser
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: pnpm exec playwright install --with-deps chromium
+        run: scripts/install-playwright-deps.sh full
 
       - name: Install Playwright system dependencies
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: pnpm exec playwright install-deps chromium
+        run: scripts/install-playwright-deps.sh deps
 
       - name: Accessibility baseline
         run: pnpm test:a11y
@@ -490,11 +490,11 @@ jobs:
 
       - name: Install Playwright browser
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: pnpm exec playwright install --with-deps chromium
+        run: scripts/install-playwright-deps.sh full
 
       - name: Install Playwright system dependencies
         if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: pnpm exec playwright install-deps chromium
+        run: scripts/install-playwright-deps.sh deps
 
       - name: Responsive visual matrix
         run: pnpm test:visual --shard=${{ matrix.shard }}/2
