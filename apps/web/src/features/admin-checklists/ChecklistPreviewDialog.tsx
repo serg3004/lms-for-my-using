@@ -1,3 +1,4 @@
+import { checklistResultText } from '../../shared/checklistResultText.js';
 import { checklistLabel, checklistNumbers } from '@lms/shared/checklist-numbering';
 import { RichDescription } from '../../shared/RichDescription.js';
 import { collectFeedbackFields, isCustomFeedback, firstMissingRequiredFeedback, type FeedbackLayout, type FeedbackAnswerSetSnapshot } from '@lms/shared/checklist-feedback';
@@ -22,7 +23,7 @@ type PreviewProps = {
   // PR 421: the sheet's extra pictures, shown under the description like the employee sees them.
   checklistId?: string; photos?: ChecklistPhotoSummary[];
   contextFields: ContextField[]; scoringMode: ChecklistScoringMode; scaleLevels: ChecklistScaleLevel[];
-  showNumbering?: boolean; passThreshold: number; feedbackEnabled: boolean; feedbackRequired: boolean; allowSkipAll: boolean;
+  showPointsToLearner?: boolean; showNumbering?: boolean; passThreshold: number; feedbackEnabled: boolean; feedbackRequired: boolean; allowSkipAll: boolean;
   feedbackLayout?: FeedbackLayout | null;
   // PR 422: the look of the sheet blocks, as the employee sees it.
   appearance?: Appearance | null;
@@ -147,8 +148,8 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
                 <strong>{t('checklists.finishedNoPoints', 'Completed')}</strong>
               ) : (
                 <>
-                  <span>{result.passed ? t('admin.checklists.previewPassed', 'Pass') : t('admin.checklists.previewFailed', 'Fail')}</span>
-                  <strong>{result.totalScore} / {result.maxScore} ({result.percentage}%)</strong>
+                  <span>{result.passed ? t('checklists.resultPassed', 'Passed') : t('checklists.resultNotPassed', 'Not passed')}</span>
+                  <strong>{checklistResultText(result, props.showPointsToLearner === true, t)}</strong>
                 </>
               )}
             </div>
@@ -193,7 +194,7 @@ function PreviewCriterion({ item, number, answer, levels, scoringMode, allowSkip
     { level: 1, label: t('checklistPreview.yes', 'Yes'), points: scoringMode === 'all_required' ? 1 : item.points, color: DEFAULT_LEVEL_COLORS.full },
     { level: 0, label: t('checklistPreview.no', 'No'), points: 0, color: DEFAULT_LEVEL_COLORS.zero },
   ];
-  const bestPoints = Math.max(0, ...options.map((level) => level.points));
+  const bestPoints = Math.max(0, ...options.map((level) => level.points ?? 0));
   const noteShown = isNoteOffered(item, answer && !answer.skipped ? answer : undefined, levels !== null);
   return <div data-criterion={item.id} style={itemCardStyle(appearance, item.id, { padding: '20px 0', borderBottom: '1px solid var(--color-border)' }, '#166534', answer?.answered === true)}>
     <CriterionHeading text={item.text} number={number} required={item.isRequired} t={t} />
@@ -202,7 +203,7 @@ function PreviewCriterion({ item, number, answer, levels, scoringMode, allowSkip
       {options.map((level) => {
         const selected = !answer?.skipped && (levels ? answer?.scaleLevel === level.level : answer?.answered === true && answer.checked === (level.level === 1));
         // PR 425: the chosen option is washed with its level colour (own colour, else the default by score) and keeps a tick and a thick border besides.
-        const paint = selected ? levelPaint(scoringMode === 'none' ? NEUTRAL_LEVEL_COLOR : level.color ?? defaultLevelColor(level.points, bestPoints)) : null;
+        const paint = selected ? levelPaint(scoringMode === 'none' ? NEUTRAL_LEVEL_COLOR : level.color ?? defaultLevelColor(level.points ?? 0, bestPoints)) : null;
         return <label key={level.level} data-selected={selected || undefined} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, cursor: 'pointer', boxSizing: 'border-box', padding: '4px 10px', borderRadius: 10, borderWidth: 2, borderStyle: 'solid', borderColor: 'transparent', ...paint, fontWeight: selected ? 600 : undefined }}>
           <input type="radio" style={{ width: 'auto', flex: 'none' }} name={id} checked={selected}
             onClick={() => { if (selected) onChange(CLEARED_ANSWER); }}

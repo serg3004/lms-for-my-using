@@ -19,6 +19,9 @@ vi.mock('../shared/api/checklists.js', () => api);
 
 import { ChecklistBuilder } from '../features/admin-checklists/ChecklistBuilder';
 
+// jsdom does not implement scrolling; Finish schedules a real browser scroll.
+Element.prototype.scrollIntoView = vi.fn();
+
 Object.assign(HTMLDialogElement.prototype, {
   showModal(this: HTMLDialogElement) { this.setAttribute('open', ''); },
   close(this: HTMLDialogElement) { this.removeAttribute('open'); },
@@ -27,7 +30,7 @@ Object.assign(HTMLDialogElement.prototype, {
 const item = { id: 'item-1', checklistId: 'c1', order: 0, text: 'Работа с кассой', points: 10, isRequired: true, photoRequired: false, groupId: null, scaleId: null };
 const checklist = {
   id: 'c1', organizationId: 'org-1', title: 'Касса', description: null, status: 'draft' as const, scoringMode: 'sum_points' as const,
-  passThreshold: 80, requiresReview: false, createdBy: 'u1', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
+  showPointsToLearner: true, passThreshold: 80, requiresReview: false, createdBy: 'u1', createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
   scaleLevels: null, items: [item], itemGroups: [], contextFields: [],
 };
 

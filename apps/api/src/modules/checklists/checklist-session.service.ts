@@ -60,10 +60,12 @@ const sessionProjectionInclude = {
       userId: true,
       status: true,
       percentage: true,
+      totalScore: true,
+      maxScore: true,
       passed: true,
       scored: true,
       templateSnapshot: true,
-      checklist: { select: { id: true, title: true } },
+      checklist: { select: { id: true, title: true, showPointsToLearner: true } },
       user: { select: { id: true, firstName: true, lastName: true, email: true } },
     },
   },
@@ -152,15 +154,18 @@ function present(session: ChecklistSession): ChecklistSessionView {
  */
 function presentProjected(session: SessionWithProjection) {
   const { instance, observer, ...rest } = session;
+  const frozen = (instance.templateSnapshot as { checklist?: { showPointsToLearner?: boolean } } | null)?.checklist;
+  const showPointsToLearner = frozen ? frozen.showPointsToLearner === true : instance.checklist.showPointsToLearner === true;
   return {
     ...present(rest as ChecklistSession),
-    checklist: instance.checklist,
+    checklist: { ...instance.checklist, showPointsToLearner },
     // PR 405: the feedback section as frozen with the instance (null = switched off for this sheet).
     feedback: sessionFeedbackConfig(instance.templateSnapshot),
     learner: instance.user,
     observer,
     result: {
       instanceStatus: instance.status,
+      ...(showPointsToLearner && instance.status === 'completed' ? { totalScore: instance.totalScore, maxScore: instance.maxScore } : {}),
       percentage: instance.percentage,
       passed: instance.passed,
       scored: instance.scored,
@@ -178,17 +183,9 @@ export type ChecklistSessionViewerContext = {
   feedbackVisibilityBySheet?: ReadonlyMap<string, 'after_completion' | 'live'>;
 };
 
-/**
- * PR 286 required "server-side enforcement" of `ChecklistWorkplaceSettings.feedbackVisibility`
- * but nothing ever consumed it -- PR 298 (the employee's own session view) is the first read path
- * that actually needs to decide what a learner sees before their session is complete, so this is
- * where the gap gets closed. Only ever masks for the learner themselves (`isLearnerOnly`) -- admin/
- * manager/instructor always see the real numbers/feedback regardless of this policy, since it's
- * specifically about hiding a result from the person being evaluated until it's meant to be shown.
- * `after_completion` masks the score AND the PR 297 structured feedback until
- * `result.instanceStatus === 'completed'`; `live` never masks anything. Numbers are nulled out
- * entirely (not just flagged) -- `result.visible` tells the caller why, but the actual percentage/
- * passed never reaches an unauthorized response body to be read from dev tools.
+/** Employee results are hidden until completion (PR 426), independently of live feedback.
+ * Staff/assigned observers keep their authorized result. The feedback policy only controls
+ * the separate feedback/context projection; raw scores never need to be changed in storage.
  */
 function applyFeedbackVisibility<
   T extends {
@@ -201,21 +198,16 @@ function applyFeedbackVisibility<
     feedbackAnswers: Prisma.JsonValue | null;
     contextValues: Prisma.JsonValue | null;
   },
->(session: T, viewer: ChecklistSessionViewerContext): T {
+>(session: T, viewer: ChecklistSessionViewerContext): T & { feedbackVisible?: boolean } {
   const isObserver = viewer.observerId !== undefined && session.observerId === viewer.observerId;
   const visibility = (session.checklist && viewer.feedbackVisibilityBySheet?.get(session.checklist.id)) ?? viewer.feedbackVisibility;
-  if (isObserver || !viewer.isLearnerOnly || visibility === 'live' || session.result.instanceStatus === 'completed') {
-    return session;
-  }
-  return {
-    ...session,
-    result: { ...session.result, percentage: null, passed: null, scored: null, visible: false },
-    strengths: null,
-    developmentAreas: null,
-    nextSteps: null,
-    feedbackAnswers: null,
-    contextValues: null,
+  if (isObserver || !viewer.isLearnerOnly) return session;
+  const source = { ...session, feedbackVisible: visibility === 'live' || session.result.instanceStatus === 'completed' };
+  const result = session.result.instanceStatus === 'completed' ? source : {
+    ...source, result: { ...session.result, percentage: null, passed: null, scored: null, visible: false },
   };
+  if (visibility === 'live' || session.result.instanceStatus === 'completed') return result;
+  return { ...result, strengths: null, developmentAreas: null, nextSteps: null, feedbackAnswers: null, contextValues: null };
 }
 
 /**
@@ -781,6 +773,7 @@ export class ChecklistSessionService {
       // unfinished one follows the sheet's current effective settings (sheet override over organization).
       settings: readFrozenReportSettings(extra.instance.reportSettings) ?? freezeReportSettings(effective),
       visible: masked.result.visible,
+      pointsVisible: !viewer.isLearnerOnly || masked.observerId === actor.id || breakdown.checklist.showPointsToLearner === true,
       feedbackConfig: masked.feedback,
       locationCaptures: captures as Array<{ capturePoint: string; status: string; capturedAt: Date; latitude?: number | null; longitude?: number | null; accuracyMeters?: number | null }>,
     });

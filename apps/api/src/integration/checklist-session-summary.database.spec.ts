@@ -66,6 +66,13 @@ describe('session summary export (PR 373) — database', () => {
       await prisma.membership.deleteMany({ where }); await prisma.user.deleteMany({ where }); await prisma.organization.delete({ where: { id: org } });
     }
   });
+  it('shows employee export points only with frozen opt-in (PR 426)', async () => {
+    await prisma.checklist.update({ where: { id: checklistId }, data: { showPointsToLearner: true } });
+    const item = await observation();
+    await prisma.checklist.update({ where: { id: checklistId }, data: { showPointsToLearner: false } });
+    const result = await controller.exportSessionSummary({ ids: item.id, format: 'csv' }, await request(employee));
+    expect(result.rows.some((row) => row[0] === 'Результаты сессии' && row[1] === '100%' && row[2] === '3 из 3')).toBe(true);
+  });
   it('allows every report-reader role within its scope, localizes cells, neutralizes CSV and records exactly the authorized IDs', async () => {
     const item = await observation();
     for (const actor of [admin, manager, instructor, mentor, employee]) {
@@ -73,7 +80,10 @@ describe('session summary export (PR 373) — database', () => {
       expect(result.csv).toContain('Отчёт Сводка по сессии');
       expect(result.csv).toContain(`"'=Synthetic Employee"`); expect(result.csv).toContain(`"'@Feedback"`);
       expect(result.csv).not.toContain('@example.invalid');
-      expect(result.rows.some((row) => row[0] === 'Результаты сессии' && row[1] === '100%' && row[2] === '3 из 3')).toBe(true);
+      const scores = result.rows.find((row) => row[0] === 'Результаты сессии')!;
+      expect(scores[1]).toBe('100%');
+      expect(scores[2]).toBe(actor.id === employee.id ? '' : '3 из 3');
+      if (actor.id === employee.id) expect(result.csv).not.toContain('3 из 3');
       const audit = await prisma.auditLog.findFirstOrThrow({ where: { organizationId, actorId: actor.id, action: 'checklist_session.summary_exported' } });
       expect(audit.metadata).toMatchObject({ sessionIds: [item.id], format: 'csv', locale: 'ru' });
       expect(JSON.stringify(audit.metadata)).not.toContain('Feedback');

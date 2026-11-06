@@ -298,3 +298,19 @@ it.each([false, true])('PR 405: custom snapshot feedback respects learner visibi
   if (visible) { expect(html).toContain('Development plan'); expect(html).toContain('Next shift'); expect(html).toContain('Ready — Works independently'); }
   else { expect(html).not.toContain('Development plan'); expect(html).not.toContain('Works independently'); }
 });
+
+it.each([false, true])('shows completed employee points only with explicit opt-in: %s (PR 426)', (enabled) => {
+  const html = renderToStaticMarkup(<LearnerSessionDetail session={makeSession({
+    checklist: { id: 'sheet', title: 'Sheet', showPointsToLearner: enabled }, status: 'completed',
+    result: { instanceStatus: 'completed', percentage: 90, passed: true, scored: true, visible: true, totalScore: 71, maxScore: 79 },
+  })} onBack={() => undefined} t={t} />);
+  expect(html).toContain('90%'); expect(html).toContain('Passed');
+  if (enabled) expect(html).toContain('71 / 79'); else expect(html).not.toContain('71 / 79');
+});
+
+it('never shows a live result mid-session even from a cached response, while live feedback remains available (PR 426)', () => {
+  const html = renderToStaticMarkup(<LearnerSessionDetail session={makeSession({ status: 'in_progress', feedbackVisible: true, strengths: 'Live feedback',
+    result: { instanceStatus: 'in_progress', percentage: 90, passed: true, scored: true, visible: true, totalScore: 71, maxScore: 79 },
+  })} onBack={() => undefined} t={t} />);
+  expect(html).not.toContain('90%'); expect(html).not.toContain('71 / 79'); expect(html).toContain('Live feedback');
+});

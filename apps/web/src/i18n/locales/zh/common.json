@@ -1126,7 +1126,8 @@
         "recordLocation": "在观察开始和结束时记录位置",
         "feedbackEnabled": "添加“反馈”部分",
         "feedbackRequired": "反馈为必填",
-        "showNumbering": "为标准和分组编号"
+        "showNumbering": "为标准和分组编号",
+        "showPointsToLearner": "向员工显示分数"
       },
       "itemsTitle": "检查清单项目",
       "noItems": "暂无项目。",
@@ -1834,7 +1835,8 @@
           "contrast": "高对比"
         },
         "badge": "单独设置"
-      }
+      },
+      "showPointsToLearnerHint": "完成后在百分比旁显示分数。保存后适用于新的分配。工作人员报告保留分数。"
     },
     "orgTools": {
       "cardTitle": "组织架构导入",
@@ -2933,7 +2935,10 @@
       "alt": "检查表“{{title}}”的照片 {{n}}",
       "loadError": "无法显示照片。",
       "retry": "重试"
-    }
+    },
+    "resultPercentage": "{{percentage}}%",
+    "resultPassed": "通过",
+    "resultNotPassed": "未通过"
   },
   "checklistReview": {
     "title": "检查清单审核",

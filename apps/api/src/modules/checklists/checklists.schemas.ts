@@ -109,6 +109,7 @@ export const createChecklistSchema = z.object({
   // PR 422: block appearance; absent/null = the standard look.
   appearance: appearanceSchema.optional(),
   showNumbering: z.boolean().default(true),
+  showPointsToLearner: z.boolean().default(false),
   accessMode: checklistAccessModeSchema.default('assigned'),
   allowEditByAll: z.boolean().default(false),
 });
@@ -175,6 +176,7 @@ export const updateChecklistSchema = z
     allowSkipAll: z.boolean(),
     appearance: appearanceSchema,
     showNumbering: z.boolean(),
+    showPointsToLearner: z.boolean(),
     accessMode: checklistAccessModeSchema,
     pinned: z.boolean(),
     allowEditByAll: z.boolean(),

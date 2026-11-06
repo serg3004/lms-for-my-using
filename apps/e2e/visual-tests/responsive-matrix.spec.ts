@@ -1259,3 +1259,11 @@ for (const width of [320, 1440]) test(`checklist numbering disabled at ${width}p
   await expectNoPageOverflow(page);
   await expect(dialog).toHaveScreenshot(`checklist-numbering-disabled-${width}.png`, { maxDiffPixels: 3000 });
 });
+
+for (const width of [320, 1440]) test(`completed learner result is percent-only at ${width}px`, async ({ page }) => {
+  const { openCompletedResultPreview } = await import('../fixtures/checklist-learner-result.js');
+  await page.setViewportSize({ width, height });
+  const { result } = await openCompletedResultPreview(page);
+  await expectNoPageOverflow(page);
+  await expect(result).toHaveScreenshot(`checklist-learner-result-${width}.png`, { maxDiffPixels: 3000 });
+});

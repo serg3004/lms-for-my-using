@@ -127,6 +127,7 @@ const checklistSelect = {
   appearance: true,
   allowSkipAll: true,
   showNumbering: true,
+  showPointsToLearner: true,
   accessMode: true,
   pinned: true,
   allowEditByAll: true,
@@ -304,6 +305,7 @@ type ChecklistRuntime = {
   appearance?: Appearance | null;
   allowSkipAll?: boolean;
   showNumbering?: boolean;
+  showPointsToLearner?: boolean;
   itemGroups?: ChecklistSnapshotItemGroup[];
   items: ChecklistSnapshotItem[];
 };
@@ -798,6 +800,7 @@ export class ChecklistsService {
           appearance: kindAppearance(source.appearance) ?? undefined,
           allowSkipAll: source.allowSkipAll,
           showNumbering: source.showNumbering,
+          showPointsToLearner: source.showPointsToLearner,
           // PR 366: only an administrator's copy of a free checklist stays free.
           accessMode: keepFreeAccess ? source.accessMode : 'assigned',
           allowEditByAll: source.allowEditByAll,
@@ -2112,6 +2115,7 @@ export class ChecklistsService {
         scaleLevels: checklist.scaleLevels as ScaleLevel[] | null,
         feedbackEnabled: checklist.feedbackEnabled ?? true,
         ...(checklist.showNumbering === false ? { showNumbering: false } : {}),
+        ...(checklist.showPointsToLearner === true ? { showPointsToLearner: true } : {}),
         itemGroups: groups.map((group) => ({ id: group.id, title: group.title, order: group.order })),
       },
       rows,
@@ -2692,6 +2696,7 @@ export class ChecklistsService {
       appearance?: Prisma.JsonValue | null;
       allowSkipAll?: boolean;
       showNumbering?: boolean;
+      showPointsToLearner?: boolean;
       itemGroups?: ChecklistSnapshotItemGroup[];
     },
     items: ChecklistSnapshotItem[],
@@ -2717,6 +2722,7 @@ export class ChecklistsService {
       appearance: sanitizeAppearance(checklist.appearance),
       allowSkipAll: checklist.allowSkipAll,
       showNumbering: checklist.showNumbering ?? true,
+      showPointsToLearner: checklist.showPointsToLearner ?? false,
       itemGroups: checklist.itemGroups?.map((group) => ({ ...group })),
       items: items.map((item) => ({ ...item })),
     };
@@ -2862,6 +2868,7 @@ export class ChecklistsService {
           feedbackAnswerSets: snapshot.checklist.feedbackAnswerSets ?? {},
           allowSkipAll: snapshot.checklist.allowSkipAll ?? false,
           showNumbering: snapshot.checklist.showNumbering ?? true,
+          showPointsToLearner: snapshot.checklist.showPointsToLearner ?? false,
         }
       : instance.checklist;
 

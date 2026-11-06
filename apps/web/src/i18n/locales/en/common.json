@@ -1126,7 +1126,8 @@
         "recordLocation": "Record location at the start and end of the observation",
         "feedbackEnabled": "Add a “Feedback” section",
         "feedbackRequired": "Feedback is required",
-        "showNumbering": "Number criteria and groups"
+        "showNumbering": "Number criteria and groups",
+        "showPointsToLearner": "Show points to the employee"
       },
       "itemsTitle": "Checklist items",
       "noItems": "No items yet.",
@@ -1834,7 +1835,8 @@
           "contrast": "High contrast"
         },
         "badge": "Styled separately"
-      }
+      },
+      "showPointsToLearnerHint": "After completion show points alongside the percentage. Applies to new assignments after saving. Staff reports retain their points."
     },
     "orgTools": {
       "cardTitle": "Organization structure import",
@@ -2933,7 +2935,10 @@
       "alt": "Photo {{n}} of the sheet “{{title}}”",
       "loadError": "Unable to show the photo.",
       "retry": "Retry"
-    }
+    },
+    "resultPercentage": "{{percentage}}%",
+    "resultPassed": "Passed",
+    "resultNotPassed": "Not passed"
   },
   "checklistReview": {
     "loadError": "Unable to load pending reviews.",

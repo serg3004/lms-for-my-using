@@ -95,9 +95,14 @@ test.describe('Checklist editor: reorder (PR 418)', () => {
     // tall viewport: the keyboard sensor of dnd-kit picks the next row by its position on the screen
     await page.setViewportSize({ width: 1280, height: 2000 });
     await openEditor(page, { contextFields: fields }, []);
-    await page.getByRole('button', { name: 'Перетащить поле: Смена' }).focus();
+    await page.evaluate(() => document.fonts.ready);
+    const handle = page.getByRole('button', { name: 'Перетащить поле: Смена' });
+    await handle.focus();
     await page.keyboard.press('Space');
+    await expect(handle).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('[id^="DndLiveRegion"]').filter({ hasText: '«Смена» над «Смена».' })).toHaveCount(1);
+    // The start announcement precedes dnd-kit's layout measurement; let its next render finish before moving.
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
     await page.keyboard.press('ArrowDown');
     await expect(page.locator('[id^="DndLiveRegion"]').filter({ hasText: '«Смена» над «Дата проверки».' })).toHaveCount(1);
     await page.keyboard.press('Space');

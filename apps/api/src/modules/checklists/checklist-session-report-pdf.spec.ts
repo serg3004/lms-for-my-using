@@ -190,3 +190,11 @@ it('omits generated group and criterion numbers in PDF, including description he
   expect(text).toContain('Sort');
   expect(text).not.toMatch(/1\.1\s+7\. Author criterion|1\. Sort/);
 });
+
+it('renders a learner PDF as percentage and verdict without point totals; staff rendering keeps points (PR 426)', async () => {
+  const data = report([row('c', 'g1', 'Criterion', 1, 3)], { pointsVisible: false });
+  const { text } = await render(data, 'en');
+  expect(text).toContain('90%'); expect(text).not.toMatch(/71\s*\/\s*79|1\s*\/\s*3|Points:/);
+  const staff = await render(report([row('c', 'g1', 'Criterion', 1, 3)]), 'en');
+  expect(staff.text).toMatch(/71\s*\/\s*79/);
+});

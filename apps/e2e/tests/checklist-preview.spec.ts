@@ -69,7 +69,7 @@ test('preview hides disabled sections, uses current settings and supports global
   await dialog.getByRole('button', { name: 'Завершить', exact: true }).click();
   await expect(dialog.getByRole('alert')).toHaveCount(0);
   await expect(dialog.getByRole('status')).toContainText('Лист завершён');
-  await expect(dialog.getByRole('status')).toContainText('0 / 0 (0%)');
+  await expect(dialog.getByRole('status')).toContainText('0%');
 });
 
 test('an empty sheet cannot open a preview', async ({ page }) => {
@@ -109,8 +109,8 @@ test('preview completion requires configured general information, photo and feed
   await dialog.getByLabel('Сильные стороны', { exact: true }).fill('Порядок');
   await dialog.getByLabel('Зоны роста', { exact: true }).fill('Маркировка');
   await expect(dialog.getByRole('status')).toContainText('Лист завершён');
-  await expect(dialog.getByRole('status')).toContainText('Зачёт');
-  await expect(dialog.getByRole('status')).toContainText('3 / 3 (100%)');
+  await expect(dialog.getByRole('status')).toContainText('Зачтено');
+  await expect(dialog.getByRole('status')).toContainText('100%');
 });
 
 for (const width of [320, 390]) test(`Finish, Reset and Close fit the preview footer at ${width}px and Reset clears the result`, async ({ page }) => {

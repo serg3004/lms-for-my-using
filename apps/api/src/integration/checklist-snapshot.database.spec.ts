@@ -246,4 +246,19 @@ describe('checklist assignment snapshots — database', () => {
     expect(stored.templateSnapshot).toMatchObject({ checklist: { showNumbering: false } });
   });
 
+  it('defaults learner points off and freezes the opt-in in assignments, copies and organization templates (PR 426)', async () => {
+    const service = new ChecklistsService(prisma, {} as UploadService);
+    expect((await prisma.checklist.findUniqueOrThrow({ where: { id: checklistId } })).showPointsToLearner).toBe(false);
+    await service.updateChecklist(checklistId, organizationId, updateChecklistSchema.parse({ showPointsToLearner: true }));
+    const assigned = await service.assignChecklist(checklistId, organizationId, { userId: learnerId }, assignerId);
+    const copy = await service.copyChecklist(checklistId, organizationId, assignerId);
+    expect(copy.showPointsToLearner).toBe(true);
+    const template = await service.createOrgTemplate(organizationId, { sourceChecklistId: checklistId, title: 'Frozen points visibility' }, assignerId);
+    await service.updateChecklist(checklistId, organizationId, updateChecklistSchema.parse({ showPointsToLearner: false }));
+    expect((await service.createFromOrgTemplate(template.id, organizationId, assignerId)).showPointsToLearner).toBe(true);
+    expect((await service.getInstance(assigned.id, organizationId)).checklist?.showPointsToLearner).toBe(true);
+    expect((await service.getScoreBreakdown(assigned.id, organizationId)).checklist.showPointsToLearner).toBe(true);
+    expect((await prisma.checklistInstance.findUniqueOrThrow({ where: { id: assigned.id } })).templateSnapshot).toMatchObject({ checklist: { showPointsToLearner: true } });
+  });
+
 });

@@ -209,7 +209,7 @@ jobs:
   e2e:
     name: Browser E2E
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     services:
       postgres:

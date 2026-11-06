@@ -1,3 +1,4 @@
+import { checklistResultText } from '../shared/checklistResultText.js';
 import { checklistNumbers } from '@lms/shared/checklist-numbering';
 import { RichDescription } from '../shared/RichDescription.js';
 import { readFeedbackAnswers, isCustomFeedback, firstMissingRequiredFeedback } from '@lms/shared/checklist-feedback';
@@ -594,9 +595,9 @@ export function ConductScreen({
             alignItems: 'center',
           }}
         >
-          <span>{instance.passed ? t('checklists.passed', 'Passed') : t('checklists.notPassed', 'Not passed')}</span>
+          <span>{instance.passed ? t('checklists.resultPassed', 'Passed') : t('checklists.resultNotPassed', 'Not passed')}</span>
           <strong>
-            {instance.totalScore} / {instance.maxScore} ({instance.percentage}%)
+            {checklistResultText(instance, true, t)}
           </strong>
         </div>
       )}
@@ -669,7 +670,7 @@ function CriterionCard({
   comment: string;
   onCommentChange: (comment: string) => void;
   scoringMode: string;
-  scaleLevels: { level: number; label: string; description?: string; points: number; color?: string }[] | null;
+  scaleLevels: { level: number; label: string; description?: string; points?: number; color?: string }[] | null;
   cameraOnly: boolean;
   editable: boolean;
   onSaved: (instance: ChecklistInstanceSummary) => void;
@@ -706,9 +707,9 @@ function CriterionCard({
 
   const canAct = editable && !busy;
   const levelList: { value: number; label: string; description?: string; points: number; color?: string }[] | null = item.scale
-    ? item.scale.levels.map((level) => ({ value: level.value, label: level.label, description: 'description' in level && typeof level.description === 'string' ? level.description : undefined, points: level.score, color: level.color }))
+    ? item.scale.levels.map((level) => ({ value: level.value, label: level.label, description: 'description' in level && typeof level.description === 'string' ? level.description : undefined, points: level.score ?? 0, color: level.color }))
     : scoringMode === 'scale'
-      ? (scaleLevels ?? []).map((level) => ({ value: level.level, label: level.label, description: level.description, points: level.points, color: level.color }))
+      ? (scaleLevels ?? []).map((level) => ({ value: level.level, label: level.label, description: level.description, points: level.points ?? 0, color: level.color }))
       : null;
   const bestPoints = Math.max(0, ...(levelList ?? []).map((level) => level.points));
   const hasAnswer = result?.answerState === 'answered' || (result?.answerState === undefined && (result?.checked === true || result?.scaleLevel != null));

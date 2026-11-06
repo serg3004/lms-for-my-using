@@ -1,3 +1,4 @@
+import { checklistResultText } from '../shared/checklistResultText.js';
 import { AppearanceBlock, itemCardStyle } from '../shared/AppearanceBlock.js';
 import { checklistLabel, checklistNumbers } from '@lms/shared/checklist-numbering';
 import { RichDescription } from '../shared/RichDescription.js';
@@ -216,11 +217,7 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, op
                   )}
                   {row.instance?.status === 'completed' && row.instance.checklist?.scoringMode !== 'none' && (
                     <p style={{ color: COLORS.muted, marginBottom: 0 }}>
-                      {t('checklists.resultLine', '{{score}} / {{max}} ({{percentage}}%)', {
-                        score: row.instance.totalScore,
-                        max: row.instance.maxScore,
-                        percentage: row.instance.percentage,
-                      })}
+                      {row.instance.passed ? t('checklists.resultPassed', 'Passed') : t('checklists.resultNotPassed', 'Not passed')}{' — '}{checklistResultText(row.instance, row.instance.checklist?.showPointsToLearner === true, t)}
                     </p>
                   )}
                 </div>
@@ -484,8 +481,8 @@ function ChecklistTaking({
             alignItems: 'center',
           }}
         >
-          <span>{instance.passed ? t('checklists.passed', 'Passed') : t('checklists.notPassed', 'Not passed')}</span>
-          <strong>{instance.totalScore} / {instance.maxScore} ({instance.percentage}%)</strong>
+          <span>{instance.passed ? t('checklists.resultPassed', 'Passed') : t('checklists.resultNotPassed', 'Not passed')}</span>
+          <strong>{checklistResultText(instance, checklist.showPointsToLearner === true, t)}</strong>
         </div>
       )}
       {instance.status === 'submitted' && (
