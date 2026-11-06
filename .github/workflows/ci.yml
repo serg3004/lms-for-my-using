@@ -104,7 +104,7 @@ jobs:
         run: pnpm --recursive typecheck
 
   tests:
-    name: Tests & database
+    name: Tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -170,6 +170,50 @@ jobs:
 
       - name: Production Compose resource policy tests
         run: pnpm compose:resources:test
+
+  database:
+    name: Database tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: lms_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lms_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lms_test?schema=public
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9.15.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm --filter @lms/api prisma:generate
 
       - name: Apply database migrations
         run: pnpm --filter @lms/api prisma:migrate:deploy
@@ -255,8 +299,24 @@ jobs:
       - name: Apply database migrations
         run: pnpm --filter @lms/api prisma:migrate:deploy
 
+      - name: Resolve Playwright version
+        id: playwright-version
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $NF}')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browser
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright-version.outputs.version }}
+
       - name: Install Playwright browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
 
       - name: Browser E2E
         shell: bash
@@ -342,8 +402,24 @@ jobs:
       - name: Apply database migrations
         run: pnpm --filter @lms/api prisma:migrate:deploy
 
+      - name: Resolve Playwright version
+        id: playwright-version
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $NF}')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browser
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright-version.outputs.version }}
+
       - name: Install Playwright browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
 
       - name: Accessibility baseline
         run: pnpm test:a11y
@@ -391,8 +467,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Resolve Playwright version
+        id: playwright-version
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $NF}')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browser
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright-version.outputs.version }}
+
       - name: Install Playwright browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: pnpm exec playwright install --with-deps chromium
+
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
 
       - name: Responsive visual matrix
         run: pnpm test:visual
@@ -412,7 +504,7 @@ jobs:
     name: Container security
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: [quality, tests, build]
+    needs: [build]
 
     steps:
       - name: Checkout
@@ -465,6 +557,7 @@ jobs:
     needs:
       - quality
       - tests
+      - database
       - build
       - e2e
       - accessibility
@@ -476,6 +569,7 @@ jobs:
         env:
           QUALITY_RESULT: ${{ needs.quality.result }}
           TESTS_RESULT: ${{ needs.tests.result }}
+          DATABASE_RESULT: ${{ needs.database.result }}
           BUILD_RESULT: ${{ needs.build.result }}
           E2E_RESULT: ${{ needs.e2e.result }}
           ACCESSIBILITY_RESULT: ${{ needs.accessibility.result }}
@@ -488,6 +582,7 @@ jobs:
           for entry in \
             "quality=$QUALITY_RESULT" \
             "tests=$TESTS_RESULT" \
+            "database=$DATABASE_RESULT" \
             "build=$BUILD_RESULT" \
             "e2e=$E2E_RESULT" \
             "accessibility=$ACCESSIBILITY_RESULT" \
