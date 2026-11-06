@@ -14,7 +14,7 @@ test('builds nested feedback, reorders fields, saves the layout and resets to le
   await block.getByRole('button', { name: '+ Добавить поле', exact: true }).first().click();
   await block.getByLabel('Название поля', { exact: true }).nth(1).fill('Цель');
   await block.getByRole('button', { name: 'Элемент 2 вверх', exact: true }).first().click();
-  await expect(block.getByLabel('Название поля', { exact: true }).first()).toHaveValue('Цель');
+  await expect(block.getByLabel('Название поля', { exact: true }).first()).toHaveText('Цель');
   await block.getByRole('combobox', { name: 'Режим выбора', exact: true }).selectOption('single');
   await expect(block.getByText('Готов — Работает самостоятельно', { exact: true })).toBeVisible();
   await expect(block.getByRole('button', { name: '+ Добавить подраздел', exact: true })).toHaveCount(2);
@@ -22,7 +22,7 @@ test('builds nested feedback, reorders fields, saves the layout and resets to le
   await expect.poll(() => saved?.feedbackLayout).toMatchObject({ title: 'Индивидуальный план', fields: [{ title: 'Цель' }, { title: 'Рекомендация' }] });
   await block.getByRole('button', { name: 'Вернуть по умолчанию', exact: true }).click();
   await expect(block.getByLabel('Название поля', { exact: true })).toHaveCount(3);
-  await expect(block.getByLabel('Название поля', { exact: true }).first()).toHaveValue('Сильные стороны');
+  await expect(block.getByLabel('Название поля', { exact: true }).first()).toHaveText('Сильные стороны');
   await expect(block.getByLabel('Название раздела', { exact: true })).toHaveCount(0);
 });
 
@@ -102,7 +102,7 @@ for (const role of ['instructor', 'mentor'] as const) test(`${role} can manage a
 
 for (const locale of ['ru', 'en', 'kk', 'zh']) test(`default feedback fields are localized and custom titles stay unchanged (${locale})`, async ({ page }) => {
   await openPreviewBuilder(page, previewSheet(), locale);
-  const fields = page.locator('.admin-feedback-block input[maxlength="255"]');
-  expect(await fields.nth(1).inputValue()).toBe({ ru: 'Сильные стороны', en: 'Strengths', kk: 'Күшті жақтары', zh: '优点' }[locale]);
-  await fields.first().fill('Custom title'); await expect(fields.first()).toHaveValue('Custom title');
+  const fields = page.locator('.admin-feedback-block [role="textbox"]');
+  expect(await fields.nth(1).innerText()).toBe({ ru: 'Сильные стороны', en: 'Strengths', kk: 'Күшті жақтары', zh: '优点' }[locale]);
+  await fields.first().fill('Custom title'); await expect(fields.first()).toHaveText('Custom title');
 });

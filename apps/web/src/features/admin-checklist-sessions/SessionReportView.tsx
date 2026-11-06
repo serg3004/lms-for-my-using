@@ -1,3 +1,4 @@
+import { RichText } from '../../shared/RichText.js';
 import { checklistLabel } from '@lms/shared/checklist-numbering';
 import { RichDescription } from '../../shared/RichDescription.js';
 import { isCustomFeedback } from '@lms/shared/checklist-feedback';
@@ -194,7 +195,7 @@ function ReportGroups({ groups, showNumbering, t }: { showNumbering?: boolean; g
         {groups.map((group) => (
           <li key={group.id ?? group.number} style={{ ...highlightedRowStyle(group.color), borderRadius: 10, padding: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-              <strong>{checklistLabel(group.title, group.number ? `${group.number}.` : '', showNumbering)}</strong>
+              <strong><RichText value={checklistLabel(group.title, group.number ? `${group.number}.` : '', showNumbering)} /></strong>
               <span>
                 {group.percentage === null
                   ? t('admin.checklists.report.groupNotScored', 'Not scored')
@@ -220,7 +221,7 @@ export function ReportSummary({ report, t }: { report: Report; t: TFunction }) {
           <dl style={{ ...gridColumns(220), margin: 0 }}>
             {report.generalInfo.map((field) => (
               <div key={field.id}>
-                <dt style={muted}>{field.label}</dt>
+                <dt style={muted}><RichText value={field.label} /></dt>
                 <dd style={{ margin: '4px 0 0', fontWeight: 600 }}>{field.value || '—'}</dd>
               </div>
             ))}
@@ -274,7 +275,7 @@ export function ReportCriteria({ report, t }: { report: Report; t: TFunction }) 
       if (criterion.groupId !== null) {
         rows.push(
           <tr key={`group-${criterion.groupId}`}>
-            <th colSpan={4} scope="colgroup" style={{ textAlign: 'left', padding: '12px 8px 4px' }}>{groupTitles.get(criterion.groupId)}</th>
+            <th colSpan={4} scope="colgroup" style={{ textAlign: 'left', padding: '12px 8px 4px' }}><RichText value={groupTitles.get(criterion.groupId) ?? ''} /></th>
           </tr>,
         );
       }
@@ -287,7 +288,7 @@ export function ReportCriteria({ report, t }: { report: Report; t: TFunction }) 
     rows.push(
       <tr key={criterion.id}>
         <td style={{ ...cell, borderLeft: `6px solid ${criterion.color?.color ?? '#e3e8ef'}` }}>
-          {report.checklist.showNumbering !== false && criterion.number && <><strong>{checklistLabel('', criterion.number, true, '')}</strong>{' '}</>}<span>{criterion.text}</span>
+          {report.checklist.showNumbering !== false && criterion.number && <><strong>{checklistLabel('', criterion.number, true, '')}</strong>{' '}</>}<span><RichText value={criterion.text} /></span>
           {criterion.description && <p><RichDescription value={criterion.description} /></p>}
         </td>
         <td style={{ ...cell, whiteSpace: 'nowrap' }}>

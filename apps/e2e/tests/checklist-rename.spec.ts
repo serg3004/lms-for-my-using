@@ -65,7 +65,7 @@ test.describe('Rename in the checklist editor (PR 413)', () => {
     await page.getByRole('button', { name: 'Переименовать группу: Зал' }).click();
     const title = page.getByRole('textbox', { name: 'Название группы' }).first();
     await expect(title).toBeFocused();
-    expect(await title.evaluate((node: HTMLInputElement) => node.selectionEnd! - node.selectionStart!)).toBe(3);
+    expect(await title.evaluate(() => window.getSelection()?.toString().length)).toBe(3);
     await page.keyboard.type('Торговый зал');
     await page.keyboard.press('Enter');
     await expect(page.getByRole('status').filter({ hasText: 'Сохранено' }).first()).toBeVisible();
@@ -75,7 +75,7 @@ test.describe('Rename in the checklist editor (PR 413)', () => {
     await title.click();
     await page.keyboard.type(' лишнее');
     await page.keyboard.press('Escape');
-    await expect(title).toHaveValue('Торговый зал');
+    await expect(title).toHaveText('Торговый зал');
     expect(server.calls.filter((call) => call.path === '/checklist-item-groups/g1')).toHaveLength(1);
   });
 
@@ -94,7 +94,7 @@ test.describe('Rename in the checklist editor (PR 413)', () => {
     server.failNext = 1;
     await title.blur();
     await expect(page.getByRole('status').filter({ hasText: 'Сервер недоступен' })).toBeVisible();
-    await expect(title).toHaveValue('Парковка');
+    await expect(title).toHaveText('Парковка');
     await page.getByRole('button', { name: 'Повторить' }).click();
     await expect(page.getByRole('status').filter({ hasText: 'Сохранено' }).first()).toBeVisible();
     expect(server.groups[0]!.title).toBe('Парковка');
@@ -110,7 +110,7 @@ test.describe('Rename in the checklist editor (PR 413)', () => {
     await page.keyboard.press('Enter');
     await expect.poll(() => server.calls.find((call) => call.path === '/checklist-items/i1')?.body).toEqual({ text: 'Включить свет в зале' });
     await text.dblclick();
-    expect(await text.evaluate((node: HTMLTextAreaElement) => node.selectionEnd - node.selectionStart)).toBeGreaterThan(0);
+    expect(await text.evaluate(() => window.getSelection()?.toString().length ?? 0)).toBeGreaterThan(0);
   });
 
   test('the right button on a group opens a menu with "Переименовать"', async ({ page }) => {
@@ -141,14 +141,16 @@ test.describe('Rename in the checklist editor (PR 413)', () => {
     await section.fill('Итоги наблюдения');
     await expect(page.getByRole('heading', { name: 'Итоги наблюдения' })).toBeVisible();
     const field = page.getByLabel('Название поля', { exact: true }).first();
-    await field.click();
-    await field.fill('');
-    await expect(field).toHaveValue('');
-    await field.fill('Зоны');
-    await expect(field).toHaveValue('Зоны');
-    await field.fill('');
+    // The field is a rich-text editor: real key presses keep its selection and the DOM in step (fill() races with it).
+    const replaceWith = async (text: string) => { await field.click(); await page.keyboard.press('ControlOrMeta+A'); await (text ? page.keyboard.type(text) : page.keyboard.press('Backspace')); };
+    await replaceWith('');
+    await expect(field).toHaveText('');
+    await replaceWith('Зоны');
+    await expect(field).toHaveText('Зоны');
+    await replaceWith('');
+    await expect(field).toHaveText('');
     await field.blur();
-    await expect(field).toHaveValue('Сильные стороны');
+    await expect(field).toHaveText('Сильные стороны');
     await page.locator('.admin-feedback-block').getByRole('button', { name: 'Переименовать', exact: true }).first().click();
     await expect(section).toBeFocused();
   });

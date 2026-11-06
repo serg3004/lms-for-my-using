@@ -1,3 +1,4 @@
+import { RichTextField } from '../../shared/RichTextField.js';
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -43,16 +44,9 @@ function PhotoRow({ checklistId, photo, index, count, title, disabled, onCaption
       <div style={{ width: 88, aspectRatio: '4 / 3', flex: 'none', borderRadius: 8, overflow: 'hidden', background: 'var(--color-surface-muted, #eef2ff)' }}>
         <ChecklistPhotoImage checklistId={checklistId} photo={photo} alt={t('admin.checklists.photos.alt', 'Photo {{n}} of the sheet “{{title}}”', { n, title })} />
       </div>
-      <input
-        value={caption}
-        maxLength={CHECKLIST_PHOTO_CAPTION_MAX_LENGTH}
-        disabled={disabled}
-        placeholder={t('admin.checklists.photos.captionPlaceholder', 'Caption (optional)')}
-        aria-label={t('admin.checklists.photos.caption', 'Caption of photo {{n}}', { n })}
-        onChange={(event) => setCaption(event.target.value)}
-        onBlur={() => { if (caption.trim() !== photo.caption) onCaption(photo.id, caption.trim()); }}
-        style={{ flex: '1 1 160px', minWidth: 0, minHeight: 44 }}
-      />
+      <div style={{ flex: '1 1 160px', minWidth: 0 }}><RichTextField value={caption} maxLength={CHECKLIST_PHOTO_CAPTION_MAX_LENGTH} disabled={disabled} singleLine compact
+        label={t('admin.checklists.photos.caption', 'Caption of photo {{n}}', { n })}
+        onChange={setCaption} onBlur={() => { if (caption.trim() !== photo.caption) onCaption(photo.id, caption.trim()); }} /></div>
       {!disabled && (
         <div style={{ display: 'flex', gap: 4 }}>
           <button className="ds-button ds-button--secondary ds-button--sm" style={tapTarget} type="button" disabled={index === 0} aria-label={t('admin.checklists.photos.up', 'Photo {{n}} up', { n })} onClick={() => onMove(index, index - 1)}>↑</button>

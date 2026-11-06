@@ -1,3 +1,4 @@
+import { RichText } from '../shared/RichText.js';
 import { checklistLabel } from '@lms/shared/checklist-numbering';
 import type { FeedbackAnswers, FeedbackConfig } from '@lms/shared/checklist-feedback';
 import { isCustomFeedback } from '@lms/shared/checklist-feedback';
@@ -26,7 +27,7 @@ export function ContextFields({
       {fields.map((field) => (
         <label key={field.id} style={{ display: 'grid', gap: 5, fontSize: 13, fontWeight: 600 }}>
           <span>
-            {field.label}{field.required ? ` ${t('common.requiredMark', '*')}` : ''}
+            <RichText value={field.label} />{field.required ? ` ${t('common.requiredMark', '*')}` : ''}
           </span>
           {field.type === 'textarea' ? (
             <textarea
@@ -57,7 +58,7 @@ export function ContextFields({
 
 export function CriterionHeading({ text, number, required, t }: { number?: string; text: string; required: boolean; t: TFunction }) {
   return <>
-      <p style={{ fontWeight: 600, margin: '0 0 6px' }}>{checklistLabel('', number)}<span>{text}</span></p>
+      <p style={{ fontWeight: 600, margin: '0 0 6px' }}>{checklistLabel('', number)}<span><RichText value={text} /></span></p>
       <p style={{ color: 'var(--color-text-muted)', fontSize: 12, margin: '0 0 10px' }}>
         {required ? t('checklists.requiredItem', 'Required') : t('checklists.optionalItem', 'Optional')}
       </p>

@@ -1,3 +1,4 @@
+import { setRichText } from '../../shared/richTextTest.js';
 // @vitest-environment jsdom
 import '../../i18n/index.js';
 
@@ -32,7 +33,7 @@ async function render(photos: ChecklistPhotoSummary[] = [], disabled = false) {
   await act(async () => { root?.render(<ChecklistPhotosField checklistId="c1" title="Лист" photos={photos} disabled={disabled} onChange={(next) => changes.push(next)} />); });
 }
 const button = (label: string) => [...container.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === label || b.textContent === label) as HTMLButtonElement | undefined;
-const captions = () => [...container.querySelectorAll<HTMLInputElement>('input[maxlength="200"]')].map((input) => input.value);
+const captions = () => [...container.querySelectorAll<HTMLInputElement>('[role="textbox"]')].map((input) => input.textContent);
 async function pick(file: File) {
   const input = container.querySelector('input[type="file"]') as HTMLInputElement;
   Object.defineProperty(input, 'files', { value: [file], configurable: true });
@@ -105,12 +106,12 @@ describe('ChecklistPhotosField (PR 421)', () => {
 
   it('saves a changed caption on blur and nothing when it is unchanged', async () => {
     await render([photo(1)]);
-    const input = container.querySelector<HTMLInputElement>('input[maxlength="200"]')!;
+    const input = container.querySelector<HTMLInputElement>('[role="textbox"]')!;
     await act(async () => { input.dispatchEvent(new FocusEvent('focusout', { bubbles: true })); });
     expect(api.updateChecklistPhotoCaption).not.toHaveBeenCalled();
     api.updateChecklistPhotoCaption.mockResolvedValue({ ...photo(1), caption: 'Новая подпись' });
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
-    await act(async () => { setter.call(input, ' Новая подпись '); input.dispatchEvent(new Event('input', { bubbles: true })); });
+
+    await act(async () => { setRichText(input, ' Новая подпись '); input.dispatchEvent(new Event('input', { bubbles: true })); });
     await act(async () => { input.dispatchEvent(new FocusEvent('focusout', { bubbles: true })); });
     expect(api.updateChecklistPhotoCaption).toHaveBeenCalledWith('c1', 'p1', 'Новая подпись');
     expect(captions()).toEqual(['Новая подпись']);
@@ -132,6 +133,6 @@ describe('ChecklistPhotosField (PR 421)', () => {
     await render([photo(1)], true);
     expect(button('Добавить фото')?.disabled).toBe(true);
     expect(button('Фото 1 выше')).toBeUndefined();
-    expect(container.querySelector<HTMLInputElement>('input[maxlength="200"]')?.disabled).toBe(true);
+    expect(container.querySelector<HTMLInputElement>('[role="textbox"]')?.getAttribute('contenteditable')).toBe('false');
   });
 });

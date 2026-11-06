@@ -30,3 +30,14 @@ describe('ChecklistsService.listChecklists (PR 393)', () => {
     expect(rows[0]).not.toHaveProperty('_count');
   });
 });
+
+it('PR 427 searches the visible title across marks without returning another title', async () => {
+  const findMany = jest.fn(async () => [
+    { id: 'one', title: '<strong>Safe</strong>ty', folderId: null, items: [], _count: { instances: 0 } },
+    { id: 'two', title: 'Other', folderId: null, items: [], _count: { instances: 0 } },
+  ]);
+  const service = new ChecklistsService({ checklist: { findMany } } as unknown as PrismaService, {} as never, {} as never, {} as never);
+  const rows = await service.listChecklists('org-1', 'draft', undefined, 'SAFETY');
+  expect(rows.map((row) => row.id)).toEqual(['one']);
+  expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ organizationId: 'org-1', deletedAt: null, status: 'draft' }) }));
+});

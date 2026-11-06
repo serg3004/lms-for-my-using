@@ -1,3 +1,4 @@
+import { RichText } from '../../shared/RichText.js';
 import { checklistResultText } from '../../shared/checklistResultText.js';
 import { checklistLabel, checklistNumbers } from '@lms/shared/checklist-numbering';
 import { RichDescription } from '../../shared/RichDescription.js';
@@ -107,7 +108,7 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
         <header className="admin-preview-panel__header" style={{ marginBottom: 4 }}>
           <div style={{ minWidth: 0 }}>
             <p className="admin-form__hint">{t('admin.checklists.previewTitle', 'Preview')}</p>
-            <h2 id={titleId} style={{ margin: 0 }}>{title}</h2>
+            <h2 id={titleId} style={{ margin: 0 }}><RichText value={title} /></h2>
             <p>{t('checklistPreview.employee', 'Sample employee')} / {t('checklistPreview.department', 'Sample department')}</p>
           </div>
           <button ref={closeButton} className="admin-dialog__close" style={{ flex: 'none', minWidth: 44, minHeight: 44 }} type="button" onClick={onClose} aria-label={t('admin.checklists.close', 'Close')}>×</button>
@@ -125,7 +126,7 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
           {groupItems(items, groups).map(({ group, items: groupCriteria }, groupIndex) => (
             <AppearanceBlock key={group?.id ?? 'ungrouped'} appearance={props.appearance} kind="group" id={group?.id} style={{ marginBottom: 8 }}>
             <section aria-labelledby={`${titleId}-group-${groupIndex}`}>
-              <h3 id={`${titleId}-group-${groupIndex}`}>{checklistLabel(group?.title ?? t('admin.checklists.ungroupedItems', 'Ungrouped criteria'), group ? numbering.groupNumbers.get(group.id) : undefined, showNumbering)}</h3>
+              <h3 id={`${titleId}-group-${groupIndex}`}><RichText value={checklistLabel(group?.title ?? t('admin.checklists.ungroupedItems', 'Ungrouped criteria'), group ? numbering.groupNumbers.get(group.id) : undefined, showNumbering)} /></h3>
               {groupCriteria.map((item) => (
                 <PreviewCriterion key={item.id} item={item} number={showNumbering ? numbering.itemNumbers.get(item.id) ?? '' : ''} answer={answers[item.id]}
                   levels={checklistItemLevels(item, scoringMode, scaleLevels)} scoringMode={scoringMode} allowSkip={allowSkipAll || item.allowSkip === true}
@@ -136,7 +137,7 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
           ))}
         </div>
         {feedbackEnabled && <section id={`${titleId}-feedback`} aria-label={t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')}>
-          <h3>{props.feedbackLayout?.title || t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')}</h3>
+          <h3><RichText value={props.feedbackLayout?.title || t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')} /></h3>
           {feedbackRequired && <p className="admin-form__hint">{t('checklistPreview.feedbackRequired', 'Strengths and development areas are required.')}</p>}
           <div style={{ display: 'grid', gap: 10 }}><FeedbackFields config={config} draft={feedback} onDraftChange={setFeedback} t={t} /></div>
         </section>}
@@ -158,7 +159,7 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
               <strong>{t('checklistPreview.cannotFinish', 'The sheet cannot be completed yet')}</strong>
               <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
                 {missingContext.length > 0 && <li><button type="button" className="ds-button ds-button--ghost ds-button--sm" onClick={() => goTo(dialog.current?.querySelector(`[id="${titleId}-info"]`))}>{t('checklistPreview.missingContext', 'General information: {{count}} required', { count: missingContext.length })}</button></li>}
-                {unfinished.slice(0, 5).map((item) => <li key={item.id}><button type="button" className="ds-button ds-button--ghost ds-button--sm" onClick={() => goTo(criterionElement(item.id))}>{item.text}</button></li>)}
+                {unfinished.slice(0, 5).map((item) => <li key={item.id}><button type="button" className="ds-button ds-button--ghost ds-button--sm" onClick={() => goTo(criterionElement(item.id))}><RichText value={item.text} /></button></li>)}
                 {unfinished.length > 5 && <li>{t('checklistPreview.missingMore', 'and {{count}} more criteria', { count: unfinished.length - 5 })}</li>}
                 {feedbackMissing && <li><button type="button" className="ds-button ds-button--ghost ds-button--sm" onClick={() => goTo(dialog.current?.querySelector(`[id="${titleId}-feedback"]`))}>{t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')}</button></li>}
               </ul>

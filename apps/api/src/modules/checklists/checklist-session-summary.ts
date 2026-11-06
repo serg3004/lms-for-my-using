@@ -1,6 +1,6 @@
 import { checklistLabel } from '@lms/shared/checklist-numbering';
 import { descriptionText } from '@lms/shared/checklist-description';
-import { feedbackRows, isCustomFeedback, defaultFeedbackLayout } from '@lms/shared/checklist-feedback';
+import { feedbackRows, isCustomFeedback, defaultFeedbackLayout, collectFeedbackFields } from '@lms/shared/checklist-feedback';
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 
 import { exportLocale, MAX_EXPORT_ROWS, type ReportCell } from './checklist-report-csv.js';
@@ -81,7 +81,7 @@ export function buildSessionSummary(reports: ChecklistSessionReport[], locale: R
     append([]);
     const titleRow = append([label.title]); merge(titleRow, 1, columns); layout.headerRows.push(titleRow);
     for (const [caption, value] of [
-      [label.sheet, first.checklist.title],
+      [label.sheet, descriptionText(first.checklist.title)],
       [label.actual, period(observations.flatMap((report) => [report.header.startedAt, report.header.completedAt]))],
       [label.planned, period(observations.flatMap((report) => [report.header.scheduledStart, report.header.scheduledEnd]))],
       [label.employee, name(first.header.learner)],
@@ -92,8 +92,8 @@ export function buildSessionSummary(reports: ChecklistSessionReport[], locale: R
     const header = append([label.overall, first.pointsVisible === false ? percent(aggregate.percentage) : scored(aggregate.score, aggregate.maxScore, aggregate.percentage), '',
       ...observations.map((report, index) => `${label.observation} ${index + 1}, ${formatDate(observationTime(report), report.header.timezone)}`)]);
     merge(header, 2, 3); layout.headerRows.push(header);
-    const section = (caption: string) => { const row = append([caption]); merge(row, 1, columns); layout.headerRows.push(row); };
-    const detail = (caption: string, values: ReportCell[]) => append([caption, '', '', ...values]);
+    const section = (caption: string) => { const row = append([descriptionText(caption)]); merge(row, 1, columns); layout.headerRows.push(row); };
+    const detail = (caption: string, values: ReportCell[]) => append([descriptionText(caption), '', '', ...values]);
     section(label.information);
     detail(label.department, observations.map((report) => report.header.learner.department?.name ?? '—'));
     detail(label.observer, observations.map((report) => name(report.header.observer)));
@@ -107,7 +107,7 @@ export function buildSessionSummary(reports: ChecklistSessionReport[], locale: R
     const scoreRow = (caption: string, values: Array<{ score: number; maxScore: number; percentage?: number | null } | null>, details?: string[]) => {
       const total = aggregateReportScores(values);
       const showPoints = first.pointsVisible !== false;
-      return append([caption, percent(total.percentage), showPoints ? points(total.score, total.maxScore) : '', ...values.map((value, index) => value
+      return append([descriptionText(caption), percent(total.percentage), showPoints ? points(total.score, total.maxScore) : '', ...values.map((value, index) => value
         ? `${showPoints ? scored(value.score, value.maxScore, value.percentage === undefined ? aggregateReportScores([value]).percentage : value.percentage) : percent(value.percentage === undefined ? aggregateReportScores([value]).percentage : value.percentage)}${details?.[index] ? `\n${details[index]}` : ''}`
         : details?.[index] || label.notScored)]);
     };
@@ -132,7 +132,8 @@ export function buildSessionSummary(reports: ChecklistSessionReport[], locale: R
       const projected = observations.map((report) => {
         const form = report.feedbackForm ?? { layout: defaultFeedbackLayout(false), answerSets: {} };
         const rows = feedbackRows(form, report.feedbackForm?.answers ?? { strengths: report.feedback?.strengths ?? '', developmentAreas: report.feedback?.developmentAreas ?? '', nextSteps: report.feedback?.comment ?? '' }, { strengths: label.strengths, developmentAreas: label.development, nextSteps: label.comment });
-        return { title: form.layout.title || label.feedback, rows };
+        const choices = new Set(collectFeedbackFields(form.layout).filter((field) => field.kind === 'choice').map((field) => field.id));
+        return { title: form.layout.title || label.feedback, rows: rows.map((row) => row.kind === 'field' && choices.has(row.id) ? { ...row, value: descriptionText(row.value) } : row) };
       });
       for (const title of new Set(projected.map((value) => value.title))) {
         section(title);

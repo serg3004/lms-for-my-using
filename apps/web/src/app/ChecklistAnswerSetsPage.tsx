@@ -1,3 +1,4 @@
+import { RichTextField } from '../shared/RichTextField.js';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -5,7 +6,7 @@ import type { FeedbackAnswerOption } from '@lms/shared/checklist-feedback';
 import { AdminPageHeader, AdminPageLayout, ChecklistsTabs, ConfirmDialog } from '../shared/adminPage.js';
 import { ObserverPageLayout } from '../shared/observerLayout.js';
 import { useSession } from '../shared/session.js';
-import { Button, Input, PageState, SearchInput, Textarea } from '../shared/ui.js';
+import { Button, Input, PageState, SearchInput } from '../shared/ui.js';
 import { listChecklistAnswerSets, getChecklistAnswerSet, saveChecklistAnswerSet, copyChecklistAnswerSet, archiveChecklistAnswerSet, deleteChecklistAnswerSet } from '../shared/api/checklists.js';
 import type { ChecklistAnswerSet } from '../shared/api/types.js';
 import { ApiClientError } from '../shared/apiClient.js';
@@ -54,7 +55,7 @@ export function ChecklistAnswerSetsPage({ observer = false }: { observer?: boole
         <fieldset disabled={busy || readOnly} style={{ minWidth: 0, padding: 0, border: 0 }}><legend>{t('feedbackBuilder.answers')}</legend>
           <OrderedList items={options} onChange={setOptions}>{(value, index) => <>
             <Input label={t('feedbackBuilder.optionName', { number: index + 1 })} maxLength={255} value={value.name} onChange={(event) => setOptions((list) => list.map((entry) => entry.id === value.id ? { ...entry, name: event.target.value } : entry))} />
-            <Textarea label={t('feedbackBuilder.optionDescription', { number: index + 1 })} maxLength={2000} value={value.description ?? ''} onChange={(event) => setOptions((list) => list.map((entry) => entry.id === value.id ? { ...entry, description: event.target.value } : entry))} />
+            <RichTextField disabled={busy || readOnly} compact label={t('feedbackBuilder.optionDescription', { number: index + 1 })} maxLength={2000} value={value.description ?? ''} onChange={(description) => setOptions((list) => list.map((entry) => entry.id === value.id ? { ...entry, description } : entry))} />
             <Button type="button" variant="secondary" disabled={options.length <= 1} onClick={() => setOptions((list) => list.filter((entry) => entry.id !== value.id))}>{t('admin.checklists.scaleManager.delete')}</Button>
           </>}</OrderedList>
           <Button type="button" variant="secondary" disabled={options.length >= 50} onClick={() => setOptions((list) => [...list, option()])}>{t('feedbackBuilder.addAnswer')}</Button>

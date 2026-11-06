@@ -1062,9 +1062,9 @@ for (const width of widths) {
       // header row, which shares the base class).
       const itemRows = page.locator('.admin-criteria-row:not(.admin-criteria-row--head)');
       await expect(itemRows).toHaveCount(3);
-      await expect(itemRows.nth(0).locator('.admin-criteria-row__text')).toHaveValue('Turn on the lights and equipment');
-      await expect(itemRows.nth(1).locator('.admin-criteria-row__text')).toHaveValue('Check the temperature log');
-      await expect(itemRows.nth(2).locator('.admin-criteria-row__text')).toHaveValue('Restock the front counter');
+      await expect(itemRows.nth(0).locator('.admin-criteria-row__text')).toHaveText('Turn on the lights and equipment');
+      await expect(itemRows.nth(1).locator('.admin-criteria-row__text')).toHaveText('Check the temperature log');
+      await expect(itemRows.nth(2).locator('.admin-criteria-row__text')).toHaveText('Restock the front counter');
       await expect(page.getByRole('button', { name: /Критерий/ }).first()).toBeVisible();
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
@@ -1266,4 +1266,18 @@ for (const width of [320, 1440]) test(`completed learner result is percent-only 
   const { result } = await openCompletedResultPreview(page);
   await expectNoPageOverflow(page);
   await expect(result).toHaveScreenshot(`checklist-learner-result-${width}.png`, { maxDiffPixels: 3000 });
+});
+
+for (const width of [320, 1440]) test(`checklist author rich text preview at ${width}px`, async ({ page }) => {
+  const { previewSheet } = await import('../fixtures/checklist-preview.js');
+  const sheet = previewSheet();
+  sheet.title = '<strong>Лист наблюдения</strong>';
+  sheet.items = sheet.items.slice(0, 1).map((item) => ({ ...item, text: '<em>Проверить маркировку</em>' }));
+  sheet.itemGroups = sheet.itemGroups!.slice(0, 1).map((group) => ({ ...group, title: '<span style="color:#1D4ED8">Подготовка</span>' }));
+  await page.setViewportSize({ width, height });
+  await openPreviewBuilder(page, sheet);
+  await page.getByRole('button', { name: 'Предпросмотр', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Лист наблюдения', exact: true })).toBeVisible();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `checklist-rich-author-${width}`, true, { fullPage: false, maxDiffPixels: 3000 });
 });

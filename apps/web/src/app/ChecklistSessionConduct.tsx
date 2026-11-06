@@ -1,3 +1,4 @@
+import { RichText } from '../shared/RichText.js';
 import { checklistResultText } from '../shared/checklistResultText.js';
 import { checklistNumbers } from '@lms/shared/checklist-numbering';
 import { RichDescription } from '../shared/RichDescription.js';
@@ -473,7 +474,7 @@ export function ConductScreen({
                   <>
                   {/* PR 422: the group is only named here when the author styled it, so sheets without appearance look as before. */}
                   {groupTitle && !isEmptyBlockStyle(groupStyle) && (
-                    <AppearanceBlock appearance={checklist.appearance} kind="group" id={currentItem.groupId} style={{ marginBottom: 8 }}><strong>{groupTitle}</strong></AppearanceBlock>
+                    <AppearanceBlock appearance={checklist.appearance} kind="group" id={currentItem.groupId} style={{ marginBottom: 8 }}><strong><RichText value={groupTitle} /></strong></AppearanceBlock>
                   )}
                   <div
                     style={itemCardStyle(checklist.appearance, currentItem.id, {
@@ -625,7 +626,7 @@ function Header({ session, instance, t }: { session: ChecklistSessionSummary; in
         <p style={{ margin: 0, fontWeight: 700, color: COLORS.text }}>
           {session.learner.firstName} {session.learner.lastName}
         </p>
-        <p style={{ margin: 0, color: COLORS.muted, fontSize: 13 }}>{instance.checklist?.title ?? session.checklist.title}</p>
+        <p style={{ margin: 0, color: COLORS.muted, fontSize: 13 }}><RichText value={instance.checklist?.title ?? session.checklist.title} /></p>
       </div>
       <div style={{ display: 'grid', justifyItems: 'end', gap: 4 }}>
         <Badge variant={CHECKLIST_SESSION_STATUS_BADGE_VARIANT[session.status]} style={session.status === 'in_progress' ? { color: COLORS.text } : undefined}>
@@ -1004,7 +1005,7 @@ function StructuredFeedback({
 
   return (
     <div style={{ marginTop: 20 }}>
-      <h3 style={{ fontSize: 14, color: COLORS.text, margin: '0 0 10px' }}>{session.feedback?.layout.title || t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')}</h3>
+      <h3 style={{ fontSize: 14, color: COLORS.text, margin: '0 0 10px' }}><RichText value={session.feedback?.layout.title || t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')} /></h3>
       {error && (
         <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 12.5 }}>
           {error}

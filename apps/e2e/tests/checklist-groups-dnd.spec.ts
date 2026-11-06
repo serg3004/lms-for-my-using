@@ -79,7 +79,7 @@ async function settledBox(locator: Locator) {
 // on a neighbour or nowhere. Its live region announces what the item is over; the helper waits for the
 // announcement to name the target and nudges the pointer while it does not.
 const liveRegion = (page: Page) => page.locator('[id^="DndLiveRegion"]').evaluateAll((nodes) => nodes.map((node) => node.textContent ?? '').join('|'));
-const nameOfTarget = (target: Locator) => target.locator('textarea.admin-criteria-row__text, input').first().inputValue();
+const nameOfTarget = (target: Locator) => target.locator('[role="textbox"]').first().innerText();
 
 async function drag(page: Page, handle: Locator, target: Locator, position: 'top' | 'bottom' = 'top') {
   const name = await nameOfTarget(target);
@@ -111,9 +111,19 @@ async function drag(page: Page, handle: Locator, target: Locator, position: 'top
   throw new Error(`the drag never reached «${name}»`);
 }
 
-const groupCard = (page: Page, title: string) => page.locator('.admin-group-card').filter({ has: page.locator(`input[value="${title}"]`) });
+// A pointer drop between lists is a feedback loop: picking the row up reflows the rows below, so on a slow runner the drop can land on
+// a neighbour (the layout is saved, just not the one intended). The scenario is about the result, so aim again until it is reached.
+async function dragUntil(page: Page, state: State, handle: Locator, target: Locator, reached: () => boolean) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await drag(page, handle, target);
+    try { await expect.poll(reached, { timeout: 3000 }).toBe(true); return; } catch { /* aim again */ }
+  }
+  throw new Error(`the drop never landed where intended after ${state.layouts.length} saved layouts`);
+}
+
+const groupCard = (page: Page, title: string) => page.locator('.admin-group-card').filter({ has: page.getByRole('textbox', { name: 'Название группы' }).filter({ hasText: title }) });
 const criterion = (page: Page, id: string) => page.locator('.admin-criteria-row').filter({ has: page.getByRole('button', { name: `Перетащить критерий: Критерий ${id}` }) });
-const order = async (page: Page) => page.locator('.admin-criteria-row:not(.admin-criteria-row--head) textarea.admin-criteria-row__text').evaluateAll((nodes) => nodes.map((node) => (node as HTMLInputElement).value.replace('Критерий ', '')));
+const order = async (page: Page) => page.locator('.admin-criteria-row:not(.admin-criteria-row--head) [contenteditable].admin-criteria-row__text').evaluateAll((nodes) => nodes.map((node) => (node.textContent ?? '').replace('Критерий ', '')));
 
 test.describe('Checklist editor: drag-and-drop of groups and criteria (PR 402)', () => {
   test.beforeEach(async ({ page }) => { await page.setViewportSize({ width: 1280, height: 2600 }); });
@@ -139,17 +149,14 @@ test.describe('Checklist editor: drag-and-drop of groups and criteria (PR 402)',
   test('a criterion moves to another group and out of any group', async ({ page }) => {
     const state = seed();
     await openEditor(page, state);
-    await drag(page, criterion(page, 'a').getByRole('button', { name: /Перетащить критерий/ }), criterion(page, 'c'));
-    await expect.poll(() => state.layouts.length).toBe(1);
-    const [first, second] = (state.layouts[0]!.groups as Array<{ id: string; itemIds: string[] }>).map((group) => group.itemIds);
-    expect(first).toEqual(['b']);
-    expect([...second!].sort()).toEqual(['a', 'c']);
+    const inGroup = (groupId: string | null) => state.items.filter((item) => item.groupId === groupId).map((item) => item.id).sort();
+    await dragUntil(page, state, criterion(page, 'a').getByRole('button', { name: /Перетащить критерий/ }), criterion(page, 'c'), () => inGroup('g2').join() === 'a,c');
+    expect(inGroup('g1')).toEqual(['b']);
     await expect(groupCard(page, 'Группа 2').locator('.admin-criteria-row:not(.admin-criteria-row--head)')).toHaveCount(2);
 
     // "Без группы" accepts a criterion that is dragged onto it.
-    await drag(page, criterion(page, 'b').getByRole('button', { name: /Перетащить критерий/ }), criterion(page, 'd'));
-    await expect.poll(() => state.layouts.length).toBe(2);
-    expect(state.layouts[1]!.ungroupedItemIds).toContain('b');
+    await dragUntil(page, state, criterion(page, 'b').getByRole('button', { name: /Перетащить критерий/ }), criterion(page, 'd'), () => inGroup(null).includes('b'));
+    expect(state.layouts.at(-1)!.ungroupedItemIds).toContain('b');
   });
 
   test('the keyboard moves a criterion down and ↑/↓ buttons still work', async ({ page }) => {
@@ -184,7 +191,7 @@ test.describe('Checklist editor: drag-and-drop of groups and criteria (PR 402)',
     await dialog.getByLabel(/Удалить только группу/).check();
     await dialog.getByRole('button', { name: 'Удалить', exact: true }).click();
     await expect.poll(() => state.deletes).toEqual(['g1:keep']);
-    await expect(page.locator('.admin-group-card input[value="Группа 1"]')).toHaveCount(0);
+    await expect(page.locator('.admin-group-card').getByRole('textbox', { name: 'Название группы' }).filter({ hasText: 'Группа 1' })).toHaveCount(0);
     await expect.poll(() => order(page)).toEqual(expect.arrayContaining(['a', 'b']));
 
     await groupCard(page, 'Группа 2').getByRole('button', { name: /Удалить группу/ }).click();

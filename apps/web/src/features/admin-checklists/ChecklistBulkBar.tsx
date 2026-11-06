@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import type { TFunction } from 'i18next';
 import { Button } from '../../shared/ui.js';
 import type { ChecklistBulkAction, ChecklistBulkResult, ChecklistBulkSkipReason, ChecklistFolder, ChecklistFolderBulkResult, ChecklistFolderBulkSkipReason, ChecklistFolderDeleteImpact, ChecklistSummary } from '../../shared/api/types.js';
@@ -6,7 +7,7 @@ import type { ChecklistBulkAction, ChecklistBulkResult, ChecklistBulkSkipReason,
 const LISTED_TITLES = 10;
 
 export function bulkDeleteMessage(selected: Pick<ChecklistSummary, 'title'>[], t: TFunction): string {
-  const listed = selected.slice(0, LISTED_TITLES).map((checklist) => `«${checklist.title}»`).join(', ');
+  const listed = selected.slice(0, LISTED_TITLES).map((checklist) => `«${plainText(checklist.title)}»`).join(', ');
   const rest = selected.length - LISTED_TITLES;
   return t('admin.checklists.bulk.deleteConfirm', 'Delete {{count}} checklist(s): {{titles}}? They disappear from the list and can no longer be assigned; completed results are kept. A checklist that has assignments in progress is not deleted but moved to drafts. This cannot be undone.', {
     count: selected.length,

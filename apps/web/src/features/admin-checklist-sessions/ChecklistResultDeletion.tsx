@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import { useId, useRef, useState, type FormEvent } from 'react';
 import type { TFunction } from 'i18next';
 
@@ -94,7 +95,7 @@ export function DeletedChecklistResults({ t }: { t: TFunction }) {
         {state.data.map((row) => (
           <li key={row.id}>
             <div>
-              <b>{row.checklist.title}</b>
+              <b>{plainText(row.checklist.title)}</b>
               <span className="admin-form__hint"> {formatParticipantName(row.user)} · {row.percentage}%</span>
               <p className="admin-form__hint">
                 {t('admin.checklists.resultDelete.meta', '{{reason}} · deleted {{date}}, can be restored until {{until}}', {

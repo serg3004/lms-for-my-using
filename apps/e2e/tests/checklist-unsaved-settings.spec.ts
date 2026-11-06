@@ -39,12 +39,12 @@ test('Publish saves the typed title and description in the same request; leaving
   await page.getByRole('button', { name: /Все чек-листы/ }).click();
   await expect(page.getByRole('dialog', { name: 'Несохранённые изменения' })).toBeVisible();
   await page.getByRole('button', { name: 'Остаться', exact: true }).last().click();
-  await expect(page.locator('#checklist-title')).toHaveValue('Открытие смены v2');
+  await expect(page.locator('#checklist-title')).toHaveText('Открытие смены v2');
 
   // Publish: one request carries the settings and the status.
   await page.getByRole('button', { name: 'Опубликовать' }).click();
   await expect.poll(() => calls.length).toBe(1);
   expect(calls[0]!.body).toMatchObject({ title: 'Открытие смены v2', description: 'Новое описание', status: 'published' });
-  await expect(page.locator('#checklist-title')).toHaveValue('Открытие смены v2');
+  await expect(page.locator('#checklist-title')).toHaveText('Открытие смены v2');
   await expect(page.getByTestId('checklist-unsaved-bar')).toHaveCount(0);
 });

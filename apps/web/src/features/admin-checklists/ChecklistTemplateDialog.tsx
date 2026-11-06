@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import { RichDescription } from '../../shared/RichDescription.js';
 import { useEffect, useId, useState } from 'react';
 import type { TFunction } from 'i18next';
@@ -107,7 +108,7 @@ export function ChecklistTemplateDialog({ open, locale, folderId, onClose, onCre
                   {renaming?.id === template.id ? (
                     <input aria-label={t('admin.checklists.templates.rename', 'Template name')} className="admin-input" maxLength={200} onChange={(event) => setRenaming({ id: template.id, title: event.target.value })} value={renaming.title} />
                   ) : (
-                    <b>{template.title}</b>
+                    <b>{plainText(template.title)}</b>
                   )}
                   <span className="admin-form__hint"> {t('admin.checklists.templates.summary', '{{groups}} groups · {{items}} criteria', { groups: template.groupCount, items: template.itemCount })}</span>
                 </div>
@@ -116,7 +117,7 @@ export function ChecklistTemplateDialog({ open, locale, folderId, onClose, onCre
                   {isAdmin && (renaming?.id === template.id ? (
                     <Button onClick={() => void rename()} type="button" variant="secondary">{t('admin.checklists.templates.save', 'Save')}</Button>
                   ) : (
-                    <Button onClick={() => setRenaming({ id: template.id, title: template.title })} type="button" variant="secondary">{t('admin.checklists.templates.renameOpen', 'Rename')}</Button>
+                    <Button onClick={() => setRenaming({ id: template.id, title: plainText(template.title) })} type="button" variant="secondary">{t('admin.checklists.templates.renameOpen', 'Rename')}</Button>
                   ))}
                   {isAdmin && <Button onClick={() => void removeOrg(template)} type="button" variant="danger">{t('admin.checklists.templates.remove', 'Delete')}</Button>}
                 </div>
@@ -130,7 +131,7 @@ export function ChecklistTemplateDialog({ open, locale, folderId, onClose, onCre
         {(templates ?? []).map((template) => (
           <li key={template.key}>
             <div>
-              <b>{template.title}</b>
+              <b>{plainText(template.title)}</b>
               <span className="admin-form__hint"> {t('admin.checklists.templates.summary', '{{groups}} groups · {{items}} criteria', { groups: template.groupCount, items: template.itemCount })}</span>
               <p className="admin-form__hint"><RichDescription value={template.description} /></p>
             </div>

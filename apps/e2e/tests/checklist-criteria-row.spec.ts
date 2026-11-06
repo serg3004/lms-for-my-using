@@ -49,7 +49,7 @@ test.describe('Checklist editor: criterion row (PR 403)', () => {
 
         const cells = await page.locator('.admin-criteria-row:not(.admin-criteria-row--head)').nth(1).evaluate((row) => {
           const r = (selector: string) => { const e = row.querySelector(selector) as HTMLElement | null; if (!e) return null; const b = e.getBoundingClientRect(); return { left: b.left, right: b.right, width: b.width, height: b.height, scrollHeight: e.scrollHeight, clientHeight: e.clientHeight }; };
-          return { text: r('textarea'), scale: r('.admin-criteria-cell--scale'), points: r('.admin-criteria-row__points'), weight: r('.admin-criteria-row__weight'), menu: r('.admin-criteria-row__menu'), rowRight: row.getBoundingClientRect().right };
+          return { text: r('.admin-criteria-row__text'), scale: r('.admin-criteria-cell--scale'), points: r('.admin-criteria-row__points'), weight: r('.admin-criteria-row__weight'), menu: r('.admin-criteria-row__menu'), rowRight: row.getBoundingClientRect().right };
         });
         // The long text is never clipped: no hidden overflow inside its field.
         expect(cells.text!.scrollHeight).toBeLessThanOrEqual(cells.text!.clientHeight + 2);
@@ -95,7 +95,8 @@ test.describe('Checklist editor: criterion row (PR 403)', () => {
     await row.getByRole('button', { name: /Перетащить критерий/ }).focus();
     const seen: string[] = [];
     for (let step = 0; step < 9; step += 1) {
-      seen.push(await page.evaluate(() => { const e = document.activeElement as HTMLElement; return e.getAttribute('aria-label') ?? e.textContent ?? ''; }));
+      // The criterion text is a rich field now: its accessible name comes from aria-labelledby.
+      seen.push(await page.evaluate(() => { const e = document.activeElement as HTMLElement; const labelledBy = e.getAttribute('aria-labelledby'); return e.getAttribute('aria-label') ?? (labelledBy ? document.getElementById(labelledBy)?.textContent : null) ?? e.textContent ?? ''; }));
       await page.keyboard.press('Tab');
     }
     // The first row's "up" arrow is disabled, so focus skips it.

@@ -30,6 +30,18 @@ export function previewSheet(): ChecklistSummary {
   };
 }
 
+// Fixtures must not import runtime code from @lms/shared (its dist is not built in e2e/visual jobs).
+function plainText(html: string): string {
+  let out = '';
+  let inTag = false;
+  for (const char of html) {
+    if (char === '<') inTag = true;
+    else if (char === '>' && inTag) inTag = false;
+    else if (!inTag) out += char;
+  }
+  return out;
+}
+
 export async function openPreviewBuilder(page: Page, sheet = previewSheet(), locale = 'ru', answerSets: unknown[] = []) {
   await page.route('**/api/v1/**', (route) => {
     const path = new URL(route.request().url()).pathname.replace('/api/v1', '');
@@ -48,7 +60,7 @@ export async function openPreviewBuilder(page: Page, sheet = previewSheet(), loc
     return route.fulfill({ json: { items: [], total: 0, page: 1, pageSize: 20 } });
   });
   await page.goto('/admin/checklists');
-  if (page.viewportSize()!.width <= 860) await page.getByRole('button', { name: new RegExp(`${sheet.title}$`) }).click();
+  if (page.viewportSize()!.width <= 860) await page.getByRole('button', { name: new RegExp(`${plainText(sheet.title)}$`) }).click();
   // The builder link is shared across locales; use its translated name from the actual locale.
   const edit = { ru: 'Редактировать', en: 'Edit', kk: 'Өзгерту', zh: '编辑' }[locale]!;
   await page.getByRole('button', { name: edit, exact: true }).click();

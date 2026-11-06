@@ -1,3 +1,4 @@
+import { RichText, plainText } from '../shared/RichText.js';
 import { checklistResultText } from '../shared/checklistResultText.js';
 import { AppearanceBlock, itemCardStyle } from '../shared/AppearanceBlock.js';
 import { checklistLabel, checklistNumbers } from '@lms/shared/checklist-numbering';
@@ -186,11 +187,11 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, op
                 onClick={row.instance ? () => setOpenInstanceId(row.instance!.id) : undefined}
               >
                 <div style={{ width: 112, flex: '0 0 112px' }}>
-                  <ChecklistCover checklistId={row.checklistId} coverUpdatedAt={row.coverUpdatedAt} title={row.title} ratio="16 / 9" />
+                  <ChecklistCover checklistId={row.checklistId} coverUpdatedAt={row.coverUpdatedAt} title={plainText(row.title)} ratio="16 / 9" />
                 </div>
                 <div style={{ minWidth: 0, flex: '1 1 200px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <strong style={{ overflowWrap: 'anywhere' }}>{row.title}</strong>
+                    <strong style={{ overflowWrap: 'anywhere' }}>{plainText(row.title)}</strong>
                     <ChecklistAccessBadge checklist={row.access} t={t} />
                     {row.instance && (
                       <span
@@ -332,7 +333,7 @@ function ChecklistTaking({
         ← {t('checklists.backToList', 'All checklists')}
       </button>
       <AppearanceBlock appearance={checklist.appearance} kind="header" style={{ marginBottom: 8 }}>
-      <h1 style={{ color: COLORS.text, marginBottom: 4 }}>{checklist.title}</h1>
+      <h1 style={{ color: COLORS.text, marginBottom: 4 }}><RichText value={checklist.title} /></h1>
       {checklist.description && <p style={{ color: COLORS.muted }}><RichDescription value={checklist.description} /></p>}
       {/* PR 421: extra pictures of the sheet, visible during the pass. */}
       {checklist.photos && checklist.photos.length > 0 && <ChecklistPhotoStrip checklistId={checklist.id} photos={checklist.photos} title={checklist.title} />}

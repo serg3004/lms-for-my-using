@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import type { Appearance } from '@lms/shared/checklist-appearance';
 import type { FeedbackLayout } from '@lms/shared/checklist-feedback';
 import type { TFunction } from 'i18next';
@@ -44,7 +45,7 @@ export function isUntouchedDraft(checklist: ChecklistSummary, defaultTitle: stri
 export function filterChecklists(checklists: ChecklistSummary[], search: string, statusFilter: 'all' | ChecklistStatus) {
   return checklists.filter((checklist) => {
     if (statusFilter !== 'all' && checklist.status !== statusFilter) return false;
-    return !search.trim() || checklist.title.toLowerCase().includes(search.trim().toLowerCase());
+    return !search.trim() || plainText(checklist.title).toLowerCase().includes(search.trim().toLowerCase());
   });
 }
 

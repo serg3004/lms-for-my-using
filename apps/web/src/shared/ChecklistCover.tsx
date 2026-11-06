@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -30,7 +31,7 @@ export function ChecklistCover({ checklistId, coverUpdatedAt, title, ratio = '16
       <div style={frame}>
         <img
           src={url}
-          alt={t('checklists.cover.alt', 'Cover of the checklist “{{title}}”', { title })}
+          alt={t('checklists.cover.alt', 'Cover of the checklist “{{title}}”', { title: plainText(title) })}
           onError={() => setBrokenUrl(url)}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />

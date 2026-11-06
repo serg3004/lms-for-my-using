@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -222,7 +223,7 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
   ];
 
   const columns: Column<ChecklistSessionSummary>[] = [
-    { key: 'checklist', label: t('admin.checklists.sessions.columns.checklist', 'Checklist'), render: (row) => <Link to={`${reportBase}/${row.id}`}>{row.checklist.title}</Link>, priority: 'primary' },
+    { key: 'checklist', label: t('admin.checklists.sessions.columns.checklist', 'Checklist'), render: (row) => <Link to={`${reportBase}/${row.id}`}>{plainText(row.checklist.title)}</Link>, priority: 'primary' },
     { key: 'learner', label: t('admin.checklists.sessions.columns.learner', 'Employee'), render: (row) => formatParticipantName(row.learner), priority: 'primary' },
     {
       key: 'observer',
@@ -389,7 +390,7 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
           <select id="sessions-filter-checklist" onChange={(e) => changeFilter({ checklistId: e.target.value })} value={checklistFilter}>
             <option value="">{t('admin.checklists.sessions.checklistFilterAll', 'All checklists')}</option>
             {checklistOptions.map((checklist) => (
-              <option key={checklist.id} value={checklist.id}>{checklist.title}</option>
+              <option key={checklist.id} value={checklist.id}>{plainText(checklist.title)}</option>
             ))}
           </select>
         </FormField>
@@ -449,7 +450,7 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
         emptyMessage={t('admin.checklists.sessions.empty', 'No sessions match these filters.')}
         keyExtractor={(row) => row.id}
         label={t('admin.checklists.sessions.title', 'Sessions')}
-        responsiveDetails={{ label: t('courses.details'), expandLabel: (row) => `${t('courses.details')}: ${row.checklist.title}`, collapseLabel: (row) => `${t('courses.details')}: ${row.checklist.title}` }}
+        responsiveDetails={{ label: t('courses.details'), expandLabel: (row) => `${t('courses.details')}: ${plainText(row.checklist.title)}`, collapseLabel: (row) => `${t('courses.details')}: ${plainText(row.checklist.title)}` }}
         onRowClick={(row) => navigate(`${reportBase}/${row.id}`)}
         rows={loadState.data.sessions}
         selection={{
@@ -458,7 +459,7 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
           isRowSelectable: canExportSummary,
           selectedLabel: (count) => t('common.selectedCount', { count }),
           selectAllLabel: t('admin.checklists.sessions.summarySelectAll', 'Select all completed sessions'),
-          rowLabel: (row) => t('admin.checklists.sessions.summarySelectRow', 'Select for summary: {{title}}, {{employee}}', { title: row.checklist.title, employee: formatParticipantName(row.learner) }),
+          rowLabel: (row) => t('admin.checklists.sessions.summarySelectRow', 'Select for summary: {{title}}, {{employee}}', { title: plainText(row.checklist.title), employee: formatParticipantName(row.learner) }),
         }}
         batchActions={(selected) => <ChecklistSummarySelection selected={selected} t={t} />}
       />

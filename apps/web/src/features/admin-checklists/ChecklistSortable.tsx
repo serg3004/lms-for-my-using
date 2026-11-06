@@ -17,6 +17,7 @@ import {
 } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { plainText } from '@lms/shared/rich-text';
 import type { TFunction } from 'i18next';
 import type { ChecklistItemGroup, ChecklistItemSummary } from '../../shared/api/types.js';
 import { UNGROUPED, buildLayout, finishDrag, layoutBuckets, moveItemAcrossContainers, sameLayout, type Layout, type LayoutBucket } from './layout.js';
@@ -71,7 +72,11 @@ type Options = {
 
 export function useChecklistLayoutDnd({ items, groups, t, onCommit }: Options) {
   const base = useMemo(() => buildLayout(items, groups), [items, groups]);
-  const [draft, setDraft] = useState<Layout | null>(null);
+  const [draft, setDraftState] = useState<Layout | null>(null);
+  // The newest layout of the drag in progress. React may not have rendered the last drag-over yet when the pointer is
+  // released (slow device, many editors on the page); the drop must still use it, not the previous render's `draft`.
+  const draftRef = useRef<Layout | null>(null);
+  const setDraft = (next: Layout | null) => { draftRef.current = next; setDraftState(next); };
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -80,7 +85,7 @@ export function useChecklistLayoutDnd({ items, groups, t, onCommit }: Options) {
   const buckets: LayoutBucket[] = useMemo(() => (draft ? layoutBuckets(draft, items, groups) : []), [draft, items, groups]);
   const groupIdSet = useMemo(() => new Set(groups.map((group) => group.id)), [groups]);
 
-  const nameOf = (id: string) => groups.find((group) => group.id === id)?.title ?? items.find((item) => item.id === id)?.text ?? '';
+  const nameOf = (id: string) => plainText(groups.find((group) => group.id === id)?.title ?? items.find((item) => item.id === id)?.text ?? '');
   const lastOverId = useRef<string | null>(null);
   // Pointer first, then rectangle overlap (keyboard has no pointer). A hovered group resolves to its
   // nearest criterion so the drop position inside the group is meaningful.
@@ -107,10 +112,10 @@ export function useChecklistLayoutDnd({ items, groups, t, onCommit }: Options) {
     if (!over) return;
     const rect = active.rect.current.translated;
     const below = rect != null && rect.top > over.rect.top + over.rect.height / 2;
-    setDraft((current) => moveItemAcrossContainers(current ?? base, String(active.id), String(over.id), below));
+    setDraft(moveItemAcrossContainers(draftRef.current ?? base, String(active.id), String(over.id), below));
   }
   function onDragEnd({ active, over }: DragEndEvent) {
-    const current = draft ?? base;
+    const current = draftRef.current ?? base;
     const final = over ? finishDrag(current, String(active.id), String(over.id)) : current;
     setDraft(null);
     if (!sameLayout(final, base)) onCommit(final);

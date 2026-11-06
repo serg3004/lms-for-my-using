@@ -1,3 +1,4 @@
+import { plainText } from '@lms/shared/rich-text';
 import { useEffect, useId, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { ApiClientError } from '../shared/apiClient.js';
@@ -124,7 +125,7 @@ function SessionCard({ session, onOpen, onMarkUnavailable, t }: { session: Check
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-          <strong>{session.checklist.title}</strong>
+          <strong>{plainText(session.checklist.title)}</strong>
           <Badge variant={CHECKLIST_SESSION_STATUS_BADGE_VARIANT[session.status]} style={{ color: COLORS.text }}>
             {t(`checklistSessions.status.${session.status}`, session.status)}
           </Badge>

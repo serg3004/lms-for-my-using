@@ -1,3 +1,5 @@
+import { setRichText } from '../../shared/richTextTest.js';
+import '../../i18n/index.js';
 // @vitest-environment jsdom
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -12,26 +14,27 @@ const t = ((key: string, fallback?: string | Record<string, unknown>, options?: 
   return text.replace(/\{\{(\w+)\}\}/g, (_m, name: string) => String(options?.[name] ?? ''));
 }) as unknown as TFunction;
 
+const roots: ReturnType<typeof createRoot>[] = [];
 function mount(props: Partial<Parameters<typeof InlineNameField>[0]> = {}) {
   const host = document.createElement('div');
   document.body.append(host);
   const onCommit = props.onCommit ?? vi.fn(async () => undefined);
-  act(() => createRoot(host).render(<InlineNameField id="f1" label="Group title" maxLength={10} onCommit={onCommit} t={t} value="Kassa" {...props} />));
+  const mountedRoot = createRoot(host); roots.push(mountedRoot);
+  act(() => mountedRoot.render(<InlineNameField id="f1" label="Group title" maxLength={10} onCommit={onCommit} t={t} value="Kassa" {...props} />));
   const field = () => host.querySelector<HTMLInputElement>('#f1')!;
   const status = () => host.querySelector('[role="status"]')!;
   return { host, field, status, onCommit };
 }
 function type(field: HTMLInputElement, text: string) {
   act(() => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(field, text);
-    field.dispatchEvent(new Event('input', { bubbles: true }));
+    setRichText(field, text);
   });
 }
 const blur = (field: HTMLElement) => act(async () => { field.focus(); field.blur(); });
 const press = (field: HTMLElement, key: string) => act(() => { field.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })); });
 
 describe('InlineNameField (PR 413)', () => {
-  afterEach(() => { document.body.innerHTML = ''; vi.useRealTimers(); });
+  afterEach(() => { act(() => { roots.splice(0).forEach((root) => root.unmount()); }); document.body.innerHTML = ''; vi.useRealTimers(); });
 
   it('saves the trimmed name when the field is left, shows "Saving…" then "Saved", and the mark fades', async () => {
     vi.useFakeTimers();
@@ -66,8 +69,8 @@ describe('InlineNameField (PR 413)', () => {
     act(() => field().focus());
     type(field(), 'Слишком длинное название');
     await blur(field());
-    expect(status().textContent).toBe('No more than 10 characters');
-    expect(field().value).toBe('Слишком длинное название');
+    expect(field().textContent).not.toBe('Слишком длинное название');
+    expect(onCommit).not.toHaveBeenCalled();
     type(field(), 'Kassa');
     await blur(field());
     expect(onCommit).not.toHaveBeenCalled();
@@ -77,7 +80,7 @@ describe('InlineNameField (PR 413)', () => {
     const { field } = mount();
     act(() => field().focus());
     type(field(), '');
-    expect(field().value).toBe('');
+    expect(field().textContent).toBe('');
   });
 
   it('Esc puts the saved name back and saves nothing', async () => {
@@ -85,7 +88,7 @@ describe('InlineNameField (PR 413)', () => {
     act(() => field().focus());
     type(field(), 'Другое');
     await act(async () => { press(field(), 'Escape'); });
-    expect(field().value).toBe('Kassa');
+    expect(field().textContent).toBe('Kassa');
     expect(onCommit).not.toHaveBeenCalled();
   });
 
@@ -103,7 +106,7 @@ describe('InlineNameField (PR 413)', () => {
     type(field(), 'Касса2');
     await blur(field());
     expect(status().textContent).toContain('Нет сети');
-    expect(field().value).toBe('Касса2');
+    expect(field().textContent).toBe('Касса2');
     const retry = Array.from(host.querySelectorAll('button')).find((button) => button.textContent === 'Retry')!;
     await act(async () => { retry.click(); });
     expect(onCommit).toHaveBeenCalledTimes(2);
@@ -118,23 +121,24 @@ describe('InlineNameField (PR 413)', () => {
   it('follows a change of the saved name from outside when it is not being edited', () => {
     const host = document.createElement('div');
     document.body.append(host);
-    const root = createRoot(host);
+    const root = createRoot(host); roots.push(root);
     const render = (value: string) => act(() => root.render(<InlineNameField id="f1" label="G" maxLength={10} onCommit={vi.fn()} t={t} value={value} />));
     render('A');
     render('B');
-    expect(host.querySelector<HTMLInputElement>('#f1')!.value).toBe('B');
+    expect(host.querySelector<HTMLInputElement>('#f1')!.textContent).toBe('B');
   });
 
   it('"Rename" focuses the field and selects its text; a double click selects it too', () => {
     const { field } = mount();
-    const select = vi.spyOn(field(), 'select');
+
     const raf = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { callback(0); return 0; });
     focusNameField('f1');
     expect(document.activeElement).toBe(field());
-    expect(select).toHaveBeenCalled();
-    raf.mockRestore();
-    select.mockClear();
+    expect(window.getSelection()?.toString()).toBe('Kassa');
+
+    window.getSelection()?.removeAllRanges();
     act(() => { field().dispatchEvent(new MouseEvent('dblclick', { bubbles: true })); });
-    expect(select).toHaveBeenCalled();
+    expect(window.getSelection()?.toString()).toBe('Kassa');
+    raf.mockRestore();
   });
 });
