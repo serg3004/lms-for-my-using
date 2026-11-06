@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiClientError } from '../../shared/apiClient.js';
 import { deleteChecklistCover, uploadChecklistCover } from '../../shared/api/checklists.js';
 import { ChecklistCover } from '../../shared/ChecklistCover.js';
-import { CHECKLIST_PHOTO_ACCEPT, CHECKLIST_PHOTO_MAX_MB, checklistPhotoErrorMessage, validateChecklistPhoto } from '../../shared/checklistPhoto.js';
+import { CHECKLIST_PHOTO_ACCEPT, CHECKLIST_PHOTO_MAX_MB, checklistPhotoErrorMessage, checklistUploadErrorMessage, isRetryableUploadError, validateChecklistPhoto } from '../../shared/checklistPhoto.js';
 import { Button } from '../../shared/ui.js';
 
 /** PR 355: upload, replace and remove the cover in the builder. Own state keeps the builder's form state untouched. */
@@ -18,6 +18,7 @@ export function ChecklistCoverField({ checklistId, title, coverUpdatedAt }: {
   const [current, setCurrent] = useState<string | null>(coverUpdatedAt ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retryFile, setRetryFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setCurrent(coverUpdatedAt ?? null); }, [coverUpdatedAt]);
@@ -31,13 +32,19 @@ export function ChecklistCoverField({ checklistId, title, coverUpdatedAt }: {
       setError(checklistPhotoErrorMessage(invalid, t));
       return;
     }
+    await upload(file);
+  }
+
+  async function upload(file: File) {
     setBusy(true);
     setError(null);
+    setRetryFile(null);
     try {
       const saved = await uploadChecklistCover(checklistId, file);
       setCurrent(saved.coverUpdatedAt);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t('admin.checklists.cover.uploadError', 'Unable to upload the cover.'));
+      setError(checklistUploadErrorMessage(err, t('admin.checklists.cover.uploadError', 'Unable to upload the cover.'), t));
+      setRetryFile(isRetryableUploadError(err) ? file : null);
     } finally {
       setBusy(false);
     }
@@ -74,7 +81,12 @@ export function ChecklistCoverField({ checklistId, title, coverUpdatedAt }: {
           </Button>
         )}
       </div>
-      {error && <p role="alert" style={{ color: 'var(--color-danger, #dc2626)', margin: 0 }}>{error}</p>}
+      {error && (
+        <p role="alert" style={{ color: 'var(--color-danger, #dc2626)', margin: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+          <span>{error}</span>
+          {retryFile && <button type="button" className="admin-btn admin-btn--sm" disabled={busy} style={{ minHeight: 44 }} onClick={() => void upload(retryFile)}>{t('checklists.photoRetry', 'Retry')}</button>}
+        </p>
+      )}
     </div>
   );
 }

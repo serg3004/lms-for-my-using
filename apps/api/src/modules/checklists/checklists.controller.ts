@@ -1,6 +1,6 @@
 import { presentLearnerInstance, presentLearnerReport, withoutLearnerPoints } from './checklist-learner-result.js';
 import { MAX_SESSION_IMPORT_BYTES, type SessionImportFile } from './checklist-session-import.js';
-import { BadRequestException, Body, Controller, ForbiddenException, NotFoundException, Get, Headers, Param, Patch, Post, Put, Delete, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Logger, ForbiddenException, NotFoundException, Get, Headers, Param, Patch, Post, Put, Delete, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { AuthGuard } from '../auth/public.js';
@@ -94,6 +94,8 @@ type PdfDownloadResponse = {
 @Controller()
 @UseGuards(AuthGuard, RolesGuard)
 export class ChecklistsController {
+  private readonly logger = new Logger(ChecklistsController.name);
+
   constructor(
     private readonly checklistsService: ChecklistsService,
     private readonly uploadService: UploadService,
@@ -360,10 +362,16 @@ export class ChecklistsController {
     }
     validateUploadFile(file);
     const { caption } = sheetPhotoCaptionSchema.parse(body ?? {});
+    // PR 432: step timings, so a slow or stuck upload shows where the time goes.
+    const startedAt = Date.now();
+    this.logger.log(`Sheet photo ${checklistId}: received ${file.size} bytes`);
     await this.checklistsService.assertSheetPhotoRoom(checklistId, user.organizationId);
     const uploaded = await this.uploadService.uploadChecklistSheetPhoto(file, user.organizationId, checklistId);
+    this.logger.log(`Sheet photo ${checklistId}: stored after ${Date.now() - startedAt} ms`);
     try {
-      return await this.checklistsService.addSheetPhoto(checklistId, user.organizationId, user.id, uploaded, caption);
+      const created = await this.checklistsService.addSheetPhoto(checklistId, user.organizationId, user.id, uploaded, caption);
+      this.logger.log(`Sheet photo ${checklistId}: saved after ${Date.now() - startedAt} ms`);
+      return created;
     } catch (error) {
       await this.uploadService.deleteObject(uploaded.objectKey).catch(() => undefined);
       throw error;

@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next';
 
-import { MAX_BUFFERED_UPLOAD_SIZE_BYTES } from './apiClient.js';
+import { ApiClientError, MAX_BUFFERED_UPLOAD_SIZE_BYTES } from './apiClient.js';
 
 /**
  * Client-side pre-check for checklist item photos (PR 348). The server stays authoritative:
@@ -38,4 +38,19 @@ export function checklistPhotoHint(cameraOnly: boolean, t: TFunction): string {
   return cameraOnly
     ? `${limit} ${t('checklists.photoCameraOnlyHint', 'The photo can only be taken with the camera. This is an interface restriction, not a server check.')}`
     : limit;
+}
+
+/** PR 432: an upload that did not finish in time says what to do, in the interface language, instead of "Request timed out". */
+export function checklistUploadErrorMessage(error: unknown, fallback: string, t: TFunction): string {
+  if (error instanceof ApiClientError) {
+    return error.status === 408
+      ? t('checklists.photoUploadTimeout', 'The image was not uploaded in time. Check the network and try again.')
+      : error.message;
+  }
+  return fallback;
+}
+
+/** A timeout or a lost connection is worth another attempt with the same file; a rejection by the server is not. */
+export function isRetryableUploadError(error: unknown): boolean {
+  return !(error instanceof ApiClientError) || error.status === 408;
 }

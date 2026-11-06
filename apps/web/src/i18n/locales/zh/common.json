@@ -2896,6 +2896,8 @@
     "photoLimitHint": "照片：JPEG、PNG、GIF 或 WEBP，不超过 {{max}} MB。",
     "photoCameraOnlyHint": "只能用相机拍摄照片。这是界面限制，不是服务器检查。",
     "photoTooLarge": "文件超过 {{max}} MB。请选择更小的照片。",
+    "photoUploadTimeout": "图片未能在规定时间内上传。请检查网络后重试。",
+    "photoRetry": "重试",
     "photoEmpty": "文件为空。请选择其他照片。",
     "photoUnsupportedType": "只能附加 JPEG、PNG、GIF 和 WEBP 照片。",
     "free": {

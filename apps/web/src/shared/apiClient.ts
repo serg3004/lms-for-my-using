@@ -288,6 +288,8 @@ export async function uploadMaterialFileMultipart(
 }
 
 const REQUEST_TIMEOUT_MS = 30_000;
+/** PR 432: a file upload (multipart body) on a slow mobile network needs far longer than an ordinary request. */
+export const UPLOAD_TIMEOUT_MS = 180_000;
 let refreshRequest: Promise<boolean> | null = null;
 let successfulRefreshCount = 0;
 
@@ -363,7 +365,7 @@ function failedResponseError(response: Response, body: unknown) {
 }
 
 export async function apiRequest<TResponse>(path: string, init: RequestInit = {}) {
-  const response = await apiResponse(path, init, REQUEST_TIMEOUT_MS);
+  const response = await apiResponse(path, init, init.body instanceof FormData ? UPLOAD_TIMEOUT_MS : REQUEST_TIMEOUT_MS);
   const body = await parseJsonResponse(response);
 
   if (!response.ok) {

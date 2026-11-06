@@ -76,6 +76,20 @@ describe('ChecklistPhotosField (PR 421)', () => {
     expect(container.querySelector('[role="alert"]')).toBeNull();
   });
 
+  it('says in the interface language that the upload timed out and retries with the same file', async () => {
+    await render([photo(1)]);
+    api.uploadChecklistPhoto.mockRejectedValueOnce(new ApiClientError('Request timed out', 408));
+    const file = new File(['x'], 'a.png', { type: 'image/png' });
+    await pick(file);
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Изображение не загрузилось за отведённое время');
+    expect(container.querySelector('[role="alert"]')?.textContent).not.toContain('Request timed out');
+    api.uploadChecklistPhoto.mockResolvedValueOnce(photo(2));
+    await act(async () => { button('Повторить')!.click(); });
+    expect(api.uploadChecklistPhoto).toHaveBeenLastCalledWith('c1', file);
+    expect(captions()).toEqual(['Схема 1', 'Схема 2']);
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+  });
+
   it('shows the server message when the upload fails and keeps the list', async () => {
     await render([photo(1)]);
     api.uploadChecklistPhoto.mockRejectedValue(new ApiClientError('Лимит исчерпан', 409));
