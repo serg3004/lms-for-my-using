@@ -94,14 +94,14 @@ test.describe('Checklist editor: criterion row (PR 403)', () => {
     const row = page.locator('.admin-criteria-row:not(.admin-criteria-row--head)').first();
     await row.getByRole('button', { name: /Перетащить критерий/ }).focus();
     const seen: string[] = [];
-    for (let step = 0; step < 9; step += 1) {
+    for (let step = 0; step < 10; step += 1) {
       // The criterion text is a rich field now: its accessible name comes from aria-labelledby.
       seen.push(await page.evaluate(() => { const e = document.activeElement as HTMLElement; const labelledBy = e.getAttribute('aria-labelledby'); return e.getAttribute('aria-label') ?? (labelledBy ? document.getElementById(labelledBy)?.textContent : null) ?? e.textContent ?? ''; }));
       await page.keyboard.press('Tab');
     }
     // The first row's "up" arrow is disabled, so focus skips it.
     expect(seen.map((label) => label.replace(/:.*/, ''))).toEqual([
-      'Перетащить критерий', 'Переместить вниз', 'Критерий', 'Шкала', 'Баллы', 'Вес', 'Обязательный пункт', 'Требуется фото', '⋮Действия',
+      'Перетащить критерий', 'Переместить вниз', 'Критерий', 'Шкала', 'Баллы', 'Вес', 'Обязательный пункт', 'Требуется фото', 'Оформление блока', '⋮Действия',
     ]);
   });
 });
