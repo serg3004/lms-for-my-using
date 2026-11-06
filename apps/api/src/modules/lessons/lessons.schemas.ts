@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { richTextSchema } from '@lms/shared/rich-text';
 
 export const lessonStatusSchema = z.enum(['draft', 'published', 'archived']);
 export const lessonTypeSchema = z.enum(['video', 'text', 'test', 'checklist', 'workplace_check', 'photo', 'practical', 'longread']);
@@ -15,7 +16,7 @@ export const createLessonSchema = z.object({
   courseId: z.string().uuid(),
   title: z.string().trim().min(1).max(160),
   slug: lessonSlugSchema,
-  description: z.string().trim().max(1000).optional(),
+  description: richTextSchema(1000).optional(),
   type: lessonTypeSchema.default('text'),
   order: z.number().int().min(0).default(0),
   status: lessonStatusSchema.default('draft'),
@@ -31,7 +32,7 @@ export type UpdateLessonStatusInput = z.infer<typeof updateLessonStatusSchema>;
 export const updateLessonSchema = z
   .object({
     title: z.string().trim().min(1).max(160),
-    description: z.string().trim().max(1000).nullable(),
+    description: richTextSchema(1000).nullable(),
     type: lessonTypeSchema,
     order: z.number().int().min(0),
     status: lessonStatusSchema,

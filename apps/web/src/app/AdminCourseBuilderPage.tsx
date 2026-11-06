@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next';
+import { RichTextField } from '../shared/RichTextField.js';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { OrganizationLongreadSettings, useOrganizationLongreads } from '../features/longread-settings/OrganizationLongreadSettings.js';
@@ -262,15 +263,7 @@ export function AdminCourseBuilderPage() {
                   }}
                 />
               </FormField>
-              <FormField id="cb-desc" label={t('admin.courses.form.description', 'Description')}>
-                <textarea
-                  id="cb-desc"
-                  rows={4}
-                  maxLength={1000}
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                />
-              </FormField>
+              <RichTextField id="cb-desc" label={t('admin.courses.form.description', 'Description')} value={formDescription} maxLength={1000} onChange={(next) => setFormDescription(next)} />
               {saveState.status === 'error' ? (
                 <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--color-danger)' }} role="alert">
                   {saveState.message}
@@ -446,15 +439,7 @@ export function AdminCourseBuilderPage() {
               }}
             />
           </FormField>
-          <FormField id="lesson-desc" label={t('admin.courses.form.description', 'Description')}>
-            <textarea
-              id="lesson-desc"
-              maxLength={1000}
-              rows={3}
-              value={lessonDesc}
-              onChange={(e) => setLessonDesc(e.target.value)}
-            />
-          </FormField>
+          <RichTextField id="lesson-desc" label={t('admin.courses.form.description', 'Description')} value={lessonDesc} maxLength={1000} onChange={(next) => setLessonDesc(next)} />
           {lessonFormState.status === 'error' ? (
             <p className="admin-form__error" role="alert">{lessonFormState.message}</p>
           ) : null}

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { richTextSchema } from '@lms/shared/rich-text';
 
 export const courseStatusSchema = z.enum(['draft', 'published', 'archived']);
 
@@ -15,7 +16,7 @@ export const createCourseSchema = z.object({
   organizationId: z.string().uuid(),
   title: z.string().trim().min(1).max(160),
   slug: courseSlugSchema,
-  description: z.string().trim().max(1000).optional(),
+  description: richTextSchema(1000).optional(),
   category: courseCategorySchema.optional(),
   durationMinutes: z.number().int().min(1).max(10_000).optional(),
   status: courseStatusSchema.default('draft'),

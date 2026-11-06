@@ -1,6 +1,7 @@
 import type { Browser, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/isolated-test.js';
+import { fillRich } from '../fixtures/rich-fill.js';
 
 const organization = 'demo-company';
 const organizationId = '10000000-0000-4000-8000-000000000001';
@@ -128,7 +129,7 @@ test.describe('instructor workspace', () => {
 
     await page.locator('input[name="title"]').fill(isolatedCourse.title);
     await page.locator('input[name="slug"]').fill(isolatedCourse.slug);
-    await page.locator('textarea[name="description"]').fill('Created by an isolated browser test');
+    await fillRich(page, page.getByRole('textbox', { name: /Описание/ }), 'Created by an isolated browser test');
     const createResponsePromise = page.waitForResponse((response) =>
       new URL(response.url()).pathname === '/api/v1/courses' && response.request().method() === 'POST');
     await page.getByRole('button', { name: 'Создать' }).click();

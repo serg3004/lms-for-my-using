@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { RichText } from '../shared/RichText.js';
 import { formatDate } from '../shared/formatDate.js';
 
 import { listAssignments } from '../shared/api/assignments.js';
@@ -170,7 +171,7 @@ export function LearnerCourseDetailPage({ courseId }: { courseId: string }) {
 
             {course.description ? (
               <p className="lcd-description" style={{ marginTop: '20px' }}>
-                {course.description}
+                <RichText value={course.description} />
               </p>
             ) : null}
           </div>

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { RichText, plainText } from '../shared/RichText.js';
 
 import { AssessmentAttemptResult, getAttemptResult } from '../shared/apiClient.js';
 import { PageState } from '../shared/ui.js';
@@ -52,8 +53,8 @@ export function LearnerAssessmentReviewPage({ attemptId }: { attemptId: string }
       <div className={`learner-quiz__result-banner ${result.passed ? 'learner-quiz__result-banner--passed' : 'learner-quiz__result-banner--failed'}`}>
         <span className="learner-quiz__result-label">
           {result.passed
-            ? result.assessment.passMessage || t('assessments.resultPassed')
-            : result.assessment.failMessage || t('assessments.resultFailed')}
+            ? (plainText(result.assessment.passMessage ?? '') ? <RichText value={result.assessment.passMessage ?? ''} /> : t('assessments.resultPassed'))
+            : (plainText(result.assessment.failMessage ?? '') ? <RichText value={result.assessment.failMessage ?? ''} /> : t('assessments.resultFailed'))}
         </span>
         <span className="learner-quiz__result-score">
           {t('assessments.resultScore', { score: result.score, maxScore: result.maxScore, percentage: result.percentage })}
