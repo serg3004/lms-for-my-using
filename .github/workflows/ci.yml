@@ -18,6 +18,37 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
+  changes:
+    name: Detect docs-only change
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      docs_only: ${{ steps.detect.outputs.docs_only }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Fail-safe: any error, push event, empty diff or path outside the closed
+      # allowlist in scripts/ci-docs-only.sh yields docs_only=false (full CI).
+      - name: Classify changed files
+        id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          docs_only=false
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            if files="$(git diff --name-only --no-renames "$BASE_SHA...$HEAD_SHA")"; then
+              docs_only="$(printf '%s\n' "$files" | scripts/ci-docs-only.sh || echo false)"
+            fi
+          fi
+          echo "docs_only=$docs_only"
+          echo "docs_only=$docs_only" >> "$GITHUB_OUTPUT"
+
   quality:
     name: Quality & security
     runs-on: ubuntu-latest
@@ -91,6 +122,9 @@ jobs:
       - name: Release gate contract tests
         run: pnpm release:gate:test
 
+      - name: CI docs-only classifier tests
+        run: bash scripts/ci-docs-only.test.sh
+
       - name: Documentation consistency
         run: pnpm docs:consistency:test
 
@@ -106,6 +140,8 @@ jobs:
   tests:
     name: Tests
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     timeout-minutes: 15
 
     services:
@@ -174,6 +210,8 @@ jobs:
   database:
     name: Database tests
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     timeout-minutes: 15
 
     services:
@@ -224,6 +262,8 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     timeout-minutes: 15
 
     steps:
@@ -253,6 +293,8 @@ jobs:
   e2e:
     name: Browser E2E (${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     timeout-minutes: 25
     strategy:
       fail-fast: false
@@ -362,6 +404,8 @@ jobs:
   accessibility:
     name: Accessibility
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     timeout-minutes: 15
 
     services:
@@ -453,6 +497,8 @@ jobs:
   visual:
     name: Visual regression (${{ matrix.shard }}/2)
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.docs_only != 'true'
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -565,6 +611,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     needs:
+      - changes
       - quality
       - tests
       - database
@@ -577,6 +624,8 @@ jobs:
     steps:
       - name: Verify required CI jobs
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          DOCS_ONLY: ${{ needs.changes.outputs.docs_only }}
           QUALITY_RESULT: ${{ needs.quality.result }}
           TESTS_RESULT: ${{ needs.tests.result }}
           DATABASE_RESULT: ${{ needs.database.result }}
@@ -589,8 +638,20 @@ jobs:
           set -euo pipefail
 
           failures=0
+          # Heavy jobs may be skipped only when the change is docs-only.
+          # The classifier and Quality & security must always succeed.
           for entry in \
-            "quality=$QUALITY_RESULT" \
+            "changes=$CHANGES_RESULT" \
+            "quality=$QUALITY_RESULT"; do
+            job="${entry%%=*}"
+            result="${entry#*=}"
+            echo "$job: $result"
+            if [[ "$result" != "success" ]]; then
+              failures=1
+            fi
+          done
+
+          for entry in \
             "tests=$TESTS_RESULT" \
             "database=$DATABASE_RESULT" \
             "build=$BUILD_RESULT" \
@@ -601,9 +662,13 @@ jobs:
             job="${entry%%=*}"
             result="${entry#*=}"
             echo "$job: $result"
-            if [[ "$result" != "success" ]]; then
-              failures=1
+            if [[ "$result" == "success" ]]; then
+              continue
             fi
+            if [[ "$result" == "skipped" && "$DOCS_ONLY" == "true" ]]; then
+              continue
+            fi
+            failures=1
           done
 
           if [[ "$failures" -ne 0 ]]; then
