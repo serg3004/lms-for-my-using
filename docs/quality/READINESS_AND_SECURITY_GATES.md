@@ -27,6 +27,8 @@ On failed required dependency, the public readiness contract uses the canonical 
 
 Workflow implementation is owned by `.github/workflows/ci.yml` and `.github/workflows/codeql.yml`. The current CI chain includes documentation consistency together with security, lint/typecheck/tests/build and other configured repository gates; exact job topology must be read from the workflow when making a current claim.
 
+The Browser E2E job has a 25-minute overall budget, including dependency installation and Playwright browser setup. This job budget does not change individual test timeouts, retries or the test set; an incomplete browser run does not satisfy the gate.
+
 Documentation consistency is invoked through `pnpm docs:consistency:test`; generated drift and docs-impact enforcement remain inside that chain.
 
 ### Dependency audit semantics
