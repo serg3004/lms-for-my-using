@@ -52,7 +52,7 @@ export function longreadEditorServer(initial: LongreadDraft = longreadFixture) {
     await page.goto(`/${role}/lessons/${longreadLessonId}/longread`);
     if (!options.denied) {
       await expect(page.getByRole('heading', { level: 1, name: 'Безопасная работа' })).toBeVisible();
-      if (['paragraph', 'heading', 'quote', 'note', 'list'].includes(initial.chapters[0]?.blocks[0]?.type ?? '')) await expect(page.locator('.tiptap')).toBeVisible();
+      if (['paragraph', 'heading', 'quote', 'note', 'list'].includes(initial.chapters[0]?.blocks[0]?.type ?? '')) await expect(page.locator('.tiptap:not(.admin-textarea)')).toBeVisible();
       else await expect(page.locator('.lr-editor')).toBeVisible();
     }
   }

@@ -14,7 +14,7 @@ test('creating a longread from the lesson form opens its draft editor', async ({
   await dialog.getByLabel('Тип', { exact: true }).selectOption('longread');
   await dialog.getByRole('button', { name: 'Создать черновик', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/admin/lessons/${longreadLessonId}/longread$`));
-  await expect(page.locator('.tiptap')).toBeVisible(); expect(input).toMatchObject({ type: 'longread', status: 'draft' });
+  await expect(page.locator('.tiptap:not(.admin-textarea)')).toBeVisible(); expect(input).toMatchObject({ type: 'longread', status: 'draft' });
 });
 
 test('creates H1-H3, quote, note, divider and code with their properties', async ({ page }) => {
@@ -177,7 +177,7 @@ for (const locale of ['en', 'kk', 'zh'] as const) test(`editor controls are tran
 
 for (const denied of [403, 404]) test(`editor handles ${denied} without displaying draft content`, async ({ page }) => {
   await longreadEditorServer().attach(page, { denied });
-  await expect(page.getByRole('alert')).toBeVisible(); await expect(page.locator('.tiptap')).toHaveCount(0);
+  await expect(page.getByRole('alert')).toBeVisible(); await expect(page.locator('.tiptap:not(.admin-textarea)')).toHaveCount(0);
 });
 
 test('table: add row and column, merge and split cells keep every text after reload', async ({ page }) => {
