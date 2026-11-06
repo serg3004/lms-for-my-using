@@ -29,6 +29,8 @@ Workflow implementation is owned by `.github/workflows/ci.yml` and `.github/work
 
 The Browser E2E job has a 25-minute overall budget, including dependency installation and Playwright browser setup. This job budget does not change individual test timeouts, retries or the test set; an incomplete browser run does not satisfy the gate.
 
+CI runs unit tests (with coverage and script checks) and database tests (migrations plus API database integration tests) as two parallel jobs; the aggregate `Checks` job requires both, so the executed test set is unchanged. The container build and Trivy scan depend only on the application build and run in parallel with the other jobs; `Checks` still requires them. Jobs that run Playwright cache the downloaded browser by operating system, architecture and Playwright version; system packages are still installed on every run, and a cache miss installs the browser as before.
+
 Documentation consistency is invoked through `pnpm docs:consistency:test`; generated drift and docs-impact enforcement remain inside that chain.
 
 ### Dependency audit semantics
