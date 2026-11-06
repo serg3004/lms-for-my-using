@@ -20,6 +20,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   update-baselines:
@@ -102,6 +103,7 @@ jobs:
           NODE
 
       - name: Commit updated baselines
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -112,6 +114,16 @@ jobs:
           fi
           git commit -m "chore(e2e): regenerate visual baselines on ubuntu-latest Chromium"
           git push origin HEAD:${{ github.ref_name }}
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      # A push made with GITHUB_TOKEN does not start CI. Start it explicitly on the branch so the
+      # new baseline commit gets the same required checks as any other commit (workflow_dispatch
+      # started with GITHUB_TOKEN is allowed to trigger a run).
+      - name: Run CI on the baseline commit
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ci.yml --ref "${{ github.ref_name }}"
 
       - name: Upload failure artifacts
         if: failure()

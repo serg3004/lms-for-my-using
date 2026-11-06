@@ -77,6 +77,7 @@ Root `docs/` is not a writable backlog. Old trackers and the frozen development 
 - local/operational procedures: [`runbooks/`](./runbooks/)
 - release/pilot: [`runbooks/RELEASE_GATE.md`](./runbooks/RELEASE_GATE.md), [`runbooks/PILOT_CHECKLIST.md`](./runbooks/PILOT_CHECKLIST.md)
 - readiness/security semantics: [`quality/READINESS_AND_SECURITY_GATES.md`](./quality/READINESS_AND_SECURITY_GATES.md)
+- CI speed-up analysis and measurements (2026-11-06): [`quality/CI_SPEEDUP_ANALYSIS_2026-11-06.md`](./quality/CI_SPEEDUP_ANALYSIS_2026-11-06.md)
 - owner/business decisions: [`status/OPEN_DECISIONS.md`](./status/OPEN_DECISIONS.md)
 - generated current inventories: [`generated/`](./generated/)
 - UI prototype governance: [`lms-ui-prototypes-complete/README.md`](./lms-ui-prototypes-complete/README.md), [`lms-ui-prototypes-complete/manifest.json`](./lms-ui-prototypes-complete/manifest.json)

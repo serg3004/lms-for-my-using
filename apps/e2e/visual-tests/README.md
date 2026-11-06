@@ -28,6 +28,8 @@ dispatch it once the workflow file exists on the repository's default branch —
 so the first time this workflow is added, it needs to be merged before it can be
 run.
 
+A push made with the workflow token does not start pull-request CI, so after committing new baselines the workflow starts `ci.yml` on that branch with `workflow_dispatch` (`ci.yml` accepts this trigger for exactly this purpose). The resulting run reports the required `Checks` on the baseline commit; no manual re-run is needed.
+
 **Manual fallback** (only if you can't use the workflow above): from `apps/e2e`,
 on a machine as close to `ubuntu-latest` as possible with the exact Chromium
 build CI installs (`pnpm exec playwright install --with-deps chromium`), run:

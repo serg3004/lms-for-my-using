@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Started by update-visual-baselines.yml after its bot commit: pushes made with
+  # GITHUB_TOKEN do not trigger pull_request runs, so the commit would stay without checks.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
