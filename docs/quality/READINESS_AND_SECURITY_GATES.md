@@ -35,6 +35,8 @@ Documentation-only pull requests: the `changes` job lists the files of the pull 
 
 `ci.yml` also accepts `workflow_dispatch`. It is started by `update-visual-baselines.yml` after the bot commits regenerated visual baselines, because a push made with `GITHUB_TOKEN` does not start pull-request runs; the dispatched run reports the required `Checks` on that commit and always runs the full set (the docs-only skip applies to pull requests only).
 
+`codeql.yml` also accepts `workflow_dispatch` and is started by `update-visual-baselines.yml` together with CI: the `pull_request` runs for a bot-authored commit wait for manual approval ("Action required"), so the required `Analyze (javascript-typescript)` check on that commit comes from the dispatched run.
+
 Each Browser E2E shard has a 25-minute overall budget, including dependency installation and Playwright browser setup. This job budget does not change individual test timeouts, retries or the test set; an incomplete browser run does not satisfy the gate.
 
 CI runs unit tests (with coverage and script checks) and database tests (migrations plus API database integration tests) as two parallel jobs; the aggregate `Checks` job requires both, so the executed test set is unchanged. The container build and Trivy scan depend only on the application build and run in parallel with the other jobs; `Checks` still requires them. Jobs that run Playwright cache the downloaded browser by operating system, architecture and Playwright version; system packages are still installed on every run, and a cache miss installs the browser as before.
