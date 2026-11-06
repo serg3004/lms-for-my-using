@@ -131,8 +131,8 @@ test.describe('Checklist editor: drag-and-drop of groups and criteria (PR 402)',
   test('a group is dragged above the first one and the new order is saved once', async ({ page }) => {
     const state = seed();
     await openEditor(page, state);
-    await drag(page, groupCard(page, 'Группа 2').getByRole('button', { name: /Перетащить группу/ }), groupCard(page, 'Группа 1').locator('.admin-group-card__head'));
-    await expect.poll(() => state.layouts.length).toBe(1);
+    await dragUntil(page, state, groupCard(page, 'Группа 2').getByRole('button', { name: /Перетащить группу/ }), groupCard(page, 'Группа 1').locator('.admin-group-card__head'), () => state.layouts.length >= 1);
+    expect(state.layouts).toHaveLength(1);
     expect((state.layouts[0]!.groups as Array<{ id: string }>).map((group) => group.id)).toEqual(['g2', 'g1']);
     await expect.poll(() => order(page)).toEqual(['c', 'a', 'b', 'd']);
   });
