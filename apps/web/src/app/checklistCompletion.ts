@@ -17,7 +17,7 @@ export type ChecklistAnswerState = {
 };
 
 export function checklistItemLevels(item: Pick<ChecklistItemSummary, 'scale'>, scoringMode: ChecklistScoringMode, levels: ChecklistScaleLevel[] | null): ChecklistScaleLevel[] | null {
-  if (item.scale) return item.scale.levels.map((level) => ({ level: level.value, label: level.label, points: level.score }));
+  if (item.scale) return item.scale.levels.map((level) => ({ level: level.value, label: level.label, points: level.score, ...(level.color ? { color: level.color } : {}) }));
   return scoringMode === 'scale' ? levels ?? [] : null;
 }
 

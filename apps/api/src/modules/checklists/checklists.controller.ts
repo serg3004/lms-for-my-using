@@ -663,6 +663,29 @@ export class ChecklistsController {
       input,
     );
   }
+  @Delete('checklist-instances/:instanceId/items/:itemId/answer')
+  @Roles(...rolePolicies.checklistItemResultsWrite, ...rolePolicies.checklistSessionsRunOwn)
+  async clearItemAnswer(
+    @Param('instanceId') instanceId: string,
+    @Param('itemId') itemId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const user = request.currentUser!;
+    const isObserver = await this.reviewAccess.isAssignedObserver(user, instanceId);
+    if (!isObserver && !rolePolicies.checklistItemResultsWrite.some((role) => user.roles.includes(role))) {
+      throw new NotFoundException('Checklist assignment not found');
+    }
+    if (!isLearnerOnly(user.roles) && !isObserver) {
+      await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
+    }
+    return this.checklistsService.clearItemAnswer(
+      instanceId,
+      itemId,
+      user.organizationId,
+      user.id,
+      isObserver || !isLearnerOnly(user.roles),
+    );
+  }
   @Post('checklist-instances/:instanceId/items/:itemId/skip')
   @Roles(...rolePolicies.checklistItemResultsWrite, ...rolePolicies.checklistSessionsRunOwn)
   async skipItem(

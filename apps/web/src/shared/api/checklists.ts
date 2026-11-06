@@ -332,6 +332,14 @@ export function submitChecklistItemResult(
   );
 }
 
+/** PR 425: takes an answer back; the criterion becomes "not answered" again (photo and comment stay). */
+export function clearChecklistItemAnswer(instanceId: string, itemId: string) {
+  return apiRequest<ChecklistInstanceSummary>(
+    `/checklist-instances/${encodeURIComponent(instanceId)}/items/${encodeURIComponent(itemId)}/answer`,
+    { method: 'DELETE' },
+  );
+}
+
 export function skipChecklistItem(instanceId: string, itemId: string, input: { comment?: string } = {}) {
   return apiRequest<ChecklistInstanceSummary>(
     `/checklist-instances/${encodeURIComponent(instanceId)}/items/${encodeURIComponent(itemId)}/skip`,

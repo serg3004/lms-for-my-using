@@ -12,6 +12,7 @@ import type { ChecklistItemGroup, ChecklistItemSummary, ChecklistPhotoSummary, C
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, validateChecklistPhoto } from '../../shared/checklistPhoto.js';
 import { ChecklistPhotoStrip } from '../../shared/ChecklistPhotoStrip.js';
 import { Button } from '../../shared/ui.js';
+import { DEFAULT_LEVEL_COLORS, defaultLevelColor, levelPaint, NEUTRAL_LEVEL_COLOR } from '../../shared/levelPaint.js';
 import { AppearanceBlock, itemCardStyle } from '../../shared/AppearanceBlock.js';
 import type { Appearance } from '@lms/shared/checklist-appearance';
 import { computePreviewResult, groupItems, previewUnfinishedItems, type PreviewAnswer } from './domain.js';
@@ -176,6 +177,9 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
   );
 }
 
+/** PR 425: the patch that takes an answer back (the preview keeps only what was typed in the note). */
+const CLEARED_ANSWER: PreviewAnswer = { answered: false, skipped: false, checked: false, scaleLevel: undefined };
+
 function PreviewCriterion({ item, number, answer, levels, scoringMode, allowSkip, cameraOnly, appearance, onChange, t }: {
   appearance?: Appearance | null;
   item: ChecklistItemSummary; number: string; answer: PreviewAnswer | undefined; levels: ChecklistScaleLevel[] | null;
@@ -185,21 +189,30 @@ function PreviewCriterion({ item, number, answer, levels, scoringMode, allowSkip
   const photoInput = useRef<HTMLInputElement>(null);
   const [fileName, setFileName] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const options = levels ?? [
-    { level: 1, label: t('checklistPreview.yes', 'Yes'), points: scoringMode === 'all_required' ? 1 : item.points },
-    { level: 0, label: t('checklistPreview.no', 'No'), points: 0 },
+  const options: ChecklistScaleLevel[] = levels ?? [
+    { level: 1, label: t('checklistPreview.yes', 'Yes'), points: scoringMode === 'all_required' ? 1 : item.points, color: DEFAULT_LEVEL_COLORS.full },
+    { level: 0, label: t('checklistPreview.no', 'No'), points: 0, color: DEFAULT_LEVEL_COLORS.zero },
   ];
+  const bestPoints = Math.max(0, ...options.map((level) => level.points));
   const noteShown = isNoteOffered(item, answer && !answer.skipped ? answer : undefined, levels !== null);
   return <div data-criterion={item.id} style={itemCardStyle(appearance, item.id, { padding: '20px 0', borderBottom: '1px solid var(--color-border)' }, '#166534', answer?.answered === true)}>
     <CriterionHeading text={item.text} number={number} required={item.isRequired} t={t} />
     <ChecklistItemDescription item={item} t={t} />
     <div role="radiogroup" aria-required={item.isRequired} aria-label={checklistLabel(item.text, number)} style={{ display: 'grid', gap: 6, marginBottom: 12 }}>
-      {options.map((level) => <label key={level.level} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, cursor: 'pointer' }}>
-        <input type="radio" style={{ width: 'auto', flex: 'none' }} name={id} checked={!answer?.skipped && (levels ? answer?.scaleLevel === level.level : answer?.answered === true && answer.checked === (level.level === 1))}
-          onChange={() => onChange(levels ? { scaleLevel: level.level, skipped: false, answered: true } : { checked: level.level === 1, skipped: false, answered: true })} />
-        <span style={{ flex: 1 }}>{level.label}{level.description && <span style={{ display: 'block' }}><RichDescription value={level.description} /></span>}</span>
-      </label>)}
+      {options.map((level) => {
+        const selected = !answer?.skipped && (levels ? answer?.scaleLevel === level.level : answer?.answered === true && answer.checked === (level.level === 1));
+        // PR 425: the chosen option is washed with its level colour (own colour, else the default by score) and keeps a tick and a thick border besides.
+        const paint = selected ? levelPaint(scoringMode === 'none' ? NEUTRAL_LEVEL_COLOR : level.color ?? defaultLevelColor(level.points, bestPoints)) : null;
+        return <label key={level.level} data-selected={selected || undefined} style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, cursor: 'pointer', boxSizing: 'border-box', padding: '4px 10px', borderRadius: 10, borderWidth: 2, borderStyle: 'solid', borderColor: 'transparent', ...paint, fontWeight: selected ? 600 : undefined }}>
+          <input type="radio" style={{ width: 'auto', flex: 'none' }} name={id} checked={selected}
+            onClick={() => { if (selected) onChange(CLEARED_ANSWER); }}
+            onChange={() => onChange(levels ? { scaleLevel: level.level, skipped: false, answered: true } : { checked: level.level === 1, skipped: false, answered: true })} />
+          <span style={{ flex: 1 }}>{level.label}{level.description && <span style={{ display: 'block' }}><RichDescription value={level.description} /></span>}</span>
+          {selected && <span aria-hidden="true">✓</span>}
+        </label>;
+      })}
     </div>
+    {answer?.answered === true && !answer.skipped && <Button type="button" size="sm" variant="ghost" onClick={() => onChange(CLEARED_ANSWER)}>{t('checklistPreview.clearAnswer', 'Clear answer')}</Button>}
     {noteShown && <ChecklistNoteField id={`${id}-note`} onChange={(value) => onChange({ comment: value })} required={isNoteRequired(item, answer, levels !== null)} t={t} value={answer?.comment ?? ''} />}
     {allowSkip && <Button type="button" size="sm" variant="ghost" aria-pressed={answer?.skipped === true}
       onClick={() => onChange({ skipped: !answer?.skipped })}>{t('checklistSessions.conduct.skip', 'Skip')}</Button>}

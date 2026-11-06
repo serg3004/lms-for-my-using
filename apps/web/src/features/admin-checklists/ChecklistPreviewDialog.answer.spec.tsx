@@ -1,0 +1,85 @@
+// @vitest-environment jsdom
+import '../../i18n/index.js';
+
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import i18n from 'i18next';
+
+import type { ChecklistItemSummary } from '../../shared/api/types.js';
+import { ChecklistPreviewDialog } from './ChecklistPreviewDialog';
+
+vi.mock('../../shared/api/checklists.js', () => ({ listChecklistAnswerSets: vi.fn().mockResolvedValue([]) }));
+
+const t = i18n.t.bind(i18n);
+const item = (n: number, patch: Partial<ChecklistItemSummary> = {}) => ({ id: `i${n}`, checklistId: 'c', order: n, text: `Критерий ${n}`, groupId: null, points: 2, weight: 1, isRequired: true, photoRequired: false, allowSkip: false, scale: null, ...patch }) as unknown as ChecklistItemSummary;
+let root: ReturnType<typeof createRoot> | undefined;
+let container: HTMLDivElement;
+const noop = vi.fn();
+beforeEach(() => {
+  HTMLDialogElement.prototype.showModal = vi.fn();
+  HTMLDialogElement.prototype.close = vi.fn();
+  Element.prototype.scrollIntoView = vi.fn();
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { callback(0); return 0; });
+});
+afterEach(() => { act(() => root?.unmount()); container?.remove(); vi.unstubAllGlobals(); });
+async function render(scoringMode: 'sum_points' | 'none' = 'sum_points', items = [item(1), item(2)], extra: Record<string, unknown> = {}) {
+  await i18n.changeLanguage('ru');
+  container = document.createElement('div');
+  document.body.appendChild(container);
+  root = createRoot(container);
+  await act(async () => root?.render(<ChecklistPreviewDialog title="Лист" description="" items={items} groups={[]} contextFields={[]} scoringMode={scoringMode} scaleLevels={[]}
+    passThreshold={50} feedbackEnabled={false} feedbackRequired={false} allowSkipAll={false} cameraOnly={false} onClose={noop} t={t} {...extra} />));
+}
+const button = (label: string) => [...container.querySelectorAll('button')].find((b) => b.textContent === label) as HTMLButtonElement;
+const click = (el: Element) => act(async () => { (el as HTMLElement).click(); });
+const radios = (index: number) => [...container.querySelectorAll('[role="radiogroup"]')[index]!.querySelectorAll('input')] as HTMLInputElement[];
+const optionOf = (input: HTMLInputElement) => input.closest('label') as HTMLElement;
+const rgb = (hex: string) => { const n = parseInt(hex.slice(1), 16); return `rgb(${n >> 16}, ${(n >> 8) & 255}, ${n & 255})`; };
+
+describe('preview answers: take back and level colour (PR 425)', () => {
+  it('washes the chosen Yes/No with its colour, adds a tick and takes the answer back on a second click', async () => {
+    await render();
+    await click(radios(0)[0]!);
+    expect(radios(0)[0]!.checked).toBe(true);
+    expect(optionOf(radios(0)[0]!).style.borderColor).toBe(rgb('#2E7D32'));
+    expect(optionOf(radios(0)[0]!).textContent).toContain('✓');
+    await click(radios(0)[1]!);
+    expect(optionOf(radios(0)[1]!).style.borderColor).toBe(rgb('#C62828'));
+    expect(optionOf(radios(0)[0]!).style.backgroundColor).toBe('');
+    await click(radios(0)[1]!);
+    expect(radios(0)[1]!.checked).toBe(false);
+    expect(radios(0).some((radio) => radio.checked)).toBe(false);
+  });
+
+  it('has a "Clear answer" button that returns the criterion to unanswered, so Finish lists it again', async () => {
+    await render();
+    await click(radios(0)[0]!);
+    await click(radios(1)[0]!);
+    expect(button('Снять ответ')).toBeTruthy();
+    await click(button('Снять ответ'));
+    await click(button('Завершить'));
+    const missing = container.querySelector('[data-testid="preview-finish-missing"]')!;
+    expect(missing.textContent).toContain('Критерий 1');
+    expect(missing.textContent).not.toContain('Критерий 2');
+  });
+
+  it('paints a chosen scale level with the colour of its scale, or by its score when it has none', async () => {
+    const scaled = item(1, { scale: { id: 's', name: 'S', levels: [{ value: 1, label: 'Плохо', score: 0, color: '#1565C0' }, { value: 2, label: 'Средне', score: 5 }, { value: 3, label: 'Отлично', score: 10 }] } });
+    await render('sum_points', [scaled]);
+    await click(radios(0)[0]!);
+    expect(optionOf(radios(0)[0]!).style.borderColor).toBe(rgb('#1565C0'));
+    await click(radios(0)[1]!);
+    expect(optionOf(radios(0)[1]!).style.borderColor).toBe(rgb('#E65100'));
+    await click(radios(0)[2]!);
+    expect(optionOf(radios(0)[2]!).style.borderColor).toBe(rgb('#2E7D32'));
+  });
+
+  it('paints neutral without points and still lets the answer be taken back', async () => {
+    await render('none');
+    await click(radios(0)[0]!);
+    expect(optionOf(radios(0)[0]!).style.borderColor).toBe(rgb('#475569'));
+    await click(button('Снять ответ'));
+    expect(radios(0).some((radio) => radio.checked)).toBe(false);
+  });
+});

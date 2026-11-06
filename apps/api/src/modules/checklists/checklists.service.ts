@@ -2228,6 +2228,64 @@ export class ChecklistsService {
     return updated;
   }
 
+  /**
+   * PR 425: takes an answer back ("not answered"). Photo and comment stay; points, the selected
+   * level and any skip mark go. A finished (submitted/completed) instance cannot be changed (409).
+   */
+  async clearItemAnswer(
+    instanceId: string,
+    itemId: string,
+    organizationId: string,
+    requesterId: string,
+    isPrivileged: boolean,
+  ) {
+    const instance = await this.prisma.checklistInstance.findFirst({
+      where: { id: instanceId, organizationId, deletedAt: null },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        dueAt: true,
+        checklistId: true,
+        templateSnapshot: true,
+        snapshotVersion: true,
+        session: { select: { observerId: true, deletedAt: true } },
+      },
+    });
+
+    if (!instance) {
+      throw new NotFoundException('Checklist assignment not found');
+    }
+
+    if (instance.status === 'submitted' || instance.status === 'completed') {
+      throw new ConflictException('A finished checklist cannot be changed');
+    }
+
+    await this.assertWritableInstance(instance, organizationId, requesterId, isPrivileged, new Date());
+
+    const checklist = await this.resolveRuntimeChecklist(instance, organizationId);
+    if (!checklist.items.some((candidate) => candidate.id === itemId)) {
+      throw new NotFoundException('Checklist item not found');
+    }
+
+    await this.prisma.checklistItemResult.updateMany({
+      where: { instanceId, itemId, organizationId },
+      data: {
+        checked: false,
+        scaleLevel: null,
+        points: 0,
+        answerState: 'unanswered',
+        reviewStatus: 'pending',
+        reviewedBy: null,
+        reviewedAt: null,
+      },
+    });
+
+    const updated = await this.recomputeInstance(instanceId, organizationId);
+    await this.recordMutationEvents(organizationId, instanceId, requesterId, itemId, 'item_answered', instance.status, updated.status);
+    return updated;
+  }
+
   async skipItem(
     instanceId: string,
     itemId: string,

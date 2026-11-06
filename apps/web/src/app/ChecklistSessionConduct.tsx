@@ -7,7 +7,7 @@ import type { TFunction } from 'i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { uploadChecklistItemPhotoWithProgress } from '../shared/apiClient.js';
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint, validateChecklistPhoto } from '../shared/checklistPhoto.js';
-import { getChecklistInstance, removeChecklistItemPhoto, skipChecklistItem, submitChecklistItemResult } from '../shared/api/checklists.js';
+import { clearChecklistItemAnswer, getChecklistInstance, removeChecklistItemPhoto, skipChecklistItem, submitChecklistItemResult } from '../shared/api/checklists.js';
 import { ChecklistPhotoProof } from './ChecklistPhotoProof.js';
 import {
   captureChecklistSessionLocation,
@@ -26,6 +26,7 @@ import type {
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT } from '../shared/checklistStatus.js';
 import { Avatar, Badge, Button, InlineFeedback, PageState, ProgressBar, Textarea } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
+import { DEFAULT_LEVEL_COLORS, defaultLevelColor, levelPaint, NEUTRAL_LEVEL_COLOR } from '../shared/levelPaint.js';
 import { PastSessions } from './ChecklistSessionHistory.js';
 import { ChecklistConductOverview } from './ChecklistConductOverview.js';
 import { ChecklistItemDescription } from './ChecklistItemNote.js';
@@ -668,7 +669,7 @@ function CriterionCard({
   comment: string;
   onCommentChange: (comment: string) => void;
   scoringMode: string;
-  scaleLevels: { level: number; label: string; points: number }[] | null;
+  scaleLevels: { level: number; label: string; description?: string; points: number; color?: string }[] | null;
   cameraOnly: boolean;
   editable: boolean;
   onSaved: (instance: ChecklistInstanceSummary) => void;
@@ -679,6 +680,7 @@ function CriterionCard({
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cleared, setCleared] = useState(false);
   const [heldAnswer, setHeldAnswer] = useState<{ checked?: boolean; scaleLevel?: number } | null>(null);
   const hasScale = Boolean(item.scale) || scoringMode === 'scale';
   const shownAnswer = heldAnswer ? pendingAnswer(heldAnswer) : checklistResultToAnswer(result);
@@ -703,7 +705,20 @@ function CriterionCard({
   }
 
   const canAct = editable && !busy;
+  const levelList: { value: number; label: string; description?: string; points: number; color?: string }[] | null = item.scale
+    ? item.scale.levels.map((level) => ({ value: level.value, label: level.label, description: 'description' in level && typeof level.description === 'string' ? level.description : undefined, points: level.score, color: level.color }))
+    : scoringMode === 'scale'
+      ? (scaleLevels ?? []).map((level) => ({ value: level.level, label: level.label, description: level.description, points: level.points, color: level.color }))
+      : null;
+  const bestPoints = Math.max(0, ...(levelList ?? []).map((level) => level.points));
+  const hasAnswer = result?.answerState === 'answered' || (result?.answerState === undefined && (result?.checked === true || result?.scaleLevel != null));
+  function clear() {
+    setHeldAnswer(null);
+    setCleared(true);
+    void run(() => clearChecklistItemAnswer(instanceId, item.id));
+  }
   function choose(input: { checked?: boolean; scaleLevel?: number }) {
+    setCleared(false);
     if (isNoteRequired(item, pendingAnswer(input), hasScale) && !comment.trim()) {
       setHeldAnswer(input);
       return;
@@ -723,58 +738,47 @@ function CriterionCard({
         </p>
       )}
 
-      {item.scale ? (
+      {levelList ? (
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {item.scale.levels.map((level) => (
-            <button
-              key={level.value}
-              aria-pressed={result?.scaleLevel === level.value}
-              type="button"
-              disabled={!canAct}
-              onClick={() => choose({ scaleLevel: level.value })}
-              style={{
-                border: `1px solid ${result?.scaleLevel === level.value ? COLORS.primary : COLORS.border}`,
-                background: result?.scaleLevel === level.value ? 'var(--color-primary-bg, #eef2ff)' : COLORS.surface,
-                color: COLORS.text,
-                borderRadius: 10,
-                padding: '10px 14px',
-                fontSize: 13,
-                minHeight: 44,
-                cursor: canAct ? 'pointer' : 'default',
-              }}
-            >
-              {level.label}
-              {'description' in level && typeof level.description === 'string' && level.description && <RichDescription value={level.description} />}
-            </button>
-          ))}
-        </div>
-      ) : scoringMode === 'scale' ? (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {(scaleLevels ?? []).map((level) => (
-            <button
-              key={level.level}
-              aria-pressed={result?.scaleLevel === level.level}
-              type="button"
-              disabled={!canAct}
-              onClick={() => choose({ scaleLevel: level.level })}
-              style={{
-                border: `1px solid ${result?.scaleLevel === level.level ? COLORS.primary : COLORS.border}`,
-                background: result?.scaleLevel === level.level ? 'var(--color-primary-bg, #eef2ff)' : COLORS.surface,
-                color: COLORS.text,
-                borderRadius: 10,
-                padding: '10px 14px',
-                fontSize: 13,
-                minHeight: 44,
-                cursor: canAct ? 'pointer' : 'default',
-              }}
-            >
-              {level.label}
-              {'description' in level && typeof level.description === 'string' && level.description && <RichDescription value={level.description} />}
-            </button>
-          ))}
+          {levelList.map((level) => {
+            const selected = result?.scaleLevel === level.value;
+            // PR 425: the chosen level is washed with its own colour (else the default by score); tick + thick border are the non-colour cue.
+            const paint = selected ? levelPaint(scoringMode === 'none' ? NEUTRAL_LEVEL_COLOR : level.color ?? defaultLevelColor(level.points, bestPoints)) : null;
+            return (
+              <button
+                key={level.value}
+                aria-pressed={selected}
+                type="button"
+                disabled={!canAct}
+                onClick={() => (selected ? clear() : choose({ scaleLevel: level.value }))}
+                style={{
+                  borderWidth: 2,
+                  borderStyle: 'solid',
+                  borderColor: paint?.borderColor ?? COLORS.border,
+                  background: paint?.background ?? COLORS.surface,
+                  color: paint?.color ?? COLORS.text,
+                  fontWeight: selected ? 600 : undefined,
+                  borderRadius: 10,
+                  padding: '9px 13px',
+                  fontSize: 13,
+                  minHeight: 44,
+                  cursor: canAct ? 'pointer' : 'default',
+                }}
+              >
+                {selected && <span aria-hidden="true">✓ </span>}
+                {level.label}
+                {level.description && <RichDescription value={level.description} />}
+              </button>
+            );
+          })}
         </div>
       ) : (
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, minHeight: 44 }}>
+        <label
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, minHeight: 44, boxSizing: 'border-box', padding: '4px 12px', borderRadius: 10,
+            borderWidth: 2, borderStyle: 'solid', borderColor: 'transparent', ...(result?.checked ? levelPaint(scoringMode === 'none' ? NEUTRAL_LEVEL_COLOR : DEFAULT_LEVEL_COLORS.full) : {}),
+          }}
+        >
           <input
             type="checkbox"
             checked={result?.checked ?? false}
@@ -784,6 +788,12 @@ function CriterionCard({
           {t('checklists.markDone', 'Done')}
         </label>
       )}
+      {hasAnswer && (
+        <Button type="button" size="sm" variant="ghost" disabled={!canAct} onClick={clear}>
+          {t('checklistSessions.conduct.clearAnswer', 'Clear answer')}
+        </Button>
+      )}
+      {cleared && !hasAnswer && <p role="status" className="admin-form__hint">{t('checklistSessions.conduct.answerCleared', 'Answer cleared: the criterion is unanswered again.')}</p>}
 
       <div style={{ marginTop: 12 }}>
         <Textarea

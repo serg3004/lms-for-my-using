@@ -337,6 +337,8 @@ export type ChecklistScaleLevel = {
   label: string;
   description?: string;
   points: number;
+  /** PR 425: the level colour `#RRGGBB` of a managed scale; the chosen answer is painted with it. */
+  color?: string;
 };
 
 export type ChecklistScoringMode = 'sum_points' | 'all_required' | 'scale' | 'none';
