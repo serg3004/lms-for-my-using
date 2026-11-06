@@ -146,7 +146,7 @@ export function RichTextField({ value, onChange, label, id, maxLength = 2000, di
     <div id={labelId} className={hideLabel ? 'ui-visually-hidden' : undefined}>{descriptionText(label)}</div>
     <p id={hintId} className={compact ? 'ui-visually-hidden' : 'admin-form__hint'} style={{ marginBlock: 4, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{t('richDescription.hint')}</p>
     <div onPointerDown={touchDown} onPointerUp={cancelTouch} onPointerCancel={cancelTouch} onPointerMove={(event) => { if (touch.current && Math.hypot(event.clientX - touch.current.x, event.clientY - touch.current.y) > 10) cancelTouch(); }}>
-      {editor ? <EditorContent editor={editor} /> : <textarea id={id ?? uid} aria-labelledby={labelId} value={descriptionText(value)} disabled={disabled} maxLength={maxLength} onChange={(event) => onChange(event.target.value)} />}
+      {editor ? <EditorContent editor={editor} /> : <textarea id={id ?? uid} className={className} aria-labelledby={labelId} value={descriptionText(value)} disabled={disabled} maxLength={maxLength} onChange={(event) => onChange(event.target.value)} />}
     </div>
     {lengthError && <p role="alert">{t('richDescription.limit', { count: maxLength })}</p>}
     {popup && <div ref={panel} role="dialog" aria-modal="true" aria-label={t('richDescription.title')} className="ds-menu__content" style={{ position: 'fixed', left: popup.x, top: popup.y, width: 'max-content', maxWidth: 'calc(100vw - 16px)', maxHeight: 'calc(100vh - 16px)', overflowY: 'auto', padding: 8, display: 'grid', gap: 8, ...placement }}>

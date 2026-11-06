@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import '../i18n/index.js';
+import { setRichText } from '../shared/richTextTest.js';
 
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -50,10 +51,10 @@ async function mount(handlers: { onBack?: () => void; onReload?: () => Promise<v
 }
 
 function typeTitle(container: HTMLElement, value: string) {
-  const input = container.querySelector<HTMLInputElement>('#checklist-title')!;
-  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, value);
-  input.dispatchEvent(new Event('input', { bubbles: true }));
+  setRichText(container.querySelector('#checklist-title')!, value);
 }
+// The title is a rich field now (contenteditable), so read its visible text instead of an input value.
+const titleText = (container: HTMLElement) => container.querySelector('#checklist-title')!.textContent;
 const button = (container: HTMLElement, label: string) => [...container.querySelectorAll('button')].find((entry) => entry.textContent === label)!;
 
 describe('ChecklistBuilder unsaved settings (PR 417)', () => {
@@ -63,7 +64,7 @@ describe('ChecklistBuilder unsaved settings (PR 417)', () => {
     await act(async () => { typeTitle(container, 'Новое имя'); });
     expect(container.querySelector('[data-testid="checklist-unsaved-bar"]')?.textContent).toContain('There are unsaved changes');
     await act(async () => { container.querySelector<HTMLButtonElement>('[data-testid="checklist-unsaved-bar"] button')!.click(); });
-    expect(container.querySelector<HTMLInputElement>('#checklist-title')!.value).toBe('Касса');
+    expect(titleText(container)).toBe('Касса');
     expect(container.querySelector('[data-testid="checklist-unsaved-bar"]')).toBeNull();
   });
 
@@ -88,7 +89,7 @@ describe('ChecklistBuilder unsaved settings (PR 417)', () => {
     await act(async () => { typeTitle(container, 'Касса 2'); });
     await act(async () => { button(container, 'Publish').click(); });
     expect(container.querySelector('[role="alert"]')?.textContent).toBe('Нельзя опубликовать');
-    expect(container.querySelector<HTMLInputElement>('#checklist-title')!.value).toBe('Касса 2');
+    expect(titleText(container)).toBe('Касса 2');
     expect(onReload).not.toHaveBeenCalled();
   });
 
