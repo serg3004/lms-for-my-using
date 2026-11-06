@@ -1,4 +1,6 @@
 import { type FormEvent, useEffect, useReducer, useRef, useState } from 'react';
+import { RichText } from '../shared/RichText.js';
+import { RichTextField } from '../shared/RichTextField.js';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError } from '../shared/apiClient.js';
@@ -811,7 +813,7 @@ export function AdminDepartmentsPage() {
               {selected.status === 'archived' ? <p className="admin-form__hint">{t('admin.departments.archived', 'Archived')}</p> : null}
               {selected.code ? <p>{t('admin.departments.fieldCode', 'Code')}: {selected.code}</p> : null}
               <p>{t('admin.departments.fieldType', 'Type')}: {typeLabel(selected.departmentTypeId) ?? t('admin.departments.noType', 'Not set')}</p>
-              {selected.description ? <p>{selected.description}</p> : null}
+              {selected.description ? <p><RichText value={selected.description} /></p> : null}
               <p>
                 {t('admin.departments.headcountDirect', 'Direct headcount: {{count}}', { count: selected.directUserCount })}
                 {' · '}
@@ -1024,9 +1026,7 @@ export function AdminDepartmentsPage() {
               {activeTypes.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}
             </select>
           </FormField>
-          <FormField id="department-create-description" label={t('admin.departments.fieldDescription', 'Description')}>
-            <textarea id="department-create-description" value={createForm.description} maxLength={1000} onChange={(e) => setCreateForm((prev) => ({ ...prev, description: e.target.value }))} />
-          </FormField>
+          <RichTextField id="department-create-description" label={t('admin.departments.fieldDescription', 'Description')} value={createForm.description} maxLength={1000} onChange={(next) => setCreateForm((prev) => ({ ...prev, description: next }))} />
           {createState.status === 'error' ? <p className="admin-form__error" role="alert">{createState.message}</p> : null}
           <div className="admin-form__actions">
             <button className="admin-btn admin-btn--secondary" type="button" onClick={() => setCreateParentId(undefined)}>{t('admin.departments.cancel', 'Cancel')}</button>
@@ -1061,9 +1061,7 @@ export function AdminDepartmentsPage() {
               {activeTypes.map((type) => <option key={type.id} value={type.id}>{type.name}</option>)}
             </select>
           </FormField>
-          <FormField id="department-edit-description" label={t('admin.departments.fieldDescription', 'Description')}>
-            <textarea id="department-edit-description" value={editForm.description} maxLength={1000} onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))} />
-          </FormField>
+          <RichTextField id="department-edit-description" label={t('admin.departments.fieldDescription', 'Description')} value={editForm.description} maxLength={1000} onChange={(next) => setEditForm((prev) => ({ ...prev, description: next }))} />
           {editState.status === 'error' ? <p className="admin-form__error" role="alert">{editState.message}</p> : null}
           <div className="admin-form__actions">
             <button className="admin-btn admin-btn--secondary" type="button" onClick={() => editDialogRef.current?.close()}>{t('admin.departments.cancel', 'Cancel')}</button>

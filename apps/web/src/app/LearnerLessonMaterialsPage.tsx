@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { RichText } from '../shared/RichText.js';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -286,7 +287,7 @@ export function LearnerLessonMaterialsPage({ lessonId }: { lessonId: string }) {
                       <h3 style={{ margin: '0 0 5px', fontSize: '17px', color: COLORS.text }}>{material.title}</h3>
                       {material.description ? (
                         <p style={{ margin: 0, color: COLORS.muted, fontSize: '13px', lineHeight: 1.5 }}>
-                          {material.description}
+                          <RichText value={material.description} />
                         </p>
                       ) : null}
                       <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>

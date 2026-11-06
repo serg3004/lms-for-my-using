@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { RichTextField } from '../shared/RichTextField.js';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -351,9 +352,7 @@ export function AdminLessonsPage() {
             <FormField id="lesson-create-order" label={t('admin.lessons.order', 'Order')}>
               <input id="lesson-create-order" value={order} onChange={(event) => setOrder(event.target.value)} inputMode="numeric" />
             </FormField>
-            <FormField id="lesson-create-description" label={t('admin.lessons.description', 'Description')}>
-              <textarea id="lesson-create-description" value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} />
-            </FormField>
+            <RichTextField id="lesson-create-description" label={t('admin.lessons.description', 'Description')} value={description} maxLength={1000} onChange={(next) => setDescription(next)} />
             {submitState.status === 'error' ? (
               <p className="admin-form__error" role="alert">{submitState.message}</p>
             ) : null}
@@ -407,9 +406,7 @@ export function AdminLessonsPage() {
               ))}
             </select>
           </FormField>
-          <FormField id="lesson-edit-description" label={t('admin.lessons.description', 'Description')}>
-            <textarea id="lesson-edit-description" value={editDescription} onChange={(event) => setEditDescription(event.target.value)} maxLength={1000} />
-          </FormField>
+          <RichTextField id="lesson-edit-description" label={t('admin.lessons.description', 'Description')} value={editDescription} maxLength={1000} onChange={(next) => setEditDescription(next)} />
           {editState.status === 'error' ? (
             <p className="admin-form__error" role="alert">{editState.message}</p>
           ) : null}

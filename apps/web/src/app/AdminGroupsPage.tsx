@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { RichTextField } from '../shared/RichTextField.js';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
@@ -434,9 +435,7 @@ export function AdminGroupsPage() {
           <FormField id="group-create-location" label={t('admin.groups.fieldLocation', 'Location')}>
             <input id="group-create-location" value={location} maxLength={120} onChange={(e) => setLocation(e.target.value)} />
           </FormField>
-          <FormField id="group-create-description" label={t('admin.groups.fieldDescription', 'Description')}>
-            <textarea id="group-create-description" value={description} maxLength={500} onChange={(e) => setDescription(e.target.value)} />
-          </FormField>
+          <RichTextField id="group-create-description" label={t('admin.groups.fieldDescription', 'Description')} value={description} maxLength={500} onChange={(next) => setDescription(next)} />
           {submitState.status === 'error' ? (
             <p className="admin-form__error" role="alert">{submitState.message}</p>
           ) : null}
@@ -472,9 +471,7 @@ export function AdminGroupsPage() {
           <FormField id="group-edit-location" label={t('admin.groups.fieldLocation', 'Location')}>
             <input id="group-edit-location" value={editLocation} maxLength={120} onChange={(e) => setEditLocation(e.target.value)} />
           </FormField>
-          <FormField id="group-edit-description" label={t('admin.groups.fieldDescription', 'Description')}>
-            <textarea id="group-edit-description" value={editDescription} maxLength={500} onChange={(e) => setEditDescription(e.target.value)} />
-          </FormField>
+          <RichTextField id="group-edit-description" label={t('admin.groups.fieldDescription', 'Description')} value={editDescription} maxLength={500} onChange={(next) => setEditDescription(next)} />
           <FormField id="group-edit-status" label={t('admin.groups.fieldStatus', 'Status')}>
             <select id="group-edit-status" value={editStatus} onChange={(e) => setEditStatus(e.target.value as GroupStatus)}>
               <option value="active">{t('admin.groups.statusActive', 'Active')}</option>

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { richTextSchema } from '@lms/shared/rich-text';
 
 import { paginationQuerySchema } from '../../common/pagination.schema.js';
 
@@ -6,7 +7,7 @@ export const positionStatusSchema = z.enum(['active', 'archived']);
 
 const positionCodeSchema = z.string().trim().min(1).max(60);
 const positionTitleSchema = z.string().trim().min(1).max(160);
-const positionDescriptionSchema = z.string().trim().max(1000);
+const positionDescriptionSchema = richTextSchema(1000);
 
 export const createPositionSchema = z.object({
   organizationId: z.string().uuid(),

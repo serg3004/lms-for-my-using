@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { RichTextField } from '../shared/RichTextField.js';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError } from '../shared/apiClient.js';
@@ -302,14 +303,7 @@ export function AdminPositionsPage() {
               onChange={(e) => { setCreateForm((prev) => ({ ...prev, title: e.target.value })); setCreateErrors((prev) => clearFieldError(prev, 'title')); }}
             />
           </FormField>
-          <FormField id="position-create-description" label={t('admin.positions.fieldDescription', 'Description')}>
-            <textarea
-              id="position-create-description"
-              value={createForm.description}
-              maxLength={1000}
-              onChange={(e) => setCreateForm((prev) => ({ ...prev, description: e.target.value }))}
-            />
-          </FormField>
+          <RichTextField id="position-create-description" label={t('admin.positions.fieldDescription', 'Description')} value={createForm.description} maxLength={1000} onChange={(next) => setCreateForm((prev) => ({ ...prev, description: next }))} />
           {createState.status === 'error' ? (
             <p className="admin-form__error" role="alert">{createState.message}</p>
           ) : null}
@@ -350,14 +344,7 @@ export function AdminPositionsPage() {
               onChange={(e) => { setEditForm((prev) => ({ ...prev, title: e.target.value })); setEditErrors((prev) => clearFieldError(prev, 'title')); }}
             />
           </FormField>
-          <FormField id="position-edit-description" label={t('admin.positions.fieldDescription', 'Description')}>
-            <textarea
-              id="position-edit-description"
-              value={editForm.description}
-              maxLength={1000}
-              onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
-            />
-          </FormField>
+          <RichTextField id="position-edit-description" label={t('admin.positions.fieldDescription', 'Description')} value={editForm.description} maxLength={1000} onChange={(next) => setEditForm((prev) => ({ ...prev, description: next }))} />
           {editState.status === 'error' ? (
             <p className="admin-form__error" role="alert">{editState.message}</p>
           ) : null}

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { richTextSchema } from '@lms/shared/rich-text';
 
 export const groupStatusSchema = z.enum(['active', 'archived']);
 
@@ -13,7 +14,7 @@ export const createGroupSchema = z.object({
   organizationId: z.string().uuid(),
   name: z.string().trim().min(1).max(120),
   slug: groupSlugSchema,
-  description: z.string().trim().max(500).optional(),
+  description: richTextSchema(500).optional(),
   location: z.string().trim().max(120).optional(),
   status: groupStatusSchema.default('active'),
 });
@@ -23,7 +24,7 @@ export type CreateGroupInput = z.infer<typeof createGroupSchema>;
 export const updateGroupSchema = z
   .object({
     name: z.string().trim().min(1).max(120),
-    description: z.string().trim().max(500).nullable(),
+    description: richTextSchema(500).nullable(),
     location: z.string().trim().max(120).nullable(),
     status: groupStatusSchema,
   })

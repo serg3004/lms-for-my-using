@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { richTextSchema } from '@lms/shared/rich-text';
 
 import { paginationQuerySchema } from '../../common/pagination.schema.js';
 
@@ -10,7 +11,7 @@ export const departmentManagerModeSchema = z.enum(['LOCAL', 'INHERIT', 'MERGE'])
 
 const departmentCodeSchema = z.string().trim().min(1).max(60);
 const departmentNameSchema = z.string().trim().min(1).max(160);
-const departmentDescriptionSchema = z.string().trim().max(1000);
+const departmentDescriptionSchema = richTextSchema(1000);
 const sortOrderSchema = z.number().int().min(0).max(1_000_000);
 
 export const createDepartmentSchema = z.object({

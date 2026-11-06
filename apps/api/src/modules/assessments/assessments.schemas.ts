@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { richTextSchema } from '@lms/shared/rich-text';
 
 export const assessmentStatusSchema = z.enum(['draft', 'published', 'archived']);
 
@@ -8,14 +9,14 @@ export const createAssessmentSchema = z.object({
   lessonId: z.string().uuid().optional(),
   title: z.string().trim().min(1).max(200),
   slug: z.string().trim().min(1).max(120),
-  description: z.string().trim().max(2000).optional(),
+  description: richTextSchema(2000).optional(),
   status: assessmentStatusSchema.default('draft'),
   passingScore: z.number().int().min(0).max(100).default(70),
   maxAttempts: z.number().int().min(1).optional(),
   timeLimitMinutes: z.number().int().min(1).optional(),
   availableAfterCourseCompletion: z.boolean().default(true),
-  passMessage: z.string().trim().max(2000).optional(),
-  failMessage: z.string().trim().max(2000).optional(),
+  passMessage: richTextSchema(2000).optional(),
+  failMessage: richTextSchema(2000).optional(),
   showCorrectAnswers: z.boolean().default(false),
   randomizeOrder: z.boolean().default(false),
 });
@@ -30,14 +31,14 @@ export type UpdateAssessmentStatusInput = z.infer<typeof updateAssessmentStatusS
 export const updateAssessmentSchema = z
   .object({
     title: z.string().trim().min(1).max(200),
-    description: z.string().trim().max(2000).nullable(),
+    description: richTextSchema(2000).nullable(),
     status: assessmentStatusSchema,
     passingScore: z.number().int().min(0).max(100),
     maxAttempts: z.number().int().min(1).nullable(),
     timeLimitMinutes: z.number().int().min(1).nullable(),
     availableAfterCourseCompletion: z.boolean(),
-    passMessage: z.string().trim().max(2000).nullable(),
-    failMessage: z.string().trim().max(2000).nullable(),
+    passMessage: richTextSchema(2000).nullable(),
+    failMessage: richTextSchema(2000).nullable(),
     showCorrectAnswers: z.boolean(),
     randomizeOrder: z.boolean(),
   })

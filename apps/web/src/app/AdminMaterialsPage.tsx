@@ -1,4 +1,5 @@
 import { type ChangeEvent, type DragEvent, type FormEvent, useMemo, useReducer, useRef, useState } from 'react';
+import { RichTextField } from '../shared/RichTextField.js';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest, uploadMaterialFileWithProgress } from '../shared/apiClient.js';
@@ -457,9 +458,7 @@ export function AdminMaterialsPage() {
                 <FormField id="material-create-filename" label={t('admin.materials.fileName', 'File name')}>
                   <input id="material-create-filename" value={fileName} onChange={(event) => setFileName(event.target.value)} maxLength={255} />
                 </FormField>
-                <FormField id="material-create-description" label={t('admin.materials.description', 'Description')}>
-                  <textarea id="material-create-description" value={description} onChange={(event) => setDescription(event.target.value)} maxLength={1000} />
-                </FormField>
+                <RichTextField id="material-create-description" label={t('admin.materials.description', 'Description')} value={description} maxLength={1000} onChange={(next) => setDescription(next)} />
                 {submitState.status === 'error' ? (
                   <p className="admin-form__error" role="alert">
                     {submitState.message}
@@ -603,9 +602,7 @@ export function AdminMaterialsPage() {
           <FormField id="material-edit-status" label={t('admin.materials.col.status', 'Status')}>
             <AdminStatusSelect value={editStatus} statuses={MATERIAL_STATUSES} labels={statusLabels} onChange={(status) => setEditStatus(status)} className="admin-form-status-select" />
           </FormField>
-          <FormField id="material-edit-description" label={t('admin.materials.description', 'Description')}>
-            <textarea id="material-edit-description" value={editDescription} onChange={(event) => setEditDescription(event.target.value)} maxLength={1000} />
-          </FormField>
+          <RichTextField id="material-edit-description" label={t('admin.materials.description', 'Description')} value={editDescription} maxLength={1000} onChange={(next) => setEditDescription(next)} />
           {editState.status === 'error' ? (
             <p className="admin-form__error" role="alert">
               {editState.message}

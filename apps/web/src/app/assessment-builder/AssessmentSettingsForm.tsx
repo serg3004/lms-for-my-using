@@ -1,4 +1,5 @@
 import { useId, type FormEvent } from 'react';
+import { RichTextField } from '../../shared/RichTextField.js';
 import type { TFunction } from 'i18next';
 import { slugify } from '../../shared/slugify.js';
 import { AdminStatusSelect } from '../../shared/AdminStatusSelect.js';
@@ -90,17 +91,11 @@ export function AssessmentSettingsForm({ form, dispatch, state, onSubmit, t, les
         </label>
       </div>
 
-      <FormField id={`${uid}-description`} label={t('admin.assessmentBuilder.description', 'Description')}>
-        <textarea id={`${uid}-description`} value={form.description} onChange={(e) => change('description', e.target.value)} maxLength={2000} />
-      </FormField>
+      <RichTextField id={`${uid}-description`} label={t('admin.assessmentBuilder.description', 'Description')} value={form.description} maxLength={2000} onChange={(next) => change('description', next)} />
 
-      <FormField id={`${uid}-pass-message`} label={t('admin.assessmentBuilder.passMessage', 'Pass message (blank = default)')}>
-        <textarea id={`${uid}-pass-message`} value={form.passMessage} onChange={(e) => change('passMessage', e.target.value)} maxLength={2000} />
-      </FormField>
+      <RichTextField id={`${uid}-pass-message`} label={t('admin.assessmentBuilder.passMessage', 'Pass message (blank = default)')} value={form.passMessage} maxLength={2000} onChange={(next) => change('passMessage', next)} />
 
-      <FormField id={`${uid}-fail-message`} label={t('admin.assessmentBuilder.failMessage', 'Fail message (blank = default)')}>
-        <textarea id={`${uid}-fail-message`} value={form.failMessage} onChange={(e) => change('failMessage', e.target.value)} maxLength={2000} />
-      </FormField>
+      <RichTextField id={`${uid}-fail-message`} label={t('admin.assessmentBuilder.failMessage', 'Fail message (blank = default)')} value={form.failMessage} maxLength={2000} onChange={(next) => change('failMessage', next)} />
 
       {state.status === 'error' ? <p className="admin-form__error" role="alert">{state.message}</p> : null}
 

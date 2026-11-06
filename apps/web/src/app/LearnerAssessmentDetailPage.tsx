@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { RichText, plainText } from '../shared/RichText.js';
 
 import { listAssessmentAttempts, listAssessmentQuestions } from '../shared/api/assessments.js';
 import { AssessmentSummary, getAssessment } from '../shared/apiClient.js';
@@ -103,7 +104,7 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
           </div>
           <h1 style={{ margin: 0, fontSize: '38px', fontWeight: 800, color: COLORS.text, lineHeight: 1.2 }}>{assessment.title}</h1>
           <p style={{ margin: '10px 0 0', color: COLORS.muted, lineHeight: 1.6, maxWidth: '760px' }}>
-            {assessment.description?.trim() || t('assessments.detailSubtitle', { course: courseTitle })}
+            {plainText(assessment.description ?? '') ? <RichText value={assessment.description ?? ''} /> : t('assessments.detailSubtitle', { course: courseTitle })}
           </p>
         </div>
         <div style={{ display: 'inline-flex', padding: '9px 12px', borderRadius: '999px', background: COLORS.warningSoft, color: COLORS.warning, fontWeight: 800, fontSize: '13px', whiteSpace: 'nowrap' }}>

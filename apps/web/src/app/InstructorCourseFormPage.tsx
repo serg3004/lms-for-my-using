@@ -8,6 +8,7 @@ import { createLesson, listLessons, updateLesson } from '../shared/api/lessons.j
 import type { LessonSummary } from '../shared/api/types.js';
 import { InstructorPageLayout } from '../shared/instructorLayout.js';
 import { FormField } from '../shared/adminPage.js';
+import { RichTextField } from '../shared/RichTextField.js';
 import { clearFieldError, hasValidationErrors, type FormValidationErrors } from '../shared/formValidation.js';
 import { lessonSlug } from '../shared/lessonSlug.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
@@ -268,9 +269,13 @@ export function InstructorCourseFormPage({ mode, courseId }: InstructorCourseFor
                 </FormField>
               )}
 
-              <FormField id="description" label={t('instructor.courseForm.fieldDescription')}>
-                <textarea id="description" name="description" value={form.description} onChange={updateField('description')} rows={mode === 'create' ? 6 : 5} />
-              </FormField>
+              <RichTextField
+                id="description"
+                label={t('instructor.courseForm.fieldDescription')}
+                value={form.description}
+                maxLength={1000}
+                onChange={(next) => setForm((prev) => ({ ...prev, description: next }))}
+              />
 
               {mode === 'create' && (
                 <FormField id="duration" label={t('instructor.courseForm.fieldDuration')}>

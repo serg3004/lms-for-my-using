@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { plainText } from '../shared/RichText.js';
 import { useTranslation } from 'react-i18next';
 
 import { getCourseCompletion, listCourses } from '../shared/api/courses.js';
@@ -318,9 +319,7 @@ export function LearnerCoursesPage() {
                   {/* Description */}
                   {course.description && (
                     <p style={{ margin: 0, color: '#6b7280', fontSize: '14px', lineHeight: 1.5 }}>
-                      {course.description.length > 120
-                        ? `${course.description.slice(0, 120)}…`
-                        : course.description}
+                      {(() => { const text = plainText(course.description); return text.length > 120 ? `${text.slice(0, 120)}…` : text; })()}
                     </p>
                   )}
 

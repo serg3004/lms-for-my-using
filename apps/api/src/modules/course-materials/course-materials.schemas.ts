@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { richTextSchema } from '@lms/shared/rich-text';
 
 export const courseMaterialStatusSchema = z.enum(['active', 'archived']);
 export const courseMaterialKindSchema = z.enum(['file', 'link']);
@@ -16,7 +17,7 @@ export const createCourseMaterialSchema = z.object({
   lessonId: z.string().uuid().optional(),
   title: z.string().trim().min(1).max(160),
   slug: materialSlugSchema,
-  description: z.string().trim().max(1000).optional(),
+  description: richTextSchema(1000).optional(),
   kind: courseMaterialKindSchema.default('file'),
   fileName: z.string().trim().min(1).max(255).optional(),
   fileUrl: z.string().trim().url().max(2048).optional(),
@@ -35,7 +36,7 @@ export type UpdateCourseMaterialStatusInput = z.infer<typeof updateCourseMateria
 export const updateCourseMaterialSchema = z
   .object({
     title: z.string().trim().min(1).max(160),
-    description: z.string().trim().max(1000).nullable(),
+    description: richTextSchema(1000).nullable(),
     kind: courseMaterialKindSchema,
     fileName: z.string().trim().max(255).nullable(),
     fileUrl: z.string().trim().url().max(2048).nullable(),

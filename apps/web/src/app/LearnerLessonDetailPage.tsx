@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
+import { RichText } from '../shared/RichText.js';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -155,7 +156,7 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
           </h1>
           {lesson.description ? (
             <p style={{ margin: 0, color: C.muted, lineHeight: 1.6, maxWidth: '640px', fontSize: '15px' }}>
-              {lesson.description}
+              <RichText value={lesson.description} />
             </p>
           ) : null}
         </div>
@@ -198,7 +199,7 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
           {/* Lesson description as body */}
           {lesson.description ? (
             <p style={{ color: C.muted, lineHeight: 1.75, margin: '0 0 24px', fontSize: '15px' }}>
-              {lesson.description}
+              <RichText value={lesson.description} />
             </p>
           ) : null}
 

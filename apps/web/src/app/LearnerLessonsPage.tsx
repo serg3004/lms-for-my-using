@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { RichText } from '../shared/RichText.js';
 
 import { getCourse } from '../shared/api/courses.js';
 import { listAssignments } from '../shared/api/assignments.js';
@@ -155,7 +156,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
                           <a href={getLessonHref(lesson.id)}>{lesson.title}</a>
                         </h2>
                         {lesson.description ? (
-                          <p className="learner-lesson-card__desc">{lesson.description}</p>
+                          <p className="learner-lesson-card__desc"><RichText value={lesson.description} /></p>
                         ) : null}
                       </div>
                     </div>

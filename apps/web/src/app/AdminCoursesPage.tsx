@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { plainText } from '../shared/RichText.js';
+import { RichTextField } from '../shared/RichTextField.js';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '../shared/formatDate.js';
 
@@ -268,7 +270,7 @@ export function AdminCoursesPage() {
         <>
           <a className="td-title" href={`/admin/courses/${course.id}`}>{course.title}</a>
           {course.description ? (
-            <div className="td-meta">{course.description.slice(0, 80)}{course.description.length > 80 ? '…' : ''}</div>
+            <div className="td-meta">{plainText(course.description).slice(0, 80)}{plainText(course.description).length > 80 ? '…' : ''}</div>
           ) : null}
         </>
       ),
@@ -427,15 +429,7 @@ export function AdminCoursesPage() {
             />
           </FormField>
 
-          <FormField id="course-description" label={t('admin.courses.form.description', 'Description')}>
-            <textarea
-              id="course-description"
-              maxLength={1000}
-              rows={3}
-              value={formDescription}
-              onChange={(e) => setFormDescription(e.target.value)}
-            />
-          </FormField>
+          <RichTextField id="course-description" label={t('admin.courses.form.description', 'Description')} value={formDescription} maxLength={1000} onChange={(next) => setFormDescription(next)} />
 
           {formState.status === 'error' ? (
             <p className="admin-form__error" role="alert">{formState.message}</p>

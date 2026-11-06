@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useReducer, useRef, useState } from 'react';
+import { RichText, plainText } from '../shared/RichText.js';
 import { useTranslation } from 'react-i18next';
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
@@ -297,8 +298,8 @@ export function AdminAssessmentBuilderPage() {
           <div className={`learner-quiz__result-banner ${previewSubmit.result.passed ? 'learner-quiz__result-banner--passed' : 'learner-quiz__result-banner--failed'}`}>
             <span className="learner-quiz__result-label">
               {previewSubmit.result.passed
-                ? previewAssessment?.passMessage || t('assessments.resultPassed')
-                : previewAssessment?.failMessage || t('assessments.resultFailed')}
+                ? (plainText(previewAssessment?.passMessage ?? '') ? <RichText value={previewAssessment?.passMessage ?? ''} /> : t('assessments.resultPassed'))
+                : (plainText(previewAssessment?.failMessage ?? '') ? <RichText value={previewAssessment?.failMessage ?? ''} /> : t('assessments.resultFailed'))}
             </span>
             <span className="learner-quiz__result-score">
               {t('assessments.resultScore', { score: previewSubmit.result.score, maxScore: previewSubmit.result.maxScore, percentage: previewSubmit.result.percentage })}
@@ -342,7 +343,7 @@ export function AdminAssessmentBuilderPage() {
         </div>
       ) : (
         <div className="admin-preview">
-          {previewAssessment?.description && <p className="admin-preview__description">{previewAssessment.description}</p>}
+          {previewAssessment?.description && <p className="admin-preview__description"><RichText value={previewAssessment.description} /></p>}
           <p className="admin-preview__meta">
             {t('admin.assessmentBuilder.previewPassingScore', 'Passing score: {{score}}%', { score: previewAssessment?.passingScore })}
           </p>

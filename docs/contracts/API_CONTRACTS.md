@@ -746,6 +746,11 @@ Required titles/labels must contain visible non-whitespace text after sanitizati
 is independent of visible-text limits. Answer-option names, answers, comments and context values retain their previous
 plain-text contracts (PR 428 is separate). Existing plain strings and assigned snapshots are not migrated or rewritten.
 
+PR 429 extends the same sanitized markup contract to descriptions and messages of other modules: course (1000), lesson
+(1000), course material (1000), assessment description and pass/fail messages (2000), group (500), department (1000)
+and position (1000) descriptions. Entity names stay plain text; certificates, emails, lists and search use `plainText`.
+Legacy plain strings are returned unchanged.
+
 `RichTextField` supports single-line and multiline author fields using the same localized formatting controls. Single-line
 Enter inserts no paragraph and pasted lines are joined with spaces. Inline rename retains commit-on-blur/Enter, Escape,
 retry and validation; opening formatting does not commit the field. Read-only author fields disable editing explicitly.
