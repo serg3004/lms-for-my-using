@@ -1651,7 +1651,8 @@
         "done": "结果已删除。30天内可在会话页面恢复。",
         "backToSessions": "返回会话"
       },
-      "settingsBlockTitle": "设置",
+      "tab": { "main": "基本信息", "settings": "设置", "label": "检查表分区", "hasError": "有错误", "goToError": "转到该字段" },
+      "settingsTab": { "taking": "检查表的填写方式", "learner": "员工看到的内容", "locationModule": "定位与模块" },
       "helpLabel": "提示：{{name}}",
       "allowSkipAllHint": "观察员可以跳过任何标准。被跳过的标准不计入结果。对保存后分配的会话生效。",
       "recordLocationOrgDefault": "未设置：安排会话时使用组织的默认设置。",

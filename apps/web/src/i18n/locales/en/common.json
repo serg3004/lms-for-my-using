@@ -1651,7 +1651,8 @@
         "done": "The result was deleted. You can restore it from the sessions page within 30 days.",
         "backToSessions": "Back to sessions"
       },
-      "settingsBlockTitle": "Settings",
+      "tab": { "main": "Main", "settings": "Settings", "label": "Sections of the checklist", "hasError": "has an error", "goToError": "Go to the field" },
+      "settingsTab": { "taking": "Taking the checklist", "learner": "What the employee sees", "locationModule": "Location and module" },
       "helpLabel": "Hint: {{name}}",
       "allowSkipAllHint": "The observer can skip any criterion. Skipped criteria are left out of the result. Applies to sessions assigned after you save.",
       "recordLocationOrgDefault": "Not set: the organization default applies when a session is scheduled.",

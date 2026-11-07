@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { openPreviewBuilder, previewSheet } from './checklist-preview.js';
+import { openSettingsTab } from './checklist-settings-tab.js';
 
 export async function openNumberingEditor(page: Page, locale = 'ru') {
   const sheet = previewSheet();
@@ -17,6 +18,7 @@ export async function openNumberingEditor(page: Page, locale = 'ru') {
 
 export async function openUnnumberedPreview(page: Page) {
   const data = await openNumberingEditor(page);
+  await openSettingsTab(page);
   await page.getByRole('checkbox', { name: 'Нумерация критериев и групп', exact: true }).uncheck();
   await page.getByRole('button', { name: 'Предпросмотр', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: data.sheet.title, exact: true });

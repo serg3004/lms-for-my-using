@@ -1521,23 +1521,6 @@
   padding: 0;
 }
 
-.admin-builder__grid {
-  display: grid;
-  /* Matches the prototype's `.builder` grid: a flexible left column and a fixed-width settings
-     column, rather than a proportional split -- at this app's (wider, uncapped) admin content
-     width a ratio-based split left too little room for the criteria table and contributed to the
-     "criterion text is unreadably narrow" defect (PR 317). */
-  grid-template-columns: minmax(0, 1fr) clamp(320px, 28vw, 400px);
-  gap: 20px;
-  align-items: start;
-}
-
-@media (max-width: 900px) {
-  .admin-builder__grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 .admin-builder__column {
   display: flex;
   flex-direction: column;
@@ -2350,3 +2333,65 @@
 
 /* PR 415: what a criterion's description and explanation rule are set to. */
 .admin-criteria-row__meta { grid-column: 1 / -1; margin: 0; font-size: 12px; color: var(--color-text-muted); }
+
+/* PR 435: the tab strip of the sheet editor, with Save and its status line on the right (visible on both tabs). */
+.admin-builder-tabbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 0 0 20px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.admin-builder-tabbar .admin-org-tabs {
+  flex: 1 1 200px;
+  min-width: 0;
+  margin: 0 0 -1px;
+  border-bottom: 0;
+  padding-bottom: 1px;
+}
+
+.admin-builder-tabbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding-bottom: 8px;
+}
+
+.admin-builder-tabbar__status {
+  margin: 0;
+}
+
+.admin-builder-tabbar__error {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-danger, #b42318);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.admin-builder__settings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.admin-builder__settings[hidden],
+.admin-builder__main[hidden] {
+  display: none;
+}
+
+.admin-builder__main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
