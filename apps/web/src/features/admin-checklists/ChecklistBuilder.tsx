@@ -85,6 +85,12 @@ import {
 /** Pseudo-option of the criterion scale dropdown that opens the scale editor instead of picking a scale. */
 const CREATE_SCALE_OPTION = '__create_scale__';
 /** PR 435: the fields that live on the «Основное» tab; a failed save naming any other field belongs to «Настройки». */
+/** PR 436: sizes of the row "thumbnail + images of the form" (inline: the CSS budget is spent). */
+const IMAGES_ROW_GAP = 24;
+const COVER_COLUMN_WIDTH = 260;
+const PHOTOS_COLUMN_MIN = 320;
+const PHOTOS_COLUMN_MAX = 520;
+
 const MAIN_TAB_FIELDS = new Set(['title', 'description', 'appearance', 'feedbackLayout']);
 const FIELD_INPUT_IDS: Record<string, string> = { title: 'checklist-title', description: 'checklist-description', passThreshold: 'checklist-threshold', accessMode: 'checklist-access-mode', preSessionVisibility: 'checklist-pre-session-visibility' };
 
@@ -649,10 +655,14 @@ export function ChecklistBuilder({
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}><BlockGear target={{ kind: 'header', id: null, name: t('admin.checklists.appearance.kind.header') }} active={blockTarget?.kind === 'header'} onOpen={openBlockSettings} t={t} /></div>
             <RichTextField id="checklist-title" label={t('admin.checklists.field.title', 'Title')} value={title} onChange={setTitle} maxLength={200} singleLine compact disabled={!canEdit} />
             <RichDescriptionEditor id="checklist-description" label={t('admin.checklists.field.description', 'Description')} value={description} onChange={setDescription} disabled={!canEdit} />
-            {/* PR 433: the thumbnail on the left, the images of the form on the right; one under the other on a narrow screen. */}
-            <div data-testid="checklist-images" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 16, alignItems: 'start' }}>
-              <ChecklistCoverField checklistId={checklist.id} title={checklist.title} coverUpdatedAt={checklist.coverUpdatedAt} />
-              <ChecklistPhotosField checklistId={checklist.id} title={checklist.title} photos={checklist.photos} disabled={!canEdit} onChange={setSheetPhotos} />
+            {/* PR 433/436: the thumbnail on the left and the images of the form right next to it (one row, 24 px apart); one under the other on a narrow screen. */}
+            <div data-testid="checklist-images" style={{ display: 'flex', flexWrap: 'wrap', gap: IMAGES_ROW_GAP, alignItems: 'flex-start' }}>
+              <div style={{ flex: `0 1 ${COVER_COLUMN_WIDTH}px`, minWidth: 0, maxWidth: '100%' }}>
+                <ChecklistCoverField checklistId={checklist.id} title={checklist.title} coverUpdatedAt={checklist.coverUpdatedAt} />
+              </div>
+              <div style={{ flex: `1 1 ${PHOTOS_COLUMN_MIN}px`, minWidth: 0, maxWidth: PHOTOS_COLUMN_MAX }}>
+                <ChecklistPhotosField checklistId={checklist.id} title={checklist.title} photos={checklist.photos} disabled={!canEdit} onChange={setSheetPhotos} />
+              </div>
             </div>
           </ChecklistSettingsForm>
           <ChecklistItemsEditor style={blockLook('info', null)}>
