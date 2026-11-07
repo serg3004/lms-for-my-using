@@ -81,6 +81,8 @@ export function buildChecklistSettingsPayload(form: {
   appearance?: Appearance | null;
   allowSkipAll?: boolean;
   showNumbering?: boolean;
+  /** PR 437: false hides the sheet's extra pictures when the sheet is filled in. */
+  showSheetPhotos?: boolean;
   showPointsToLearner?: boolean;
   accessMode: ChecklistAccessMode;
   pinned: boolean;
@@ -107,6 +109,7 @@ export function buildChecklistSettingsPayload(form: {
     feedbackRequired: (form.feedbackEnabled ?? true) && (form.feedbackRequired ?? false),
     allowSkipAll: form.allowSkipAll ?? false,
     showNumbering: form.showNumbering ?? true,
+    showSheetPhotos: form.showSheetPhotos ?? true,
     showPointsToLearner: form.showPointsToLearner ?? false,
     accessMode: form.accessMode,
     // Only a free checklist can be pinned; switching the mode back clears the pin in the same save.

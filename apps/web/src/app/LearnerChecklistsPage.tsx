@@ -336,7 +336,7 @@ function ChecklistTaking({
       <h1 style={{ color: COLORS.text, marginBottom: 4 }}><RichText value={checklist.title} /></h1>
       {checklist.description && <p style={{ color: COLORS.muted }}><RichDescription value={checklist.description} /></p>}
       {/* PR 421: extra pictures of the sheet, visible during the pass. */}
-      {checklist.photos && checklist.photos.length > 0 && <ChecklistPhotoStrip checklistId={checklist.id} photos={checklist.photos} title={checklist.title} />}
+      {checklist.showSheetPhotos !== false && checklist.photos && checklist.photos.length > 0 && <ChecklistPhotoStrip checklistId={checklist.id} photos={checklist.photos} title={checklist.title} />}
       </AppearanceBlock>
       <ChecklistDeadlineMeta instance={instance} />
       {instance.status === 'expired' && (

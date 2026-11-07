@@ -129,6 +129,7 @@ const checklistSelect = {
   allowSkipAll: true,
   showNumbering: true,
   showPointsToLearner: true,
+  showSheetPhotos: true,
   accessMode: true,
   pinned: true,
   allowEditByAll: true,
@@ -801,6 +802,7 @@ export class ChecklistsService {
           allowSkipAll: source.allowSkipAll,
           showNumbering: source.showNumbering,
           showPointsToLearner: source.showPointsToLearner,
+          showSheetPhotos: source.showSheetPhotos,
           // PR 366: only an administrator's copy of a free checklist stays free.
           accessMode: keepFreeAccess ? source.accessMode : 'assigned',
           allowEditByAll: source.allowEditByAll,

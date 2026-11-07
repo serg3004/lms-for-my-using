@@ -1785,6 +1785,8 @@
         "title": "清单表单上的图片",
         "hint": "最多 {{max}} 张图片：JPEG、PNG、GIF 或 WEBP，每张不超过 {{maxMb}} MB。员工在执行时可在检查表上看到这些图片。",
         "empty": "暂无图片。",
+        "showOnSheet": "在检查表上显示图片",
+        "hiddenOnSheet": "填写检查表时看不到这些图片。",
         "add": "添加图片",
         "full": "已上传最多 {{max}} 张图片。",
         "caption": "图片 {{n}} 的说明",

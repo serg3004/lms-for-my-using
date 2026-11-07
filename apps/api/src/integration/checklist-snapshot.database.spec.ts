@@ -246,6 +246,21 @@ describe('checklist assignment snapshots — database', () => {
     expect(stored.templateSnapshot).toMatchObject({ checklist: { showNumbering: false } });
   });
 
+  it('defaults sheet pictures on, keeps the flag in copies and templates and applies it at once to assigned sheets (PR 437)', async () => {
+    const service = new ChecklistsService(prisma, {} as UploadService);
+    expect((await prisma.checklist.findUniqueOrThrow({ where: { id: checklistId } })).showSheetPhotos).toBe(true);
+    const assigned = await service.assignChecklist(checklistId, organizationId, { userId: learnerId }, assignerId);
+    expect((await service.getInstance(assigned.id, organizationId)).checklist?.showSheetPhotos).toBe(true);
+    await service.updateChecklist(checklistId, organizationId, updateChecklistSchema.parse({ showSheetPhotos: false }));
+    // Pictures are not frozen in the assignment: the switch applies to sessions that are already started.
+    expect((await service.getInstance(assigned.id, organizationId)).checklist?.showSheetPhotos).toBe(false);
+    expect((await service.copyChecklist(checklistId, organizationId, assignerId)).showSheetPhotos).toBe(false);
+    const template = await service.createOrgTemplate(organizationId, { sourceChecklistId: checklistId, title: 'Hidden pictures' }, assignerId);
+    await service.updateChecklist(checklistId, organizationId, updateChecklistSchema.parse({ showSheetPhotos: true }));
+    expect((await service.createFromOrgTemplate(template.id, organizationId, assignerId)).showSheetPhotos).toBe(false);
+    expect((await service.getInstance(assigned.id, organizationId)).checklist?.showSheetPhotos).toBe(true);
+  });
+
   it('defaults learner points off and freezes the opt-in in assignments, copies and organization templates (PR 426)', async () => {
     const service = new ChecklistsService(prisma, {} as UploadService);
     expect((await prisma.checklist.findUniqueOrThrow({ where: { id: checklistId } })).showPointsToLearner).toBe(false);

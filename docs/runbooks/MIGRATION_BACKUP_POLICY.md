@@ -803,3 +803,16 @@ retain the new API. Leave the column, snapshots and all learning results intact.
 Disposable PostgreSQL checks cover migration defaults, copy/template retention, assignment snapshots
 and staff reporting. They are not production backup/restore evidence. This PR does not deploy or
 modify production data.
+
+### Sheet pictures on the filled-in sheet (PR 437)
+
+Migration `20261107120000_checklist_show_sheet_photos` adds
+`checklists.show_sheet_photos BOOLEAN NOT NULL DEFAULT true`. Existing sheets keep showing their
+pictures; PostgreSQL's constant default needs no application backfill. No picture, file, snapshot or
+learning result is rewritten, and the value is not stored in assignment snapshots.
+
+Apply the additive migration under the normal verified production backup policy before the API/web
+rollout. An older API ignores the column; an older web client ignores the flag and keeps showing the
+pictures. Application rollback leaves the column in place. Disposable PostgreSQL checks cover the
+default, copy/template retention and the live (unfrozen) value in assigned sessions; they are not
+production backup/restore evidence.

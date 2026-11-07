@@ -150,3 +150,42 @@ describe('ChecklistPhotosField (PR 421)', () => {
     expect(container.querySelector<HTMLInputElement>('[role="textbox"]')?.getAttribute('contenteditable')).toBe('false');
   });
 });
+
+describe('"Show images on the checklist" box (PR 437)', () => {
+  async function renderWithBox(showOnSheet: boolean, disabled = false) {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    const seen: boolean[] = [];
+    await act(async () => { root?.render(<ChecklistPhotosField checklistId="c1" title="Лист" photos={[photo(1)]} disabled={disabled} showOnSheet={showOnSheet} onShowOnSheetChange={(value) => seen.push(value)} />); });
+    return seen;
+  }
+  const box = () => container.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+
+  it('is ticked by default, reports a change and shows no hint while the images are shown', async () => {
+    const seen = await renderWithBox(true);
+    expect(box().checked).toBe(true);
+    expect(box().closest('label')?.textContent).toBe('Показывать изображения на чек-листе');
+    expect(container.textContent).not.toContain('Изображения не видны при заполнении листа.');
+    await act(async () => { box().click(); });
+    expect(seen).toEqual([false]);
+  });
+
+  it('explains that the images stay in the editor but are not shown when the box is off, and the editor stays usable', async () => {
+    await renderWithBox(false);
+    expect(box().checked).toBe(false);
+    expect(container.textContent).toContain('Изображения не видны при заполнении листа.');
+    expect(button('Добавить изображение')?.disabled).toBe(false);
+    expect(button('Изображение 1 ниже')).toBeDefined();
+  });
+
+  it('cannot be changed without the right to edit, and there is no box where the parent does not offer it', async () => {
+    await renderWithBox(true, true);
+    expect(box().disabled).toBe(true);
+    await act(async () => { root?.unmount(); });
+    container.remove();
+    await render([photo(1)]);
+    expect(container.querySelector('input[type="checkbox"]')).toBeNull();
+  });
+});
+

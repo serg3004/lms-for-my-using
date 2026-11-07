@@ -485,6 +485,8 @@ export type ChecklistSummary = {
   allowSkipAll?: boolean;
   showNumbering?: boolean;
   showPointsToLearner?: boolean;
+  // PR 437 -- optional: older payloads read as true (the pictures are shown).
+  showSheetPhotos?: boolean;
   // PR 353 -- optional because older payloads never carried it (read as 'assigned').
   accessMode?: ChecklistAccessMode;
   // PR 354 -- optional for the same reason (read as false).
