@@ -55,7 +55,7 @@ export function ChecklistBuilderTabs({ active, onChange, errorTab, t, children }
             type="button"
           >
             {labels[tab]}
-            {errorTab === tab && <span aria-label={t('admin.checklists.tab.hasError', 'has an error')} className="admin-builder-tabbar__error" role="img">!</span>}
+            {errorTab === tab && <span aria-label={t('admin.checklists.tab.hasError', 'has an error')} role="img" style={{ color: 'var(--color-danger, #b42318)', fontWeight: 700 }}>!</span>}
           </button>
         ))}
       </div>

@@ -633,7 +633,7 @@ export function ChecklistBuilder({
         </p>
       )}
         <ChecklistBuilderTabs active={tab} errorTab={errorTab} onChange={changeTab} t={t}>
-          <p role="status" className="admin-form__hint admin-builder-tabbar__status">
+          <p role="status" className="admin-form__hint">
             {hasUnsavedChanges
               ? t('admin.checklists.unsavedChanges', 'There are unsaved changes.')
               : t('admin.checklists.allSaved', 'All changes are saved.')}
@@ -643,7 +643,7 @@ export function ChecklistBuilder({
           </Button>
         </ChecklistBuilderTabs>
         {saveState.status === 'error' && <p className="learner-quiz__submit-error" role="alert">{saveState.message}{errorTab && errorTab !== tab && (<> <button type="button" className="admin-back-link" onClick={() => goToErrorField()}>{t('admin.checklists.tab.goToError', 'Go to the field')}</button></>)}</p>}
-      <div aria-labelledby="checklist-tab-main" className="admin-builder__main" hidden={tab !== 'main'} id="checklist-panel-main" role="tabpanel" style={blockTarget && !narrowScreen ? { paddingInlineEnd: 356 } : undefined}>
+      <div aria-labelledby="checklist-tab-main" hidden={tab !== 'main'} id="checklist-panel-main" role="tabpanel" style={blockTarget && !narrowScreen ? { paddingInlineEnd: 356 } : undefined}>
         <div className="admin-builder__column" style={{ minWidth: 0 }}>
           <ChecklistSettingsForm style={blockLook('header', null)}>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}><BlockGear target={{ kind: 'header', id: null, name: t('admin.checklists.appearance.kind.header') }} active={blockTarget?.kind === 'header'} onOpen={openBlockSettings} t={t} /></div>
@@ -961,7 +961,7 @@ export function ChecklistBuilder({
         </div>
       </div>
 
-      <div aria-labelledby="checklist-tab-settings" className="admin-builder__settings" hidden={tab !== 'settings'} id="checklist-panel-settings" role="tabpanel">
+      <div aria-labelledby="checklist-tab-settings" hidden={tab !== 'settings'} id="checklist-panel-settings" role="tabpanel" style={tab === 'settings' ? { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap: 20, alignItems: 'start' } : undefined}>
         <ChecklistSettingsForm>
                       <h3 className="admin-heading-tip">
               {t('admin.checklists.scoringTitle', 'Scoring')}

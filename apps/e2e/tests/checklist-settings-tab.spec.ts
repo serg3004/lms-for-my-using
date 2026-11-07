@@ -33,14 +33,14 @@ test('keyboard: arrows, Home and End switch the tabs; unsaved changes survive th
   await expect(settings).toBeFocused();
   const threshold = page.getByLabel('Порог зачёта, %');
   await threshold.fill('73');
-  await expect(page.locator('.admin-builder-tabbar__status').filter({ hasText: 'Есть несохранённые изменения.' })).toBeVisible();
+  await expect(page.locator('.admin-builder-tabbar__actions p').filter({ hasText: 'Есть несохранённые изменения.' })).toBeVisible();
   await settings.focus();
   await page.keyboard.press('Home');
   await expect(main).toHaveAttribute('aria-selected', 'true');
   await page.keyboard.press('End');
   await expect(settings).toHaveAttribute('aria-selected', 'true');
   await expect(threshold).toHaveValue('73');
-  await expect(page.locator('.admin-builder-tabbar__status').filter({ hasText: 'Есть несохранённые изменения.' })).toBeVisible();
+  await expect(page.locator('.admin-builder-tabbar__actions p').filter({ hasText: 'Есть несохранённые изменения.' })).toBeVisible();
   await page.keyboard.press('ArrowLeft');
   await expect(main).toHaveAttribute('aria-selected', 'true');
   await expect(page).not.toHaveURL(/#settings/);

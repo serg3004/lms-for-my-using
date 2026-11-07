@@ -212,7 +212,7 @@ describe('ChecklistBuilder settings column (PR 340)', () => {
   it('explains the active scoring mode and shows the save status', () => {
     expect(html).toContain('role="tooltip"');
     expect(html).toContain('A criterion can also use its own ready-made scale');
-    expect(html).toContain('<p role="status" class="admin-form__hint admin-builder-tabbar__status">All changes are saved.</p>');
+    expect(html).toContain('<p role="status" class="admin-form__hint">All changes are saved.</p>');
   });
 
   it('PR 414: the scale is a switch; the choice and the "from scale" points appear only when it is on', () => {
