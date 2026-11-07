@@ -45,7 +45,7 @@ export async function openFormattedReport(page: Page) {
   const data = await installCriterionScaleMocks(page, 'instructor');
   data.session.status = 'completed';
   const report = sessionReportFixture(data.session);
-  report.checklist.description = '<p><strong>Важный текст</strong><script>bad()</script></p>';
+  report.checklist.description = '<p style="text-align:center"><strong>Важный текст</strong><script>bad()</script></p>';
   report.criteria[0]!.description = '<p><em>Проверить маркировку</em></p>';
   await page.route('**/api/v1/checklist-sessions/scale-session**', (route) => {
     const path = new URL(route.request().url()).pathname;

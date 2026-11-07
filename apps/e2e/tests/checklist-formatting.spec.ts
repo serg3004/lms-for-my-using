@@ -76,7 +76,31 @@ test('session report renders safe formatting and criterion hints from the snapsh
   const { openFormattedReport } = await import('../fixtures/checklist-formatting.js');
   await openFormattedReport(page);
   await expect(page.getByText('Важный текст', { exact: true })).toHaveCSS('font-weight', '700');
+  await expect(page.getByText('Важный текст', { exact: true }).locator('xpath=..')).toHaveCSS('text-align', 'center');
   await expect(page.getByText('bad()', { exact: true })).toHaveCount(0);
   await page.getByRole('tab', { name: 'Критерии', exact: true }).click();
   await expect(page.getByText('Проверить маркировку', { exact: true })).toHaveCSS('font-style', 'italic');
+});
+
+test('text alignment: chosen in the window, saved on the paragraph, kept in the editor and the preview, reset with the formatting', async ({ page }) => {
+  const { editor, popup, saved } = await openFormattingPopup(page);
+  const alignment = popup.getByRole('group', { name: 'Выравнивание', exact: true });
+  await expect(alignment.getByRole('button')).toHaveCount(4);
+  await expect(alignment.getByRole('button', { name: /^По левому краю/ })).toHaveAttribute('aria-pressed', 'true');
+  await alignment.getByRole('button', { name: /^По центру/ }).click();
+  await expect(alignment.getByRole('button', { name: /^По центру/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(editor.locator('p')).toHaveCSS('text-align', 'center');
+  await page.keyboard.press('Escape'); await expect(editor).toBeFocused();
+  await page.getByRole('button', { name: 'Сохранить', exact: true }).first().click();
+  await expect.poll(() => String(saved()?.description)).toBe('<p style="text-align:center">Важный текст</p>');
+  await page.getByRole('button', { name: 'Предпросмотр', exact: true }).click();
+  const preview = page.getByRole('dialog', { name: '5S — рабочее место', exact: true });
+  await expect(preview.getByText('Важный текст', { exact: true })).toHaveCSS('text-align', 'center');
+  await preview.getByRole('button', { name: 'Закрыть', exact: true }).first().click();
+  await selectDescription(editor); await page.keyboard.press('ControlOrMeta+Shift+r');
+  await expect(editor.locator('p')).toHaveCSS('text-align', 'right');
+  await page.keyboard.press('Shift+F10');
+  const second = page.getByRole('dialog', { name: 'Форматирование текста' });
+  await second.getByRole('button', { name: 'Сбросить форматирование' }).click();
+  await page.keyboard.press('Escape'); await expect(editor.locator('p')).toHaveCSS('text-align', 'start');
 });
