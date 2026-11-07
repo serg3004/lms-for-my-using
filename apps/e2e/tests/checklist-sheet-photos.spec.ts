@@ -145,6 +145,27 @@ test.describe('Extra sheet photos (PR 421)', () => {
     await expect(preview).toBeVisible();
   });
 
+  // PR 437: the box beside the heading of the images block hides the strip when the sheet is filled in; the editor keeps the images.
+  test('"Показывать изображения на чек-листе": unticked, the preview has no images but the editor keeps them; ticked again, they are back', async ({ page }) => {
+    await openEditor(page);
+    const box = page.getByRole('checkbox', { name: 'Показывать изображения на чек-листе' });
+    await expect(box).toBeChecked();
+    expect((await box.boundingBox())!.width).toBeLessThanOrEqual(24);
+    await box.uncheck();
+    await expect(page.getByText('Изображения не видны при заполнении листа.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Изображение 1 ниже' })).toBeVisible();
+    await page.getByRole('button', { name: 'Предпросмотр' }).click();
+    const preview = page.locator('dialog.admin-preview-overlay');
+    await expect(preview.getByRole('heading', { name: 'Открытие смены' })).toBeVisible();
+    await expect(preview.getByRole('heading', { name: 'Изображение на бланке чек-листа' })).toHaveCount(0);
+    await expect(preview.getByRole('img', { name: /Изображение 2 листа/ })).toHaveCount(0);
+    await preview.getByRole('button', { name: 'Закрыть' }).first().click();
+    await box.check();
+    await expect(page.getByText('Изображения не видны при заполнении листа.')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Предпросмотр' }).click();
+    await expect(page.locator('dialog.admin-preview-overlay').getByRole('img', { name: /Изображение 2 листа/ })).toBeVisible();
+  });
+
   for (const width of [320, 390]) {
     test(`${width} px: the photo list and the preview do not scroll horizontally, controls are at least 44 px`, async ({ page }) => {
       await openEditor(page);

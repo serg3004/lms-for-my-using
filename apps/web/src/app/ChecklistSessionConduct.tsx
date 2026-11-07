@@ -376,7 +376,7 @@ export function ConductScreen({
       </AppearanceBlock>
 
       {/* PR 421: the sheet's extra pictures stay at hand during the pass. */}
-      {(session.status === 'in_progress' || session.status === 'paused') && checklist.photos && checklist.photos.length > 0 && (
+      {(session.status === 'in_progress' || session.status === 'paused') && checklist.showSheetPhotos !== false && checklist.photos && checklist.photos.length > 0 && (
         <ChecklistPhotoStrip checklistId={checklist.id} photos={checklist.photos} title={checklist.title} collapsible />
       )}
 

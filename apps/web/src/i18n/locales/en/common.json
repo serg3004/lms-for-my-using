@@ -1785,6 +1785,8 @@
         "title": "Checklist form image",
         "hint": "Up to {{max}} images: JPEG, PNG, GIF or WEBP, up to {{maxMb}} MB each. The employee sees them on the sheet during the pass.",
         "empty": "No images yet.",
+        "showOnSheet": "Show images on the checklist",
+        "hiddenOnSheet": "The images are not visible when the sheet is filled in.",
         "add": "Add image",
         "full": "The maximum of {{max}} images is uploaded.",
         "caption": "Caption of image {{n}}",

@@ -1174,6 +1174,7 @@ model Checklist {
   feedbackRequired             Boolean                       @default(false) @map("feedback_required")
   allowSkipAll                 Boolean                       @default(false) @map("allow_skip_all")
   showNumbering                Boolean                       @default(true) @map("show_numbering")
+  showSheetPhotos              Boolean                       @default(true) @map("show_sheet_photos")
   showPointsToLearner          Boolean                       @default(false) @map("show_points_to_learner")
   // PR 405: configurable "Feedback" section (optional root title, sections, text/choice fields). Null =
   // the built-in three fields (strengths, development areas, next steps). Frozen into the instance

@@ -62,13 +62,16 @@ function PhotoRow({ checklistId, photo, index, count, title, disabled, onCaption
  * PR 421/433: "Checklist form image" -- the extra pictures of the sheet in the builder -- upload (up to 6), caption, order (arrows and drag),
  * remove with confirmation. Every change is saved at once, like the cover; own state keeps the builder's form untouched.
  */
-export function ChecklistPhotosField({ checklistId, title, photos: initial, disabled = false, onChange }: {
+export function ChecklistPhotosField({ checklistId, title, photos: initial, disabled = false, onChange, showOnSheet = true, onShowOnSheetChange }: {
   checklistId: string;
   title: string;
   photos?: readonly ChecklistPhotoSummary[];
   disabled?: boolean;
   /** The builder's preview shows the same list. */
   onChange?: (photos: ChecklistPhotoSummary[]) => void;
+  /** PR 437: the sheet shows the pictures when it is filled in (the box is part of the sheet settings, saved with Save). */
+  showOnSheet?: boolean;
+  onShowOnSheetChange?: (value: boolean) => void;
 }) {
   const { t } = useTranslation();
   const [photos, setPhotos] = useState<ChecklistPhotoSummary[]>(() => [...(initial ?? [])].sort((a, b) => a.order - b.order));
@@ -160,6 +163,13 @@ export function ChecklistPhotosField({ checklistId, title, photos: initial, disa
   return (
     <div role="group" aria-labelledby={headingId} style={{ display: 'grid', gap: 8 }}>
       <strong id={headingId}>{t('admin.checklists.photos.title', 'Checklist form image')} <span className="admin-form__hint">({photos.length}/{MAX_CHECKLIST_PHOTOS})</span></strong>
+      {onShowOnSheetChange && (
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44 }}>
+          <input type="checkbox" style={{ width: 18, height: 18, flex: 'none', margin: 0 }} checked={showOnSheet} disabled={disabled} onChange={(event) => onShowOnSheetChange(event.target.checked)} />
+          <span>{t('admin.checklists.photos.showOnSheet', 'Show images on the checklist')}</span>
+        </label>
+      )}
+      {!showOnSheet && <p className="admin-form__hint" role="status" style={{ margin: 0 }}>{t('admin.checklists.photos.hiddenOnSheet', 'The images are not visible when the sheet is filled in.')}</p>}
       <p className="admin-form__hint" style={{ margin: 0 }}>
         {t('admin.checklists.photos.hint', 'Up to {{max}} images: JPEG, PNG, GIF or WEBP, up to {{maxMb}} MB each. The employee sees them on the sheet during the pass.', { max: MAX_CHECKLIST_PHOTOS, maxMb: CHECKLIST_PHOTO_MAX_MB })}
       </p>

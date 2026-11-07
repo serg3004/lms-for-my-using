@@ -2129,6 +2129,18 @@ are empty strings when disabled. CSV/XLSX summary labels omit those prefixes too
 identifiers and permissions are unaffected. The shared label function controls generated prefixes;
 filtering answered items never renumbers the sheet.
 
+### Sheet pictures on the filled-in sheet (PR 437)
+
+`Checklist.showSheetPhotos` is a boolean, default `true`. POST `/checklists` and PATCH `/checklists/:id`
+accept it; every checklist and assignment response exposes it. The “Show images on the checklist” box sits in
+the sheet-images block on the editor's main tab and is saved or discarded with the other sheet settings.
+
+It is a display setting, not an access rule: the pictures stay in the editor and the files stay readable to
+everyone who may see the sheet. It is not frozen in `templateSnapshot` (the pictures themselves are not
+frozen either, PR 421), so changing it applies at once to assigned and already started sessions. With `false`
+the preview, the observer's session screen and the employee's own pass do not draw the picture strip.
+Copies and organization templates retain the flag; templates saved before it read as `true`.
+
 ### Employee result and point visibility (PR 426)
 
 `Checklist.showPointsToLearner` is a boolean with default `false` in the database and creation schema;
