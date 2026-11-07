@@ -64,7 +64,7 @@ export function ChecklistCoverField({ checklistId, title, coverUpdatedAt }: {
   }
 
   return (
-    <div role="group" aria-labelledby="checklist-cover-title" style={{ display: 'grid', gap: 8, maxWidth: 360 }}>
+    <div role="group" aria-labelledby="checklist-cover-title" style={{ display: 'grid', gap: 8, maxWidth: '100%' }}>
       <strong id="checklist-cover-title">{t('admin.checklists.cover.title', 'Checklist thumbnail')}</strong>
       <ChecklistCover checklistId={checklistId} coverUpdatedAt={current} retryable title={title} />
       <p className="admin-form__hint" style={{ margin: 0 }}>

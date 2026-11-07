@@ -41,7 +41,7 @@ function PhotoRow({ checklistId, photo, index, count, title, disabled, onCaption
       {!disabled && (
         <button ref={setActivatorNodeRef} className="admin-drag" type="button" aria-label={t('admin.checklists.photos.drag', 'Drag image {{n}}', { n })} {...attributes} {...listeners}>⋮⋮</button>
       )}
-      <div style={{ width: 88, aspectRatio: '4 / 3', flex: 'none', borderRadius: 8, overflow: 'hidden', background: 'var(--color-surface-muted, #eef2ff)' }}>
+      <div style={{ width: 56, aspectRatio: '1 / 1', flex: 'none', borderRadius: 8, overflow: 'hidden', background: 'var(--color-surface-muted, #eef2ff)' }}>
         <ChecklistPhotoImage checklistId={checklistId} photo={photo} alt={t('admin.checklists.photos.alt', 'Image {{n}} of the sheet “{{title}}”', { n, title })} />
       </div>
       <div style={{ flex: '1 1 160px', minWidth: 0 }}><RichTextField value={caption} maxLength={CHECKLIST_PHOTO_CAPTION_MAX_LENGTH} disabled={disabled} singleLine compact
@@ -164,7 +164,7 @@ export function ChecklistPhotosField({ checklistId, title, photos: initial, disa
         {t('admin.checklists.photos.hint', 'Up to {{max}} images: JPEG, PNG, GIF or WEBP, up to {{maxMb}} MB each. The employee sees them on the sheet during the pass.', { max: MAX_CHECKLIST_PHOTOS, maxMb: CHECKLIST_PHOTO_MAX_MB })}
       </p>
       {photos.length === 0 ? (
-        <p className="admin-form__hint" style={{ margin: 0 }}>{t('admin.checklists.photos.empty', 'No images yet.')}</p>
+        <p className="admin-form__hint" style={{ margin: 0, padding: '14px 12px', border: '1px dashed var(--color-border, #d9deea)', borderRadius: 10 }}>{t('admin.checklists.photos.empty', 'No images yet.')}</p>
       ) : (
         <DndContext {...dnd}>
           <SortableContext items={photos.map((photo) => photo.id)} strategy={verticalListSortingStrategy}>
