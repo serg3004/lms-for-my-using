@@ -4,6 +4,8 @@ export const DESCRIPTION_SIZES = [14, 16, 20, 26] as const;
 /** Each preset passes WCAG AA against white at the smallest size. */
 export const DESCRIPTION_COLORS = ['#172033', '#B91C1C', '#166534', '#1D4ED8', '#6B21A8'] as const;
 export const DESCRIPTION_MARKUP_LIMIT = 24000;
+export const DESCRIPTION_ALIGNS = ['left', 'center', 'right', 'justify'] as const;
+export type DescriptionAlign = (typeof DESCRIPTION_ALIGNS)[number];
 export type DescriptionStyle = { bold?: boolean; italic?: boolean; underline?: boolean; uppercase?: boolean; size?: number; color?: string };
 export type DescriptionRun = DescriptionStyle & { text: string };
 type HtmlNode = ReturnType<typeof parseDocument>['children'][number];
@@ -26,6 +28,28 @@ export function descriptionStyle(style: string): DescriptionStyle {
   }
   return result;
 }
+
+/** One alignment per field: the first paragraph decides. Left is the default and is never written, old texts stay as they are. */
+export function descriptionAlign(value: string): DescriptionAlign {
+  if (!/<p\b/i.test(value)) return 'left';
+  let found: DescriptionAlign = 'left';
+  function visit(nodes: HtmlNode[], depth: number): boolean {
+    if (depth > 32) return true;
+    for (const node of nodes) {
+      if (!('name' in node) || !('attribs' in node) || !('children' in node) || blocked.has(node.name)) continue;
+      if (node.name === 'p') {
+        const match = /(?:^|;)\s*text-align\s*:\s*(center|right|justify)\s*(?:;|$)/i.exec(node.attribs.style ?? '');
+        if (match) found = match[1]!.toLowerCase() as DescriptionAlign;
+        return true;
+      }
+      if (visit(node.children, depth + 1)) return true;
+    }
+    return false;
+  }
+  visit(parseDocument(value, { decodeEntities: true }).children, 0);
+  return found;
+}
+const wrapAlign = (html: string, align: DescriptionAlign) => align === 'left' ? `<p>${html}</p>` : `<p style="text-align:${align}">${html}</p>`;
 
 function readHtml(value: string): DescriptionRun[] {
   const runs: DescriptionRun[] = [];
@@ -61,8 +85,8 @@ function readHtml(value: string): DescriptionRun[] {
 export function sanitizeDescription(value: string): string {
   if (!/<\/?[a-z][^<>]*>/i.test(value)) return value;
   const runs = readHtml(value);
-  const plain = runs.map((run) => run.text).join('');
-  if (!runs.some(({ bold, italic, underline, uppercase, size, color }) => bold || italic || underline || uppercase || size || color) && !/[<>]/.test(plain)) return plain;
+  const plain = runs.map((run) => run.text).join(''), align = descriptionAlign(value);
+  if (align === 'left' && !runs.some(({ bold, italic, underline, uppercase, size, color }) => bold || italic || underline || uppercase || size || color) && !/[<>]/.test(plain)) return plain;
   const html = runs.map((run) => {
     let content = escape(run.text).replaceAll('\n', '<br>');
     if (run.bold) content = `<strong>${content}</strong>`;
@@ -71,22 +95,22 @@ export function sanitizeDescription(value: string): string {
     const style = [run.size ? `font-size:${run.size}px` : '', run.color ? `color:${run.color}` : '', run.uppercase ? 'text-transform:uppercase' : ''].filter(Boolean).join(';');
     return style ? `<span style="${style}">${content}</span>` : content;
   }).join('');
-  return html ? `<p>${html}</p>` : '';
+  return html ? wrapAlign(html, align) : '';
 }
 
 export function descriptionRuns(value: string): DescriptionRun[] {
   return isRichDescription(value) ? readHtml(value) : [{ text: value }];
 }
 export const descriptionText = (value: string) => descriptionRuns(value).map((run) => run.uppercase ? run.text.toUpperCase() : run.text).join('');
-export function descriptionHtml(value: string) {
-  return isRichDescription(value) ? `<p>${descriptionRuns(value).map((run) => {
+export function descriptionHtml(value: string, options: { align?: boolean } = {}) {
+  return isRichDescription(value) ? wrapAlign(`${descriptionRuns(value).map((run) => {
     let text = escape(run.text).replaceAll('\n', '<br>');
     if (run.bold) text = `<strong>${text}</strong>`;
     if (run.italic) text = `<em>${text}</em>`;
     if (run.underline) text = `<u>${text}</u>`;
     const style = [run.size ? `font-size:${run.size}px` : '', run.color ? `color:${run.color}` : '', run.uppercase ? 'text-transform:uppercase' : ''].filter(Boolean).join(';');
     return style ? `<span style="${style}">${text}</span>` : text;
-  }).join('')}</p>` : `<p>${escape(value).replaceAll('\n', '<br>')}</p>`;
+  }).join('')}`, options.align === false ? 'left' : descriptionAlign(value)) : `<p>${escape(value).replaceAll('\n', '<br>')}</p>`;
 }
 export function descriptionContrast(color: string) {
   if (!/^#[\da-f]{6}$/i.test(color)) return 0;

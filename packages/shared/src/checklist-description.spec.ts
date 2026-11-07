@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DESCRIPTION_COLORS, descriptionContrast, descriptionHtml, descriptionRuns, descriptionText, sanitizeDescription } from './checklist-description.js';
+import { DESCRIPTION_COLORS, descriptionAlign, descriptionContrast, descriptionHtml, descriptionRuns, descriptionText, sanitizeDescription } from './checklist-description.js';
 
 describe('checklist description markup', () => {
   it('keeps ordinary text, literal brackets, entities and blank lines lossless', () => {
@@ -35,5 +35,35 @@ describe('checklist description markup', () => {
     expect(() => sanitizeDescription('<b>'.repeat(2000) + 'text' + '</b>'.repeat(2000))).not.toThrow();
     for (const color of DESCRIPTION_COLORS) expect(descriptionContrast(color)).toBeGreaterThanOrEqual(4.5);
     expect(descriptionContrast('#FFFF00')).toBeLessThan(4.5);
+  });
+  it('stores the field alignment on the paragraph, drops garbage and never writes the default', () => {
+    for (const align of ['center', 'right', 'justify'] as const) {
+      const clean = sanitizeDescription(`<p style="text-align:${align}">Текст</p>`);
+      expect(clean).toBe(`<p style="text-align:${align}">Текст</p>`);
+      expect(descriptionAlign(clean)).toBe(align);
+      expect(descriptionText(clean)).toBe('Текст');
+      expect(sanitizeDescription(clean)).toBe(clean);
+      expect(descriptionHtml(clean)).toBe(clean);
+    }
+    expect(sanitizeDescription('<p style="text-align:center"><strong>B</strong></p>')).toBe('<p style="text-align:center"><strong>B</strong></p>');
+    expect(sanitizeDescription('<p style="text-align:left">Текст</p>')).toBe('Текст');
+    expect(sanitizeDescription('<p style="text-align:start;position:fixed">Текст</p>')).toBe('Текст');
+    expect(sanitizeDescription('<p style="text-align:expression(alert(1))">A</p>')).toBe('A');
+    expect(sanitizeDescription('<p style="text-align:center;background:url(x)">A</p>')).toBe('<p style="text-align:center">A</p>');
+    expect(descriptionAlign('Старый текст')).toBe('left');
+    expect(descriptionAlign('<p><strong>Старый</strong></p>')).toBe('left');
+    expect(descriptionHtml('<p style="text-align:right">A</p>', { align: false })).toBe('<p>A</p>');
+    expect(descriptionHtml('Простой текст')).toBe('<p>Простой текст</p>');
+  });
+});
+
+describe('rich text wire contract keeps the alignment', () => {
+  it('accepts the four alignments, strips everything else and counts visible text only', async () => {
+    const { richTextSchema } = await import('./rich-text.js');
+    const schema = richTextSchema(10);
+    expect(schema.parse('<p style="text-align:justify">Текст</p>')).toBe('<p style="text-align:justify">Текст</p>');
+    expect(schema.parse('<p style="text-align:center;position:fixed">Текст</p>')).toBe('<p style="text-align:center">Текст</p>');
+    expect(schema.parse('<p style="text-align:left">Текст</p>')).toBe('Текст');
+    expect(schema.safeParse('<p style="text-align:center">Слишком длинный текст</p>').success).toBe(false);
   });
 });

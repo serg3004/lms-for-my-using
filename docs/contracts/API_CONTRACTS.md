@@ -722,6 +722,8 @@ Allowed output consists of paragraphs/line breaks, strong, emphasis, underline a
 `color` (`#RRGGBB`) and `text-transform: uppercase`. Source character case is preserved. Scripts, foreign namespaces,
 links, images, event attributes and other styles are removed; Word emphasis is normalized. The same parser is used for
 safe display of historical stored strings; React text nodes render the result, with no raw HTML insertion.
+Text alignment (PR 438) is one value per field, stored on the wrapping paragraph as `<p style="text-align:center|right|justify">`;
+left is the default and is never written, so stored texts are unchanged, and any other `text-align` value is dropped. No DDL.
 
 Limits are checked after sanitization against displayed text: 2000 characters for sheet/hint/template descriptions, 500 for
 scale-level descriptions. Raw and sanitized markup are bounded to 24000 characters. Plain strings continue to display as

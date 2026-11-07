@@ -5,7 +5,7 @@ import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useTranslation } from 'react-i18next';
 import { DESCRIPTION_MARKUP_LIMIT, descriptionHtml, descriptionText, sanitizeDescription } from '@lms/shared/checklist-description';
-import { StyleMark, useFormattingWindow } from './FormattingWindow.js';
+import { AlignExtension, StyleMark, useFormattingWindow } from './FormattingWindow.js';
 
 // Serialize the document model: DOM CSS serialization changes hex colours to rgb(), which the API intentionally rejects.
 function editorValue(editor: Editor) {
@@ -26,7 +26,8 @@ function editorValue(editor: Editor) {
       return text;
     }
     const children = (node.content ?? []).map(serialize).join('');
-    return node.type === 'paragraph' ? `<p>${children}</p>` : children;
+    const align = String(node.attrs?.textAlign ?? 'left');
+    return node.type === 'paragraph' ? `<p${align === 'left' ? '' : ` style="text-align:${align}"`}>${children}</p>` : children;
   }
   return sanitizeDescription(serialize(editor.getJSON()));
 }
@@ -41,7 +42,7 @@ const RichTextFieldInner = memo(function RichTextFieldInner({ value, onChange, l
   const formatting = useFormattingWindow(disabled);
   const editor = useEditor({
     immediatelyRender: false, shouldRerenderOnTransaction: true, editable: !disabled,
-    extensions: [StarterKit.configure({ heading: false, blockquote: false, codeBlock: false, code: false, horizontalRule: false, strike: false, bulletList: false, orderedList: false, listItem: false, link: false, trailingNode: false, paragraph: { HTMLAttributes: { style: 'margin:0' } } }), StyleMark],
+    extensions: [StarterKit.configure({ heading: false, blockquote: false, codeBlock: false, code: false, horizontalRule: false, strike: false, bulletList: false, orderedList: false, listItem: false, link: false, trailingNode: false, paragraph: { HTMLAttributes: { style: 'margin:0' } } }), StyleMark, AlignExtension],
     content: descriptionHtml(value),
     editorProps: {
       attributes: { id: id ?? uid, role: 'textbox', 'aria-labelledby': labelId, 'aria-describedby': [hintId, describedBy].filter(Boolean).join(' '), 'aria-invalid': invalid ? 'true' : 'false', 'aria-multiline': singleLine ? 'false' : 'true', class: ['admin-textarea', className].filter(Boolean).join(' '), style: `min-height:${singleLine || compact ? 44 : 88}px;width:100%;box-sizing:border-box;font-size:16px;white-space:${singleLine ? 'nowrap' : 'pre-wrap'};overflow-x:auto;overflow-wrap:anywhere;border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:10px 12px;background:var(--color-surface)` },
@@ -57,7 +58,7 @@ const RichTextFieldInner = memo(function RichTextFieldInner({ value, onChange, l
         const html = event.clipboardData?.getData('text/html'), text = event.clipboardData?.getData('text/plain') ?? '';
         const pasted = html ? sanitizeDescription(html.slice(0, DESCRIPTION_MARKUP_LIMIT)) : text;
         const clean = singleLine ? pasted.replace(/<br\s*\/?>|[\r\n]+/gi, ' ') : pasted;
-        if (editor && descriptionText(clean).length + editor.state.doc.textContent.length - (editor.state.selection.to - editor.state.selection.from) <= maxLength) editor.commands.insertContent(descriptionHtml(clean));
+        if (editor && descriptionText(clean).length + editor.state.doc.textContent.length - (editor.state.selection.to - editor.state.selection.from) <= maxLength) editor.commands.insertContent(descriptionHtml(clean, { align: false }));
         else setLengthError(true);
         return true;
       },
