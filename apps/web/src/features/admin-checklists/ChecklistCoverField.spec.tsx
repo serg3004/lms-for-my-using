@@ -49,7 +49,7 @@ afterEach(async () => {
 describe('ChecklistCoverField (PR 355)', () => {
   it('offers only upload while there is no picture and shows the default illustration', async () => {
     await render();
-    expect(buttons()).toEqual(['Загрузить картинку']);
+    expect(buttons()).toEqual(['Загрузить миниатюру']);
     expect(container.querySelector('svg[role="img"]')).not.toBeNull();
     expect(api.getChecklistCoverBlob).not.toHaveBeenCalled();
   });
@@ -71,17 +71,17 @@ describe('ChecklistCoverField (PR 355)', () => {
     const file = new File(['x'], 'cover.png', { type: 'image/png' });
     await pick(file);
     expect(api.uploadChecklistCover).toHaveBeenCalledWith('c1', file);
-    expect(buttons()).toEqual(['Заменить картинку', 'Удалить картинку']);
+    expect(buttons()).toEqual(['Заменить миниатюру', 'Удалить миниатюру']);
     expect(api.getChecklistCoverBlob).toHaveBeenCalledWith('c1');
   });
 
   it('removes the picture and returns to the default illustration', async () => {
     api.deleteChecklistCover.mockResolvedValue({ id: 'c1', coverUpdatedAt: null });
     await render('2026-10-27T10:00:00.000Z');
-    const remove = [...container.querySelectorAll('button')].find((b) => b.textContent === 'Удалить картинку');
+    const remove = [...container.querySelectorAll('button')].find((b) => b.textContent === 'Удалить миниатюру');
     await act(async () => { remove?.click(); });
     expect(api.deleteChecklistCover).toHaveBeenCalledWith('c1');
-    expect(buttons()).toEqual(['Загрузить картинку']);
+    expect(buttons()).toEqual(['Загрузить миниатюру']);
     expect(container.querySelector('img')).toBeNull();
   });
 
@@ -103,14 +103,14 @@ describe('ChecklistCoverField (PR 355)', () => {
     await render();
     await pick(new File(['x'], 'cover.png', { type: 'image/png' }));
     expect(container.querySelector('[role="alert"]')?.textContent).toBe('File content does not match declared file type');
-    expect(buttons()).toEqual(['Загрузить картинку']);
+    expect(buttons()).toEqual(['Загрузить миниатюру']);
   });
 
   // PR 400: a picture that cannot be shown says so in the editor and offers "Повторить".
   it('shows a message and a retry button when the picture cannot be loaded', async () => {
     api.getChecklistCoverBlob.mockRejectedValueOnce(new Error('offline'));
     await render('2026-10-27T10:00:00.000Z');
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Не удалось показать картинку');
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Не удалось показать миниатюру');
     const retry = [...container.querySelectorAll('button')].find((b) => b.textContent === 'Повторить');
     await act(async () => { retry?.click(); });
     expect(api.getChecklistCoverBlob).toHaveBeenCalledTimes(2);

@@ -31,7 +31,7 @@ export function ChecklistCover({ checklistId, coverUpdatedAt, title, ratio = '16
       <div style={frame}>
         <img
           src={url}
-          alt={t('checklists.cover.alt', 'Cover of the checklist “{{title}}”', { title: plainText(title) })}
+          alt={t('checklists.cover.alt', 'Thumbnail of the checklist “{{title}}”', { title: plainText(title) })}
           onError={() => setBrokenUrl(url)}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
@@ -41,7 +41,7 @@ export function ChecklistCover({ checklistId, coverUpdatedAt, title, ratio = '16
   if (retryable && failed) {
     return (
       <div role="alert" style={{ ...frame, display: 'grid', placeItems: 'center', alignContent: 'center', gap: 8, padding: 12, textAlign: 'center' }}>
-        <span>{t('checklists.cover.loadError', 'Unable to show the picture.')}</span>
+        <span>{t('checklists.cover.loadError', 'Unable to show the thumbnail.')}</span>
         <button className="ds-button ds-button--secondary ds-button--sm" onClick={() => { setBrokenUrl(null); image.retry(); }} type="button">
           {t('checklists.cover.retry', 'Retry')}
         </button>
@@ -50,7 +50,7 @@ export function ChecklistCover({ checklistId, coverUpdatedAt, title, ratio = '16
   }
   return (
     <div style={{ ...frame, display: 'grid', placeItems: 'center' }}>
-      <svg role="img" aria-label={t('checklists.cover.defaultAlt', 'Default checklist illustration')} viewBox="0 0 64 64" width="40%" style={{ maxWidth: 72, color: 'var(--color-primary, #4f46e5)' }}>
+      <svg role="img" aria-label={t('checklists.cover.defaultAlt', 'Default checklist thumbnail')} viewBox="0 0 64 64" width="40%" style={{ maxWidth: 72, color: 'var(--color-primary, #4f46e5)' }}>
         <rect x="14" y="8" width="36" height="48" rx="6" fill="none" stroke="currentColor" strokeWidth="3" />
         <path d="M22 24l4 4 7-8M22 40l4 4 7-8" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M38 26h6M38 42h6" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />

@@ -58,7 +58,7 @@ afterEach(async () => {
 describe('ChecklistPhotosField (PR 421)', () => {
   it('shows an empty state and the counter, and loads no picture', async () => {
     await render();
-    expect(container.textContent).toContain('Фото пока нет.');
+    expect(container.textContent).toContain('Изображений пока нет.');
     expect(container.textContent).toContain('(0/6)');
     expect(api.getChecklistPhotoBlob).not.toHaveBeenCalled();
   });
@@ -100,20 +100,20 @@ describe('ChecklistPhotosField (PR 421)', () => {
 
   it('stops offering "Add photo" at six photos', async () => {
     await render([1, 2, 3, 4, 5, 6].map(photo));
-    expect(button('Добавить фото')?.disabled).toBe(true);
-    expect(container.textContent).toContain('Загружено максимум фото: 6.');
+    expect(button('Добавить изображение')?.disabled).toBe(true);
+    expect(container.textContent).toContain('Загружено максимум изображений: 6.');
   });
 
   it('moves a photo with the arrows and saves the order; a failed save puts it back', async () => {
     await render([1, 2, 3].map(photo));
-    expect(button('Фото 1 выше')?.disabled).toBe(true);
-    expect(button('Фото 3 ниже')?.disabled).toBe(true);
+    expect(button('Изображение 1 выше')?.disabled).toBe(true);
+    expect(button('Изображение 3 ниже')?.disabled).toBe(true);
     api.reorderChecklistPhotos.mockResolvedValueOnce([]);
-    await act(async () => { button('Фото 2 выше')!.click(); });
+    await act(async () => { button('Изображение 2 выше')!.click(); });
     expect(api.reorderChecklistPhotos).toHaveBeenCalledWith('c1', ['p2', 'p1', 'p3']);
     expect(captions()).toEqual(['Схема 2', 'Схема 1', 'Схема 3']);
     api.reorderChecklistPhotos.mockRejectedValueOnce(new ApiClientError('Нет связи', 500));
-    await act(async () => { button('Фото 3 выше')!.click(); });
+    await act(async () => { button('Изображение 3 выше')!.click(); });
     expect(captions()).toEqual(['Схема 2', 'Схема 1', 'Схема 3']);
     expect(container.querySelector('[role="alert"]')?.textContent).toBe('Нет связи');
   });
@@ -133,7 +133,7 @@ describe('ChecklistPhotosField (PR 421)', () => {
 
   it('removes only after the confirmation', async () => {
     await render([1, 2].map(photo));
-    await act(async () => { button('Удалить фото 1')!.click(); });
+    await act(async () => { button('Удалить изображение 1')!.click(); });
     expect(api.deleteChecklistPhoto).not.toHaveBeenCalled();
     api.deleteChecklistPhoto.mockResolvedValue(undefined);
     const confirm = [...container.querySelectorAll('button')].find((b) => b.textContent === 'Удалить')!;
@@ -145,8 +145,8 @@ describe('ChecklistPhotosField (PR 421)', () => {
 
   it('is read-only when the sheet cannot be edited', async () => {
     await render([photo(1)], true);
-    expect(button('Добавить фото')?.disabled).toBe(true);
-    expect(button('Фото 1 выше')).toBeUndefined();
+    expect(button('Добавить изображение')?.disabled).toBe(true);
+    expect(button('Изображение 1 выше')).toBeUndefined();
     expect(container.querySelector<HTMLInputElement>('[role="textbox"]')?.getAttribute('contenteditable')).toBe('false');
   });
 });

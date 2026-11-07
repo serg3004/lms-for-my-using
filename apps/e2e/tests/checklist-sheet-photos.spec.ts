@@ -58,41 +58,58 @@ async function openEditor(page: Page, photoCount = 2): Promise<Server> {
   await page.setViewportSize({ width: 1280, height: 1400 });
   await page.goto('/admin/checklists');
   await page.getByRole('button', { name: 'Редактировать' }).click();
-  await expect(page.getByRole('group', { name: /Дополнительные фото/ })).toBeVisible();
+  await expect(page.getByRole('group', { name: /Изображение на бланке чек-листа/ })).toBeVisible();
   return server;
 }
 
 // The caption is a rich single-line field (PR 427): read its visible text.
-const captions = (page: Page) => page.getByRole('textbox', { name: /^Подпись к фото/ }).evaluateAll((fields) => fields.map((field) => field.textContent ?? ''));
+const captions = (page: Page) => page.getByRole('textbox', { name: /^Подпись к изображению/ }).evaluateAll((fields) => fields.map((field) => field.textContent ?? ''));
 
 test.describe('Extra sheet photos (PR 421)', () => {
   test('shows the saved photos with captions and the counter', async ({ page }) => {
     await openEditor(page);
-    await expect(page.getByRole('group', { name: /Дополнительные фото/ })).toContainText('(2/6)');
+    await expect(page.getByRole('group', { name: /Изображение на бланке чек-листа/ })).toContainText('(2/6)');
     expect(await captions(page)).toEqual(['Схема 1', 'Схема 2']);
-    await expect(page.getByRole('img', { name: /Фото 1 листа «Открытие смены»/ })).toBeVisible();
+    await expect(page.getByRole('img', { name: /Изображение 1 листа «Открытие смены»/ })).toBeVisible();
+  });
+
+  test('PR 433: the images of the form stand right of the thumbnail, one under the other on a phone, with the new names', async ({ page }) => {
+    await openEditor(page);
+    const thumbnail = page.getByRole('group', { name: 'Миниатюра чек-листа' });
+    const images = page.getByRole('group', { name: /Изображение на бланке чек-листа/ });
+    await expect(thumbnail).toBeVisible();
+    await expect(thumbnail.getByRole('button', { name: /миниатюру/ })).toBeVisible();
+    await expect(images.getByRole('button', { name: 'Добавить изображение' })).toBeVisible();
+    await expect(page.getByText(/Картинка листа|Дополнительные фото/)).toHaveCount(0);
+    const wide = { thumbnail: await thumbnail.boundingBox(), images: await images.boundingBox() };
+    expect(wide.images!.x).toBeGreaterThan(wide.thumbnail!.x + wide.thumbnail!.width - 1);
+    expect(Math.abs(wide.images!.y - wide.thumbnail!.y)).toBeLessThan(4);
+    await page.setViewportSize({ width: 390, height: 1400 });
+    const narrow = { thumbnail: await thumbnail.boundingBox(), images: await images.boundingBox() };
+    expect(narrow.images!.y).toBeGreaterThan(narrow.thumbnail!.y + narrow.thumbnail!.height - 1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 
   test('uploads a photo (type checked first), saves a caption, reorders with arrows and removes after confirmation', async ({ page }) => {
     const server = await openEditor(page);
-    await page.getByLabel('Файл фото').setInputFiles({ name: 'doc.pdf', mimeType: 'application/pdf', buffer: Buffer.from('x') });
+    await page.getByLabel('Файл изображения').setInputFiles({ name: 'doc.pdf', mimeType: 'application/pdf', buffer: Buffer.from('x') });
     await expect(page.getByRole('alert')).toContainText('JPEG');
     expect(server.calls).toHaveLength(0);
 
-    await page.getByLabel('Файл фото').setInputFiles({ name: 'scheme.png', mimeType: 'image/png', buffer: PNG });
-    await expect(page.getByLabel('Подпись к фото 3')).toBeVisible();
+    await page.getByLabel('Файл изображения').setInputFiles({ name: 'scheme.png', mimeType: 'image/png', buffer: PNG });
+    await expect(page.getByLabel('Подпись к изображению 3')).toBeVisible();
     expect(server.calls.map((call) => `${call.method} ${call.path}`)).toEqual(['POST /checklists/c1/photos']);
 
-    const caption = page.getByLabel('Подпись к фото 3');
+    const caption = page.getByLabel('Подпись к изображению 3');
     await caption.fill('Выход эвакуации');
     await caption.blur();
     await expect.poll(() => server.calls.find((call) => call.method === 'PATCH')?.body).toEqual({ caption: 'Выход эвакуации' });
 
-    await page.getByRole('button', { name: 'Фото 3 выше' }).click();
+    await page.getByRole('button', { name: 'Изображение 3 выше' }).click();
     await expect.poll(() => server.calls.find((call) => call.path.endsWith('/order'))?.body).toEqual({ ids: ['p1', 'p3', 'p2'] });
     expect(await captions(page)).toEqual(['Схема 1', 'Выход эвакуации', 'Схема 2']);
 
-    await page.getByRole('button', { name: 'Удалить фото 1' }).click();
+    await page.getByRole('button', { name: 'Удалить изображение 1' }).click();
     expect(server.calls.some((call) => call.method === 'DELETE')).toBe(false);
     await page.getByRole('dialog').getByRole('button', { name: 'Удалить', exact: true }).click();
     await expect.poll(() => server.calls.find((call) => call.method === 'DELETE')?.path).toBe('/checklists/c1/photos/p1');
@@ -102,27 +119,27 @@ test.describe('Extra sheet photos (PR 421)', () => {
   test('a failed reorder puts the list back and says so', async ({ page }) => {
     const server = await openEditor(page);
     server.failNext = 1;
-    await page.getByRole('button', { name: 'Фото 2 выше' }).click();
+    await page.getByRole('button', { name: 'Изображение 2 выше' }).click();
     await expect(page.getByRole('alert')).toContainText('Сервер недоступен');
     expect(await captions(page)).toEqual(['Схема 1', 'Схема 2']);
   });
 
-  test('six photos is the limit: "Добавить фото" is disabled', async ({ page }) => {
+  test('six photos is the limit: "Добавить изображение" is disabled', async ({ page }) => {
     await openEditor(page, 6);
-    await expect(page.getByRole('button', { name: 'Добавить фото' })).toBeDisabled();
-    await expect(page.getByRole('group', { name: /Дополнительные фото/ })).toContainText('Загружено максимум фото: 6.');
+    await expect(page.getByRole('button', { name: 'Добавить изображение' })).toBeDisabled();
+    await expect(page.getByRole('group', { name: /Изображение на бланке чек-листа/ })).toContainText('Загружено максимум изображений: 6.');
   });
 
   test('the preview shows the photos under the description; a tap opens one large, Esc closes it', async ({ page }) => {
     await openEditor(page);
     await page.getByRole('button', { name: 'Предпросмотр' }).click();
     const preview = page.locator('dialog.admin-preview-overlay');
-    await expect(preview.getByRole('heading', { name: 'Фото листа' })).toBeVisible();
-    await expect(preview.getByRole('img', { name: /Фото 2 листа/ })).toBeVisible();
-    await preview.getByRole('button', { name: 'Открыть фото 2 крупно' }).click();
+    await expect(preview.getByRole('heading', { name: 'Изображение на бланке чек-листа' })).toBeVisible();
+    await expect(preview.getByRole('img', { name: /Изображение 2 листа/ })).toBeVisible();
+    await preview.getByRole('button', { name: 'Открыть изображение 2 крупно' }).click();
     const large = page.locator('dialog.ds-dialog[open]');
     await expect(large.getByRole('heading', { name: 'Схема 2' })).toBeVisible();
-    await expect(large.getByRole('img', { name: /Фото 2 листа/ })).toBeVisible();
+    await expect(large.getByRole('img', { name: /Изображение 2 листа/ })).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.locator('dialog.ds-dialog[open]')).toHaveCount(0);
     await expect(preview).toBeVisible();
@@ -132,14 +149,14 @@ test.describe('Extra sheet photos (PR 421)', () => {
     test(`${width} px: the photo list and the preview do not scroll horizontally, controls are at least 44 px`, async ({ page }) => {
       await openEditor(page);
       await page.setViewportSize({ width, height: 900 });
-      const arrow = page.getByRole('button', { name: 'Фото 1 ниже' });
+      const arrow = page.getByRole('button', { name: 'Изображение 1 ниже' });
       await arrow.scrollIntoViewIfNeeded();
       const box = await arrow.boundingBox();
       expect(box!.width).toBeGreaterThanOrEqual(43.5);
       expect(box!.height).toBeGreaterThanOrEqual(43.5);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
       await page.getByRole('button', { name: 'Предпросмотр' }).click();
-      await expect(page.locator('dialog.admin-preview-overlay').getByRole('heading', { name: 'Фото листа' })).toBeVisible();
+      await expect(page.locator('dialog.admin-preview-overlay').getByRole('heading', { name: 'Изображение на бланке чек-листа' })).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
       const overlay = page.locator('dialog.admin-preview-overlay .admin-preview-panel');
       expect(await overlay.evaluate((panel) => panel.scrollWidth <= panel.clientWidth + 1)).toBe(true);

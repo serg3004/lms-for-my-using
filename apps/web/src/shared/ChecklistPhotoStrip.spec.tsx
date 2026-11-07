@@ -50,21 +50,21 @@ describe('ChecklistPhotoStrip (PR 421)', () => {
 
   it('shows the photos in order with captions and the alt text from the caption', async () => {
     await render(photos);
-    expect(container.querySelector('h3')?.textContent).toBe('Фото листа');
+    expect(container.querySelector('h3')?.textContent).toBe('Изображение на бланке чек-листа');
     const images = [...container.querySelectorAll('ul img')] as HTMLImageElement[];
-    expect(images.map((image) => image.alt)).toEqual(['Фото 1 листа «Лист»: Первая', 'Фото 2 листа «Лист»: Вторая']);
+    expect(images.map((image) => image.alt)).toEqual(['Изображение 1 листа «Лист»: Первая', 'Изображение 2 листа «Лист»: Вторая']);
     expect([...container.querySelectorAll('li p')].map((p) => p.textContent)).toEqual(['Первая', 'Вторая']);
     expect(api.getChecklistPhotoBlob).toHaveBeenCalledWith('c1', 'a');
   });
 
   it('opens a photo large with its caption and closes it', async () => {
     await render(photos);
-    const open = container.querySelector('button[aria-label="Открыть фото 2 крупно"]') as HTMLButtonElement;
+    const open = container.querySelector('button[aria-label="Открыть изображение 2 крупно"]') as HTMLButtonElement;
     await act(async () => { open.click(); });
     const dialog = container.querySelector('dialog')!;
     expect(dialog.hasAttribute('open')).toBe(true);
     expect(dialog.querySelector('h2')?.textContent).toBe('Вторая');
-    expect(dialog.querySelector('img')?.alt).toBe('Фото 2 листа «Лист»: Вторая');
+    expect(dialog.querySelector('img')?.alt).toBe('Изображение 2 листа «Лист»: Вторая');
     const close = [...dialog.querySelectorAll('button')].find((b) => b.textContent === 'Закрыть')!;
     await act(async () => { close.click(); });
     expect(dialog.hasAttribute('open')).toBe(false);
@@ -72,14 +72,14 @@ describe('ChecklistPhotoStrip (PR 421)', () => {
 
   it('can fold into a details block that counts the photos', async () => {
     await render(photos, true);
-    expect(container.querySelector('details summary')?.textContent).toBe('Фото листа (2)');
+    expect(container.querySelector('details summary')?.textContent).toBe('Изображение на бланке чек-листа (2)');
     expect(container.querySelector('h3')).toBeNull();
   });
 
   it('offers "Retry" when a picture cannot be loaded', async () => {
     api.getChecklistPhotoBlob.mockRejectedValueOnce(new Error('network'));
     await render([photos[1]!]);
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Не удалось показать фото.');
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('Не удалось показать изображение.');
     const retry = [...container.querySelectorAll('button')].find((b) => b.textContent === 'Повторить')!;
     await act(async () => { retry.click(); });
     expect(container.querySelector('ul img')).not.toBeNull();

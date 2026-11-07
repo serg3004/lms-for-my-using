@@ -114,7 +114,7 @@ describe('LearnerChecklistsPage: pinned tiles (PR 354)', () => {
     // The picture is requested once for the tile and once for the row of the same checklist.
     expect(api.getChecklistCoverBlob).toHaveBeenCalledTimes(2);
     expect(api.getChecklistCoverBlob).toHaveBeenCalledWith('a');
-    expect(tiles?.querySelector('img')?.getAttribute('alt')).toBe('Картинка листа «Лист с картинкой»');
+    expect(tiles?.querySelector('img')?.getAttribute('alt')).toBe('Миниатюра чек-листа «Лист с картинкой»');
     expect(tiles?.querySelectorAll('img').length).toBe(1);
     expect(tiles?.querySelectorAll('svg[role="img"]').length).toBe(1);
     expect(tiles?.querySelectorAll('[data-access-kind]').length).toBe(2);
