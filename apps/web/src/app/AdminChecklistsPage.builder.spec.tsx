@@ -186,19 +186,27 @@ describe('ChecklistBuilder settings column (PR 340)', () => {
     expect(html).toContain('<details><summary>Additional settings</summary>');
     const advanced = html.slice(html.indexOf('<details>'), html.indexOf('</details>'));
     expect(advanced).toContain('Require an instructor to confirm');
-    expect(advanced).toContain('Employee sees before the session');
+    expect(advanced).not.toContain('Employee sees before the session');
     expect(advanced).not.toContain('Photos only from the camera');
     expect(advanced).not.toContain('Location requirement');
   });
 
-  it('keeps the four sheet flags in a Settings block above the criteria (PR 368)', () => {
-    const settings = html.slice(html.indexOf('id="checklist-settings-title"'), html.indexOf('<details>'));
+  it('PR 435: the settings tab holds the scoring and the sections of the sheet settings, the main tab has none of them', () => {
+    const settings = html.slice(html.indexOf('id="checklist-panel-settings"'));
+    expect(settings).toContain('Taking the checklist');
+    expect(settings).toContain('What the employee sees');
+    expect(settings).toContain('Location and module');
+    expect(settings).toContain('Employee sees before the session');
     expect(settings).toContain('Add a “Skip” answer option');
     expect(settings).toContain('Photos only from the camera, not from the gallery');
     expect(settings).toContain('Record location at the start and end of the observation');
     expect(settings).toContain('Add a “Feedback” section');
     expect(settings).toContain('Feedback is required');
-    expect(html).toContain('id="checklist-feedback-title"');
+    expect(settings).toContain('Pass threshold');
+    const main = html.slice(html.indexOf('id="checklist-panel-main"'), html.indexOf('id="checklist-panel-settings"'));
+    expect(main).not.toContain('Add a “Skip” answer option');
+    expect(main).not.toContain('Pass threshold');
+    expect(main).toContain('id="checklist-feedback-title"');
   });
 
   it('explains the active scoring mode and shows the save status', () => {

@@ -1,5 +1,6 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { openSettingsTab } from '../fixtures/checklist-settings-tab.js';
 
 // PR 397: the module-settings block in the checklist editor ("As in the organization" per group).
 const checklist = {
@@ -28,6 +29,7 @@ async function openEditor(page: Page, saved: Array<Record<string, unknown>>) {
   await page.goto('/admin/checklists');
   if (page.viewportSize()!.width <= 860) await page.getByRole('button', { name: /Opening shift checklist$/ }).click();
   await page.getByRole('button', { name: 'Редактировать' }).click();
+  await openSettingsTab(page);
   await page.getByText('Настройки модуля для этого листа').click();
 }
 

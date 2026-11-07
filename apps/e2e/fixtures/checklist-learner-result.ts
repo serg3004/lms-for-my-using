@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import { openNumberingEditor } from './checklist-numbering.js';
+import { openSettingsTab } from './checklist-settings-tab.js';
 
 export async function openResultEditor(page: Page, locale = 'ru') {
   return openNumberingEditor(page, locale);
@@ -17,6 +18,7 @@ export async function finishResultPreview(page: Page) {
 }
 export async function openCompletedResultPreview(page: Page, points = false) {
   const data = await openResultEditor(page);
+  await openSettingsTab(page);
   const toggle = page.getByRole('checkbox', { name: 'Показывать сотруднику баллы', exact: true });
   await expect(toggle).not.toBeChecked();
   if (points) await toggle.check();

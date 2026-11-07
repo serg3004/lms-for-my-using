@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { openSettingsTab } from '../fixtures/checklist-settings-tab.js';
 
 // PR 418: "General information" fields and the scale levels of a checklist can be reordered (arrows, mouse drag, keyboard);
 // the order of the fields is saved at once, a failed save brings the old order back.
@@ -132,6 +133,7 @@ test.describe('Checklist editor: reorder (PR 418)', () => {
     await page.setViewportSize({ width: 1280, height: 900 });
     const saved: Array<Record<string, unknown>> = [];
     await openEditor(page, { scoringMode: 'scale', scaleLevels: levels, contextFields: null }, saved);
+    await openSettingsTab(page);
     const rows = page.locator('.admin-scale-level-row');
     await expect(rows).toHaveCount(3);
     const names = () => rows.evaluateAll((nodes) => nodes.map((node) => (node.querySelector('input') as HTMLInputElement).value));

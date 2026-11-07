@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openSettingsTab } from '../fixtures/checklist-settings-tab.js';
 
 // PR 416: the sheet mode "Без баллов" removes the pass threshold and says nothing is scored.
 test('switching the sheet to "Без баллов" hides the pass threshold and shows the explanation', async ({ page }) => {
@@ -24,6 +25,7 @@ test('switching the sheet to "Без баллов" hides the pass threshold and 
   await page.goto('/admin/checklists');
   await page.getByRole('button', { name: 'Редактировать' }).click();
 
+  await openSettingsTab(page);
   await expect(page.getByLabel('Порог зачёта, %')).toBeVisible();
   await page.getByRole('button', { name: 'Без баллов' }).click();
   await expect(page.getByLabel('Порог зачёта, %')).toHaveCount(0);

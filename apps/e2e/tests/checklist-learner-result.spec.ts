@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { finishResultPreview, openCompletedResultPreview, openResultEditor } from '../fixtures/checklist-learner-result.js';
+import { openSettingsTab } from '../fixtures/checklist-settings-tab.js';
 
 for (const width of [320, 1440]) test(`learner preview hides the live result and defaults to percent; the shared setting enables points at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
@@ -7,6 +8,7 @@ for (const width of [320, 1440]) test(`learner preview hides the live result and
   await expect(result).toContainText('100%'); await expect(result).toContainText('Зачтено');
   await expect(result).not.toContainText('6 / 6');
   await dialog.getByRole('button', { name: 'Закрыть', exact: true }).last().click();
+  await openSettingsTab(page);
   await page.getByRole('checkbox', { name: 'Показывать сотруднику баллы', exact: true }).check();
   await page.getByRole('button', { name: 'Сохранить', exact: true }).first().click();
   await expect.poll(() => saved()?.showPointsToLearner).toBe(true);
@@ -17,5 +19,6 @@ for (const width of [320, 1440]) test(`learner preview hides the live result and
 
 for (const [locale, label] of [['en', 'Show points to the employee'], ['kk', 'Қызметкерге ұпайларды көрсету'], ['zh', '向员工显示分数']]) test(`learner points default off in ${locale}`, async ({ page }) => {
   await openResultEditor(page, locale);
+  await openSettingsTab(page);
   await expect(page.getByRole('checkbox', { name: label, exact: true })).not.toBeChecked();
 });

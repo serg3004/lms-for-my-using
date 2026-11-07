@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openMainTab, openSettingsTab } from '../fixtures/checklist-settings-tab.js';
 import { openFormattingEditor, openFormattingPopup, selectDescription } from '../fixtures/checklist-formatting.js';
 
 test('selected description formats, saves, previews, and resets without changing its source case', async ({ page }) => {
@@ -53,8 +54,10 @@ for (const width of [320, 390]) test(`touch long-press and low-contrast warning 
 
 test('criterion descriptions and scale-level descriptions use the same formatting editor', async ({ page }) => {
   await openFormattingEditor(page);
+  await openSettingsTab(page);
   const level = page.getByRole('textbox', { name: 'Описание (необязательно)', exact: true }).first();
   await selectDescription(level); await page.keyboard.press('ControlOrMeta+b'); await expect(level.locator('strong')).toHaveText('Нужна практика');
+  await openMainTab(page);
   await page.locator('.admin-criteria-row:not(.admin-criteria-row--head)').first().getByRole('button', { name: 'Действия', exact: true }).click();
   await page.getByRole('menuitem', { name: 'Описание и пояснение…', exact: true }).click();
   const details = page.getByRole('dialog', { name: 'Критерий: описание и пояснение' });

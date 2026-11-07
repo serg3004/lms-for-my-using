@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { openNumberingEditor, openUnnumberedPreview } from '../fixtures/checklist-numbering.js';
+import { openSettingsTab } from '../fixtures/checklist-settings-tab.js';
 
 for (const width of [320, 390]) test(`numbering setting saves, hides generated prefixes and restores defaults at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 800 });
@@ -9,6 +10,7 @@ for (const width of [320, 390]) test(`numbering setting saves, hides generated p
   await dialog.getByRole('button', { name: 'Закрыть', exact: true }).last().click();
   // Preview saves pending settings through the existing shared transaction (PR 417).
   await expect.poll(() => saved()?.showNumbering).toBe(false);
+  await openSettingsTab(page);
   await page.getByRole('checkbox', { name: 'Нумерация критериев и групп', exact: true }).check();
   await page.getByRole('button', { name: 'Сохранить', exact: true }).first().click();
   await expect.poll(() => saved()?.showNumbering).toBe(true);
@@ -19,5 +21,6 @@ for (const width of [320, 390]) test(`numbering setting saves, hides generated p
 
 for (const [locale, label] of [['en', 'Number criteria and groups'], ['kk', 'Критерийлер мен топтарды нөмірлеу'], ['zh', '为标准和分组编号']]) test(`numbering defaults on in ${locale}`, async ({ page }) => {
   await openNumberingEditor(page, locale);
+  await openSettingsTab(page);
   await expect(page.getByRole('checkbox', { name: label, exact: true })).toBeChecked();
 });

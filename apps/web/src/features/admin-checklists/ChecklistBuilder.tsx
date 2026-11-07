@@ -56,6 +56,7 @@ import { applyLayout, toLayoutPayload, type Layout } from './layout.js';
 import { ChecklistModuleSettingsBlock } from './ChecklistModuleSettings.js';
 import { ChecklistPreviewDialog } from './ChecklistPreviewDialog.js';
 import { ChecklistSettingsForm } from './ChecklistSettingsForm.js';
+import { ChecklistBuilderTabs, builderTabFromHash, type BuilderTab } from './ChecklistBuilderTabs.js';
 import { ItemDetailsDialog, noteAnswerOptions, type NoteAnswerOption } from './ItemDetailsDialog.js';
 import { ScaleManagerDialog } from './ScaleManagerDialog.js';
 import {
@@ -83,6 +84,9 @@ import {
 
 /** Pseudo-option of the criterion scale dropdown that opens the scale editor instead of picking a scale. */
 const CREATE_SCALE_OPTION = '__create_scale__';
+/** PR 435: the fields that live on the «Основное» tab; a failed save naming any other field belongs to «Настройки». */
+const MAIN_TAB_FIELDS = new Set(['title', 'description', 'appearance', 'feedbackLayout']);
+const FIELD_INPUT_IDS: Record<string, string> = { title: 'checklist-title', description: 'checklist-description', passThreshold: 'checklist-threshold', accessMode: 'checklist-access-mode', preSessionVisibility: 'checklist-pre-session-visibility' };
 
 const STATUS_BADGE_VARIANT: Record<ChecklistStatus, BadgeVariant> = { draft: 'draft', published: 'published', archived: 'neutral' };
 
@@ -122,6 +126,26 @@ export function ChecklistBuilder({
   const [blockTarget, setBlockTarget] = useState<BlockTarget | null>(null);
   const blockTrigger = useRef<HTMLElement | null>(null);
   const narrowScreen = useNarrowScreen();
+  // PR 435: the open tab is kept in the address (`#settings`); both tabs stay mounted, so nothing unsaved is lost when switching.
+  const [tab, setTab] = useState<BuilderTab>(() => builderTabFromHash(typeof window === 'undefined' ? '' : window.location.hash));
+  /** The tab whose field the last failed save complained about (marked with "!"), and the field itself. */
+  const [errorTab, setErrorTab] = useState<BuilderTab | null>(null);
+  const errorField = useRef<string | null>(null);
+  const changeTab = useCallback((next: BuilderTab) => {
+    setTab(next);
+    try { window.history.replaceState(window.history.state, '', `${window.location.pathname}${window.location.search}${next === 'settings' ? '#settings' : ''}`); } catch { /* the address stays as it was */ }
+  }, []);
+  useEffect(() => {
+    const onHash = () => setTab(builderTabFromHash(window.location.hash));
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  function goToErrorField() {
+    if (!errorTab) return;
+    changeTab(errorTab);
+    const id = errorField.current ? FIELD_INPUT_IDS[errorField.current] : undefined;
+    window.setTimeout(() => document.getElementById(id ?? '')?.focus(), 0);
+  }
   function openBlockSettings(target: BlockTarget, trigger: HTMLElement) { blockTrigger.current = trigger; setBlockTarget(target); }
   const closeBlockSettings = useCallback(() => { setBlockTarget(null); blockTrigger.current?.focus(); }, []);
   /** The author's look of a block of the editor, with a selection frame (separate from the look) on the block being set. */
@@ -225,6 +249,7 @@ export function ChecklistBuilder({
   async function saveSettings(origin: 'form' | 'header' = 'form'): Promise<boolean> {
     setSaveState({ status: 'saving' });
     setHeaderError(null);
+    setErrorTab(null);
     try {
       await updateChecklist(checklist.id, settingsPayload);
       setSavedSnapshot(JSON.stringify(settingsPayload));
@@ -233,6 +258,9 @@ export function ChecklistBuilder({
       await onReload();
       return true;
     } catch (error) {
+      const field = error instanceof ApiClientError ? error.details.find((detail) => detail.field)?.field?.split('.')[0] : undefined;
+      errorField.current = field ?? null;
+      setErrorTab(field ? (MAIN_TAB_FIELDS.has(field) ? 'main' : 'settings') : null);
       if (origin === 'header') {
         setSaveState({ status: 'idle' });
         setHeaderError(settingsErrorMessage(error));
@@ -604,7 +632,18 @@ export function ChecklistBuilder({
           {t('admin.checklists.needItemsHint', 'Preview and Publish become available after you add at least one criterion.')}
         </p>
       )}
-      <div className="admin-builder__grid" style={blockTarget && !narrowScreen ? { paddingInlineEnd: 356 } : undefined}>
+        <ChecklistBuilderTabs active={tab} errorTab={errorTab} onChange={changeTab} t={t}>
+          <p role="status" className="admin-form__hint">
+            {hasUnsavedChanges
+              ? t('admin.checklists.unsavedChanges', 'There are unsaved changes.')
+              : t('admin.checklists.allSaved', 'All changes are saved.')}
+          </p>
+          <Button type="button" variant="primary" disabled={saveState.status === 'saving' || !canEdit} onClick={() => void saveSettings()}>
+            {saveState.status === 'saving' ? t('admin.checklists.saving', 'Saving...') : t('admin.checklists.save', 'Save')}
+          </Button>
+        </ChecklistBuilderTabs>
+        {saveState.status === 'error' && <p className="learner-quiz__submit-error" role="alert">{saveState.message}{errorTab && errorTab !== tab && (<> <button type="button" className="admin-back-link" onClick={() => goToErrorField()}>{t('admin.checklists.tab.goToError', 'Go to the field')}</button></>)}</p>}
+      <div aria-labelledby="checklist-tab-main" hidden={tab !== 'main'} id="checklist-panel-main" role="tabpanel" style={blockTarget && !narrowScreen ? { paddingInlineEnd: 356 } : undefined}>
         <div className="admin-builder__column" style={{ minWidth: 0 }}>
           <ChecklistSettingsForm style={blockLook('header', null)}>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}><BlockGear target={{ kind: 'header', id: null, name: t('admin.checklists.appearance.kind.header') }} active={blockTarget?.kind === 'header'} onOpen={openBlockSettings} t={t} /></div>
@@ -616,63 +655,6 @@ export function ChecklistBuilder({
               <ChecklistPhotosField checklistId={checklist.id} title={checklist.title} photos={checklist.photos} disabled={!canEdit} onChange={setSheetPhotos} />
             </div>
           </ChecklistSettingsForm>
-          <section className="admin-card admin-settings-block" aria-labelledby="checklist-settings-title">
-            <h3 id="checklist-settings-title">{t('admin.checklists.settingsBlockTitle', 'Settings')}</h3>
-            <ChecklistCheckboxOption
-              label={t('admin.checklists.field.showNumbering', 'Number criteria and groups')}
-              hint={t('admin.checklists.showNumberingHint', 'Show numbers in preview, when filling in the sheet and in reports. The editor keeps numbers for orientation. Applies to new assignments after saving.')}
-              checked={showNumbering} disabled={!canEdit} onChange={setShowNumbering}
-            />
-            <ChecklistCheckboxOption
-              label={t('admin.checklists.field.allowSkipAll', 'Add a “Skip” answer option')}
-              hint={t('admin.checklists.allowSkipAllHint', 'The observer can skip any criterion. Skipped criteria are left out of the result. Applies to sessions assigned after you save.')}
-              checked={allowSkipAll}
-              disabled={!canEdit}
-              onChange={setAllowSkipAll}
-            />
-            <ChecklistCheckboxOption
-              label={t('admin.checklists.field.forbidGalleryPhotos', 'Photos only from the camera, not from the gallery')}
-              hint={t('admin.checklists.forbidGalleryPhotosHint', 'The photo button opens the camera on phones. This is a convenience for the person filling in the checklist, not protection: the system cannot check where a photo was taken from. Applies to sessions assigned after you save.')}
-              checked={forbidGalleryPhotos}
-              disabled={!canEdit}
-              onChange={setForbidGalleryPhotos}
-            />
-            <ChecklistCheckboxOption
-              label={t('admin.checklists.field.recordLocation', 'Record location at the start and end of the observation')}
-              hint={defaultLocationCapturePolicy === ''
-                ? t('admin.checklists.recordLocationOrgDefault', 'Not set: the organization default applies when a session is scheduled.')
-                : defaultLocationCapturePolicy === 'off'
-                  ? t('admin.checklists.recordLocationOffHint', 'Location is not recorded for this checklist.')
-                  : t('admin.checklists.defaultLocationCapturePolicyHint', 'Pre-fills the location capture policy when scheduling a session for this checklist.')}
-              checked={defaultLocationCapturePolicy === 'optional' || defaultLocationCapturePolicy === 'required'}
-              disabled={!canEdit}
-              onChange={(on) => setDefaultLocationCapturePolicy(on ? 'optional' : 'off')}
-            />
-            {(defaultLocationCapturePolicy === 'optional' || defaultLocationCapturePolicy === 'required') && (
-              <FormField id="checklist-default-location-policy" label={t('admin.checklists.field.defaultLocationCapturePolicy', 'Location requirement')}>
-                <select id="checklist-default-location-policy" value={defaultLocationCapturePolicy} disabled={!canEdit} onChange={(e) => setDefaultLocationCapturePolicy(e.target.value as ChecklistGeolocationPolicy)}>
-                  <option value="optional">{t('admin.checklists.sessions.wizard.locationOptional', 'Optional')}</option>
-                  <option value="required">{t('admin.checklists.sessions.wizard.locationRequired', 'Required')}</option>
-                </select>
-              </FormField>
-            )}
-            <ChecklistCheckboxOption
-              label={t('admin.checklists.field.feedbackEnabled', 'Add a “Feedback” section')}
-              hint={t('admin.checklists.feedbackEnabledHint', 'The observer leaves strengths, development areas and a comment at the end of the session.')}
-              checked={feedbackEnabled}
-              disabled={!canEdit}
-              onChange={(on) => { setFeedbackEnabled(on); if (!on) setFeedbackRequired(false); }}
-            />
-            {feedbackEnabled && !feedbackLayout && (
-              <ChecklistCheckboxOption
-                label={t('admin.checklists.field.feedbackRequired', 'Feedback is required')}
-                hint={t('admin.checklists.feedbackRequiredHint', 'A session cannot be completed until strengths and development areas are filled in. Applies to sessions assigned after you save.')}
-                checked={feedbackRequired}
-                disabled={!canEdit}
-                onChange={setFeedbackRequired}
-              />
-            )}
-          </section>
           <ChecklistItemsEditor style={blockLook('info', null)}>
             <div className="admin-builder-section-head">
               <h3>{t('admin.checklists.contextFieldsTitle', 'General information')} <Badge variant="neutral">{contextFields.length}</Badge></h3>
@@ -977,9 +959,11 @@ export function ChecklistBuilder({
           </ChecklistItemsEditor>
           {feedbackEnabled && <fieldset disabled={!canEdit} style={{ border: 0, padding: 0, minWidth: 0 }}><legend className="ui-visually-hidden">{t('admin.checklists.feedbackSectionTitle')}</legend><FeedbackBuilder disabled={!canEdit} value={feedbackLayout} onChange={setFeedbackLayout} required={feedbackRequired} /></fieldset>}
         </div>
-        <div className="admin-builder__column" style={{ minWidth: 0 }}>
-          <ChecklistSettingsForm>
-            <h3 className="admin-heading-tip">
+      </div>
+
+      <div aria-labelledby="checklist-tab-settings" hidden={tab !== 'settings'} id="checklist-panel-settings" role="tabpanel" style={tab === 'settings' ? { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', gap: 20, alignItems: 'start' } : undefined}>
+        <ChecklistSettingsForm>
+                      <h3 className="admin-heading-tip">
               {t('admin.checklists.scoringTitle', 'Scoring')}
               <ChecklistHelpTip name={scoringModeLabels[scoringMode]}>{t(`admin.checklists.scoringModeInfo.${scoringMode}`, scoringMode)}</ChecklistHelpTip>
             </h3>
@@ -1056,7 +1040,10 @@ export function ChecklistBuilder({
             {scoringMode !== checklist.scoringMode && (checklist.status !== 'draft') && (
               <p className="admin-form__hint" role="note">{t('admin.checklists.scoring.changeNote', 'The new mode will not affect checks that are already assigned: they keep the mode they were assigned with.')}</p>
             )}
-            <FormField id="checklist-access-mode" label={t('admin.checklists.field.accessMode', 'How the checklist is taken')} hint={t(`admin.checklists.accessModeHint.${accessMode}`, accessMode)}>
+        </ChecklistSettingsForm>
+        <ChecklistSettingsForm>
+          <h3>{t('admin.checklists.settingsTab.taking', 'Taking the checklist')}</h3>
+                      <FormField id="checklist-access-mode" label={t('admin.checklists.field.accessMode', 'How the checklist is taken')} hint={t(`admin.checklists.accessModeHint.${accessMode}`, accessMode)}>
               {canSwitchAccessMode ? (
                 <select
                   id="checklist-access-mode"
@@ -1073,7 +1060,7 @@ export function ChecklistBuilder({
                 </>
               )}
             </FormField>
-            {accessMode === 'free' && (
+                      {accessMode === 'free' && (
               <ChecklistCheckboxOption
                 label={t('admin.checklists.field.pinned', 'Pin to the dashboard')}
                 hint={checklist.status === 'published'
@@ -1084,15 +1071,15 @@ export function ChecklistBuilder({
                 onChange={setPinned}
               />
             )}
-            <details>
+                      <details>
               <summary>{t('admin.checklists.advancedTitle', 'Additional settings')}</summary>
-            <ChecklistCheckboxOption
+                      <ChecklistCheckboxOption
               label={t('admin.checklists.field.requiresReview', 'Require an instructor to confirm the result before it counts')}
               hint={t('admin.checklists.requiresReviewHint', 'When enabled, learner submissions are computed automatically but stay pending until an instructor or manager approves each item.')}
               checked={requiresReview}
               onChange={setRequiresReview}
             />
-            {canManageEditAccess && (
+                      {canManageEditAccess && (
               <ChecklistCheckboxOption
                 label={t('admin.checklists.field.allowEditByAll', 'Allow everyone to edit this checklist')}
                 hint={t('admin.checklists.allowEditByAllHint', 'When off, only you and administrators can edit this checklist. Other employees can still view it and assign it.')}
@@ -1100,13 +1087,17 @@ export function ChecklistBuilder({
                 onChange={setAllowEditByAll}
               />
             )}
-            <ChecklistCheckboxOption
+                      <ChecklistCheckboxOption
               label={t('admin.checklists.field.allowFinishIncomplete', 'Allow finishing a session with unanswered criteria')}
               hint={t('admin.checklists.allowFinishIncompleteHint', 'The observer can complete the session without answering every criterion. Unanswered criteria are recorded as skipped and are not counted in the result. Applies to sessions assigned after you save.')}
               checked={allowFinishIncomplete}
               onChange={setAllowFinishIncomplete}
             />
-            <FormField id="checklist-pre-session-visibility" label={t('admin.checklists.field.preSessionVisibility', 'Employee sees before the session')}>
+          </details>
+        </ChecklistSettingsForm>
+        <ChecklistSettingsForm>
+          <h3>{t('admin.checklists.settingsTab.learner', 'What the employee sees')}</h3>
+                      <FormField id="checklist-pre-session-visibility" label={t('admin.checklists.field.preSessionVisibility', 'Employee sees before the session')}>
               <select
                 id="checklist-pre-session-visibility"
                 value={preSessionVisibility}
@@ -1117,8 +1108,64 @@ export function ChecklistBuilder({
                 <option value="none">{t('admin.checklists.preSessionVisibility.none', 'Nothing')}</option>
               </select>
             </FormField>
-            </details>
-            <ChecklistModuleSettingsBlock
+                      <ChecklistCheckboxOption
+              label={t('admin.checklists.field.showNumbering', 'Number criteria and groups')}
+              hint={t('admin.checklists.showNumberingHint', 'Show numbers in preview, when filling in the sheet and in reports. The editor keeps numbers for orientation. Applies to new assignments after saving.')}
+              checked={showNumbering} disabled={!canEdit} onChange={setShowNumbering}
+            />
+                      <ChecklistCheckboxOption
+              label={t('admin.checklists.field.allowSkipAll', 'Add a “Skip” answer option')}
+              hint={t('admin.checklists.allowSkipAllHint', 'The observer can skip any criterion. Skipped criteria are left out of the result. Applies to sessions assigned after you save.')}
+              checked={allowSkipAll}
+              disabled={!canEdit}
+              onChange={setAllowSkipAll}
+            />
+                      <ChecklistCheckboxOption
+              label={t('admin.checklists.field.forbidGalleryPhotos', 'Photos only from the camera, not from the gallery')}
+              hint={t('admin.checklists.forbidGalleryPhotosHint', 'The photo button opens the camera on phones. This is a convenience for the person filling in the checklist, not protection: the system cannot check where a photo was taken from. Applies to sessions assigned after you save.')}
+              checked={forbidGalleryPhotos}
+              disabled={!canEdit}
+              onChange={setForbidGalleryPhotos}
+            />
+                      <ChecklistCheckboxOption
+              label={t('admin.checklists.field.feedbackEnabled', 'Add a “Feedback” section')}
+              hint={t('admin.checklists.feedbackEnabledHint', 'The observer leaves strengths, development areas and a comment at the end of the session.')}
+              checked={feedbackEnabled}
+              disabled={!canEdit}
+              onChange={(on) => { setFeedbackEnabled(on); if (!on) setFeedbackRequired(false); }}
+            />
+                      {feedbackEnabled && !feedbackLayout && (
+              <ChecklistCheckboxOption
+                label={t('admin.checklists.field.feedbackRequired', 'Feedback is required')}
+                hint={t('admin.checklists.feedbackRequiredHint', 'A session cannot be completed until strengths and development areas are filled in. Applies to sessions assigned after you save.')}
+                checked={feedbackRequired}
+                disabled={!canEdit}
+                onChange={setFeedbackRequired}
+              />
+            )}
+        </ChecklistSettingsForm>
+        <ChecklistSettingsForm>
+          <h3>{t('admin.checklists.settingsTab.locationModule', 'Location and module')}</h3>
+                      <ChecklistCheckboxOption
+              label={t('admin.checklists.field.recordLocation', 'Record location at the start and end of the observation')}
+              hint={defaultLocationCapturePolicy === ''
+                ? t('admin.checklists.recordLocationOrgDefault', 'Not set: the organization default applies when a session is scheduled.')
+                : defaultLocationCapturePolicy === 'off'
+                  ? t('admin.checklists.recordLocationOffHint', 'Location is not recorded for this checklist.')
+                  : t('admin.checklists.defaultLocationCapturePolicyHint', 'Pre-fills the location capture policy when scheduling a session for this checklist.')}
+              checked={defaultLocationCapturePolicy === 'optional' || defaultLocationCapturePolicy === 'required'}
+              disabled={!canEdit}
+              onChange={(on) => setDefaultLocationCapturePolicy(on ? 'optional' : 'off')}
+            />
+            {(defaultLocationCapturePolicy === 'optional' || defaultLocationCapturePolicy === 'required') && (
+              <FormField id="checklist-default-location-policy" label={t('admin.checklists.field.defaultLocationCapturePolicy', 'Location requirement')}>
+                <select id="checklist-default-location-policy" value={defaultLocationCapturePolicy} disabled={!canEdit} onChange={(e) => setDefaultLocationCapturePolicy(e.target.value as ChecklistGeolocationPolicy)}>
+                  <option value="optional">{t('admin.checklists.sessions.wizard.locationOptional', 'Optional')}</option>
+                  <option value="required">{t('admin.checklists.sessions.wizard.locationRequired', 'Required')}</option>
+                </select>
+              </FormField>
+            )}
+                      <ChecklistModuleSettingsBlock
               canEditObservers={canSwitchAccessMode}
               withoutPoints={scoringMode === 'none'}
               disabled={!canEdit}
@@ -1128,17 +1175,7 @@ export function ChecklistBuilder({
               t={t}
               value={moduleSettings}
             />
-            {saveState.status === 'error' && <p className="learner-quiz__submit-error" role="alert">{saveState.message}</p>}
-            <p role="status" className="admin-form__hint">
-              {hasUnsavedChanges
-                ? t('admin.checklists.unsavedChanges', 'There are unsaved changes.')
-                : t('admin.checklists.allSaved', 'All changes are saved.')}
-            </p>
-            <Button type="button" variant="primary" disabled={saveState.status === 'saving' || !canEdit} onClick={() => void saveSettings()}>
-              {saveState.status === 'saving' ? t('admin.checklists.saving', 'Saving...') : t('admin.checklists.save', 'Save')}
-            </Button>
-          </ChecklistSettingsForm>
-        </div>
+        </ChecklistSettingsForm>
       </div>
       <ConfirmDialog
         open={leave !== null}
