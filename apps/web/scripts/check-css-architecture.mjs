@@ -44,4 +44,12 @@ if (customPropertyDefinitions.size === 0 || !tokens.includes(':root')) {
   throw new Error('tokens.css must define the application design tokens on :root.');
 }
 
+// PR 443: `input { width: 100% }` is for text fields; a box or a radio must never stretch over its row (it pushed the caption away).
+const globalCss = await readFile(new URL('global.css', stylesDirectory), 'utf8');
+const textFieldWidth = globalCss.search(/input,\s*select,\s*textarea\s*\{\s*width:\s*100%/);
+const ownWidth = globalCss.search(/input\[type='checkbox'\],\s*input\[type='radio'\]\s*\{\s*width:\s*auto;\s*flex:\s*none;/);
+if (textFieldWidth < 0 || ownWidth < textFieldWidth) {
+  throw new Error("global.css must keep input[type='checkbox'], input[type='radio'] at width: auto right after the text-field width rule.");
+}
+
 console.log(`CSS architecture: ${files.length} layered stylesheets, ${customPropertyDefinitions.size} unique tokens.`);
