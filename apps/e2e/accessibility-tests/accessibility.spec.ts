@@ -211,8 +211,8 @@ test.describe('WCAG AA browser baseline', () => {
     test(`${role} criterion-scale answers are accessible`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width: 375, height: 900 });
       await openCriterionScalePage(page, role);
-      await page.getByRole('button', { name: /\bNo\b/ }).click();
-      await expect(page.getByRole('button', { name: /\bNo\b/ })).toHaveAttribute('aria-pressed', 'true');
+      await page.getByRole('radio', { name: /\bNo\b/ }).click();
+      await expect(page.getByRole('radio', { name: /\bNo\b/ })).toBeChecked();
       await auditAccessibility(page, testInfo);
     });
   }

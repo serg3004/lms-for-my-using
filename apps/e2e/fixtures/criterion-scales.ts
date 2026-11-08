@@ -63,6 +63,6 @@ export async function openCriterionScalePage(page: Page, role: 'learner' | 'inst
   const data = await installCriterionScaleMocks(page, role);
   await page.goto(role === 'learner' ? '/learn/checklists' : '/instructor/checklists/sessions/scale-session');
   if (role === 'learner') await page.getByText('Mixed criterion scales', { exact: true }).click();
-  await page.getByRole('button', { name: /\bNo\b/, exact: false }).waitFor();
+  await page.getByRole('radio', { name: /\bNo\b/, exact: false }).waitFor();
   return data;
 }

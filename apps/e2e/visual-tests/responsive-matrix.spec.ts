@@ -844,8 +844,8 @@ for (const width of widths) {
     for (const role of ['learner', 'instructor'] as const) {
       test(`keeps ${role} criterion-scale answers responsive`, async ({ page }) => {
         await openCriterionScalePage(page, role);
-        await page.getByRole('button', { name: /\bNo\b/ }).click();
-        await expect(page.getByRole('button', { name: /\bNo\b/ })).toHaveAttribute('aria-pressed', 'true');
+        await page.getByRole('radio', { name: /\bNo\b/ }).click();
+        await expect(page.getByRole('radio', { name: /\bNo\b/ })).toBeChecked();
         await expectNoPageOverflow(page);
         if (width <= 375) await expectTouchTargets(page);
         await expectVisualMatch(page, `${role}-criterion-scale-answer-${width}`);
