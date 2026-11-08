@@ -118,7 +118,7 @@ test.describe('conduct sheet overview (PR 347)', () => {
   test('keeps navigation locked during an answer save and uses the saved state on Next', async ({ page }) => {
     const requests = await setup(page, { hold: 'answer' });
     await page.getByRole('checkbox', { name: 'Скрыть отвеченное', exact: true }).check();
-    await page.getByRole('checkbox', { name: 'Выполнено', exact: true }).click();
+    await page.getByRole('radio', { name: 'Да', exact: true }).click();
     await expect.poll(() => requests.calls).toContain('answer');
     await assertLocked(page);
     await expect(page.getByRole('button', { name: 'Далее', exact: true })).toBeDisabled();
@@ -134,12 +134,12 @@ test.describe('conduct sheet overview (PR 347)', () => {
   test('shows an empty filtered overview when all criteria are addressed and keeps feedback reachable', async ({ page }) => {
     await setup(page);
     await page.getByRole('checkbox', { name: 'Скрыть отвеченное', exact: true }).check();
-    await page.getByRole('checkbox', { name: 'Выполнено', exact: true }).click();
-    await expect(page.getByRole('checkbox', { name: 'Выполнено', exact: true })).toBeChecked();
+    await page.getByRole('radio', { name: 'Да', exact: true }).click();
+    await expect(page.getByRole('radio', { name: 'Да', exact: true })).toBeChecked();
     await next(page);
     await expect(page.getByText(fourth, { exact: true })).toBeVisible();
-    await page.getByRole('checkbox', { name: 'Выполнено', exact: true }).click();
-    await expect(page.getByRole('checkbox', { name: 'Выполнено', exact: true })).toBeChecked();
+    await page.getByRole('radio', { name: 'Да', exact: true }).click();
+    await expect(page.getByRole('radio', { name: 'Да', exact: true })).toBeChecked();
     await next(page);
     await expect(page.getByRole('button', { name: 'К первому неотвеченному', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Завершить', exact: true })).toBeEnabled();
@@ -153,7 +153,7 @@ test.describe('conduct sheet overview (PR 347)', () => {
   test('keeps a draft after failed autosave and unlocks overview without changing status', async ({ page }) => {
     await setup(page, { rejectAnswer: true });
     await fillRich(page, page.getByLabel('Комментарий', { exact: true }), 'Keep me after failure');
-    await page.getByRole('checkbox', { name: 'Выполнено', exact: true }).click();
+    await page.getByRole('radio', { name: 'Да', exact: true }).click();
     await expect(page.getByRole('alert')).toBeVisible();
     await select(page, fourth);
     await select(page, first);
@@ -164,7 +164,7 @@ test.describe('conduct sheet overview (PR 347)', () => {
 
   test('preserves photo upload navigation locks and does not hide a criterion missing evidence', async ({ page }) => {
     const requests = await setup(page, { photo: true, hold: 'photo' });
-    await page.getByRole('checkbox', { name: 'Выполнено', exact: true }).click();
+    await page.getByRole('radio', { name: 'Да', exact: true }).click();
     await expect(page.getByRole('button', { name: 'Обзор листа', exact: true })).toBeEnabled();
     await page.getByRole('checkbox', { name: 'Скрыть отвеченное', exact: true }).check();
     await page.getByRole('button', { name: 'Обзор листа', exact: true }).click();
@@ -239,13 +239,13 @@ test.describe('conduct answer: colour and taking back (PR 425)', () => {
     await page.setViewportSize({ width, height: 900 });
     const requests = await setup(page);
     await select(page, second);
-    const done = page.locator('label', { hasText: 'Выполнено' }).first();
+    const done = page.locator('label', { hasText: /^Да/ }).first();
     await expect(done).toHaveCSS('border-top-color', 'rgb(46, 125, 50)');
     expect((await done.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     const clear = page.getByRole('button', { name: 'Снять ответ', exact: true });
     expect((await clear.boundingBox())!.height).toBeGreaterThanOrEqual(36);
     await clear.click();
-    await expect(page.getByRole('checkbox', { name: 'Выполнено', exact: true })).not.toBeChecked();
+    await expect(page.getByRole('radio', { name: 'Да', exact: true })).not.toBeChecked();
     await expect(clear).toHaveCount(0);
     await expect(page.getByRole('status').filter({ hasText: 'Ответ снят' })).toBeVisible();
     expect(requests.calls).toContain('clear');

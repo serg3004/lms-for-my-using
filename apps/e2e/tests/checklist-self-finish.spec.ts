@@ -31,7 +31,7 @@ test.describe('self-filled checklist is finished explicitly (PR 406б)', () => {
     await expect(page.getByText('Проверить кассу', { exact: true }).last()).toBeVisible();
     await expect(page.getByText('Ещё нет ответа:')).toBeVisible();
 
-    await page.getByRole('checkbox', { name: 'Выполнено' }).click();
+    await page.getByRole('radio', { name: 'Да', exact: true }).click();
     await expect(finish).toBeEnabled();
     // the last answer did not finish the sheet
     expect(state.status).toBe('in_progress');

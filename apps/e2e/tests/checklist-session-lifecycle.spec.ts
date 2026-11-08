@@ -349,14 +349,14 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       // (matching production), so the checkbox briefly re-renders mid-toggle -- .check()'s own
       // strict "did it flip in one settled step" assertion is flaky against that, even though the
       // end state (asserted via the poll below, then toBeChecked()) is always correct.
-      await observerPage.getByRole('checkbox', { name: 'Выполнено' }).click();
+      await observerPage.getByRole('radio', { name: 'Да', exact: true }).click();
       await expect.poll(() => instance.results.find((r) => r.itemId === item1Id)?.checked).toBe(true);
-      await expect(observerPage.getByRole('checkbox', { name: 'Выполнено' })).toBeChecked();
+      await expect(observerPage.getByRole('radio', { name: 'Да', exact: true })).toBeChecked();
 
       await observerPage.getByRole('button', { name: 'Далее' }).click();
-      await observerPage.getByRole('checkbox', { name: 'Выполнено' }).click();
+      await observerPage.getByRole('radio', { name: 'Да', exact: true }).click();
       await expect.poll(() => instance.results.find((r) => r.itemId === item2Id)?.checked).toBe(true);
-      await expect(observerPage.getByRole('checkbox', { name: 'Выполнено' })).toBeChecked();
+      await expect(observerPage.getByRole('radio', { name: 'Да', exact: true })).toBeChecked();
 
       await observerPage.getByRole('button', { name: 'Прикрепить фото' }).click();
       const fileInput = observerPage.locator('input[type="file"]');

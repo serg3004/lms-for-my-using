@@ -3,6 +3,7 @@ import { checklistResultText } from '../shared/checklistResultText.js';
 import { AppearanceBlock, itemCardStyle } from '../shared/AppearanceBlock.js';
 import { checklistLabel, checklistNumbers } from '@lms/shared/checklist-numbering';
 import { RichDescription } from '../shared/RichDescription.js';
+import { CriterionOptions, yesNoOptions } from '../shared/CriterionOptions.js';
 import { ObserverSessionsBlock } from './ObserverSessionsBlock.js';
 import { useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
@@ -365,8 +366,8 @@ function ChecklistTaking({
             <div
               key={item.id}
               style={itemCardStyle(checklist.appearance, item.id, {
-                border: `1px solid ${isDone ? COLORS.success : COLORS.border}`,
-                background: isDone ? COLORS.successSoft : COLORS.surface,
+                border: `1px solid ${COLORS.border}`,
+                background: COLORS.surface,
                 borderRadius: 14,
                 padding: 16,
               }, COLORS.success, isDone)}
@@ -380,42 +381,15 @@ function ChecklistTaking({
                 </span>
               </p>
               <ChecklistItemDescription item={item} t={t} />
-              {levels !== null ? (
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {levels.map((level) => (
-                    <button
-                      key={level.level}
-                      aria-pressed={result?.scaleLevel === level.level}
-                      type="button"
-                      disabled={!editable || submitting === item.id}
-                      onClick={() => choose(item, { scaleLevel: level.level }, true)}
-                      style={{
-                        border: `1px solid ${result?.scaleLevel === level.level ? COLORS.primary : COLORS.border}`,
-                        background: result?.scaleLevel === level.level ? COLORS.primarySoft : COLORS.surface,
-                        color: COLORS.text,
-                        borderRadius: 10,
-                        padding: '8px 12px',
-                        fontSize: 12.5,
-                        textAlign: 'left',
-                        cursor: editable ? 'pointer' : 'default',
-                        minWidth: 90,
-                      }}
-                    >
-                      <span style={{ color: result?.scaleLevel === level.level ? COLORS.text : COLORS.muted }}>{level.label}{level.description && <span style={{ display: 'block' }}><RichDescription value={level.description} /></span>}</span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}>
-                  <input
-                    type="checkbox"
-                    checked={result?.checked ?? false}
-                    disabled={!editable || submitting === item.id}
-                    onChange={(e) => choose(item, { checked: e.target.checked }, false)}
-                  />
-                  {t('checklists.markDone', 'Done')}
-                </label>
-              )}
+              {/* PR 448: the answer area is the one shared component, the same as in the preview and in the conduct screen. */}
+              <CriterionOptions
+                text={item.text} number={numbering.itemNumbers.get(item.id) ?? ''} required={item.isRequired} scoringMode={checklist.scoringMode}
+                options={levels !== null ? levels.map((level) => ({ key: level.level, label: level.label, description: level.description, points: level.points ?? 0, color: level.color })) : yesNoOptions(t, checklist.scoringMode === 'all_required' ? 1 : item.points ?? 0)}
+                selectedKey={levels !== null ? result?.scaleLevel ?? null : result?.checked ? 1 : result?.answerState === 'answered' ? 0 : null}
+                disabled={!editable || submitting === item.id} canClear={false} clearLabel=""
+                onChoose={(key) => choose(item, levels !== null ? { scaleLevel: key } : { checked: key === 1 }, levels !== null)}
+                onClear={() => undefined}
+              />
               {(() => {
                 const held = pendingAnswers[item.id];
                 const shown = held ? pendingAnswer(held) : checklistResultToAnswer(result);

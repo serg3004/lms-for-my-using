@@ -7,19 +7,19 @@ for (const role of ['learner', 'instructor'] as const) {
     test(`${role} answers mixed criterion scales and counts a zero-point answer at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       const { writes } = await openCriterionScalePage(page, role);
-      const no = page.getByRole('button', { name: /\bNo\b/ });
+      const no = page.getByRole('radio', { name: /\bNo\b/ });
       await no.click();
-      await expect(no).toHaveAttribute('aria-pressed', 'true');
+      await expect(no).toBeChecked();
       expect(writes.at(-1)).toEqual({ itemId: 'quality', body: { scaleLevel: 1 } });
       if (role === 'instructor') {
         await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '1');
         await fillRich(page, page.getByLabel('Комментарий', { exact: true }), 'A zero score is still an answer');
         await page.getByRole('button', { name: 'Сохранить комментарий', exact: true }).click();
-        await expect(no).toHaveAttribute('aria-pressed', 'true');
+        await expect(no).toBeChecked();
         await page.getByRole('button', { name: 'Далее', exact: true }).click();
       } else await expect(page.getByText('1 / 2 обязательных', { exact: true })).toBeVisible();
-      await page.getByRole('button', { name: /\bSafe\b/ }).click();
-      await expect(page.getByRole('button', { name: /\bSafe\b/ })).toHaveAttribute('aria-pressed', 'true');
+      await page.getByRole('radio', { name: /\bSafe\b/ }).click();
+      await expect(page.getByRole('radio', { name: /\bSafe\b/ })).toBeChecked();
       expect(writes.at(-1)).toEqual({ itemId: 'safety', body: { scaleLevel: 9 } });
       if (role === 'instructor') {
         await expect(page.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '2');
