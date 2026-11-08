@@ -1,4 +1,5 @@
 import type { JSONContent } from '@tiptap/core';
+import { blockAlign } from '@lms/shared/checklist-description';
 import { safeHref, type EditorBlock, type Run } from './model.js';
 
 export function inlineNodes(runs: Run[]): JSONContent[] {
@@ -33,8 +34,24 @@ export function textRuns(node: JSONContent): Run[] {
   }
   walk(node); return runs;
 }
+const paragraph = (block: EditorBlock, runs: Run[]): JSONContent => ({ type: 'paragraph', attrs: { textAlign: blockAlign(block.content.align) ?? 'left' }, content: inlineNodes(runs) });
+/** The alignment of the first paragraph of the editor document; undefined when the editor has no alignment attribute. */
+function documentAlign(node: JSONContent): string | undefined {
+  if (node.type === 'paragraph') return typeof node.attrs?.textAlign === 'string' ? node.attrs.textAlign : undefined;
+  for (const child of node.content ?? []) { const found = documentAlign(child); if (found !== undefined) return found; }
+  return undefined;
+}
+/** Left is the default and is never stored; an editor without the attribute (table cells) leaves the stored value alone. */
+function withAlign(content: Record<string, unknown>, doc: JSONContent): Record<string, unknown> {
+  const align = documentAlign(doc);
+  if (align === undefined) return content;
+  const chosen = blockAlign(align), next = { ...content };
+  // An existing key keeps its place, so the editor's comparison with the stored content stays stable.
+  if (chosen) next.align = chosen; else delete next.align;
+  return next;
+}
 export function toRichDocument(block: EditorBlock): JSONContent {
-  if (block.type !== 'list') return { type: 'doc', content: [{ type: 'paragraph', content: inlineNodes(block.content.runs as Run[]) }] };
+  if (block.type !== 'list') return { type: 'doc', content: [paragraph(block, block.content.runs as Run[])] };
   const items = block.content.items as { level: number; runs: Run[] }[];
   const kind = block.content.ordered ? 'orderedList' : 'bulletList';
   const root: JSONContent = { type: kind, content: [] };
@@ -45,13 +62,13 @@ export function toRichDocument(block: EditorBlock): JSONContent {
       const child: JSONContent = { type: kind, content: [] };
       lists.at(-1)!.content!.at(-1)!.content!.push(child); lists.push(child);
     }
-    lists.at(-1)!.content!.push({ type: 'listItem', content: [{ type: 'paragraph', content: inlineNodes(item.runs) }] });
+    lists.at(-1)!.content!.push({ type: 'listItem', content: [paragraph(block, item.runs)] });
   }
-  if (!root.content?.length) root.content = [{ type: 'listItem', content: [{ type: 'paragraph' }] }];
+  if (!root.content?.length) root.content = [{ type: 'listItem', content: [{ type: 'paragraph', attrs: { textAlign: blockAlign(block.content.align) ?? 'left' } }] }];
   return { type: 'doc', content: [root] };
 }
 export function fromRichDocument(doc: JSONContent, block: EditorBlock): Record<string, unknown> {
-  if (block.type !== 'list') return { ...block.content, runs: textRuns(doc) };
+  if (block.type !== 'list') return withAlign({ ...block.content, runs: textRuns(doc) }, doc);
   const items: { level: number; runs: Run[] }[] = [];
   function walk(node: JSONContent, level: number) {
     if (node.type === 'listItem') {
@@ -61,7 +78,7 @@ export function fromRichDocument(doc: JSONContent, block: EditorBlock): Record<s
     else node.content?.forEach((child) => walk(child, node.type === 'bulletList' || node.type === 'orderedList' ? level + 1 : level));
   }
   walk(doc, 0);
-  return { ...block.content, items: items.length ? items : [{ level: 1, runs: [] }] };
+  return withAlign({ ...block.content, items: items.length ? items : [{ level: 1, runs: [] }] }, doc);
 }
 export function listDepth(doc: JSONContent, depth = 0): number {
   const next = depth + (doc.type === 'bulletList' || doc.type === 'orderedList' ? 1 : 0);

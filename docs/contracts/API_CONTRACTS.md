@@ -760,6 +760,12 @@ video and embed blocks and the text and hint of an exercise (`text` of a longrea
 use the sanitized markup contract of `richTextSchema` (visible-length limits unchanged). Old documents with plain strings
 and runs without styles stay valid and are shown unchanged.
 
+PR 439 adds the optional `align` (`center`, `right` or `justify`) to the content of paragraph, heading, quote, note and list
+blocks (one value per block; left is the default and is never stored, any other value is rejected, table cells have none).
+Old blocks stay valid. Where text alignment works: sheet and other-module descriptions that use `RichText` (PR 438), longread
+text blocks in the editor and the reader, and the descriptions in the PDF session report (centre, right, justify with the
+last line left). Lists, tables of contents, e-mails and XLSX cells keep plain text.
+
 `RichTextField` supports single-line and multiline author fields using the same localized formatting controls. Single-line
 Enter inserts no paragraph and pasted lines are joined with spaces. Inline rename retains commit-on-blur/Enter, Escape,
 retry and validation; opening formatting does not commit the field. Read-only author fields disable editing explicitly.

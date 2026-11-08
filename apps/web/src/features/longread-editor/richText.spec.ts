@@ -11,6 +11,22 @@ describe('longread structured text boundary', () => {
     block.content = { runs: [{ text: 'Важно', bold: true, color: '#B91C1C', size: 20, uppercase: true }, { text: ' обычно' }] };
     expect(fromRichDocument(toRichDocument(block), block)).toEqual(block.content);
   });
+  it('round trips the block alignment for text and lists, never stores left and leaves table cells alone (PR 439)', () => {
+    const block = newBlock('paragraph');
+    block.content = { runs: [{ text: 'Центр' }], align: 'center' };
+    expect(toRichDocument(block).content?.[0]?.attrs).toEqual({ textAlign: 'center' });
+    expect(fromRichDocument(toRichDocument(block), block)).toEqual(block.content);
+    const doc = toRichDocument(block); doc.content![0]!.attrs = { textAlign: 'left' };
+    expect(fromRichDocument(doc, block)).toEqual({ runs: [{ text: 'Центр' }] });
+    const list = newBlock('list');
+    list.content = { ordered: false, align: 'justify', items: [{ level: 1, runs: [{ text: 'a' }] }, { level: 2, runs: [{ text: 'b' }] }] };
+    expect(JSON.stringify(fromRichDocument(toRichDocument(list), list))).toBe(JSON.stringify(list.content));
+    const cell = newBlock('paragraph'); cell.content = { runs: [{ text: 'cell' }] };
+    const bare = toRichDocument(cell); bare.content![0]!.attrs = undefined;
+    expect(fromRichDocument(bare, cell)).toEqual({ runs: [{ text: 'cell' }] });
+    const kept = newBlock('paragraph'); kept.content = { runs: [{ text: 'x' }], align: 'right' };
+    expect(fromRichDocument({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'x' }] }] }, kept)).toEqual(kept.content);
+  });
   it('round trips formatted multilingual text and three nested list levels without HTML', () => {
     const block = newBlock('list');
     block.content = { ordered: true, items: [

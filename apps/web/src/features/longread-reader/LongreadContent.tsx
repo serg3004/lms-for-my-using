@@ -10,6 +10,7 @@ import type { Run } from '../longread-editor/model.js';
 import { headingId, safeBlock, type ListContent } from './model.js';
 
 const textStyle: CSSProperties = { overflowWrap: 'anywhere', whiteSpace: 'pre-wrap', lineHeight: 1.8 };
+const alignStyle = (align?: string): CSSProperties => align ? { textAlign: align as CSSProperties['textAlign'] } : {};
 function Runs({ runs, navigate }: { runs: Run[]; navigate: (chapter: string) => void }) {
   return <>{runs.map((run, index) => {
     let node: ReactNode = run.text;
@@ -63,14 +64,14 @@ export function LongreadContent({ blocks, chapter, allowCopy, navigate, t }: { b
     if (value.type === 'attachments') return <div key={index}>{value.content.files.map((file) => <MediaAttachment key={file.fileId} {...file} />)}</div>;
     if (value.type === 'divider') return <hr key={index} />;
     if (value.type === 'code') return <Code key={index} {...value.content} allowCopy={allowCopy} t={t} />;
-    if (value.type === 'list') return <div key={index} style={textStyle}><List content={value.content} navigate={navigate} /></div>;
+    if (value.type === 'list') return <div key={index} style={{ ...textStyle, ...alignStyle(value.content.align) }}><List content={value.content} navigate={navigate} /></div>;
     const body = <Runs runs={value.content.runs} navigate={navigate} />;
     if (value.type === 'heading') {
       const Heading = `h${value.content.level}` as 'h1' | 'h2' | 'h3';
-      return <Heading key={index} id={headingId(chapter, index)} data-reader-heading={index} tabIndex={-1} style={{ overflowWrap: 'anywhere', scrollMarginTop: 100 }}>{body}</Heading>;
+      return <Heading key={index} id={headingId(chapter, index)} data-reader-heading={index} tabIndex={-1} style={{ overflowWrap: 'anywhere', scrollMarginTop: 100, ...alignStyle(value.content.align) }}>{body}</Heading>;
     }
-    if (value.type === 'quote') return <blockquote key={index} style={{ ...textStyle, marginInline: 0, paddingInlineStart: 20, borderInlineStart: '3px solid var(--color-primary)' }}>{body}{plainText(value.content.caption ?? '') && <footer><RichText value={value.content.caption ?? ''} /></footer>}</blockquote>;
-    if (value.type === 'note') return <aside key={index} role="note" style={{ ...textStyle, padding: 16, border: '1px solid var(--color-border)', borderRadius: 12 }}>{body}</aside>;
-    return <p key={index} style={textStyle}>{body}</p>;
+    if (value.type === 'quote') return <blockquote key={index} style={{ ...textStyle, ...alignStyle(value.content.align), marginInline: 0, paddingInlineStart: 20, borderInlineStart: '3px solid var(--color-primary)' }}>{body}{plainText(value.content.caption ?? '') && <footer><RichText value={value.content.caption ?? ''} /></footer>}</blockquote>;
+    if (value.type === 'note') return <aside key={index} role="note" style={{ ...textStyle, ...alignStyle(value.content.align), padding: 16, border: '1px solid var(--color-border)', borderRadius: 12 }}>{body}</aside>;
+    return <p key={index} style={{ ...textStyle, ...alignStyle(value.content.align) }}>{body}</p>;
   })}</>;
 }

@@ -120,6 +120,19 @@ describe('longread text styles and rich captions (PR 430)', () => {
     expect(ok('list', { ordered: false, items: [{ level: 1, runs: [{ text: 'a', size: 15 }] }] }).ok).toBe(false);
     expect(ok('table', { columns: 1, rows: [{ cells: [{ runs: [{ text: 'a', color: '#166534' }] }] }] }).ok).toBe(true);
   });
+  it('stores the alignment of text blocks (PR 439): three values, old blocks unchanged, table cells and others rejected', () => {
+    for (const align of ['center', 'right', 'justify']) {
+      expect(ok('paragraph', { runs: [{ text: 'x' }], align }).ok).toBe(true);
+      expect(ok('heading', { level: 2, runs: [], align }).ok).toBe(true);
+      expect(ok('quote', { runs: [], align }).ok).toBe(true);
+      expect(ok('note', { runs: [], align }).ok).toBe(true);
+      expect(ok('list', { ordered: false, items: [{ level: 1, runs: [] }], align }).ok).toBe(true);
+    }
+    expect(ok('paragraph', { runs: [{ text: 'old' }] }).ok).toBe(true);
+    for (const align of ['left', 'start', 'CENTER', 'center; color:red', 1, null]) expect(ok('paragraph', { runs: [], align }).ok).toBe(false);
+    expect(ok('table', { columns: 1, rows: [{ cells: [{ runs: [{ text: 'a' }], align: 'center' }] }] }).ok).toBe(false);
+    expect(ok('columns', { count: 2, columns: [{ id: crypto.randomUUID(), blocks: [{ id: crypto.randomUUID(), type: 'paragraph', schemaVersion: 1, content: { runs: [], align: 'right' } }] }, { id: crypto.randomUUID(), blocks: [] }] }).ok).toBe(true);
+  });
   it('cleans the markup of quote and image captions', () => {
     const quote = ok('quote', { runs: [], caption: '<script>x</script><strong onclick="bad()">Автор</strong>' });
     expect(quote.ok).toBe(true);

@@ -221,3 +221,31 @@ it('PR 427 formats author titles and criteria in PDF while summary cells contain
     expect(spy).toHaveBeenCalledWith('Criterion', expect.objectContaining({ italic: true }));
   } finally { spy.mockRestore(); }
 });
+
+it('PR 439: draws the description centred, right-aligned and justified, and keeps old texts at the left margin', async () => {
+  const longText = 'слово '.repeat(60).trim();
+  const draw = async (description: string) => {
+    const data = report([row('c', null, 'Criterion', 1, 1)]);
+    if (!data.visible) throw new Error('Expected visible report');
+    data.checklist.description = description;
+    const spy = jest.spyOn(PdfFontBook.prototype, 'writeInline');
+    try {
+      await renderSessionReportPdf(data, { locale: 'ru', photos: [], omittedPhotos: 0 });
+      return spy.mock.calls.filter(([text]) => text === 'Центр' || text === 'слово').map(([text, options]) => ({ text, x: (options as { x: number }).x, y: (options as { y: number }).y }));
+    } finally { spy.mockRestore(); }
+  };
+  const left = (await draw('<p><strong>Центр</strong></p>')).find((call) => call.text === 'Центр')!;
+  const centre = (await draw('<p style="text-align:center"><strong>Центр</strong></p>')).find((call) => call.text === 'Центр')!;
+  const right = (await draw('<p style="text-align:right"><strong>Центр</strong></p>')).find((call) => call.text === 'Центр')!;
+  expect(left.x).toBeGreaterThan(0);
+  expect(centre.x).toBeGreaterThan(left.x + 100);
+  expect(right.x).toBeGreaterThan(centre.x + 100);
+  const justified = await draw(`<p style="text-align:justify">${longText}</p>`);
+  const rows = [...new Set(justified.map((call) => call.y))];
+  expect(rows.length).toBeGreaterThan(1);
+  const firstRow = justified.filter((call) => call.y === rows[0]), lastRow = justified.filter((call) => call.y === rows.at(-1));
+  const oldFirstRow = (await draw(longText)).filter((call) => call.y === rows[0]);
+  expect(firstRow[0]!.x).toBe(oldFirstRow[0]!.x);
+  expect(firstRow.at(-1)!.x).toBeGreaterThan(oldFirstRow.at(-1)!.x);
+  expect(lastRow[1]!.x - lastRow[0]!.x).toBeCloseTo((oldFirstRow[1]!.x - oldFirstRow[0]!.x), 1);
+});

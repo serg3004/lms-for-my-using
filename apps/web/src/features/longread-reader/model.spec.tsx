@@ -50,4 +50,18 @@ describe('safe longread reader and contents', () => {
     expect(readHash(chapterHash('ch-stable', 2))).toEqual({ chapter: 'ch-stable', headingIndex: 2 });
     expect(readHash('#chapter=ch-stable&heading=NaN')).toEqual({ chapter: 'ch-stable' });
   });
+  it('renders the stored alignment of text blocks and ignores an unknown value (PR 439)', () => {
+    const aligned: LongreadReaderDocument = { ...document, chapters: [{ ...document.chapters[0]!, blocks: [
+      { type: 'paragraph', schemaVersion: 1, content: { runs: [{ text: 'Центр' }], align: 'center' } },
+      { type: 'heading', schemaVersion: 1, content: { level: 2, runs: [{ text: 'Право' }], align: 'right' } },
+      { type: 'list', schemaVersion: 1, content: { ordered: false, align: 'justify', items: [{ level: 1, runs: [{ text: 'пункт' }] }] } },
+      { type: 'paragraph', schemaVersion: 1, content: { runs: [{ text: 'Старый' }] } },
+      { type: 'paragraph', schemaVersion: 1, content: { runs: [{ text: 'Чужой' }], align: 'center; color:red' } },
+    ] }] };
+    const root = globalThis.document.createElement('div'); root.innerHTML = renderToStaticMarkup(<LongreadReader data={aligned} onNavigate={() => {}} />);
+    const style = (text: string) => [...root.querySelectorAll<HTMLElement>('p,h2,div')].find((element) => element.textContent === text && element.style.textAlign)?.style.textAlign;
+    expect(style('Центр')).toBe('center'); expect(style('Право')).toBe('right'); expect(style('пункт')).toBe('justify');
+    expect([...root.querySelectorAll<HTMLElement>('p')].find((element) => element.textContent === 'Старый')?.style.textAlign).toBe('');
+    expect(root.textContent).not.toContain('Чужой');
+  });
 });
