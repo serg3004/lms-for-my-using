@@ -2938,7 +2938,7 @@
     },
     "finishCheck": "Finish the check",
     "sendForReview": "Send for review",
-    "finishMissing": "Not answered yet:",
+    "finishRemaining": "Left to answer: {{count}}",
     "finishConfirm": "After finishing, the answers cannot be changed.",
     "finishConfirmReview": "The answers will go to your instructor and cannot be changed afterwards.",
     "finishError": "Unable to finish the check.",

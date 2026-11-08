@@ -32,12 +32,24 @@ afterEach(async () => {
 });
 
 describe('ChecklistFinishBar (PR 406б)', () => {
-  it('is disabled and lists what is missing', async () => {
+  it('is disabled and says only how many are left, without a list of titles (PR 449)', async () => {
     await render({ missing: ['Касса', 'Витрина'] });
-    expect(button('Завершить проверку')?.disabled).toBe(true);
-    expect(document.body.textContent).toContain('Ещё нет ответа:');
-    expect(document.body.textContent).toContain('Касса');
-    expect(document.body.textContent).toContain('Витрина');
+    const finish = button('Завершить проверку');
+    expect(finish?.disabled).toBe(true);
+    expect(document.body.textContent).toContain('Осталось ответить: 2');
+    expect(document.body.textContent).not.toContain('Ещё нет ответа');
+    expect(document.body.textContent).not.toContain('Касса');
+    expect(document.body.textContent).not.toContain('Витрина');
+    expect(document.querySelector('ul')).toBeNull();
+    expect(finish?.getAttribute('aria-describedby')).toBe('finish-missing');
+    expect(document.getElementById('finish-missing')?.textContent).toBe('Осталось ответить: 2');
+  });
+
+  it('shows no phrase and no description when nothing is left', async () => {
+    await render({ missing: [] });
+    expect(document.getElementById('finish-missing')).toBeNull();
+    expect(button('Завершить проверку')?.disabled).toBe(false);
+    expect(button('Завершить проверку')?.hasAttribute('aria-describedby')).toBe(false);
   });
 
   it('asks for confirmation before finishing', async () => {

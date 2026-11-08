@@ -2938,7 +2938,7 @@
     },
     "finishCheck": "完成检查",
     "sendForReview": "提交审核",
-    "finishMissing": "尚未作答：",
+    "finishRemaining": "还需作答：{{count}}",
     "finishConfirm": "完成后无法更改答案。",
     "finishConfirmReview": "答案将提交给讲师，之后无法更改。",
     "finishError": "无法完成检查。",
