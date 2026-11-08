@@ -41,6 +41,18 @@ afterEach(async () => {
   vi.clearAllMocks();
 });
 
+import { photoViewerBox } from './ChecklistPhotoStrip';
+
+describe('large view box (PR 445)', () => {
+  it('is up to 96vw x 90vh on a computer and the whole screen on a phone, keeping the safe areas', () => {
+    expect(photoViewerBox(false)).toMatchObject({ width: 'min(96vw, 1200px)', maxHeight: '90vh', maxWidth: 'none' });
+    const phone = photoViewerBox(true);
+    expect(phone).toMatchObject({ width: '100vw', height: '100dvh', maxWidth: 'none', maxHeight: 'none', borderRadius: 0 });
+    expect(String(phone.padding)).toContain('safe-area-inset-top');
+    expect(String(phone.padding)).toContain('safe-area-inset-bottom');
+  });
+});
+
 describe('ChecklistPhotoStrip (PR 421)', () => {
   it('renders nothing without photos', async () => {
     await render([]);
@@ -50,7 +62,9 @@ describe('ChecklistPhotoStrip (PR 421)', () => {
 
   it('shows the photos in order with captions and the alt text from the caption', async () => {
     await render(photos);
+    // PR 445: the name stays for screen readers and is not shown.
     expect(container.querySelector('h3')?.textContent).toBe('Изображение на бланке чек-листа');
+    expect(container.querySelector('h3')?.className).toContain('ui-visually-hidden');
     const images = [...container.querySelectorAll('ul img')] as HTMLImageElement[];
     expect(images.map((image) => image.alt)).toEqual(['Изображение 1 листа «Лист»: Первая', 'Изображение 2 листа «Лист»: Вторая']);
     expect([...container.querySelectorAll('li p')].map((p) => p.textContent)).toEqual(['Первая', 'Вторая']);
@@ -64,6 +78,11 @@ describe('ChecklistPhotoStrip (PR 421)', () => {
     const dialog = container.querySelector('dialog')!;
     expect(dialog.hasAttribute('open')).toBe(true);
     expect(dialog.querySelector('h2')?.textContent).toBe('Вторая');
+    expect(dialog.querySelector('h2')?.className).toContain('ui-visually-hidden');
+    // PR 445: the caption stands under the picture, the box is nearly the whole screen.
+    expect(dialog.querySelector('img')!.compareDocumentPosition(dialog.querySelector('[data-testid="photo-viewer"] > p')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(dialog.style.width).toBe('min(96vw, 1200px)');
+    expect(dialog.style.maxHeight).toBe('90vh');
     expect(dialog.querySelector('img')?.alt).toBe('Изображение 2 листа «Лист»: Вторая');
     const close = [...dialog.querySelectorAll('button')].find((b) => b.textContent === 'Закрыть')!;
     await act(async () => { close.click(); });
@@ -72,7 +91,7 @@ describe('ChecklistPhotoStrip (PR 421)', () => {
 
   it('can fold into a details block that counts the photos', async () => {
     await render(photos, true);
-    expect(container.querySelector('details summary')?.textContent).toBe('Изображение на бланке чек-листа (2)');
+    expect(container.querySelector('details summary')?.textContent).toBe('Изображения (2)');
     expect(container.querySelector('h3')).toBeNull();
   });
 

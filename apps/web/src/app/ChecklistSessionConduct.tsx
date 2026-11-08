@@ -371,14 +371,13 @@ export function ConductScreen({
       <h1 style={{ margin: '2px 0 0', fontSize: 20 }}>{t('checklistSessions.conduct.screenTitle', 'Conduct session')}</h1>
 
       <AppearanceBlock appearance={checklist.appearance} kind="header" style={{ marginTop: 8 }}>
-      <Header session={session} instance={instance} t={t} />
-      {instance.checklist?.description && <p><RichDescription value={instance.checklist.description} /></p>}
-      </AppearanceBlock>
-
-      {/* PR 421: the sheet's extra pictures stay at hand during the pass. */}
+      {/* PR 421/445: the sheet's extra pictures stay at hand during the pass, first, above the sheet's title. */}
       {(session.status === 'in_progress' || session.status === 'paused') && checklist.showSheetPhotos !== false && checklist.photos && checklist.photos.length > 0 && (
         <ChecklistPhotoStrip checklistId={checklist.id} photos={checklist.photos} title={checklist.title} collapsible />
       )}
+      <Header session={session} instance={instance} t={t} />
+      {instance.checklist?.description && <p><RichDescription value={instance.checklist.description} /></p>}
+      </AppearanceBlock>
 
       {error && (
         <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 13 }}>
