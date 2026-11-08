@@ -1,10 +1,17 @@
 import { expect, test } from '@playwright/test';
 import { openFormattingEditor } from '../fixtures/checklist-formatting.js';
 
+type PreviewSheet = Parameters<NonNullable<Parameters<typeof openFormattingEditor>[2]>>[0];
+const ids = ['4f2b8c1e-5d4a-4b6f-9a7c-1e2d3c4b5a69', '5a3c9d2f-6e5b-4c7a-8b8d-2f3e4d5c6b7a', '6b4d0e3a-7f6c-4d8b-9c9e-3a4f5e6d7c8b'];
+/** Three criteria with uuid ids (the server keeps a look only for real ids). */
+const threeCriteria = (sheet: PreviewSheet) => {
+  const first = sheet.items[0]!;
+  sheet.items = ids.map((id, index) => ({ ...first, id, order: index, text: `Критерий ${index + 1}` }));
+};
 const settings = (page: import('@playwright/test').Page) => page.getByRole('dialog', { name: 'Настройки', exact: true });
 
 test('author sets a block with its button, sees it change at once, saves, and the preview shows the look', async ({ page }) => {
-  const { saved, sheet } = await openFormattingEditor(page);
+  const { saved, sheet } = await openFormattingEditor(page, 'ru', (sheet) => { sheet.items[0]!.id = ids[0]!; });
   await expect(settings(page)).toHaveCount(0);
   await page.getByRole('button', { name: 'Оформление блока: Шапка', exact: true }).click();
   await expect(settings(page)).toBeVisible();
@@ -16,7 +23,7 @@ test('author sets a block with its button, sees it change at once, saves, and th
   await expect(row).toHaveCSS('background-color', 'rgb(255, 247, 204)');
   await settings(page).getByRole('button', { name: 'Цвет текста #172033', exact: true }).click();
   await page.getByRole('button', { name: 'Сохранить', exact: true }).first().click();
-  await expect.poll(() => (saved()?.appearance as { blocks?: Record<string, { background?: string }> } | undefined)?.blocks?.item?.background).toBe('#FFF7CC');
+  await expect.poll(() => (saved()?.appearance as { overrides?: Record<string, { background?: string }> } | undefined)?.overrides?.[ids[0]!]?.background).toBe('#FFF7CC');
   expect((saved()?.appearance as { blocks: Record<string, unknown> }).blocks).toHaveProperty('header');
   await page.keyboard.press('Escape');
   await expect(settings(page)).toHaveCount(0);
@@ -33,11 +40,11 @@ test('only this block can be styled, low contrast warns, reset restores the look
   const row = page.locator('.admin-criteria-row:not(.admin-criteria-row--head)').first();
   await row.getByRole('button', { name: /^Оформление блока:/ }).click();
   const panel = settings(page);
-  await panel.getByRole('radio', { name: 'только к этому блоку' }).check();
+  await expect(panel.getByRole('radio', { name: 'Только этот блок' })).toHaveAttribute('aria-checked', 'true');
   await panel.getByRole('button', { name: 'Цвет текста #FFFFFF', exact: true }).click();
   await expect(panel.getByRole('status')).toContainText('Низкий контраст');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
-  await panel.getByRole('button', { name: 'Сбросить этот блок', exact: true }).click();
+  await panel.getByRole('button', { name: 'Сбросить к стандартному', exact: true }).click();
   await expect(panel.getByRole('status')).toHaveCount(0);
   await panel.getByRole('button', { name: 'Закрыть настройки', exact: true }).click();
   await expect(panel).toHaveCount(0);
@@ -85,4 +92,44 @@ for (const width of [390, 320]) test(`PR 440: on a narrow screen (${width}px) th
   expect(box!.height).toBeLessThanOrEqual(800 * 0.55 + 1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   expect(await page.getByTestId('checklist-builder').evaluate((element) => parseFloat(getComputedStyle(element).paddingBottom))).toBeGreaterThanOrEqual(800 * 0.55 - 1);
+});
+
+test('PR 441: a colour changes only the chosen criterion; "to all" is a separate explicit choice that shows how many it reaches', async ({ page }) => {
+  await openFormattingEditor(page, 'ru', threeCriteria);
+  const rows = page.locator('.admin-criteria-row:not(.admin-criteria-row--head)');
+  await expect(rows).toHaveCount(3);
+  await rows.nth(1).getByRole('button', { name: /^Оформление блока:/ }).click();
+  const panel = settings(page);
+  await expect(panel.getByRole('radio', { name: 'Только этот блок' })).toHaveAttribute('aria-checked', 'true');
+  await expect(panel.getByRole('radio', { name: 'Ко всем критериям (3)' })).toHaveAttribute('aria-checked', 'false');
+  await panel.getByRole('button', { name: 'Фон #FFF7CC', exact: true }).click();
+  await expect(rows.nth(1)).toHaveCSS('background-color', 'rgb(255, 247, 204)');
+  await expect(rows.nth(0)).not.toHaveCSS('background-color', 'rgb(255, 247, 204)');
+  await expect(rows.nth(2)).not.toHaveCSS('background-color', 'rgb(255, 247, 204)');
+  await panel.getByRole('radio', { name: 'Ко всем критериям (3)' }).click();
+  await expect(panel.getByRole('note')).toContainText('У 1 блока свои настройки, они остаются.');
+  await panel.getByRole('button', { name: 'Фон #EAF2FB', exact: true }).click();
+  await expect(rows.nth(0)).toHaveCSS('background-color', 'rgb(234, 242, 251)');
+  await expect(rows.nth(2)).toHaveCSS('background-color', 'rgb(234, 242, 251)');
+  await expect(rows.nth(1)).toHaveCSS('background-color', 'rgb(255, 247, 204)');
+  // The chosen scope is remembered for the next block while the sheet is open.
+  await page.keyboard.press('Escape');
+  await rows.nth(0).getByRole('button', { name: /^Оформление блока:/ }).click();
+  await expect(settings(page).getByRole('radio', { name: 'Ко всем критериям (3)' })).toHaveAttribute('aria-checked', 'true');
+});
+
+test('PR 441: a sheet without groups still has a settings button for groups, and "Без группы" opens the same window', async ({ page }) => {
+  await openFormattingEditor(page, 'ru', threeCriteria);
+  const head = page.locator('.admin-builder-section-head', { hasText: 'Группы и критерии' });
+  await head.getByRole('button', { name: /^Оформление блока:/ }).click();
+  const panel = settings(page);
+  await expect(panel).toBeVisible();
+  await expect(panel.getByRole('radio')).toHaveCount(0);
+  await expect(panel.getByRole('note')).toContainText('все группы');
+  await panel.getByRole('button', { name: 'Толщина границы: 2 px', exact: true }).click();
+  await panel.getByRole('button', { name: 'Закрыть настройки', exact: true }).click();
+  const card = page.locator('.admin-group-card').first();
+  await card.getByRole('button', { name: /^Оформление блока: (Без группы|Группа)$/ }).click();
+  await expect(settings(page)).toBeVisible();
+  await expect(card).toHaveCSS('border-top-width', '2px');
 });

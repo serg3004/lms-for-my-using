@@ -3,7 +3,7 @@ import { plainText } from '@lms/shared/rich-text';
 import { RichTextField } from '../../shared/RichTextField.js';
 import { RichDescriptionEditor } from '../../shared/RichDescriptionEditor.js';
 import type { FeedbackLayout } from '@lms/shared/checklist-feedback';
-import { BlockGear, BlockSettingsWindow, GEAR_GUTTER, PANEL_WIDTH, sameTarget, useNarrowScreen, type BlockTarget } from './ChecklistBlockSettings.js';
+import { BlockGear, BlockSettingsWindow, GEAR_GUTTER, PANEL_WIDTH, sameTarget, useNarrowScreen, type BlockScope, type BlockTarget } from './ChecklistBlockSettings.js';
 import { appearanceCss } from '../../shared/AppearanceBlock.js';
 import { resolveBlockStyle, sanitizeAppearance, type Appearance, type BlockKind } from '@lms/shared/checklist-appearance';
 import { FeedbackBuilder } from '../checklist-feedback/FeedbackBuilder.js';
@@ -130,6 +130,8 @@ export function ChecklistBuilder({
   const [appearance, setAppearance] = useState<Appearance | null>(() => sanitizeAppearance(checklist.appearance));
   // PR 431: the block whose "Settings" window is open (none: the window does not exist and the sheet uses the full width).
   const [blockTarget, setBlockTarget] = useState<BlockTarget | null>(null);
+  // PR 441: the last chosen scope of the settings window is kept while the sheet is open; "only this block" until a choice is made.
+  const [blockScope, setBlockScope] = useState<BlockScope>('own');
   const blockTrigger = useRef<HTMLElement | null>(null);
   const narrowScreen = useNarrowScreen();
   // PR 435: the open tab is kept in the address (`#settings`); both tabs stay mounted, so nothing unsaved is lost when switching.
@@ -766,6 +768,7 @@ export function ChecklistBuilder({
           <ChecklistItemsEditor>
             <div className="admin-builder-section-head">
               <h3>{t('admin.checklists.groupsTitle', 'Groups and criteria')} <Badge variant="neutral">{items.length}</Badge></h3>
+              {itemGroups.length === 0 && <BlockGear target={{ kind: 'group', id: null, name: t('admin.checklists.appearance.kind.group') }} active={sameTarget(blockTarget, { kind: 'group', id: null, name: '' })} onOpen={openBlockSettings} t={t} />}
               <span className="admin-group-card__bulk">
                 <Button type="button" variant="secondary" size="sm" disabled={!canEdit || items.length === 0 || items.every((entry) => !!entry.scaleId)} onClick={() => void setAllScalesEnabled(true)}>{t('admin.checklists.scaleSwitch.enableAll', 'Enable scale for all criteria')}</Button>
                 <Button type="button" variant="secondary" size="sm" disabled={!canEdit || items.every((entry) => !entry.scaleId)} onClick={() => void setAllScalesEnabled(false)}>{t('admin.checklists.scaleSwitch.disableAll', 'Disable scale for all')}</Button>
@@ -778,8 +781,9 @@ export function ChecklistBuilder({
             <SortableContext items={itemGroups.map((entry) => entry.id)} strategy={verticalListSortingStrategy}>
             {(layoutDnd.dragging ? layoutDnd.buckets : groupItems(items, itemGroups)).map(({ group, items: groupedItems }, groupIndex, allGroups) => {
               return (
-              <GroupShell key={group?.id ?? 'ungrouped'} groupId={group?.id ?? null} style={group ? { ...blockLook('group', group.id), position: 'relative' } : undefined}>{(groupHandle) => (<>
-                <div className="admin-group-card__head" style={group ? { paddingInlineEnd: GEAR_GUTTER } : undefined} {...(group ? rowMenu.triggerProps({ kind: 'group', id: group.id }) : {})}>
+              <GroupShell key={group?.id ?? 'ungrouped'} groupId={group?.id ?? null} style={{ ...blockLook('group', group?.id ?? null), position: 'relative' }}>{(groupHandle) => (<>
+                <div className="admin-group-card__head" style={{ paddingInlineEnd: GEAR_GUTTER }} {...(group ? rowMenu.triggerProps({ kind: 'group', id: group.id }) : {})}>
+                  {!group && <BlockGear corner target={{ kind: 'group', id: null, name: itemGroups.length > 0 ? t('admin.checklists.ungroupedItems', 'Ungrouped') : t('admin.checklists.appearance.kind.group') }} active={sameTarget(blockTarget, { kind: 'group', id: null, name: '' })} onOpen={openBlockSettings} t={t} />}
                   {group && groupHandle && <DragHandle handle={groupHandle} label={t('admin.checklists.dnd.dragGroup', 'Drag group: {{name}}', { name: plainText(group.title) })} />}
                   <div className="admin-group-card__title">
                     {group ? (
@@ -1303,10 +1307,11 @@ export function ChecklistBuilder({
       })()}
       {blockTarget && (() => {
         // The window follows renames and closes when its block is gone (deleted group or criterion).
-        const live = blockTarget.kind === 'group' ? itemGroups.find((entry) => entry.id === blockTarget.id)?.title
+        const live = blockTarget.kind === 'group' && blockTarget.id === null ? blockTarget.name : blockTarget.kind === 'group' ? itemGroups.find((entry) => entry.id === blockTarget.id)?.title
           : blockTarget.kind === 'item' ? items.find((entry) => entry.id === blockTarget.id)?.text : t(`admin.checklists.appearance.kind.${blockTarget.kind}`);
         if (live === undefined) return null;
-        return <BlockSettingsWindow target={{ ...blockTarget, name: plainText(live) }} appearance={appearance} onChange={setAppearance} onClose={closeBlockSettings} disabled={!canEdit} t={t} />;
+        return <BlockSettingsWindow target={{ ...blockTarget, name: plainText(live) }} appearance={appearance} onChange={setAppearance} onClose={closeBlockSettings} disabled={!canEdit} t={t}
+          kindIds={blockTarget.kind === 'item' ? items.map((entry) => entry.id) : blockTarget.kind === 'group' ? itemGroups.map((entry) => entry.id) : []} scope={blockScope} onScopeChange={setBlockScope} />;
       })()}
       <ContextMenu label={rowMenuView.label} onClose={rowMenu.close} state={rowMenu.state}>{rowMenuView.items}</ContextMenu>
     </div>

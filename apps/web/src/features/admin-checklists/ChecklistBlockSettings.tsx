@@ -58,7 +58,8 @@ export function BlockGear({ target, active, onOpen, t, corner = false }: { targe
   );
 }
 
-type Scope = 'kind' | 'own';
+export type BlockScope = 'kind' | 'own';
+type Scope = BlockScope;
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return <section style={{ display: 'grid', gap: 8 }}><h4 style={heading}>{title}</h4>{children}</section>;
@@ -100,11 +101,17 @@ function StepField({ label, value, options, disabled, onPick, t }: { label: stri
  * (the sheet changes while the author edits) and comes up from the bottom on a phone. Values are written to `appearance` at
  * once, so the block in the editor follows every change.
  */
-export function BlockSettingsWindow({ target, appearance, onChange, onClose, disabled, t }: {
+export function BlockSettingsWindow({ target, appearance, onChange, onClose, disabled, t, kindIds = [], scope: remembered, onScopeChange }: {
   target: BlockTarget; appearance: Appearance | null; onChange: (value: Appearance | null) => void; onClose: () => void; disabled: boolean; t: TFunction;
+  /** Ids of all blocks of this kind (criteria or groups): the window counts how many a "to all" change reaches. */
+  kindIds?: string[];
+  /** The last chosen scope, kept by the editor while the sheet is open (PR 441); "only this block" until a choice is made. */
+  scope?: Scope; onScopeChange?: (scope: Scope) => void;
 }) {
   const narrow = useNarrowScreen();
-  const [scope, setScope] = useState<Scope>('kind');
+  const [localScope, setLocalScope] = useState<Scope>('own');
+  const scope = remembered ?? localScope;
+  const setScope = (value: Scope) => { setLocalScope(value); onScopeChange?.(value); };
   const closeButton = useRef<HTMLButtonElement>(null);
   const canOwn = target.id !== null;
   const own = scope === 'own' && canOwn;
@@ -112,9 +119,9 @@ export function BlockSettingsWindow({ target, appearance, onChange, onClose, dis
   const style: BlockStyle = own ? (overrides[target.id!] ?? {}) : (appearance?.blocks?.[target.kind] ?? {});
   const effective = own ? resolveBlockStyle(appearance, target.kind, target.id) : style;
   const kindLabel = t(`admin.checklists.appearance.kind.${target.kind}`);
+  const ownCount = kindIds.filter((id) => overrides[id]).length;
 
   useEffect(() => { closeButton.current?.focus(); }, []);
-  useEffect(() => { setScope('kind'); }, [target.kind, target.id]);
   useEffect(() => {
     const key = (event: KeyboardEvent) => { if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); onClose(); } };
     document.addEventListener('keydown', key);
@@ -148,19 +155,24 @@ export function BlockSettingsWindow({ target, appearance, onChange, onClose, dis
             {(['kind', 'own'] as const).map((value, index) => (
               <button key={value} type="button" role="radio" aria-checked={scope === value} disabled={disabled} onClick={() => setScope(value)}
                 style={{ flex: 1, minHeight: 44, padding: '6px 8px', borderWidth: 0, borderInlineStartWidth: index ? 1 : 0, borderStyle: 'solid', borderColor: 'var(--color-border)', cursor: 'pointer', fontSize: 13, fontWeight: scope === value ? 700 : 400, background: 'var(--color-surface, #fff)', color: 'var(--color-text, #172033)', ...(scope === value ? accentStyle : {}) }}>
-                {value === 'kind' ? t('admin.checklists.appearance.scopeKind') : t('admin.checklists.appearance.scopeOwn')}
+                {value === 'kind' ? t(`admin.checklists.appearance.scopeAll_${target.kind}`, { count: kindIds.length }) : t('admin.checklists.appearance.scopeOwn')}
               </button>
             ))}
           </div>
+          {scope === 'kind' && ownCount > 0 && <p role="note" className="admin-form__hint" style={{ margin: 0 }}>{t('admin.checklists.appearance.keepsOwn', { count: ownCount })}</p>}
         </div>
       )}
+      {!canOwn && target.kind === 'group' && <p role="note" className="admin-form__hint" style={{ margin: 0 }}>{t('admin.checklists.appearance.allGroupsNote', { count: kindIds.length })}</p>}
       <div style={row}>
         <span>{t('admin.checklists.appearance.presets')}</span>
         {(['strict', 'calm', 'contrast'] as const).map((preset) => (
-          <button key={preset} type="button" className="admin-btn admin-btn--sm admin-btn--secondary" disabled={disabled} onClick={() => onChange(sanitizeAppearance({ blocks: APPEARANCE_PRESETS[preset].blocks, overrides }))}>{t(`admin.checklists.appearance.preset.${preset}`)}</button>
+          <button key={preset} type="button" className="admin-btn admin-btn--sm admin-btn--secondary" disabled={disabled} onClick={() => onChange(own
+            ? sanitizeAppearance({ blocks: appearance?.blocks, overrides: { ...overrides, [target.id!]: { ...APPEARANCE_PRESETS[preset].blocks[target.kind] } } })
+            : sanitizeAppearance({ blocks: APPEARANCE_PRESETS[preset].blocks, overrides }))}>{t(`admin.checklists.appearance.preset.${preset}`)}</button>
         ))}
-        <button type="button" className="admin-btn admin-btn--sm admin-btn--secondary" disabled={disabled || !appearance} onClick={() => onChange(null)}>{t('admin.checklists.appearance.reset')}</button>
-        {own && <button type="button" className="admin-btn admin-btn--sm admin-btn--secondary" disabled={disabled || !overrides[target.id!]} onClick={() => onChange(sanitizeAppearance({ blocks: appearance?.blocks, overrides: Object.fromEntries(Object.entries(overrides).filter(([id]) => id !== target.id)) }))}>{t('admin.checklists.appearance.resetBlock')}</button>}
+        {own
+          ? <button type="button" className="admin-btn admin-btn--sm admin-btn--secondary" disabled={disabled || !overrides[target.id!]} onClick={() => onChange(sanitizeAppearance({ blocks: appearance?.blocks, overrides: Object.fromEntries(Object.entries(overrides).filter(([id]) => id !== target.id)) }))}>{t('admin.checklists.appearance.reset')}</button>
+          : <button type="button" className="admin-btn admin-btn--sm admin-btn--secondary" disabled={disabled || !appearance} onClick={() => onChange(null)}>{t('admin.checklists.appearance.reset')}</button>}
       </div>
       <Section title={t('admin.checklists.appearance.sectionBlock')}>
         <ColorField label={t('admin.checklists.appearance.background')} value={style.background} fallback={DEFAULT_BACKGROUND} disabled={disabled} onPick={(value) => write({ background: value })} t={t} />

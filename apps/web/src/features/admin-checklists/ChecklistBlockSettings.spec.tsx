@@ -12,16 +12,17 @@ import { BlockGear, BlockSettingsWindow, type BlockTarget } from './ChecklistBlo
 
 const t = i18n.t.bind(i18n);
 const itemId = '4f2b8c1e-5d4a-4b6f-9a7c-1e2d3c4b5a69';
+const otherA = '5a3c9d2f-6e5b-4c7a-8b8d-2f3e4d5c6b7a', otherB = '6b4d0e3a-7f6c-4d8b-9c9e-3a4f5e6d7c8b';
 let root: ReturnType<typeof createRoot> | undefined;
 let container: HTMLDivElement;
 let value: Appearance | null;
 let closed = 0;
-async function render(target: BlockTarget, initial: Appearance | null = null, disabled = false) {
+async function render(target: BlockTarget, initial: Appearance | null = null, disabled = false, extra: { kindIds?: string[]; scope?: 'kind' | 'own'; onScopeChange?: (scope: 'kind' | 'own') => void } = {}) {
   value = initial; closed = 0;
   container = document.createElement('div');
   document.body.appendChild(container);
   root = createRoot(container);
-  const draw = () => root?.render(<BlockSettingsWindow target={target} appearance={value} onChange={(next) => { value = next; void act(async () => draw()); }} onClose={() => { closed += 1; }} disabled={disabled} t={t} />);
+  const draw = () => root?.render(<BlockSettingsWindow target={target} appearance={value} onChange={(next) => { value = next; void act(async () => draw()); }} onClose={() => { closed += 1; }} disabled={disabled} t={t} {...extra} />);
   await act(async () => draw());
 }
 afterEach(() => { act(() => root?.unmount()); container?.remove(); });
@@ -65,15 +66,45 @@ describe('BlockSettingsWindow (PR 431)', () => {
     await click(button('Сбросить к стандартному'));
     expect(value).toBeNull();
   });
-  it('applies to all blocks of the kind by default and to this block only on request', async () => {
-    await render(item, { blocks: { item: { color: '#111111' } } });
+  it('PR 441: changes only this block by default and every block of the kind on request, with the number it reaches', async () => {
+    await render(item, { blocks: { item: { color: '#111111' } } }, false, { kindIds: [itemId, 'other-1', 'other-2'] });
+    const radios = () => [...container.querySelectorAll<HTMLElement>('[role="radio"]')];
+    expect(radios().map((radio) => [radio.textContent, radio.getAttribute('aria-checked')])).toEqual([['Ко всем критериям (3)', 'false'], ['Только этот блок', 'true']]);
     await click(button('Фон #EAF2FB'));
-    expect(value).toEqual({ blocks: { item: { color: '#111111', background: '#EAF2FB' } } });
-    await act(async () => (container.querySelectorAll<HTMLElement>('[role="radio"]')[1])!.click());
+    expect(value).toEqual({ blocks: { item: { color: '#111111' } }, overrides: { [itemId]: { background: '#EAF2FB' } } });
+    await click(radios()[0]);
     await click(button('Фон #F3F4F6'));
-    expect(value).toEqual({ blocks: { item: { color: '#111111', background: '#EAF2FB' } }, overrides: { [itemId]: { background: '#F3F4F6' } } });
-    await click(button('Сбросить этот блок'));
-    expect(value).toEqual({ blocks: { item: { color: '#111111', background: '#EAF2FB' } } });
+    expect(value).toEqual({ blocks: { item: { color: '#111111', background: '#F3F4F6' } }, overrides: { [itemId]: { background: '#EAF2FB' } } });
+  });
+  it('PR 441: reset in "only this block" removes only its own settings; reset for all keeps nothing', async () => {
+    await render(item, { blocks: { item: { color: '#111111' } }, overrides: { [itemId]: { background: '#EAF2FB' }, [otherA]: { background: '#F3F4F6' } } });
+    await click(button('Сбросить к стандартному'));
+    expect(value).toEqual({ blocks: { item: { color: '#111111' } }, overrides: { [otherA]: { background: '#F3F4F6' } } });
+    expect(button('Сбросить к стандартному').disabled).toBe(true);
+    await click(container.querySelectorAll<HTMLElement>('[role="radio"]')[0]);
+    await click(button('Сбросить к стандартному'));
+    expect(value).toBeNull();
+  });
+  it('PR 441: a set changes only this block in "only this block" scope', async () => {
+    await render(item, { blocks: { item: { color: '#111111' } } });
+    await click(button('Строгий'));
+    expect(value?.blocks).toEqual({ item: { color: '#111111' } });
+    expect(Object.keys(value!.overrides![itemId]!).length).toBeGreaterThan(0);
+  });
+  it('PR 441: says how many blocks keep their own settings when changing all, and keeps the chosen scope', async () => {
+    const scopes: string[] = [];
+    await render(item, { blocks: {}, overrides: { [otherA]: { background: '#EAF2FB' }, [otherB]: { color: '#111111' } } }, false, { kindIds: [itemId, otherA, otherB, 'c'], scope: 'kind', onScopeChange: (scope) => scopes.push(scope) });
+    expect(container.querySelector('[role="note"]')?.textContent).toBe('У 2 блоков свои настройки, они остаются.');
+    expect(container.querySelectorAll<HTMLElement>('[role="radio"]')[0]!.getAttribute('aria-checked')).toBe('true');
+    await click(container.querySelectorAll<HTMLElement>('[role="radio"]')[1]);
+    expect(scopes).toEqual(['own']);
+  });
+  it('PR 441: settings of the group kind (before groups exist, or for "Без группы") have no scope choice and say they reach all groups', async () => {
+    await render({ kind: 'group', id: null, name: 'Без группы' }, null, false, { kindIds: ['g1', 'g2'] });
+    expect(container.querySelectorAll('[role="radio"]').length).toBe(0);
+    expect(container.querySelector('[role="note"]')?.textContent).toContain('все группы (2)');
+    await click(button('Фон #FFF7CC'));
+    expect(value).toEqual({ blocks: { group: { background: '#FFF7CC' } } });
   });
   it('offers no scope choice for the header and "General information"', async () => {
     await render(header);
@@ -118,7 +149,7 @@ describe('BlockSettingsWindow (PR 431)', () => {
     expect(gear.getAttribute('aria-expanded')).toBe('true'); expect(square.style.color).toBe('var(--color-primary, #4f46e5)');
   });
   it('PR 440: the window buttons are neutral and only the chosen value, scope and set carry the accent', async () => {
-    await render(item, { blocks: { item: { background: '#EAF2FB', padding: 16 } } });
+    await render(item, { blocks: { item: { background: '#EAF2FB', padding: 16 } } }, false, { scope: 'kind' });
     const neutral = [...container.querySelectorAll('button')].filter((b) => b.className.includes('admin-btn--sm') && b.getAttribute('aria-label')?.startsWith('Отступ'));
     expect(neutral.length).toBeGreaterThan(0);
     for (const b of neutral) expect(b.className).toContain('admin-btn--secondary');

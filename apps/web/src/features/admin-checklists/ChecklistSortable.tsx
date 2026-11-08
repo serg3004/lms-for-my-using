@@ -48,16 +48,16 @@ export function SortableBox({ id, className, role, extra, style: ownStyle, child
 }
 
 /** The "without a group" card: a plain drop zone, not itself movable. */
-export function UngroupedZone({ className, children }: { className: string; children: ReactNode }) {
+export function UngroupedZone({ className, style, children }: { className: string; style?: CSSProperties; children: ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: UNGROUPED });
-  return <div className={className} ref={setNodeRef} style={isOver ? { outline: '2px dashed var(--color-primary, #2563eb)' } : undefined}>{children}</div>;
+  return <div className={className} ref={setNodeRef} style={isOver ? { ...style, outline: '2px dashed var(--color-primary, #2563eb)' } : style}>{children}</div>;
 }
 
 /** A group card: sortable for real groups, a plain drop zone for the "without a group" bucket. */
 export function GroupShell({ groupId, style, children }: { groupId: string | null; style?: CSSProperties; children: (handle: HandleProps | null) => ReactNode }) {
   return groupId
     ? <SortableBox className="admin-group-card" id={groupId} style={style}>{children}</SortableBox>
-    : <UngroupedZone className="admin-group-card">{children(null)}</UngroupedZone>;
+    : <UngroupedZone className="admin-group-card" style={style}>{children(null)}</UngroupedZone>;
 }
 
 export function ItemsSortable({ ids, children }: { ids: string[]; children: ReactNode }) {
