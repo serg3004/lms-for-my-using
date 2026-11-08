@@ -108,3 +108,26 @@ describe('preview answers: take back and level colour (PR 425)', () => {
     expect(radios(0).some((radio) => radio.checked)).toBe(false);
   });
 });
+
+describe('preview: «Ungrouped criteria» only next to real groups, and a gap between blocks (PR 447)', () => {
+  const group = { id: 'g1', checklistId: 'c', title: 'Безопасность', order: 0 };
+  const headings = () => [...container.querySelectorAll('h3')].map((h) => h.textContent);
+  const field = { id: 'f1', label: 'Участок', type: 'text', required: false, order: 0 };
+
+  it('shows the criteria of a sheet without groups with no group title', async () => {
+    await render('sum_points', [item(1), item(2)]);
+    expect(headings().some((text) => text?.includes('Без группы'))).toBe(false);
+    expect(container.textContent).toContain('Критерий 1');
+  });
+
+  it('keeps the group titles of a sheet with groups and names the rest', async () => {
+    await render('sum_points', [item(1, { groupId: 'g1' }), item(2)], { groups: [group] });
+    expect(headings()).toEqual(expect.arrayContaining([expect.stringContaining('Безопасность'), expect.stringContaining('Без группы')]));
+  });
+
+  it('keeps the gap after «General information» even when the author styled nothing', async () => {
+    await render('sum_points', [item(1)], { contextFields: [field] });
+    const info = container.querySelector('section[aria-label="Общая информация"]')!;
+    expect((info.parentElement as HTMLElement).style.marginBottom).toBe('12px');
+  });
+});

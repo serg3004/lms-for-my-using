@@ -185,3 +185,23 @@ test('PR 446: filling a sheet shows no service hints (formatting hint, required-
   expect(described).toBeTruthy();
   await expect(dialog.locator(`[id="${described}"]`)).toHaveText(hint);
 });
+
+/** PR 447: a sheet without groups has no «Без группы» title; a sheet with groups keeps the titles; the block after «Общая информация» has a gap. */
+test('PR 447: preview of a sheet without groups shows no «Без группы», with groups keeps the titles, and the info card has a gap below it', async ({ page }) => {
+  const plain = previewSheet(); plain.itemGroups = []; plain.items = plain.items.slice(0, 3).map((item) => ({ ...item, groupId: null }));
+  await openPreviewBuilder(page, plain);
+  await page.getByRole('button', { name: 'Предпросмотр', exact: true }).click();
+  let dialog = page.getByRole('dialog', { name: plain.title, exact: true });
+  await expect(dialog.getByRole('heading', { name: /Без группы/ })).toHaveCount(0);
+  const info = dialog.locator('section[id$="-info"]');
+  const next = dialog.locator('section[aria-labelledby], div[role="radiogroup"]').first();
+  const gap = (await next.boundingBox())!.y - ((await info.boundingBox())!.y + (await info.boundingBox())!.height);
+  expect(gap).toBeGreaterThanOrEqual(8);
+
+  const grouped = previewSheet(); grouped.items = grouped.items.slice(0, 3).map((item, index) => ({ ...item, groupId: index === 0 ? 'group-1' : null }));
+  await page.goto('about:blank');
+  await openPreviewBuilder(page, grouped);
+  await page.getByRole('button', { name: 'Предпросмотр', exact: true }).click();
+  dialog = page.getByRole('dialog', { name: grouped.title, exact: true });
+  await expect(dialog.getByRole('heading', { name: /Без группы/ })).toHaveCount(1);
+});
