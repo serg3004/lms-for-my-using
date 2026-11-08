@@ -52,4 +52,9 @@ if (textFieldWidth < 0 || ownWidth < textFieldWidth) {
   throw new Error("global.css must keep input[type='checkbox'], input[type='radio'] at width: auto right after the text-field width rule.");
 }
 
+// PR 444: the rows of a drop-down list state their own text and fill colours.
+if (!/select option\s*\{[^}]*color:\s*var\(--color-text\);[^}]*background-color:\s*var\(--color-surface\)/.test(globalCss)) {
+  throw new Error('global.css must give `select option` its own text colour and fill.');
+}
+
 console.log(`CSS architecture: ${files.length} layered stylesheets, ${customPropertyDefinitions.size} unique tokens.`);
