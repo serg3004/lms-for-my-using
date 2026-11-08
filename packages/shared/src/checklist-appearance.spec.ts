@@ -16,6 +16,13 @@ describe('checklist appearance', () => {
     expect(sanitizeAppearance({ blocks: { header: { color: 'nope' } } })).toBeNull();
     expect(sanitizeAppearance([])).toBeNull();
   });
+  it('reads the feedback section like any other kind and still reads a look saved before it existed (PR 442)', () => {
+    expect(sanitizeAppearance({ blocks: { feedback: { background: '#fff7cc', borderWidth: 2 }, item: { color: '#111111' } } }))
+      .toEqual({ blocks: { feedback: { background: '#FFF7CC', borderWidth: 2 }, item: { color: '#111111' } } });
+    expect(sanitizeAppearance({ blocks: { header: { color: '#111111' }, item: { color: '#222222' } } })).toEqual({ blocks: { header: { color: '#111111' }, item: { color: '#222222' } } });
+    for (const preset of Object.values(APPEARANCE_PRESETS)) expect(preset.blocks.feedback).toBeDefined();
+    expect(resolveBlockStyle({ blocks: { feedback: { color: '#111111' } } }, 'feedback')).toEqual({ color: '#111111' });
+  });
   it('prunes overrides of removed blocks', () => {
     expect(pruneAppearance({ blocks: { item: { color: '#111111' } }, overrides: { [id]: { color: '#222222' } } }, new Set())).toEqual({ blocks: { item: { color: '#111111' } } });
   });

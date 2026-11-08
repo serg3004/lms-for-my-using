@@ -975,7 +975,7 @@ export function ChecklistBuilder({
             </SortableContext>
             </DndContext>
           </ChecklistItemsEditor>
-          {feedbackEnabled && <fieldset disabled={!canEdit} style={{ border: 0, padding: 0, minWidth: 0 }}><legend className="ui-visually-hidden">{t('admin.checklists.feedbackSectionTitle')}</legend><FeedbackBuilder disabled={!canEdit} value={feedbackLayout} onChange={setFeedbackLayout} required={feedbackRequired} /></fieldset>}
+          {feedbackEnabled && <fieldset disabled={!canEdit} style={{ border: 0, padding: 0, minWidth: 0 }}><legend className="ui-visually-hidden">{t('admin.checklists.feedbackSectionTitle')}</legend><FeedbackBuilder disabled={!canEdit} style={blockLook('feedback', null)} gear={<BlockGear corner target={{ kind: 'feedback', id: null, name: t('admin.checklists.appearance.kind.feedback') }} active={blockTarget?.kind === 'feedback'} onOpen={openBlockSettings} t={t} />} value={feedbackLayout} onChange={setFeedbackLayout} required={feedbackRequired} /></fieldset>}
         </div>
       </div>
 

@@ -62,7 +62,7 @@ describe('BlockSettingsWindow (PR 431)', () => {
   it('applies a preset and resets to the standard look', async () => {
     await render(header);
     await click(button('Строгий'));
-    expect(Object.keys(value!.blocks!)).toEqual(['header', 'info', 'group', 'item']);
+    expect(Object.keys(value!.blocks!)).toEqual(['header', 'info', 'group', 'item', 'feedback']);
     await click(button('Сбросить к стандартному'));
     expect(value).toBeNull();
   });
@@ -109,6 +109,14 @@ describe('BlockSettingsWindow (PR 431)', () => {
   it('offers no scope choice for the header and "General information"', async () => {
     await render(header);
     expect(container.querySelectorAll('[role="radio"]').length).toBe(0);
+  });
+  it('PR 442: the feedback section is one block: no scope choice, its name in the title, a preset and a colour reach it', async () => {
+    await render({ kind: 'feedback', id: null, name: 'Обратная связь' });
+    expect(container.querySelectorAll('[role="radio"]').length).toBe(0);
+    expect(container.textContent).toContain('Обратная связь');
+    await click(button('Контрастный'));
+    expect(value?.blocks?.feedback).toMatchObject({ background: '#FFF7CC', borderWidth: 3 });
+    expect(value?.overrides).toBeUndefined();
   });
   it('closes with the cross and with Escape, and is read-only when the sheet cannot be edited', async () => {
     await render(header, null, true);

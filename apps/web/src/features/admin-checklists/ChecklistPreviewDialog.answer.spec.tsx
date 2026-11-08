@@ -37,6 +37,20 @@ const radios = (index: number) => [...container.querySelectorAll('[role="radiogr
 const optionOf = (input: HTMLInputElement) => input.closest('label') as HTMLElement;
 const rgb = (hex: string) => { const n = parseInt(hex.slice(1), 16); return `rgb(${n >> 16}, ${(n >> 8) & 255}, ${n & 255})`; };
 
+describe('preview: the look of the feedback section (PR 442)', () => {
+  it('styles the feedback section with the author\'s look and leaves it plain without one', async () => {
+    await render('sum_points', [item(1)], { feedbackEnabled: true });
+    expect([...container.querySelectorAll('div')].some((d) => d.style.backgroundColor === rgb('#FFF7CC'))).toBe(false);
+    act(() => root?.unmount()); container.remove();
+    await render('sum_points', [item(1)], { feedbackEnabled: true, appearance: { blocks: { feedback: { background: '#FFF7CC', borderWidth: 3, borderColor: '#172033' } } } });
+    const section = container.querySelector('section[aria-label]:has(h3)') as HTMLElement;
+    const frame = [...container.querySelectorAll('div')].find((d) => d.style.backgroundColor === rgb('#FFF7CC'));
+    expect(frame).toBeDefined();
+    expect(frame!.contains(section)).toBe(true);
+    expect(frame!.style.borderWidth).toBe('3px');
+  });
+});
+
 describe('preview answers: take back and level colour (PR 425)', () => {
   it('washes the chosen Yes/No with its colour, adds a tick and takes the answer back on a second click', async () => {
     await render();

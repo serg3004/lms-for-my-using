@@ -1829,6 +1829,7 @@
           "info": "General information",
           "group": "Group",
           "item": "Criterion",
+          "feedback": "Feedback",
           "own": "Single block"
         },
         "preset": {
