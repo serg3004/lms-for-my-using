@@ -116,12 +116,12 @@ test.describe('Explanation while filling a sheet (PR 415)', () => {
     await expect(page.getByText('Ценники совпадают с кассой')).toBeVisible();
     await expect(page.getByRole('textbox', { name: /Пояснение/ })).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Да', exact: true }).click();
+    await page.getByRole('radio', { name: 'Да', exact: true }).click();
     await expect.poll(() => posts.length).toBe(1);
     expect(posts[0]).toEqual({ scaleLevel: 2 });
     await expect(page.getByRole('textbox', { name: /Пояснение/ })).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Нет', exact: true }).click();
+    await page.getByRole('radio', { name: 'Нет', exact: true }).click();
     expect(posts).toHaveLength(1);
     const note = page.getByRole('textbox', { name: 'Пояснение (обязательно)' });
     await expect(note).toBeVisible();

@@ -22,13 +22,14 @@ import type {
   ChecklistInstanceSummary,
   ChecklistItemResultSummary,
   ChecklistItemSummary,
+  ChecklistScoringMode,
   ChecklistSession,
   ChecklistSessionSummary,
 } from '../shared/api/types.js';
 import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT } from '../shared/checklistStatus.js';
 import { Avatar, Badge, Button, InlineFeedback, PageState, ProgressBar } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
-import { DEFAULT_LEVEL_COLORS, defaultLevelColor, levelPaint, NEUTRAL_LEVEL_COLOR } from '../shared/levelPaint.js';
+import { CriterionOptions, yesNoOptions } from '../shared/CriterionOptions.js';
 import { PastSessions } from './ChecklistSessionHistory.js';
 import { ChecklistConductOverview } from './ChecklistConductOverview.js';
 import { ChecklistItemDescription } from './ChecklistItemNote.js';
@@ -714,7 +715,6 @@ function CriterionCard({
     : scoringMode === 'scale'
       ? (scaleLevels ?? []).map((level) => ({ value: level.level, label: level.label, description: level.description, points: level.points ?? 0, color: level.color }))
       : null;
-  const bestPoints = Math.max(0, ...(levelList ?? []).map((level) => level.points));
   const hasAnswer = result?.answerState === 'answered' || (result?.answerState === undefined && (result?.checked === true || result?.scaleLevel != null));
   function clear() {
     setHeldAnswer(null);
@@ -742,61 +742,15 @@ function CriterionCard({
         </p>
       )}
 
-      {levelList ? (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {levelList.map((level) => {
-            const selected = result?.scaleLevel === level.value;
-            // PR 425: the chosen level is washed with its own colour (else the default by score); tick + thick border are the non-colour cue.
-            const paint = selected ? levelPaint(scoringMode === 'none' ? NEUTRAL_LEVEL_COLOR : level.color ?? defaultLevelColor(level.points, bestPoints)) : null;
-            return (
-              <button
-                key={level.value}
-                aria-pressed={selected}
-                type="button"
-                disabled={!canAct}
-                onClick={() => (selected ? clear() : choose({ scaleLevel: level.value }))}
-                style={{
-                  borderWidth: 2,
-                  borderStyle: 'solid',
-                  borderColor: paint?.borderColor ?? COLORS.border,
-                  background: paint?.background ?? COLORS.surface,
-                  color: paint?.color ?? COLORS.text,
-                  fontWeight: selected ? 600 : undefined,
-                  borderRadius: 10,
-                  padding: '9px 13px',
-                  fontSize: 13,
-                  minHeight: 44,
-                  cursor: canAct ? 'pointer' : 'default',
-                }}
-              >
-                {selected && <span aria-hidden="true">✓ </span>}
-                {level.label}
-                {level.description && <RichDescription value={level.description} />}
-              </button>
-            );
-          })}
-        </div>
-      ) : (
-        <label
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, minHeight: 44, boxSizing: 'border-box', padding: '4px 12px', borderRadius: 10,
-            borderWidth: 2, borderStyle: 'solid', borderColor: 'transparent', ...(result?.checked ? levelPaint(scoringMode === 'none' ? NEUTRAL_LEVEL_COLOR : DEFAULT_LEVEL_COLORS.full) : {}),
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={result?.checked ?? false}
-            disabled={!canAct}
-            onChange={(e) => choose({ checked: e.target.checked })}
-          />
-          {t('checklists.markDone', 'Done')}
-        </label>
-      )}
-      {hasAnswer && (
-        <Button type="button" size="sm" variant="ghost" disabled={!canAct} onClick={clear}>
-          {t('checklistSessions.conduct.clearAnswer', 'Clear answer')}
-        </Button>
-      )}
+      {/* PR 448: the answer area is the one shared component, the same as in the preview and in the learner's sheet. */}
+      <CriterionOptions
+        text={item.text} number={number ?? ''} required={item.isRequired} scoringMode={scoringMode as ChecklistScoringMode}
+        options={levelList ? levelList.map((level) => ({ key: level.value, label: level.label, description: level.description, points: level.points, color: level.color })) : yesNoOptions(t, scoringMode === 'all_required' ? 1 : item.points ?? 0)}
+        selectedKey={levelList ? result?.scaleLevel ?? null : result?.checked ? 1 : result?.answerState === 'answered' ? 0 : null}
+        disabled={!canAct} canClear={hasAnswer} clearLabel={t('checklistSessions.conduct.clearAnswer', 'Clear answer')}
+        onChoose={(key) => choose(levelList ? { scaleLevel: key } : { checked: key === 1 })}
+        onClear={clear}
+      />
       {cleared && !hasAnswer && <p role="status" className="admin-form__hint">{t('checklistSessions.conduct.answerCleared', 'Answer cleared: the criterion is unanswered again.')}</p>}
 
       <div style={{ marginTop: 12 }}>

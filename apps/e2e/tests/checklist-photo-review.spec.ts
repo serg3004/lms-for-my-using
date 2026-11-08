@@ -114,7 +114,7 @@ test('learner evidence is detected and opened by instructor before approval', as
     await learnerPage.goto('/learn/checklists');
     await learnerPage.getByText('Photo review E2E').click();
 
-    const checkbox = learnerPage.locator('input[type="checkbox"]');
+    const checkbox = learnerPage.getByRole('radio', { name: 'Да', exact: true });
     await expect(checkbox).toHaveCount(1);
     await checkbox.click();
     await expect.poll(() => learnerResult?.checked).toBe(true);

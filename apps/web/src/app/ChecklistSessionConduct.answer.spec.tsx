@@ -41,7 +41,8 @@ async function render(results: unknown[]) {
   await act(async () => { root?.render(<ConductScreen data={data(results)} onBack={vi.fn()} onReload={vi.fn()} onMutate={vi.fn()} t={t} />); });
   return host;
 }
-const level = (host: HTMLElement, label: string) => [...host.querySelectorAll('button[aria-pressed]')].find((b) => b.textContent?.includes(label)) as HTMLButtonElement;
+const level = (host: HTMLElement, label: string) => [...host.querySelectorAll('label')].find((l) => l.textContent?.includes(label)) as HTMLLabelElement;
+const radio = (host: HTMLElement, label: string) => level(host, label).querySelector('input') as HTMLInputElement;
 const rgb = (hex: string) => { const n = parseInt(hex.slice(1), 16); return `rgb(${n >> 16}, ${(n >> 8) & 255}, ${n & 255})`; };
 
 describe('conduct answer: level colour and taking an answer back (PR 425)', () => {
@@ -53,12 +54,14 @@ describe('conduct answer: level colour and taking an answer back (PR 425)', () =
     expect(level(host, 'Отлично').style.borderColor).not.toBe(rgb('#2E7D32'));
     expect(level(host, 'Отлично').textContent).not.toContain('✓');
     expect(level(host, 'Средне').style.minHeight).toBe('44px');
+    expect(radio(host, 'Средне').checked).toBe(true);
+    expect(radio(host, 'Отлично').checked).toBe(false);
   });
 
   it('takes the answer back with a second click on the chosen level, without choosing anything', async () => {
     api.clearChecklistItemAnswer.mockResolvedValue(instance([]));
     const host = await render([result()]);
-    await act(async () => { level(host, 'Средне').click(); });
+    await act(async () => { radio(host, 'Средне').click(); });
     expect(api.clearChecklistItemAnswer).toHaveBeenCalledWith('i1', 'item-1');
     expect(api.submitChecklistItemResult).not.toHaveBeenCalled();
   });
@@ -78,7 +81,7 @@ describe('conduct answer: level colour and taking an answer back (PR 425)', () =
   it('chooses another level normally (no clear call)', async () => {
     api.submitChecklistItemResult.mockResolvedValue(instance([result({ scaleLevel: 3, points: 10 })]));
     const host = await render([result()]);
-    await act(async () => { level(host, 'Отлично').click(); });
+    await act(async () => { radio(host, 'Отлично').click(); });
     expect(api.submitChecklistItemResult).toHaveBeenCalledWith('i1', 'item-1', { scaleLevel: 3 });
     expect(api.clearChecklistItemAnswer).not.toHaveBeenCalled();
   });
