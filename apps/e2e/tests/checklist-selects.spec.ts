@@ -4,7 +4,7 @@ import { openFormattingEditor } from '../fixtures/checklist-formatting.js';
 /** Contrast of the rows of every drop-down list on the page: option text against the row (the option's own fill, else the field's). */
 async function listContrasts(page: Page) {
   return page.evaluate(() => {
-    const parse = (value: string) => (value.match(/[\d.]+/g) ?? []).map(Number) as [number, number, number, number?];
+    const parse = (value: string) => (value.match(/[\d.]+/g) ?? []).map(Number);
     const lum = ([r, g, b]: number[]) => { const [x, y, z] = [r, g, b].map((c) => { const v = c! / 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * x! + 0.7152 * y! + 0.0722 * z!; };
     return [...document.querySelectorAll('select')].filter((select) => select.getClientRects().length).map((select) => {
       const field = getComputedStyle(select), option = select.querySelector('option')!, row = getComputedStyle(option);
