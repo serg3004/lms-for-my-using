@@ -56,5 +56,8 @@ if (textFieldWidth < 0 || ownWidth < textFieldWidth) {
 if (!/select option\s*\{[^}]*color:\s*var\(--color-text\);[^}]*background-color:\s*var\(--color-surface\)/.test(globalCss)) {
   throw new Error('global.css must give `select option` its own text colour and fill.');
 }
+if (!/select option\s*\{[^}]*font:[^;]*system-ui/.test(globalCss)) {
+  throw new Error('global.css must give `select option` a system font (the web font drew empty rows in the Windows popup).');
+}
 
 console.log(`CSS architecture: ${files.length} layered stylesheets, ${customPropertyDefinitions.size} unique tokens.`);

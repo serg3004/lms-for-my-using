@@ -78,6 +78,7 @@ textarea {
 select option {
   color: var(--color-text);
   background-color: var(--color-surface);
+  font: 14px system-ui, "Segoe UI", sans-serif;
 }
 
 /* PR 443: the width above is for text fields; a box or a radio never stretches over its row (it pushed the label away). */
