@@ -106,8 +106,10 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
       <div className="admin-preview-panel">
         <AppearanceBlock appearance={props.appearance} kind="header" style={{ marginBottom: 8 }}>
         <header className="admin-preview-panel__header" style={{ marginBottom: 4 }}>
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <p className="admin-form__hint">{t('admin.checklists.previewTitle', 'Preview')}</p>
+            {/* PR 445: the pictures of the sheet come first, above its title (the close button stays at the top). */}
+            {props.showSheetPhotos !== false && props.checklistId && props.photos && <ChecklistPhotoStrip checklistId={props.checklistId} photos={props.photos} title={title} />}
             <h2 id={titleId} style={{ margin: 0 }}><RichText value={title} /></h2>
             <p>{t('checklistPreview.employee', 'Sample employee')} / {t('checklistPreview.department', 'Sample department')}</p>
           </div>
@@ -115,7 +117,6 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
         </header>
         <p id={hintId} className="admin-form__hint">{t('admin.checklists.previewHint', 'This is a local simulation — nothing here is saved or sent to anyone.')}</p>
         {description && <p><RichDescription value={description} /></p>}
-        {props.showSheetPhotos !== false && props.checklistId && props.photos && <ChecklistPhotoStrip checklistId={props.checklistId} photos={props.photos} title={title} />}
         </AppearanceBlock>
         {contextFields.length > 0 && <AppearanceBlock appearance={props.appearance} kind="info" style={{ marginBottom: 8 }}><section id={`${titleId}-info`} aria-label={t('admin.checklists.contextFieldsTitle', 'General information')}>
           <h3>{t('admin.checklists.contextFieldsTitle', 'General information')}</h3>

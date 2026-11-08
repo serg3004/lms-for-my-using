@@ -9,7 +9,7 @@ import i18n from 'i18next';
 import type { ChecklistItemSummary } from '../../shared/api/types.js';
 import { ChecklistPreviewDialog } from './ChecklistPreviewDialog';
 
-vi.mock('../../shared/api/checklists.js', () => ({ listChecklistAnswerSets: vi.fn().mockResolvedValue([]) }));
+vi.mock('../../shared/api/checklists.js', () => ({ listChecklistAnswerSets: vi.fn().mockResolvedValue([]), getChecklistPhotoBlob: vi.fn().mockResolvedValue(new Blob(['x'], { type: 'image/png' })) }));
 
 const t = i18n.t.bind(i18n);
 const item = (n: number, patch: Partial<ChecklistItemSummary> = {}) => ({ id: `i${n}`, checklistId: 'c', order: n, text: `Критерий ${n}`, groupId: null, points: 2, weight: 1, isRequired: true, photoRequired: false, allowSkip: false, scale: null, ...patch }) as unknown as ChecklistItemSummary;
@@ -36,6 +36,17 @@ const click = (el: Element) => act(async () => { (el as HTMLElement).click(); })
 const radios = (index: number) => [...container.querySelectorAll('[role="radiogroup"]')[index]!.querySelectorAll('input')] as HTMLInputElement[];
 const optionOf = (input: HTMLInputElement) => input.closest('label') as HTMLElement;
 const rgb = (hex: string) => { const n = parseInt(hex.slice(1), 16); return `rgb(${n >> 16}, ${(n >> 8) & 255}, ${n & 255})`; };
+
+describe('preview: the pictures of the sheet come first (PR 445)', () => {
+  it('puts the strip above the title and shows no heading for it', async () => {
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:x'), revokeObjectURL: vi.fn() }));
+    await render('sum_points', [item(1)], { checklistId: 'c1', showSheetPhotos: true, photos: [{ id: 'p1', caption: '', order: 0, updatedAt: '2026-11-05T00:00:00.000Z' }] });
+    const strip = container.querySelector('button[aria-label^="Открыть изображение 1"]')!;
+    const title = container.querySelector('h2')!;
+    expect(strip.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container.querySelector('h3.ui-visually-hidden')?.textContent).toBe('Изображение на бланке чек-листа');
+  });
+});
 
 describe('preview: the look of the feedback section (PR 442)', () => {
   it('styles the feedback section with the author\'s look and leaves it plain without one', async () => {

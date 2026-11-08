@@ -1,5 +1,5 @@
 import { RichText, plainText } from './RichText.js';
-import { useId, useRef, useState, type HTMLAttributes, type SyntheticEvent } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties, type HTMLAttributes, type SyntheticEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { getChecklistPhotoBlob } from './api/checklists.js';
@@ -10,22 +10,48 @@ import { Dialog } from './ui.js';
 /** React lets `cancel` (Esc on a native dialog) bubble up the component tree; this stops it at the strip. */
 const cancelBarrier = { onCancel: (event: SyntheticEvent) => event.stopPropagation() } as HTMLAttributes<HTMLDivElement>;
 
+/** PR 445: the large view fills a phone screen and is up to 96vw x 90vh elsewhere. */
+const PHONE = '(max-width: 640px)';
+const CHROME = 150; // padding, the close row, the gaps and the caption line around the picture, in px
+function usePhone() {
+  const query = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' ? window.matchMedia(PHONE) : null;
+  const [phone, setPhone] = useState(() => query()?.matches ?? false);
+  useEffect(() => {
+    const list = query();
+    if (!list) return;
+    const update = () => setPhone(list.matches);
+    update();
+    list.addEventListener('change', update);
+    return () => list.removeEventListener('change', update);
+  }, []);
+  return phone;
+}
+/** The box of the large view: nearly the whole screen on a computer, the whole screen on a phone (safe areas kept). */
+export function photoViewerBox(phone: boolean): CSSProperties {
+  return phone
+    ? { width: '100vw', maxWidth: 'none', height: '100dvh', maxHeight: 'none', margin: 0, borderRadius: 0, border: 0, boxSizing: 'border-box', overflow: 'auto',
+        padding: 'max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px))' }
+    : { width: 'min(96vw, 1200px)', maxWidth: 'none', maxHeight: '90vh', boxSizing: 'border-box', overflow: 'auto', padding: 16 };
+}
+
 /**
  * PR 421: one extra picture of a sheet. The file comes from the API and is shown through a `blob:` URL
  * (the page policy allows no images from the storage); `updatedAt` is the cache key. A failed load says so
  * and offers "Retry" instead of leaving an empty frame.
  */
-export function ChecklistPhotoImage({ checklistId, photo, alt, fit = 'cover' }: {
+export function ChecklistPhotoImage({ checklistId, photo, alt, fit = 'cover', maxHeight }: {
   checklistId: string;
   photo: ChecklistPhotoSummary;
   alt: string;
   fit?: 'cover' | 'contain';
+  /** `contain` only: the tallest the picture may be (a CSS length). */
+  maxHeight?: string;
 }) {
   const { t } = useTranslation();
   const image = useProtectedImage(() => getChecklistPhotoBlob(checklistId, photo.id), `${checklistId}:${photo.id}:${photo.updatedAt}`);
   if (image.status === 'ready') {
     return fit === 'contain'
-      ? <img src={image.url} alt={alt} style={{ display: 'block', maxWidth: '100%', maxHeight: '70vh', margin: '0 auto' }} />
+      ? <img src={image.url} alt={alt} style={{ display: 'block', maxWidth: '100%', maxHeight: maxHeight ?? '70vh', objectFit: 'contain', margin: '0 auto' }} />
       : <img src={image.url} alt={alt} style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover' }} />;
   }
   if (image.status === 'error') {
@@ -45,6 +71,7 @@ export function ChecklistPhotoImage({ checklistId, photo, alt, fit = 'cover' }: 
  */
 export function ChecklistPhotoStrip({ checklistId, photos, title, collapsible = false }: { checklistId: string; photos: readonly ChecklistPhotoSummary[]; title: string; /** On a small screen of the pass the strip is folded to one line so it does not push the criteria down. */ collapsible?: boolean }) {
   const { t } = useTranslation();
+  const phone = usePhone();
   const headingId = useId();
   const dialogHeadingId = useId();
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -81,29 +108,32 @@ export function ChecklistPhotoStrip({ checklistId, photos, title, collapsible = 
     <section aria-labelledby={headingId} style={{ margin: '12px 0' }}>
       {collapsible ? (
         <details>
-          <summary id={headingId} style={{ cursor: 'pointer', fontWeight: 600, minHeight: 44, display: 'flex', alignItems: 'center' }}>{heading} ({sorted.length})</summary>
+          {/* PR 445: the folded strip needs something to press; the full name stays for screen readers through the section label. */}
+          <summary id={headingId} style={{ cursor: 'pointer', fontWeight: 600, minHeight: 44, display: 'flex', alignItems: 'center' }}>{t('checklists.photos.collapsed', 'Images ({{n}})', { n: sorted.length })}</summary>
           {list}
         </details>
       ) : (
         <>
-          <h3 id={headingId} style={{ margin: '0 0 8px' }}>{heading}</h3>
+          {/* PR 445: the name is not shown to the user, screen readers still read it. */}
+          <h3 id={headingId} className="ui-visually-hidden">{heading}</h3>
           {list}
         </>
       )}
       {/* A cancel (Esc) of the large view must not reach a dialog this strip sits in (the sheet preview). */}
       <div {...cancelBarrier}>
-        <Dialog open={opened !== null} onClose={() => setOpenIndex(null)} labelledBy={dialogHeadingId} initialFocusRef={closeRef}>
+        <Dialog open={opened !== null} onClose={() => setOpenIndex(null)} labelledBy={dialogHeadingId} initialFocusRef={closeRef} style={photoViewerBox(phone)}>
           {opened && openIndex !== null && (
-            <div style={{ display: 'grid', gap: 10, width: 'min(92vw, 720px)', maxWidth: '100%' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <h2 id={dialogHeadingId} style={{ margin: 0, fontSize: 16, minWidth: 0, overflowWrap: 'anywhere' }}><RichText value={opened.caption || t('checklists.photos.title', 'Checklist form image')} /></h2>
+            <div data-testid="photo-viewer" style={{ display: 'grid', gap: 10, minWidth: 0, ...(phone ? { height: '100%', gridTemplateRows: 'auto minmax(0, 1fr) auto' } : {}) }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+                <h2 id={dialogHeadingId} className="ui-visually-hidden"><RichText value={opened.caption || t('checklists.photos.title', 'Checklist form image')} /></h2>
                 <button ref={closeRef} className="ds-button ds-button--secondary ds-button--sm" style={{ minWidth: 44, minHeight: 44 }} type="button" onClick={() => setOpenIndex(null)}>
                   {t('checklists.photos.close', 'Close')}
                 </button>
               </div>
-              <div style={{ minHeight: 120 }}>
-                <ChecklistPhotoImage checklistId={checklistId} photo={opened} alt={alt(openIndex)} fit="contain" />
+              <div style={{ minHeight: 120, minWidth: 0, display: 'grid', placeItems: 'center' }}>
+                <ChecklistPhotoImage checklistId={checklistId} photo={opened} alt={alt(openIndex)} fit="contain" maxHeight={phone ? `calc(100dvh - ${CHROME}px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))` : `calc(90vh - ${CHROME}px)`} />
               </div>
+              {opened.caption && <p style={{ margin: 0, textAlign: 'center', overflowWrap: 'anywhere', maxHeight: '5em', overflowY: 'auto' }}><RichText value={opened.caption} /></p>}
             </div>
           )}
         </Dialog>

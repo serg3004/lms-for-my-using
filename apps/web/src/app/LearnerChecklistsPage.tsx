@@ -333,10 +333,10 @@ function ChecklistTaking({
         ← {t('checklists.backToList', 'All checklists')}
       </button>
       <AppearanceBlock appearance={checklist.appearance} kind="header" style={{ marginBottom: 8 }}>
+      {/* PR 421/445: extra pictures of the sheet, visible during the pass, first, above the title. */}
+      {checklist.showSheetPhotos !== false && checklist.photos && checklist.photos.length > 0 && <ChecklistPhotoStrip checklistId={checklist.id} photos={checklist.photos} title={checklist.title} />}
       <h1 style={{ color: COLORS.text, marginBottom: 4 }}><RichText value={checklist.title} /></h1>
       {checklist.description && <p style={{ color: COLORS.muted }}><RichDescription value={checklist.description} /></p>}
-      {/* PR 421: extra pictures of the sheet, visible during the pass. */}
-      {checklist.showSheetPhotos !== false && checklist.photos && checklist.photos.length > 0 && <ChecklistPhotoStrip checklistId={checklist.id} photos={checklist.photos} title={checklist.title} />}
       </AppearanceBlock>
       <ChecklistDeadlineMeta instance={instance} />
       {instance.status === 'expired' && (

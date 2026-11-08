@@ -342,12 +342,15 @@ describe('ConductScreen (real hooks)', () => {
         <ConductScreen data={{ session: session({ status }), instance: { ...base, checklist: { ...base.checklist!, photos } } }} onBack={onBack} onReload={onReload} onMutate={onMutate} t={t} />,
       );
     };
-    expect(withPhotos('in_progress').replace(/<!-- -->/g, '')).toMatch(/<details><summary[^>]*>Изображение на бланке чек-листа \(2\)/);
-    expect(withPhotos('scheduled')).not.toContain('Изображение на бланке чек-листа');
+    expect(withPhotos('in_progress').replace(/<!-- -->/g, '')).toMatch(/<details><summary[^>]*>Изображения \(2\)/);
+    // PR 445: the pictures come first, above the title of the sheet.
+    const shown = withPhotos('in_progress').replace(/<!-- -->/g, '');
+    expect(shown.indexOf('<details>')).toBeLessThan(shown.indexOf('Opening shift checklist'));
+    expect(withPhotos('scheduled')).not.toContain('Изображения (');
     const none = renderToStaticMarkup(
       <ConductScreen data={{ session: session({ status: 'in_progress' }), instance: instance() }} onBack={onBack} onReload={onReload} onMutate={onMutate} t={t} />,
     );
-    expect(none).not.toContain('Изображение на бланке чек-листа');
+    expect(none).not.toContain('Изображения (');
   });
 
   it('renders required context fields as the first step and blocks Next while empty', () => {

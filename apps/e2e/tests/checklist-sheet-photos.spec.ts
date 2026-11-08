@@ -1,6 +1,15 @@
+import { deflateSync } from 'node:zlib';
 import { expect, test, type Page } from '@playwright/test';
 
 // PR 421: extra pictures of a sheet -- upload, caption, order, removal in the builder and the view in the preview.
+/** A landscape PNG of the given size, to see how the large view scales a real picture. */
+function bigPng(width: number, height: number) {
+  const crc = (buffer: Buffer) => { let c, value = 0xffffffff; for (const byte of buffer) { c = (value ^ byte) & 0xff; for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; value = (value >>> 8) ^ c; } return (value ^ 0xffffffff) >>> 0; };
+  const chunk = (type: string, data: Buffer) => { const body = Buffer.concat([Buffer.from(type), data]); const out = Buffer.alloc(body.length + 8); out.writeUInt32BE(data.length, 0); body.copy(out, 4); out.writeUInt32BE(crc(body), body.length + 4); return out; };
+  const header = Buffer.alloc(13); header.writeUInt32BE(width, 0); header.writeUInt32BE(height, 4); header[8] = 8; header[9] = 2;
+  const row = Buffer.concat([Buffer.from([0]), Buffer.alloc(width * 3, 0x66)]);
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', header), chunk('IDAT', deflateSync(Buffer.concat(Array.from({ length: height }, () => row)))), chunk('IEND', Buffer.alloc(0))]);
+}
 type Photo = { id: string; caption: string; order: number; updatedAt: string };
 type Server = { calls: { method: string; path: string; body: unknown }[]; photos: Photo[]; failNext: number };
 
@@ -134,7 +143,7 @@ test.describe('Extra sheet photos (PR 421)', () => {
     await openEditor(page);
     await page.getByRole('button', { name: 'Предпросмотр' }).click();
     const preview = page.locator('dialog.admin-preview-overlay');
-    await expect(preview.getByRole('heading', { name: 'Изображение на бланке чек-листа' })).toBeVisible();
+    await expect(preview.getByRole('heading', { name: 'Изображение на бланке чек-листа' })).toBeAttached();
     await expect(preview.getByRole('img', { name: /Изображение 2 листа/ })).toBeVisible();
     await preview.getByRole('button', { name: 'Открыть изображение 2 крупно' }).click();
     const large = page.locator('dialog.ds-dialog[open]');
@@ -177,10 +186,43 @@ test.describe('Extra sheet photos (PR 421)', () => {
       expect(box!.height).toBeGreaterThanOrEqual(43.5);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
       await page.getByRole('button', { name: 'Предпросмотр' }).click();
-      await expect(page.locator('dialog.admin-preview-overlay').getByRole('heading', { name: 'Изображение на бланке чек-листа' })).toBeVisible();
+      await expect(page.locator('dialog.admin-preview-overlay').getByRole('heading', { name: 'Изображение на бланке чек-листа' })).toBeAttached();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
       const overlay = page.locator('dialog.admin-preview-overlay .admin-preview-panel');
       expect(await overlay.evaluate((panel) => panel.scrollWidth <= panel.clientWidth + 1)).toBe(true);
+    });
+  }
+
+  // PR 445: the pictures come first and carry no visible heading; the large view takes the screen.
+  for (const [width, height] of [[1280, 800], [390, 780]] as const) {
+    test(`PR 445: ${width} px: the images are above the title without a visible heading, and the large view fits the screen`, async ({ page }) => {
+      await openEditor(page);
+      await page.setViewportSize({ width, height });
+      await page.getByRole('button', { name: 'Предпросмотр' }).click();
+      const preview = page.locator('dialog.admin-preview-overlay');
+      const heading = await preview.getByRole('heading', { name: 'Изображение на бланке чек-листа' }).boundingBox();
+      expect(heading!.width).toBeLessThanOrEqual(2); expect(heading!.height).toBeLessThanOrEqual(2);
+      const strip = (await preview.getByRole('button', { name: 'Открыть изображение 1 крупно' }).boundingBox())!;
+      const title = (await preview.getByRole('heading', { name: 'Открытие смены' }).boundingBox())!;
+      expect(strip.y).toBeLessThan(title.y);
+      await page.route(/\/checklists\/c1\/photos\/[^/]+\/file/, (route) => route.fulfill({ status: 200, contentType: 'image/png', body: bigPng(1600, 800) }));
+      await preview.getByRole('button', { name: 'Открыть изображение 1 крупно' }).click();
+      const large = page.locator('dialog.ds-dialog[open]');
+      await expect(large.getByRole('img')).toHaveJSProperty('naturalWidth', 1600);
+      const box = (await large.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(-0.5); expect(box.y).toBeGreaterThanOrEqual(-0.5);
+      expect(box.x + box.width).toBeLessThanOrEqual(width + 0.5); expect(box.y + box.height).toBeLessThanOrEqual(height + 0.5);
+      if (width > 640) expect(box.width).toBeGreaterThanOrEqual(Math.min(width * 0.96, 1200) - 2);
+      else { expect(box.width).toBeGreaterThanOrEqual(width - 1); expect(box.height).toBeGreaterThanOrEqual(height - 1); }
+      // The picture itself is large (a 2:1 picture fills the width up to the screen height) and never leaves the box.
+      const picture = (await large.getByRole('img').boundingBox())!;
+      expect(picture.x).toBeGreaterThanOrEqual(box.x - 0.5); expect(picture.x + picture.width).toBeLessThanOrEqual(box.x + box.width + 0.5);
+      expect(picture.y + picture.height).toBeLessThanOrEqual(box.y + box.height + 0.5);
+      expect(picture.width).toBeGreaterThanOrEqual(width > 640 ? 800 : width - 30);
+      const close = (await large.getByRole('button', { name: 'Закрыть' }).boundingBox())!;
+      expect(close.width).toBeGreaterThanOrEqual(43.5); expect(close.height).toBeGreaterThanOrEqual(43.5);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      expect(await large.evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth + 1)).toBe(true);
     });
   }
 });

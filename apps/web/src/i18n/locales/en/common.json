@@ -2956,6 +2956,7 @@
       "open": "Open image {{n}} larger",
       "close": "Close",
       "alt": "Image {{n}} of the sheet “{{title}}”",
+      "collapsed": "Images ({{n}})",
       "loadError": "Unable to show the image.",
       "retry": "Retry"
     },

@@ -686,10 +686,12 @@ type DialogProps = {
   className?: string;
   /** Focused once the dialog opens; defaults to the browser's native default (the dialog itself). */
   initialFocusRef?: RefObject<HTMLElement | null>;
+  /** Size and spacing of the dialog box itself (never `display`: a closed dialog stays hidden). */
+  style?: CSSProperties;
   children: ReactNode;
 };
 
-export function Dialog({ open, onClose, labelledBy, describedBy, className, initialFocusRef, children }: DialogProps) {
+export function Dialog({ open, onClose, labelledBy, describedBy, className, initialFocusRef, style, children }: DialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
@@ -706,7 +708,7 @@ export function Dialog({ open, onClose, labelledBy, describedBy, className, init
     }
   }, [open, initialFocusRef]);
 
-  return <dialog aria-describedby={describedBy} aria-labelledby={labelledBy} className={['ds-dialog', className].filter(Boolean).join(' ')} ref={dialogRef}
+  return <dialog aria-describedby={describedBy} aria-labelledby={labelledBy} className={['ds-dialog', className].filter(Boolean).join(' ')} ref={dialogRef} style={style}
     onCancel={(event) => { event.preventDefault(); onClose(); }} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     {children}
   </dialog>;
