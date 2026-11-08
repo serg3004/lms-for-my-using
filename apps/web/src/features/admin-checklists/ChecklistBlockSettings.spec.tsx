@@ -69,7 +69,7 @@ describe('BlockSettingsWindow (PR 431)', () => {
     await render(item, { blocks: { item: { color: '#111111' } } });
     await click(button('Фон #EAF2FB'));
     expect(value).toEqual({ blocks: { item: { color: '#111111', background: '#EAF2FB' } } });
-    await act(async () => (container.querySelectorAll<HTMLInputElement>('input[type="radio"]')[1])!.click());
+    await act(async () => (container.querySelectorAll<HTMLElement>('[role="radio"]')[1])!.click());
     await click(button('Фон #F3F4F6'));
     expect(value).toEqual({ blocks: { item: { color: '#111111', background: '#EAF2FB' } }, overrides: { [itemId]: { background: '#F3F4F6' } } });
     await click(button('Сбросить этот блок'));
@@ -77,7 +77,7 @@ describe('BlockSettingsWindow (PR 431)', () => {
   });
   it('offers no scope choice for the header and "General information"', async () => {
     await render(header);
-    expect(container.querySelectorAll('input[type="radio"]').length).toBe(0);
+    expect(container.querySelectorAll('[role="radio"]').length).toBe(0);
   });
   it('closes with the cross and with Escape, and is read-only when the sheet cannot be edited', async () => {
     await render(header, null, true);
@@ -97,6 +97,37 @@ describe('BlockSettingsWindow (PR 431)', () => {
     expect(gear.getAttribute('aria-label')).toBe('Оформление блока: Каска надета');
     await click(gear);
     expect(opened).toEqual([item]);
+  });
+  it('PR 440: the gear is a neutral 32 px square with a 44 px touch area, accent only on hover, focus and while open', async () => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+    const draw = (active: boolean) => root?.render(<BlockGear corner target={item} active={active} onOpen={() => {}} t={t} />);
+    await act(async () => draw(false));
+    const gear = container.querySelector<HTMLButtonElement>('button')!, square = gear.querySelector<HTMLElement>('span')!;
+    expect(gear.className).toBe(''); expect(gear.getAttribute('aria-expanded')).toBe('false');
+    expect(gear.style.minWidth).toBe('44px'); expect(gear.style.minHeight).toBe('44px'); expect(square.style.width).toBe('32px');
+    expect(gear.style.position).toBe('absolute');
+    expect(square.style.color).toBe('var(--color-text-muted, #6a6f86)');
+    expect(gear.querySelector('svg circle')).not.toBeNull(); expect(gear.querySelector('svg path')?.getAttribute('d')).toContain('1.7');
+    await act(async () => { gear.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); gear.focus(); });
+    expect(square.style.color).toBe('var(--color-primary, #4f46e5)');
+    await act(async () => { gear.blur(); });
+    expect(square.style.color).toBe('var(--color-text-muted, #6a6f86)');
+    await act(async () => draw(true));
+    expect(gear.getAttribute('aria-expanded')).toBe('true'); expect(square.style.color).toBe('var(--color-primary, #4f46e5)');
+  });
+  it('PR 440: the window buttons are neutral and only the chosen value, scope and set carry the accent', async () => {
+    await render(item, { blocks: { item: { background: '#EAF2FB', padding: 16 } } });
+    const neutral = [...container.querySelectorAll('button')].filter((b) => b.className.includes('admin-btn--sm') && b.getAttribute('aria-label')?.startsWith('Отступ'));
+    expect(neutral.length).toBeGreaterThan(0);
+    for (const b of neutral) expect(b.className).toContain('admin-btn--secondary');
+    expect(button('Отступ: 16 px').style.color).toBe('var(--color-primary, #4f46e5)');
+    expect(button('Отступ: 24 px').style.color).toBe('');
+    const close = button('Закрыть настройки'); expect(close.style.background).toBe('none');
+    const unset = [...container.querySelectorAll('button')].find((b) => b.textContent === 'Снять')!; expect(unset.style.textDecoration).toBe('underline');
+    const radios = [...container.querySelectorAll<HTMLElement>('[role="radio"]')];
+    expect(radios.map((radio) => radio.getAttribute('aria-checked'))).toEqual(['true', 'false']);
   });
 });
 

@@ -3,7 +3,7 @@ import { plainText } from '@lms/shared/rich-text';
 import { RichTextField } from '../../shared/RichTextField.js';
 import { RichDescriptionEditor } from '../../shared/RichDescriptionEditor.js';
 import type { FeedbackLayout } from '@lms/shared/checklist-feedback';
-import { BlockGear, BlockSettingsWindow, sameTarget, useNarrowScreen, type BlockTarget } from './ChecklistBlockSettings.js';
+import { BlockGear, BlockSettingsWindow, GEAR_GUTTER, PANEL_WIDTH, sameTarget, useNarrowScreen, type BlockTarget } from './ChecklistBlockSettings.js';
 import { appearanceCss } from '../../shared/AppearanceBlock.js';
 import { resolveBlockStyle, sanitizeAppearance, type Appearance, type BlockKind } from '@lms/shared/checklist-appearance';
 import { FeedbackBuilder } from '../checklist-feedback/FeedbackBuilder.js';
@@ -569,7 +569,9 @@ export function ChecklistBuilder({
   const rowMenuView = rowMenuContent();
   const previewItems = items.map((item) => ({ ...item, scale: scales.find((scale) => scale.id === item.scaleId) ?? item.scale }));
   return (
-    <div className="admin-builder">
+    // PR 440: while the settings window is open the whole sheet (page header, tabs, "Save", blocks) moves aside by its width
+    // (or up by its height on a narrow screen), so nothing is hidden under the window.
+    <div className="admin-builder" data-testid="checklist-builder" style={blockTarget ? (narrowScreen ? { paddingBottom: '55vh' } : { paddingInlineEnd: PANEL_WIDTH + 16 }) : undefined}>
       <button type="button" className="admin-back-link" onClick={requestBack}>
         ← {t('admin.checklists.backToList', 'All checklists')}
       </button>
@@ -624,7 +626,7 @@ export function ChecklistBuilder({
         }
       />
       {unsavedGuard && (
-        <div className="ui-state ui-state--warning admin-inline-banner" role="status" data-testid="checklist-unsaved-bar" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, ...(blockTarget && !narrowScreen ? { marginInlineEnd: 356 } : {}) }}>
+        <div className="ui-state ui-state--warning admin-inline-banner" role="status" data-testid="checklist-unsaved-bar" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
           <span style={{ marginRight: 'auto' }}>{t('admin.checklists.unsavedBar', 'There are unsaved changes')}</span>
           <Button type="button" variant="secondary" size="sm" disabled={saveState.status === 'saving'} onClick={discardChanges}>{t('admin.checklists.discardChanges', 'Discard')}</Button>
           <Button type="button" variant="primary" size="sm" disabled={saveState.status === 'saving'} onClick={() => void saveSettings('header')}>
@@ -651,11 +653,11 @@ export function ChecklistBuilder({
           </Button>
         </ChecklistBuilderTabs>
         {saveState.status === 'error' && <p className="learner-quiz__submit-error" role="alert">{saveState.message}{errorTab && errorTab !== tab && (<> <button type="button" className="admin-back-link" onClick={() => goToErrorField()}>{t('admin.checklists.tab.goToError', 'Go to the field')}</button></>)}</p>}
-      <div aria-labelledby="checklist-tab-main" hidden={tab !== 'main'} id="checklist-panel-main" role="tabpanel" style={blockTarget && !narrowScreen ? { paddingInlineEnd: 356 } : undefined}>
+      <div aria-labelledby="checklist-tab-main" hidden={tab !== 'main'} id="checklist-panel-main" role="tabpanel">
         <div className="admin-builder__column" style={{ minWidth: 0 }}>
-          <ChecklistSettingsForm style={blockLook('header', null)}>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}><BlockGear target={{ kind: 'header', id: null, name: t('admin.checklists.appearance.kind.header') }} active={blockTarget?.kind === 'header'} onOpen={openBlockSettings} t={t} /></div>
-            <RichTextField id="checklist-title" label={t('admin.checklists.field.title', 'Title')} value={title} onChange={setTitle} maxLength={200} singleLine compact disabled={!canEdit} />
+          <ChecklistSettingsForm style={{ ...blockLook('header', null), position: 'relative' }}>
+            <BlockGear corner target={{ kind: 'header', id: null, name: t('admin.checklists.appearance.kind.header') }} active={blockTarget?.kind === 'header'} onOpen={openBlockSettings} t={t} />
+            <div style={{ paddingInlineEnd: GEAR_GUTTER, minWidth: 0 }}><RichTextField id="checklist-title" label={t('admin.checklists.field.title', 'Title')} value={title} onChange={setTitle} maxLength={200} singleLine compact disabled={!canEdit} /></div>
             <RichDescriptionEditor id="checklist-description" label={t('admin.checklists.field.description', 'Description')} value={description} onChange={setDescription} disabled={!canEdit} />
             {/* PR 433/436: the thumbnail on the left and the images of the form right next to it (one row, 24 px apart); one under the other on a narrow screen. */}
             <div data-testid="checklist-images" style={{ display: 'flex', flexWrap: 'wrap', gap: IMAGES_ROW_GAP, alignItems: 'flex-start' }}>
@@ -667,10 +669,10 @@ export function ChecklistBuilder({
               </div>
             </div>
           </ChecklistSettingsForm>
-          <ChecklistItemsEditor style={blockLook('info', null)}>
-            <div className="admin-builder-section-head">
+          <ChecklistItemsEditor style={{ ...blockLook('info', null), position: 'relative' }}>
+            <div className="admin-builder-section-head" style={{ paddingInlineEnd: GEAR_GUTTER }}>
               <h3>{t('admin.checklists.contextFieldsTitle', 'General information')} <Badge variant="neutral">{contextFields.length}</Badge></h3>
-              <BlockGear target={{ kind: 'info', id: null, name: t('admin.checklists.appearance.kind.info') }} active={blockTarget?.kind === 'info'} onOpen={openBlockSettings} t={t} />
+              <BlockGear corner target={{ kind: 'info', id: null, name: t('admin.checklists.appearance.kind.info') }} active={blockTarget?.kind === 'info'} onOpen={openBlockSettings} t={t} />
             </div>
             <p className="admin-form__hint">{t('admin.checklists.contextFieldsHint', 'Filled in by the observer before the criteria.')}</p>
             <div className="admin-context-fields">
@@ -776,8 +778,8 @@ export function ChecklistBuilder({
             <SortableContext items={itemGroups.map((entry) => entry.id)} strategy={verticalListSortingStrategy}>
             {(layoutDnd.dragging ? layoutDnd.buckets : groupItems(items, itemGroups)).map(({ group, items: groupedItems }, groupIndex, allGroups) => {
               return (
-              <GroupShell key={group?.id ?? 'ungrouped'} groupId={group?.id ?? null} style={group ? blockLook('group', group.id) : undefined}>{(groupHandle) => (<>
-                <div className="admin-group-card__head" {...(group ? rowMenu.triggerProps({ kind: 'group', id: group.id }) : {})}>
+              <GroupShell key={group?.id ?? 'ungrouped'} groupId={group?.id ?? null} style={group ? { ...blockLook('group', group.id), position: 'relative' } : undefined}>{(groupHandle) => (<>
+                <div className="admin-group-card__head" style={group ? { paddingInlineEnd: GEAR_GUTTER } : undefined} {...(group ? rowMenu.triggerProps({ kind: 'group', id: group.id }) : {})}>
                   {group && groupHandle && <DragHandle handle={groupHandle} label={t('admin.checklists.dnd.dragGroup', 'Drag group: {{name}}', { name: plainText(group.title) })} />}
                   <div className="admin-group-card__title">
                     {group ? (
@@ -799,7 +801,7 @@ export function ChecklistBuilder({
                   <div className="admin-group-card__actions">
                     {group && (
                       <>
-                        <BlockGear target={{ kind: 'group', id: group.id, name: plainText(group.title) }} active={sameTarget(blockTarget, { kind: 'group', id: group.id, name: '' })} onOpen={openBlockSettings} t={t} />
+                        <BlockGear corner target={{ kind: 'group', id: group.id, name: plainText(group.title) }} active={sameTarget(blockTarget, { kind: 'group', id: group.id, name: '' })} onOpen={openBlockSettings} t={t} />
                         <button className="admin-btn admin-btn--sm" disabled={groupIndex === 0} onClick={() => void moveGroupDirection(group.id, 'up')} type="button" aria-label={t('admin.checklists.moveNamedUp', 'Move up: {{name}}', { name: plainText(group.title) })}>↑</button>
                         <button className="admin-btn admin-btn--sm" disabled={groupIndex === allGroups.filter((b) => b.group).length - 1} onClick={() => void moveGroupDirection(group.id, 'down')} type="button" aria-label={t('admin.checklists.moveNamedDown', 'Move down: {{name}}', { name: plainText(group.title) })}>↓</button>
                         <button className="admin-btn admin-btn--sm" disabled={!canEdit} onClick={() => focusNameField(`group-title-${group.id}`)} type="button" aria-label={t('admin.checklists.rename.namedGroup', 'Rename group: {{name}}', { name: plainText(group.title) })}>{t('admin.checklists.rename.action', 'Rename')}</button>

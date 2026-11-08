@@ -42,3 +42,47 @@ test('only this block can be styled, low contrast warns, reset restores the look
   await panel.getByRole('button', { name: 'Закрыть настройки', exact: true }).click();
   await expect(panel).toHaveCount(0);
 });
+
+test('PR 440: the gear lies in the corner of the block and is neutral, and the whole sheet moves aside for the window', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await openFormattingEditor(page);
+  const builder = page.getByTestId('checklist-builder');
+  const gears = page.getByTestId('block-gear');
+  const header = gears.first();
+  const square = header.locator('span').first();
+  await expect(square).toHaveCSS('width', '32px');
+  await expect(square).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  const box = await header.boundingBox(), form = await header.locator('xpath=..').boundingBox();
+  expect(Math.abs((form!.x + form!.width) - (box!.x + box!.width))).toBeLessThanOrEqual(2);
+  expect(Math.abs(form!.y - box!.y)).toBeLessThanOrEqual(2);
+  expect(box!.width).toBeGreaterThanOrEqual(44);
+  const before = await builder.boundingBox();
+  await header.click();
+  const panel = settings(page);
+  await expect(panel).toBeVisible();
+  await expect(header.locator('span').first()).toHaveCSS('color', 'rgb(79, 70, 229)');
+  const panelBox = await panel.boundingBox(), after = await builder.boundingBox();
+  expect(after!.x).toBe(before!.x);
+  // The sheet (including the page header and the tabs) ends left of the window; "Save" stays reachable.
+  for (const target of [page.getByRole('tab').first(), page.getByRole('button', { name: 'Предпросмотр', exact: true })]) {
+    const rect = await target.boundingBox();
+    expect(rect!.x + rect!.width).toBeLessThanOrEqual(panelBox!.x);
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(panel).toHaveCount(0);
+  await expect(header).toBeFocused();
+});
+
+for (const width of [390, 320]) test(`PR 440: on a narrow screen (${width}px) the window comes up from the bottom and the page makes room`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 800 });
+  await openFormattingEditor(page);
+  await page.getByTestId('block-gear').first().click();
+  const panel = settings(page);
+  await expect(panel).toBeVisible();
+  const box = await panel.boundingBox();
+  expect(box!.y + box!.height).toBeGreaterThanOrEqual(799);
+  expect(box!.height).toBeLessThanOrEqual(800 * 0.55 + 1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.getByTestId('checklist-builder').evaluate((element) => parseFloat(getComputedStyle(element).paddingBottom))).toBeGreaterThanOrEqual(800 * 0.55 - 1);
+});
