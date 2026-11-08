@@ -266,3 +266,26 @@ test('the formatting window of the sheets opens on selected longread text and it
   expect(server.snapshot().chapters[1]!.blocks[0]!.content).toMatchObject({ runs: [{ text: 'Важно', color: '#B91C1C', size: 20, uppercase: true }] });
   await page.reload(); await expect(page.getByRole('navigation', { name: 'Главы', exact: true })).toBeVisible();
 });
+
+test('PR 439: a longread paragraph is aligned in the formatting window, saved on the block and kept after reload; table cells have no alignment row', async ({ page }) => {
+  const server = longreadEditorServer(); await server.attach(page);
+  await page.getByRole('navigation', { name: 'Главы', exact: true }).getByRole('button', { name: '2. Практика', exact: true }).click();
+  await page.getByLabel('Тип нового блока', { exact: true }).selectOption('paragraph');
+  await page.getByRole('button', { name: 'Добавить блок', exact: true }).click();
+  const text = page.getByRole('textbox', { name: 'Текст', exact: true });
+  await fillRich(page, text, 'По центру');
+  await page.keyboard.press('ControlOrMeta+A'); await page.keyboard.press('Shift+F10');
+  const window = page.getByRole('dialog', { name: 'Форматирование текста' });
+  await expect(window.getByRole('group', { name: 'Выравнивание', exact: true }).getByRole('button')).toHaveCount(4);
+  await window.getByRole('button', { name: /^По центру/ }).click();
+  await page.keyboard.press('Escape');
+  await expect(text.locator('p')).toHaveCSS('text-align', 'center');
+  await expect.poll(() => JSON.stringify(server.snapshot().chapters[1]!.blocks[0]?.content)).toContain('"align":"center"');
+  expect(server.snapshot().chapters[1]!.blocks[0]!.content).toMatchObject({ runs: [{ text: 'По центру' }], align: 'center' });
+  await page.reload(); await expect(page.getByRole('navigation', { name: 'Главы', exact: true })).toBeVisible();
+  await page.getByRole('navigation', { name: 'Главы', exact: true }).getByRole('button', { name: '2. Практика', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Текст', exact: true }).locator('p')).toHaveCSS('text-align', 'center');
+  await page.getByRole('textbox', { name: 'Текст', exact: true }).click();
+  await page.keyboard.press('ControlOrMeta+A'); await page.keyboard.press('ControlOrMeta+Shift+L');
+  await expect.poll(() => JSON.stringify(server.snapshot().chapters[1]!.blocks[0]?.content)).not.toContain('align');
+});

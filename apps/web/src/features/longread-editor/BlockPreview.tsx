@@ -3,7 +3,7 @@ import { safeHref, type EditorBlock, type Run } from './model.js';
 
 export function TextPreview({ block }: { block: EditorBlock }) {
   const runs = (Array.isArray(block.content.runs) ? block.content.runs : []) as Run[];
-  return <div className="lr-preview" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: block.type === 'heading' ? `${1.75 - Number(block.content.level) * 0.2}rem` : undefined, fontWeight: block.type === 'heading' ? 700 : undefined }}>{runs.map((run, index) => {
+  return <div className="lr-preview" style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: block.type === 'heading' ? `${1.75 - Number(block.content.level) * 0.2}rem` : undefined, fontWeight: block.type === 'heading' ? 700 : undefined, textAlign: typeof block.content.align === 'string' ? block.content.align as 'center' : undefined }}>{runs.map((run, index) => {
     let text = <span style={{ color: run.color, fontSize: run.size, textTransform: run.uppercase ? 'uppercase' : undefined }}>{run.text}</span>;
     if (run.bold) text = <strong>{text}</strong>;
     if (run.italic) text = <em>{text}</em>;
@@ -22,7 +22,7 @@ export function ListPreview({ block }: { block: EditorBlock }) {
     while (position < items.length && items[position]!.level === level) {
       const index = position++, item = items[index]!;
       const nested = position < items.length && items[position]!.level > level ? list(level + 1) : null;
-      children.push(<li key={index}><TextPreview block={{ ...block, content: { runs: item.runs } }} />{nested}</li>);
+      children.push(<li key={index}><TextPreview block={{ ...block, content: { runs: item.runs, align: block.content.align } }} />{nested}</li>);
     }
     return block.content.ordered ? <ol>{children}</ol> : <ul>{children}</ul>;
   }

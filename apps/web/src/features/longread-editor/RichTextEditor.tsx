@@ -6,7 +6,7 @@ import { Plugin } from '@tiptap/pm/state';
 import type { TFunction } from 'i18next';
 import { clipboardText, fromRichDocument, inlineNodes, listDepth, toRichDocument } from './richText.js';
 import { safeHref, type EditorBlock } from './model.js';
-import { StyleMark, useFormattingWindow } from '../../shared/FormattingWindow.js';
+import { AlignExtension, StyleMark, useFormattingWindow } from '../../shared/FormattingWindow.js';
 
 const DepthLimit = Extension.create({
   name: 'longreadDepthLimit',
@@ -21,7 +21,7 @@ export function RichTextEditor({ block, onChange, t, bare = false, label }: { bl
   const editor = useEditor({
     extensions: [StarterKit.configure({ heading: false, blockquote: false, codeBlock: false, horizontalRule: false, strike: false, undoRedo: false,
       bulletList: block.type === 'list' && !block.content.ordered ? {} : false, orderedList: block.type === 'list' && block.content.ordered ? {} : false,
-      link: { openOnClick: false, autolink: false, linkOnPaste: false, isAllowedUri: (url) => safeHref(url) }, trailingNode: false }), DepthLimit, StyleMark],
+      link: { openOnClick: false, autolink: false, linkOnPaste: false, isAllowedUri: (url) => safeHref(url) }, trailingNode: false }), DepthLimit, StyleMark, ...(bare ? [] : [AlignExtension])],
     content: toRichDocument(block),
     shouldRerenderOnTransaction: true,
     editorProps: {

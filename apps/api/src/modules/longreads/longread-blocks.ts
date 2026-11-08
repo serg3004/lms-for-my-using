@@ -1,6 +1,6 @@
 import { continueContentSchema } from '@lms/shared/longread-progress';
 import { z } from 'zod';
-import { DESCRIPTION_SIZES } from '@lms/shared/checklist-description';
+import { BLOCK_ALIGNS, DESCRIPTION_SIZES } from '@lms/shared/checklist-description';
 import { richTextSchema } from '@lms/shared/rich-text';
 import { exerciseContentSchema } from '@lms/shared/longread-exercises';
 import { audioContentSchema, videoContentSchema, embedContentSchema } from '@lms/shared/longread-media';
@@ -33,11 +33,13 @@ export const runSchema = z.object({
 }).strict();
 
 const runsSchema = z.array(runSchema).max(500);
+/** PR 439: one alignment per text block; left is the default and is not stored. */
+const alignSchema = z.enum(BLOCK_ALIGNS).optional();
 
-const paragraphSchema = z.object({ runs: runsSchema }).strict();
-const headingSchema = z.object({ excludeFromToc: z.boolean().optional(), level: z.union([z.literal(1), z.literal(2), z.literal(3)]), runs: runsSchema }).strict();
-const quoteSchema = z.object({ runs: runsSchema, caption: richTextSchema(500).optional() }).strict();
-const noteSchema = z.object({ runs: runsSchema, tone: z.enum(['info', 'success', 'warning', 'danger']).default('info') }).strict();
+const paragraphSchema = z.object({ runs: runsSchema, align: alignSchema }).strict();
+const headingSchema = z.object({ excludeFromToc: z.boolean().optional(), level: z.union([z.literal(1), z.literal(2), z.literal(3)]), runs: runsSchema, align: alignSchema }).strict();
+const quoteSchema = z.object({ runs: runsSchema, caption: richTextSchema(500).optional(), align: alignSchema }).strict();
+const noteSchema = z.object({ runs: runsSchema, tone: z.enum(['info', 'success', 'warning', 'danger']).default('info'), align: alignSchema }).strict();
 const dividerSchema = z.object({}).strict();
 const codeSchema = z.object({ language: z.string().trim().max(40).default('javascript'), code: z.string().max(50_000) }).strict();
 
@@ -46,6 +48,7 @@ export const blockTypeSchema = z.string().regex(/^[a-z][a-z0-9_]{0,39}$/, 'Block
 export const MAX_LIST_DEPTH = 3;
 const listSchema = z.object({
   ordered: z.boolean().default(false),
+  align: alignSchema,
   items: z.array(z.object({
     level: z.number().int().min(1).max(MAX_LIST_DEPTH),
     runs: runsSchema,

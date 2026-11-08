@@ -29,6 +29,10 @@ export function descriptionStyle(style: string): DescriptionStyle {
   return result;
 }
 
+/** Alignment stored in a longread block (PR 439): only the three non-default values are ever written. */
+export const BLOCK_ALIGNS = ['center', 'right', 'justify'] as const;
+export const blockAlign = (value: unknown): (typeof BLOCK_ALIGNS)[number] | undefined => BLOCK_ALIGNS.find((align) => align === value);
+
 /** One alignment per field: the first paragraph decides. Left is the default and is never written, old texts stay as they are. */
 export function descriptionAlign(value: string): DescriptionAlign {
   if (!/<p\b/i.test(value)) return 'left';

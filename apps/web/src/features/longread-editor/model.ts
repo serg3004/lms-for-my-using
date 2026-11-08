@@ -1,5 +1,5 @@
 import { isImageContent, isAttachmentsContent } from '../longread-files/model.js';
-import { DESCRIPTION_SIZES } from '@lms/shared/checklist-description';
+import { blockAlign, DESCRIPTION_SIZES } from '@lms/shared/checklist-description';
 import { continueContentSchema } from '@lms/shared/longread-progress';
 import { exerciseContentSchema } from '@lms/shared/longread-exercises';
 import { audioContentSchema, videoContentSchema, embedContentSchema } from '@lms/shared/longread-media';
@@ -103,6 +103,7 @@ function contentValid(block: EditorBlock): boolean {
   if (block.type === 'embed') return embedContentSchema.safeParse(block.content).success;
   if (block.type === 'code') return typeof block.content.code === 'string' && block.content.code.length <= 50_000;
   if (block.type === 'divider') return true;
+  if (block.content.align !== undefined && !blockAlign(block.content.align)) return false;
   if (block.type !== 'list') return runsValid(block.content.runs);
   const items = block.content.items;
   if (!Array.isArray(items) || items.length > 500) return false;

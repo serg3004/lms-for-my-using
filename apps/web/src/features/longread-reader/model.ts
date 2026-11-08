@@ -1,10 +1,11 @@
 import { isImageContent as safeImage, isAttachmentsContent } from '../longread-files/model.js';
 import { audioContentSchema, videoContentSchema, embedContentSchema, type LongreadAudio, type LongreadVideo, type LongreadEmbed } from '@lms/shared/longread-media';
 import type { LongreadImage, ReaderBlock, ReaderChapter } from '../../shared/api/longreads.js';
+import { blockAlign } from '@lms/shared/checklist-description';
 import { runStyleValid, safeHref, type Run } from '../longread-editor/model.js';
 
-export type TextContent = { runs: Run[]; level?: 1 | 2 | 3; excludeFromToc?: boolean; caption?: string; tone?: string };
-export type ListContent = { ordered: boolean; items: { level: number; runs: Run[] }[] };
+export type TextContent = { align?: 'center' | 'right' | 'justify'; runs: Run[]; level?: 1 | 2 | 3; excludeFromToc?: boolean; caption?: string; tone?: string };
+export type ListContent = { align?: 'center' | 'right' | 'justify'; ordered: boolean; items: { level: number; runs: Run[] }[] };
 export type CodeContent = { code: string; language: string };
 export { safeImage };
 export type SafeBlock = { type: 'audio'; content: LongreadAudio } | { type: 'video'; content: LongreadVideo } | { type: 'embed'; content: LongreadEmbed } | { type: 'image'; content: LongreadImage } | { type: 'attachments'; content: { files: { fileId: string; label?: string }[] } } | { type: 'paragraph' | 'heading' | 'quote' | 'note'; content: TextContent } | { type: 'list'; content: ListContent } | { type: 'code'; content: CodeContent } | { type: 'divider'; content: Record<string, never> };
@@ -24,6 +25,7 @@ export function safeBlock(block: ReaderBlock): SafeBlock | null {
   if (block.type === 'attachments') return isAttachmentsContent(content) ? { type: 'attachments', content } : null;
   if (block.type === 'divider') return { type: 'divider', content: {} };
   if (block.type === 'code') return typeof content.code === 'string' && content.code.length <= 50_000 && typeof content.language === 'string' ? { type: 'code', content: content as CodeContent } : null;
+  if (['paragraph', 'heading', 'quote', 'note', 'list'].includes(block.type) && content.align !== undefined && !blockAlign(content.align)) return null;
   if (block.type === 'list') {
     if (!Array.isArray(content.items) || content.items.length > 500) return null;
     let previous = 0;

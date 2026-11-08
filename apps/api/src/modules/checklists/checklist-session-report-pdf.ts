@@ -1,9 +1,10 @@
 import { checklistLabel } from '@lms/shared/checklist-numbering';
-import { isRichDescription, descriptionRuns, descriptionText, type DescriptionRun } from '@lms/shared/checklist-description';
+import { isRichDescription, descriptionAlign, descriptionRuns, descriptionText, type DescriptionRun } from '@lms/shared/checklist-description';
 import { feedbackRows, isCustomFeedback } from '@lms/shared/checklist-feedback';
 import PDFDocument from 'pdfkit';
 
 import type { HighlightStyle } from './checklist-colors.js';
+import { alignLine } from './checklist-pdf-align.js';
 import { PdfFontBook, type PdfFontWeight } from './checklist-report-pdf-fonts.js';
 import { PDF_LABELS, type PdfLabels, type PdfLocale } from './checklist-session-report-pdf-labels.js';
 import type { ChecklistSessionReport } from './checklist-session-report.js';
@@ -114,24 +115,41 @@ class ReportPainter {
   }
 
   private richLines(value: string, width: number, style: { rich?: boolean; weight?: PdfFontWeight; size: number; color?: string }, at?: { x: number; y: number }) {
-    let x = 0, y = 0, lineHeight = style.size * 1.35 + 2;
+    type Part = { text: string; width: number; size: number; weight: PdfFontWeight; run: DescriptionRun; space: boolean };
+    const base = style.size * 1.35 + 2;
+    const lines: Array<{ parts: Part[]; height: number; hardBreak: boolean }> = [{ parts: [], height: base, hardBreak: false }];
+    let x = 0;
     for (const run of descriptionRuns(value)) {
-      const size = run.size ? run.size * 0.75 : style.size, weight = run.bold ? 700 : style.weight;
+      const size = run.size ? run.size * 0.75 : style.size, weight = (run.bold ? 700 : style.weight ?? 400) as PdfFontWeight;
       const tokens = (run.uppercase ? run.text.toUpperCase() : run.text).match(/\n|[^\S\n]+|[^\s]+/gu) ?? [];
       const draw = (text: string) => {
-        const length = this.fonts.inlineWidth(text, weight ?? 400, size);
-        if (x && x + length > width) { y += lineHeight; x = 0; lineHeight = style.size * 1.35 + 2; }
-        lineHeight = Math.max(lineHeight, size * 1.35 + 2);
-        if (at) this.fonts.writeInline(text, { weight: weight ?? 400, size, color: run.color ?? style.color ?? INK, x: at.x + x, y: at.y + y, italic: run.italic, underline: run.underline });
+        const length = this.fonts.inlineWidth(text, weight, size);
+        let line = lines.at(-1)!;
+        if (x && x + length > width) { lines.push({ parts: [], height: base, hardBreak: false }); x = 0; line = lines.at(-1)!; }
+        line.height = Math.max(line.height, size * 1.35 + 2);
+        line.parts.push({ text, width: length, size, weight, run, space: /^\s+$/u.test(text) });
         x += length;
       };
       for (const token of tokens) {
-        if (token === '\n') { y += lineHeight; x = 0; lineHeight = style.size * 1.35 + 2; }
-        else if (this.fonts.inlineWidth(token, weight ?? 400, size) > width) for (const char of token) draw(char);
+        if (token === '\n') { lines.at(-1)!.hardBreak = true; lines.push({ parts: [], height: base, hardBreak: false }); x = 0; }
+        else if (this.fonts.inlineWidth(token, weight, size) > width) for (const char of token) draw(char);
         else draw(token);
       }
     }
-    return y + lineHeight;
+    if (at) {
+      const align = descriptionAlign(value);
+      let y = 0;
+      lines.forEach((line, index) => {
+        const placed = alignLine(align, line.parts, width, line.hardBreak || index === lines.length - 1);
+        let offset = placed.start;
+        line.parts.forEach((part, position) => {
+          this.fonts.writeInline(part.text, { weight: part.weight, size: part.size, color: part.run.color ?? style.color ?? INK, x: at.x + offset, y: at.y + y, italic: part.run.italic, underline: part.run.underline });
+          offset += placed.widths[position]!;
+        });
+        y += line.height;
+      });
+    }
+    return lines.reduce((sum, line) => sum + line.height, 0);
   }
 
   private ensureSpace(height: number) {
@@ -384,13 +402,17 @@ class ReportPainter {
   private richParagraph(value: string) {
     this.options.trace?.push(descriptionText(value));
     let parts: Array<{ text: string; run: DescriptionRun; size: number; width: number }> = [], width = 0;
-    const flush = () => {
+    const align = descriptionAlign(value);
+    // `ends` is true for the last line of the paragraph and for a line closed by an explicit break (stays left when justified).
+    const flush = (ends = false) => {
       const size = Math.max(12, ...parts.map((part) => part.size)), height = size * 1.35 + 3;
-      this.ensureSpace(height); let x = PAGE.margin;
-      for (const part of parts) {
+      this.ensureSpace(height);
+      const placed = alignLine(align, parts.map((part) => ({ width: part.width, space: /^\s+$/u.test(part.text) })), CONTENT_WIDTH, ends);
+      let x = PAGE.margin + placed.start;
+      parts.forEach((part, index) => {
         this.fonts.writeInline(part.text, { weight: part.run.bold ? 700 : 400, size: part.size, color: part.run.color ?? INK, x, y: this.y + (size - part.size) * 0.8, italic: part.run.italic, underline: part.run.underline });
-        x += part.width;
-      }
+        x += placed.widths[index]!;
+      });
       this.y += height; parts = []; width = 0;
     };
     for (const run of descriptionRuns(value)) {
@@ -401,12 +423,12 @@ class ReportPainter {
         parts.push({ text, run, size, width: measured }); width += measured;
       };
       for (const token of (run.uppercase ? run.text.toUpperCase() : run.text).match(/\n|[^\S\n]+|[^\s]+/gu) ?? []) {
-        if (token === '\n') { flush(); continue; }
+        if (token === '\n') { flush(true); continue; }
         if (this.fonts.inlineWidth(token, run.bold ? 700 : 400, size) > CONTENT_WIDTH) for (const character of token) add(character);
         else add(token);
       }
     }
-    if (parts.length) flush();
+    if (parts.length) flush(true);
     this.y += 4;
   }
 
