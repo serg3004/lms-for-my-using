@@ -136,7 +136,11 @@ export function SelectPopup() {
     };
 
     const onScroll = (event: Event) => {
-      if (stateRef.current && !popupRef.current?.contains(event.target as Node | null)) close(false);
+      const open = stateRef.current;
+      if (!open || popupRef.current?.contains(event.target as Node | null)) return;
+      // A scroll that did not move the field (late scroll of the focus jump, a scroll elsewhere) keeps the list; one that moved it closes the list.
+      const now = open.select.getBoundingClientRect();
+      if (Math.abs(now.top - open.rect.top) > 1 || Math.abs(now.left - open.rect.left) > 1) close(false);
     };
     const onResize = () => { if (stateRef.current) close(false); };
 

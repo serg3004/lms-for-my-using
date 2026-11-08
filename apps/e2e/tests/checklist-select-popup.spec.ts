@@ -53,6 +53,7 @@ test('PR 453: keyboard works (Space opens, arrows and Enter choose, Escape close
   const select = page.locator('select').filter({ has: page.locator('option[value="choice"]') }).first();
   await select.scrollIntoViewIfNeeded();
   await select.focus();
+  await expect(select).toBeFocused();
   await page.keyboard.press('Space');
   const { popup } = await rowsAreReadable(page);
   const box = await popup.boundingBox();
