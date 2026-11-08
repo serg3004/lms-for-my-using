@@ -28,8 +28,9 @@ test.describe('self-filled checklist is finished explicitly (PR 406б)', () => {
 
     const finish = page.getByRole('button', { name: 'Завершить проверку' });
     await expect(finish).toBeDisabled();
-    await expect(page.getByText('Проверить кассу', { exact: true }).last()).toBeVisible();
-    await expect(page.getByText('Ещё нет ответа:')).toBeVisible();
+    await expect(page.getByText('Осталось ответить: 1', { exact: true })).toBeVisible();
+    await expect(page.getByText('Ещё нет ответа')).toHaveCount(0);
+    await expect(finish).toHaveAccessibleDescription('Осталось ответить: 1');
 
     await page.getByRole('radio', { name: 'Да', exact: true }).click();
     await expect(finish).toBeEnabled();

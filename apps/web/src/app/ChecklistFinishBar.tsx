@@ -5,7 +5,7 @@ import { Button, ConfirmDialog } from '../shared/ui.js';
 type Props = {
   /** The sheet goes to an instructor instead of being completed. */
   requiresReview: boolean;
-  /** Titles of the criteria that still block finishing. */
+  /** The required criteria that still block finishing; only their number is shown (PR 449). */
   missing: string[];
   onFinish: () => Promise<void>;
   t: TFunction;
@@ -13,7 +13,7 @@ type Props = {
 
 /**
  * PR 406б: the explicit end of a self-filled sheet. The button is available when every required
- * criterion is answered; otherwise it is disabled and the list says what is missing. Finishing asks
+ * criterion is answered; otherwise it is disabled and one line says how many are left. Finishing asks
  * for confirmation because answers cannot be changed afterwards.
  */
 export function ChecklistFinishBar({ requiresReview, missing, onFinish, t }: Props) {
@@ -33,12 +33,9 @@ export function ChecklistFinishBar({ requiresReview, missing, onFinish, t }: Pro
   return (
     <div style={{ marginTop: 20 }}>
       {blocked && (
-        <div id="finish-missing" role="status" style={{ fontSize: 13, marginBottom: 8 }}>
-          <strong>{t('checklists.finishMissing', 'Not answered yet:')}</strong>
-          <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
-            {missing.map((title) => <li key={title}>{title}</li>)}
-          </ul>
-        </div>
+        <p id="finish-missing" role="status" style={{ fontSize: 13, fontWeight: 600, margin: '0 0 8px' }}>
+          {t('checklists.finishRemaining', 'Left to answer: {{count}}', { count: missing.length })}
+        </p>
       )}
       <Button type="button" disabled={blocked} aria-describedby={blocked ? 'finish-missing' : undefined} style={{ minHeight: 44 }} onClick={() => setConfirming(true)}>{label}</Button>
       <ConfirmDialog
