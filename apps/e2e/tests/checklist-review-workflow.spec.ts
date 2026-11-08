@@ -134,7 +134,7 @@ test('full checklist review lifecycle: assignment, learner completion, reviewer 
     await learnerPage.goto('/learn/checklists');
     await learnerPage.getByText('Review workflow E2E').click();
 
-    const checkboxes = learnerPage.locator('input[type="checkbox"]');
+    const checkboxes = learnerPage.getByRole('radio', { name: 'Да', exact: true });
     await expect(checkboxes).toHaveCount(2);
     await checkboxes.nth(0).click();
     await expect.poll(() => results[item1Id]?.checked).toBe(true);
