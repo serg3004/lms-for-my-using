@@ -21,7 +21,8 @@ export function ChecklistConductOverview({ criteria, groups, showNumbering = tru
       ? t('checklistSessions.conduct.overviewEmpty', 'No unanswered criteria. Turn off the filter to see the full sheet.')
       : t('checklistSessions.conduct.overviewNoCriteria', 'This sheet has no criteria.')} />}
     {visibleGroups.map((group) => <section key={group.id ?? 'ungrouped'} style={{ marginTop: 16 }}>
-      <h3 style={{ fontSize: 14, margin: '0 0 8px', overflowWrap: 'anywhere' }}>{checklistLabel(group.title || t('checklistSessions.conduct.overviewUngrouped', 'Other criteria'), group.id ? numbering.groupNumbers.get(group.id) : undefined, showNumbering)}</h3>
+      {/* PR 447: a sheet without groups lists its criteria at once, without an "Other criteria" title. */}
+      {groups.length > 0 && <h3 style={{ fontSize: 14, margin: '0 0 8px', overflowWrap: 'anywhere' }}>{checklistLabel(group.title || t('checklistSessions.conduct.overviewUngrouped', 'Other criteria'), group.id ? numbering.groupNumbers.get(group.id) : undefined, showNumbering)}</h3>}
       <ul style={{ display: 'grid', gap: 8, padding: 0, margin: 0, listStyle: 'none' }}>
         {group.criteria.map(({ item, index, state }) => <li key={item.id}>
           <Button type="button" variant="secondary" disabled={disabled} aria-current={index === currentItemIndex ? 'step' : undefined}

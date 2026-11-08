@@ -31,6 +31,8 @@ type PreviewProps = {
   cameraOnly: boolean; onClose: () => void; t: TFunction;
 };
 
+/** PR 447: the gap between sheet blocks is a wrapper's own, so it exists whether or not the author styled the block. */
+const BLOCK_GAP = { marginBottom: 12 } as const;
 const emptyFeedback: FeedbackDraft = { strengths: '', developmentAreas: '', nextSteps: '' };
 
 /** Local draft only: this component never loads a session or invokes a mutation/upload. */
@@ -118,29 +120,30 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
         <p id={hintId} className="admin-form__hint">{t('admin.checklists.previewHint', 'This is a local simulation — nothing here is saved or sent to anyone.')}</p>
         {description && <p><RichDescription value={description} /></p>}
         </AppearanceBlock>
-        {contextFields.length > 0 && <AppearanceBlock appearance={props.appearance} kind="info" style={{ marginBottom: 8 }}><section id={`${titleId}-info`} aria-label={t('admin.checklists.contextFieldsTitle', 'General information')}>
+        {contextFields.length > 0 && <div style={BLOCK_GAP}><AppearanceBlock appearance={props.appearance} kind="info"><section id={`${titleId}-info`} aria-label={t('admin.checklists.contextFieldsTitle', 'General information')}>
           <h3>{t('admin.checklists.contextFieldsTitle', 'General information')}</h3>
           <ContextFields fields={[...contextFields].sort((a, b) => a.order - b.order)} values={values} disabled={false}
             onChange={(id, value) => setValues((previous) => ({ ...previous, [id]: value }))} t={t} />
-        </section></AppearanceBlock>}
+        </section></AppearanceBlock></div>}
         <div key={resetKey}>
           {groupItems(items, groups).map(({ group, items: groupCriteria }, groupIndex) => (
-            <AppearanceBlock key={group?.id ?? 'ungrouped'} appearance={props.appearance} kind="group" id={group?.id} style={{ marginBottom: 8 }}>
-            <section aria-labelledby={`${titleId}-group-${groupIndex}`}>
-              <h3 id={`${titleId}-group-${groupIndex}`}><RichText value={checklistLabel(group?.title ?? t('admin.checklists.ungroupedItems', 'Ungrouped criteria'), group ? numbering.groupNumbers.get(group.id) : undefined, showNumbering)} /></h3>
+            <div key={group?.id ?? 'ungrouped'} style={BLOCK_GAP}><AppearanceBlock appearance={props.appearance} kind="group" id={group?.id}>
+            {/* PR 447: a sheet without groups shows its criteria at once; "Ungrouped criteria" is only a title next to real groups. */}
+            <section aria-labelledby={groups.length > 0 ? `${titleId}-group-${groupIndex}` : undefined}>
+              {groups.length > 0 && <h3 id={`${titleId}-group-${groupIndex}`}><RichText value={checklistLabel(group?.title ?? t('admin.checklists.ungroupedItems', 'Ungrouped criteria'), group ? numbering.groupNumbers.get(group.id) : undefined, showNumbering)} /></h3>}
               {groupCriteria.map((item) => (
                 <PreviewCriterion key={item.id} item={item} number={showNumbering ? numbering.itemNumbers.get(item.id) ?? '' : ''} answer={answers[item.id]}
                   levels={checklistItemLevels(item, scoringMode, scaleLevels)} scoringMode={scoringMode} allowSkip={allowSkipAll || item.allowSkip === true}
                   cameraOnly={cameraOnly} appearance={props.appearance} onChange={(patch) => updateAnswer(item.id, patch)} t={t} />
               ))}
             </section>
-            </AppearanceBlock>
+            </AppearanceBlock></div>
           ))}
         </div>
-        {feedbackEnabled && <AppearanceBlock appearance={props.appearance} kind="feedback" style={{ marginBottom: 8 }}><section id={`${titleId}-feedback`} aria-label={t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')}>
+        {feedbackEnabled && <div style={BLOCK_GAP}><AppearanceBlock appearance={props.appearance} kind="feedback"><section id={`${titleId}-feedback`} aria-label={t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')}>
           <h3><RichText value={props.feedbackLayout?.title || t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')} /></h3>
           <div style={{ display: 'grid', gap: 10 }}><FeedbackFields config={config} draft={feedback} onDraftChange={setFeedback} t={t} /></div>
-        </section></AppearanceBlock>}
+        </section></AppearanceBlock></div>}
         <footer>
           {finished && (complete ? (
             <div role="status" data-testid="preview-finish-result" className={result.passed ? 'admin-preview-result admin-preview-result--pass' : 'admin-preview-result'}>
