@@ -139,7 +139,6 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
         </div>
         {feedbackEnabled && <AppearanceBlock appearance={props.appearance} kind="feedback" style={{ marginBottom: 8 }}><section id={`${titleId}-feedback`} aria-label={t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')}>
           <h3><RichText value={props.feedbackLayout?.title || t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')} /></h3>
-          {feedbackRequired && <p className="admin-form__hint">{t('checklistPreview.feedbackRequired', 'Strengths and development areas are required.')}</p>}
           <div style={{ display: 'grid', gap: 10 }}><FeedbackFields config={config} draft={feedback} onDraftChange={setFeedback} t={t} /></div>
         </section></AppearanceBlock>}
         <footer>
