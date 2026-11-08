@@ -33,10 +33,10 @@ function editorValue(editor: Editor) {
 }
 
 type RichTextFieldProps = {
-  value: string; onChange: (value: string) => void; label: string; id?: string; maxLength?: number; disabled?: boolean; compact?: boolean; singleLine?: boolean; hideLabel?: boolean; onBlur?: FocusEventHandler<HTMLDivElement>; onFocus?: FocusEventHandler<HTMLDivElement>; onKeyDown?: KeyboardEventHandler<HTMLDivElement>; invalid?: boolean; describedBy?: string; className?: string;
+  value: string; onChange: (value: string) => void; label: string; id?: string; maxLength?: number; disabled?: boolean; compact?: boolean; hideHint?: boolean; singleLine?: boolean; hideLabel?: boolean; onBlur?: FocusEventHandler<HTMLDivElement>; onFocus?: FocusEventHandler<HTMLDivElement>; onKeyDown?: KeyboardEventHandler<HTMLDivElement>; invalid?: boolean; describedBy?: string; className?: string;
 };
 
-const RichTextFieldInner = memo(function RichTextFieldInner({ value, onChange, label, id, maxLength = 2000, disabled = false, compact = false, singleLine = false, hideLabel = false, onBlur, onFocus, onKeyDown, invalid, describedBy, className }: RichTextFieldProps) {
+const RichTextFieldInner = memo(function RichTextFieldInner({ value, onChange, label, id, maxLength = 2000, disabled = false, compact = false, hideHint = false, singleLine = false, hideLabel = false, onBlur, onFocus, onKeyDown, invalid, describedBy, className }: RichTextFieldProps) {
   const { t } = useTranslation(), uid = useId(), labelId = `${uid}-label`, hintId = `${uid}-hint`;
   const [lengthError, setLengthError] = useState(false), [focused, setFocused] = useState(false);
   const formatting = useFormattingWindow(disabled);
@@ -77,7 +77,7 @@ const RichTextFieldInner = memo(function RichTextFieldInner({ value, onChange, l
   formatting.editorRef.current = editor;
   return <div onFocus={(event) => { setFocused(true); onFocus?.(event); }} onKeyDown={onKeyDown} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) { setFocused(false); onBlur?.(event); } }} style={{ minWidth: 0, maxWidth: '100%', width: '100%', display: 'grid', gap: 6 }}>
     <div id={labelId} className={hideLabel ? 'ui-visually-hidden' : undefined}>{descriptionText(label)}</div>
-    <p id={hintId} className={compact ? 'ui-visually-hidden' : 'admin-form__hint'} style={{ marginBlock: 4, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{t('richDescription.hint')}</p>
+    <p id={hintId} className={compact || hideHint ? 'ui-visually-hidden' : 'admin-form__hint'} style={{ marginBlock: 4, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{t('richDescription.hint')}</p>
     <div {...formatting.touchProps}>
       {editor ? <EditorContent editor={editor} /> : <textarea id={id ?? uid} className={className} aria-labelledby={labelId} value={descriptionText(value)} disabled={disabled} maxLength={maxLength} onChange={(event) => onChange(event.target.value)} />}
     </div>

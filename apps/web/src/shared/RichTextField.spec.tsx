@@ -71,3 +71,12 @@ it('shows the alignment in read-only text, also for inline spans, and leaves old
   act(() => root.render(<RichText value={'<strong>Старый</strong>'} />));
   expect(host.querySelector('span')?.style.textAlign).toBe('');
 });
+
+it('PR 446: hideHint keeps the formatting hint for screen readers but removes it from the screen', async () => {
+  const host = document.createElement('div'); document.body.append(host); root = createRoot(host);
+  await act(async () => { root.render(<><RichTextField label="Fill" id="fill" value="" onChange={vi.fn()} hideHint /><RichTextField label="Edit" id="edit" value="" onChange={vi.fn()} /></>); });
+  const hint = (id: string) => document.getElementById(host.querySelector(`#${id}`)!.getAttribute('aria-describedby')!.split(' ')[0]!)!;
+  expect(hint('fill').className).toBe('ui-visually-hidden');
+  expect(hint('fill').textContent).not.toBe('');
+  expect(hint('edit').className).toBe('admin-form__hint');
+});

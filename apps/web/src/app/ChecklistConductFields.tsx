@@ -41,6 +41,7 @@ export function ContextFields({
                 id={`context-${field.id}`}
                 label={field.label}
                 hideLabel
+                hideHint
                 disabled={disabled}
                 maxLength={4000}
                 value={values[field.id] ?? ''}

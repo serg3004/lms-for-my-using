@@ -168,3 +168,20 @@ for (const width of [320, 390]) test(`an answer is painted with its level colour
   await expect(group.getByRole('radio', { checked: true })).toHaveCount(0);
   await expect.poll(() => dialog.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
 });
+
+/** PR 446: the person filling a sheet never sees the formatting hint or the "feedback is required" sentence; they stay for screen readers / the editor. */
+test('PR 446: filling a sheet shows no service hints (formatting hint, required-feedback sentence), the editor keeps its hint', async ({ page }) => {
+  const sheet = previewSheet(); sheet.items = sheet.items.slice(0, 1); sheet.feedbackRequired = true; sheet.feedbackEnabled = true;
+  await openPreviewBuilder(page, sheet);
+  const hint = /правую кнопку мыши/;
+  await expect(page.getByText(hint).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Предпросмотр', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: sheet.title, exact: true });
+  await expect(dialog.getByLabel('Сильные стороны', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Сильные стороны и зоны развития обязательны.')).toHaveCount(0);
+  const visible = await dialog.getByText(hint).evaluateAll((nodes) => nodes.filter((node) => (node as HTMLElement).getClientRects().length > 0 && getComputedStyle(node).clip !== 'rect(0px, 0px, 0px, 0px)' && (node as HTMLElement).getBoundingClientRect().width > 1).length);
+  expect(visible).toBe(0);
+  const described = await dialog.getByLabel('Сильные стороны', { exact: true }).getAttribute('aria-describedby');
+  expect(described).toBeTruthy();
+  await expect(dialog.locator(`[id="${described}"]`)).toHaveText(hint);
+});
