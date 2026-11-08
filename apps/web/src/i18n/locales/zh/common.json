@@ -1829,6 +1829,7 @@
           "info": "基本信息",
           "group": "分组",
           "item": "标准",
+          "feedback": "反馈",
           "own": "单个区块"
         },
         "preset": {

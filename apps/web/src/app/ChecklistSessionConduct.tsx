@@ -34,7 +34,7 @@ import { ChecklistConductOverview } from './ChecklistConductOverview.js';
 import { ChecklistItemDescription } from './ChecklistItemNote.js';
 import { ChecklistPhotoStrip } from '../shared/ChecklistPhotoStrip.js';
 import { AppearanceBlock, itemCardStyle } from '../shared/AppearanceBlock.js';
-import { resolveBlockStyle, isEmptyBlockStyle } from '@lms/shared/checklist-appearance';
+import { resolveBlockStyle, isEmptyBlockStyle, type Appearance } from '@lms/shared/checklist-appearance';
 import { isNoteRequired, pendingAnswer } from './checklistItemNote.js';
 import { conductCriteria, nextConductStep } from './checklistConductOverview.js';
 import { localizeChecklistScaleError, checklistResultToAnswer, getRequiredChecklistProgress, isChecklistAnswerComplete } from './checklistCompletion.js';
@@ -454,6 +454,7 @@ export function ConductScreen({
                 </AppearanceBlock>
               ) : isFeedbackStep ? (
                 <StructuredFeedback
+                  appearance={checklist.appearance}
                   session={session}
                   busy={busy}
                   draft={feedbackDraft}
@@ -569,6 +570,7 @@ export function ConductScreen({
 
       {session.status === 'completed' && feedbackEnabled && (
         <StructuredFeedback
+          appearance={checklist.appearance}
           session={session}
           busy={busy}
           draft={feedbackDraft}
@@ -956,6 +958,7 @@ function PhotoAttachment({
 }
 
 function StructuredFeedback({
+  appearance,
   session,
   busy,
   draft,
@@ -965,6 +968,7 @@ function StructuredFeedback({
   onConflict,
   t,
 }: {
+  appearance?: Appearance | null;
   session: ChecklistSessionSummary;
   busy: boolean;
   draft: FeedbackDraft;
@@ -1006,7 +1010,8 @@ function StructuredFeedback({
   saveRef.current = save;
 
   return (
-    <div style={{ marginTop: 20 }}>
+    <AppearanceBlock appearance={appearance} kind="feedback" style={{ marginTop: 20 }}>
+    <div style={isEmptyBlockStyle(resolveBlockStyle(appearance, 'feedback')) ? { marginTop: 20 } : undefined}>
       <h3 style={{ fontSize: 14, color: COLORS.text, margin: '0 0 10px' }}><RichText value={session.feedback?.layout.title || t('checklistSessions.conduct.feedbackTitle', 'Structured feedback')} /></h3>
       {error && (
         <p role="alert" style={{ color: 'var(--color-danger)', fontSize: 12.5 }}>
@@ -1020,5 +1025,6 @@ function StructuredFeedback({
         </Button>
       </div>
     </div>
+    </AppearanceBlock>
   );
 }

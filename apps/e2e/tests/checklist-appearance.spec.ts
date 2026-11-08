@@ -133,3 +133,21 @@ test('PR 441: a sheet without groups still has a settings button for groups, and
   await expect(settings(page)).toBeVisible();
   await expect(card).toHaveCSS('border-top-width', '2px');
 });
+
+test('PR 442: the feedback section has its own button, a set colours it, and the preview shows it', async ({ page }) => {
+  const { saved, sheet } = await openFormattingEditor(page, 'ru', (data) => { data.feedbackEnabled = true; });
+  const section = page.locator('.admin-feedback-block');
+  await expect(section).toBeVisible();
+  await section.getByRole('button', { name: 'Оформление блока: Обратная связь', exact: true }).click();
+  await expect(settings(page)).toContainText('Обратная связь');
+  await expect(settings(page).getByRole('radio')).toHaveCount(0);
+  await settings(page).getByRole('button', { name: 'Контрастный', exact: true }).click();
+  await expect(section).toHaveCSS('background-color', 'rgb(255, 247, 204)');
+  await page.getByRole('button', { name: 'Сохранить', exact: true }).first().click();
+  await expect.poll(() => (saved()?.appearance as { blocks?: Record<string, { background?: string }> } | undefined)?.blocks?.feedback?.background).toBe('#FFF7CC');
+  await page.keyboard.press('Escape');
+  await expect(section.getByRole('button', { name: 'Оформление блока: Обратная связь', exact: true })).toBeFocused();
+  await page.getByRole('button', { name: 'Предпросмотр', exact: true }).click();
+  const preview = page.getByRole('dialog', { name: sheet.title as string });
+  await expect(preview.locator('section:has(h3)').last().locator('xpath=..')).toHaveCSS('background-color', 'rgb(255, 247, 204)');
+});

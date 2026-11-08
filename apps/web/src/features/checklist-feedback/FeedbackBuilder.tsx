@@ -1,7 +1,7 @@
 import { RichTextField } from '../../shared/RichTextField.js';
 import { RichText, plainText } from '../../shared/RichText.js';
 import { useOptionalSession } from '../../shared/session.js';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { collectFeedbackFields, defaultFeedbackLayout, type FeedbackFieldDef, type FeedbackLayout, type FeedbackSectionDef } from '@lms/shared/checklist-feedback';
 import { listChecklistAnswerSets } from '../../shared/api/checklists.js';
@@ -25,7 +25,8 @@ function FieldTitleInput({ id, label, title, fallback, onTitle, disabled }: { id
     onBlur={() => { setFocused(false); if (!plainText(draft).trim() && fallback) { setDraft(fallback); onTitle(''); } }} />;
 }
 
-export function FeedbackBuilder({ value, onChange, required, disabled = false }: { value: FeedbackLayout | null; onChange: (layout: FeedbackLayout | null) => void; required: boolean; disabled?: boolean }) {
+/** PR 442: `style` is the author's look of the section and `gear` its settings button (a corner button, so the section is a positioned box). */
+export function FeedbackBuilder({ value, onChange, required, disabled = false, style, gear }: { value: FeedbackLayout | null; onChange: (layout: FeedbackLayout | null) => void; required: boolean; disabled?: boolean; style?: CSSProperties; gear?: ReactNode }) {
   const { t } = useTranslation(), labels = feedbackLabels(t);
   const roles = useOptionalSession()?.currentUser?.roles ?? [];
   const libraryBase = roles.includes('admin') || roles.includes('manager') ? '/admin/checklists' : roles.includes('instructor') ? '/instructor/checklists' : '/mentor';
@@ -68,8 +69,9 @@ export function FeedbackBuilder({ value, onChange, required, disabled = false }:
       {depth < 3 && <Button type="button" variant="secondary" disabled={sectionCount(layout.sections) >= 30} onClick={() => container(parentId, (current) => ({ ...current, sections: [...current.sections, newSection()] }))}>+ {t(depth ? 'feedbackBuilder.addSubsection' : 'feedbackBuilder.addSection')}</Button>}
     </div>;
   }
-  return <section className="admin-card admin-feedback-block" aria-labelledby="checklist-feedback-title">
-    <h3 id="checklist-feedback-title" onDoubleClick={() => focusNameField('feedback-layout-title')}><RichText value={layout.title || t('admin.checklists.feedbackSectionTitle')} /></h3>
+  return <section className="admin-card admin-feedback-block" aria-labelledby="checklist-feedback-title" style={{ ...style, position: 'relative' }}>
+    {gear}
+    <h3 id="checklist-feedback-title" style={gear ? { paddingInlineEnd: 48 } : undefined} onDoubleClick={() => focusNameField('feedback-layout-title')}><RichText value={layout.title || t('admin.checklists.feedbackSectionTitle')} /></h3>
     <RichTextField disabled={disabled} singleLine compact id="feedback-layout-title" label={t('feedbackBuilder.title')} maxLength={255} value={layout.title ?? t('admin.checklists.feedbackSectionTitle')} onChange={(value) => onChange({ ...layout, title: value })}
       onBlur={() => { if (!plainText(layout.title ?? '').trim()) onChange({ ...layout, title: t('admin.checklists.feedbackSectionTitle') }); }} />
     <Button type="button" variant="secondary" onClick={() => focusNameField('feedback-layout-title')}>{t('admin.checklists.rename.action', 'Rename')}</Button>

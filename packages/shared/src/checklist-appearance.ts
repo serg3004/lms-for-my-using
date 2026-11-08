@@ -1,10 +1,10 @@
-/** PR 422: how the blocks of a sheet look (header, general information, group, criterion card). */
+/** PR 422: how the blocks of a sheet look (header, general information, group, criterion card; PR 442: the feedback section). */
 export const APPEARANCE_RADII = [0, 6, 12, 20] as const;
 export const APPEARANCE_PADDINGS = [8, 12, 16, 24] as const;
 export const APPEARANCE_BORDER_MAX = 4;
 export const APPEARANCE_OVERRIDES_MAX = 300;
 export const APPEARANCE_MARKUP_LIMIT = 40000;
-export const BLOCK_KINDS = ['header', 'info', 'group', 'item'] as const;
+export const BLOCK_KINDS = ['header', 'info', 'group', 'item', 'feedback'] as const;
 export type BlockKind = (typeof BLOCK_KINDS)[number];
 
 export type BlockStyle = { color?: string; background?: string; borderColor?: string; borderWidth?: number; radius?: number; padding?: number };
@@ -107,17 +107,20 @@ export const APPEARANCE_PRESETS: Record<'strict' | 'calm' | 'contrast', { blocks
     info: { color: '#172033', background: '#FFFFFF', borderColor: '#172033', borderWidth: 1, radius: 0, padding: 16 },
     group: { color: '#172033', background: '#F3F4F6', borderColor: '#172033', borderWidth: 1, radius: 0, padding: 12 },
     item: { color: '#172033', background: '#FFFFFF', borderColor: '#172033', borderWidth: 1, radius: 0, padding: 16 },
+    feedback: { color: '#172033', background: '#FFFFFF', borderColor: '#172033', borderWidth: 1, radius: 0, padding: 16 },
   } },
   calm: { blocks: {
     header: { color: '#172033', background: '#EAF2FB', borderColor: '#BFD5EC', borderWidth: 1, radius: 20, padding: 24 },
     info: { color: '#172033', background: '#F1F7EE', borderColor: '#C9DEC0', borderWidth: 1, radius: 12, padding: 16 },
     group: { color: '#172033', background: '#F4F1FA', borderColor: '#D5CCE8', borderWidth: 1, radius: 12, padding: 12 },
     item: { color: '#172033', background: '#FFFFFF', borderColor: '#D9DEE7', borderWidth: 1, radius: 12, padding: 16 },
+    feedback: { color: '#172033', background: '#FDF3E7', borderColor: '#EBD3B5', borderWidth: 1, radius: 12, padding: 16 },
   } },
   contrast: { blocks: {
     header: { color: '#FFFFFF', background: '#172033', borderColor: '#172033', borderWidth: 0, radius: 12, padding: 24 },
     info: { color: '#172033', background: '#FFF7CC', borderColor: '#172033', borderWidth: 3, radius: 6, padding: 16 },
     group: { color: '#FFFFFF', background: '#1D4ED8', borderColor: '#1D4ED8', borderWidth: 0, radius: 6, padding: 12 },
     item: { color: '#172033', background: '#FFFFFF', borderColor: '#172033', borderWidth: 3, radius: 6, padding: 16 },
+    feedback: { color: '#172033', background: '#FFF7CC', borderColor: '#172033', borderWidth: 3, radius: 6, padding: 16 },
   } },
 };

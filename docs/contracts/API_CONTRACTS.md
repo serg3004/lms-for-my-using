@@ -687,11 +687,11 @@ up the edit, like scales in PR 369); `DELETE` (204) is refused with `409` while 
 `checklistsRead`, writes `checklistsCreate`; audit actions `checklist_answer_set.created|updated|archived|deleted|copied`.
 
 **Block appearance (PR 422).** `Checklist.appearance` (JSON, `null` = the standard look) is set through `appearance` on `POST /checklists` and
-`PATCH /checklists/:id` (`null` clears it) and is returned on the checklist. Shape: `{ blocks?: { header|info|group|item: Style }, overrides?: { [groupOrItemId]: Style } }`,
+`PATCH /checklists/:id` (`null` clears it) and is returned on the checklist. Shape: `{ blocks?: { header|info|group|item|feedback: Style }, overrides?: { [groupOrItemId]: Style } }`,
 where `Style` is `{ color?, background?, borderColor?: "#RRGGBB", borderWidth?: 0-4, radius?: 0|6|12|20, padding?: 8|12|16|24 }`. The server does not reject
 other values, it cuts them (unknown kinds, non-UUID override keys, colours that are not `#RRGGBB`, numbers outside the sets); a document over 40000
 characters answers `400`. A copy of a sheet and an organization template keep `blocks` but not `overrides` (their ids belong to the original
-sheet). Assigning freezes `appearance` into the instance snapshot; older snapshots read as the standard look. The report PDF does not repeat it.
+sheet). Assigning freezes `appearance` into the instance snapshot; older snapshots read as the standard look. The report PDF does not repeat it. PR 442: `feedback` is the look of the whole feedback section (no override, one instance); a look saved without it reads as before.
 
 **Snapshot and answers.** Assigning freezes `feedbackLayout` and the used answer sets (`feedbackAnswerSets`) into the instance snapshot; a snapshot made
 before PR 405 reads as the classic fields (required only when `feedbackRequired`). `PATCH /checklist-sessions/:id/feedback` accepts, besides the
