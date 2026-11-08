@@ -6,8 +6,8 @@ import type { TFunction } from 'i18next';
 import type { ChecklistItemSummary } from '../../shared/api/types.js';
 import { Button, Dialog, Select } from '../../shared/ui.js';
 import { NOTE_ANSWER_UNCHECKED } from '../../app/checklistItemNote.js';
+import { CHECK_BOX, CHECK_ROW } from '../../shared/checkField.js';
 
-const OPTION = { display: 'flex', alignItems: 'center', gap: 8, minHeight: 44 } as const;
 
 /** One answer that can open the explanation: a level of the criterion's scale, or "not ticked" for a tick box. */
 export type NoteAnswerOption = { value: string; label: string };
@@ -62,8 +62,8 @@ export function ItemDetailsDialog({ item, options, open, onClose, onSave, t }: {
       <h2 id={titleId}>{t('admin.checklists.itemDetails.title', 'Criterion: description and explanation')}</h2>
       <p className="admin-form__hint"><RichText value={item.text} /></p>
       {error && <p className="learner-quiz__submit-error" role="alert">{error}</p>}
-      <label style={OPTION}>
-        <input checked={descriptionEnabled} onChange={(event) => setDescriptionEnabled(event.target.checked)} role="switch" type="checkbox" />
+      <label style={CHECK_ROW}>
+        <input checked={descriptionEnabled} className="admin-switch" onChange={(event) => setDescriptionEnabled(event.target.checked)} role="switch" style={{ marginTop: 2, minHeight: 19, padding: 0 }} type="checkbox" />
         {t('admin.checklists.itemDetails.descriptionSwitch', 'Description (a hint for whoever fills the sheet)')}
       </label>
       {descriptionEnabled && (
@@ -82,10 +82,11 @@ export function ItemDetailsDialog({ item, options, open, onClose, onSave, t }: {
         <fieldset style={{ border: 0, padding: 0, margin: '12px 0' }}>
           <legend>{t('admin.checklists.itemDetails.answersLegend', 'Show the field when the answer is')}</legend>
           {options.map((option) => (
-            <label style={OPTION} key={option.value}>
+            <label style={CHECK_ROW} key={option.value}>
               <input
                 checked={answers.includes(option.value)}
                 onChange={(event) => setAnswers((current) => (event.target.checked ? [...current, option.value] : current.filter((value) => value !== option.value)))}
+                style={CHECK_BOX}
                 type="checkbox"
               />
               {option.label}
@@ -95,8 +96,8 @@ export function ItemDetailsDialog({ item, options, open, onClose, onSave, t }: {
         </fieldset>
       )}
       {rule !== 'off' && (
-        <label style={OPTION}>
-          <input checked={required} onChange={(event) => setRequired(event.target.checked)} type="checkbox" />
+        <label style={CHECK_ROW}>
+          <input checked={required} onChange={(event) => setRequired(event.target.checked)} style={CHECK_BOX} type="checkbox" />
           {t('admin.checklists.itemDetails.required', 'The explanation is required (the answer is not accepted without it)')}
         </label>
       )}

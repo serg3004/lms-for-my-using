@@ -131,4 +131,32 @@ test.describe('Explanation while filling a sheet (PR 415)', () => {
     await expect.poll(() => posts.length).toBe(2);
     expect(posts[1]).toEqual({ scaleLevel: 1, comment: 'Нет ценников' });
   });
+
+  for (const width of [1280, 390, 320]) {
+    test(`PR 443: boxes and switches stand right before their captions at ${width} px`, async ({ page }) => {
+      await openEditor(page);
+      await page.setViewportSize({ width, height: 1400 });
+      await page.getByRole('button', { name: 'Действия' }).first().click();
+      await page.getByRole('menuitem', { name: 'Описание и пояснение…' }).click();
+      const dialog = page.getByRole('dialog', { name: 'Критерий: описание и пояснение' });
+      await dialog.getByRole('switch').check();
+      await dialog.getByRole('combobox').selectOption('on_answers');
+      const rows = await dialog.locator('label:has(input[type="checkbox"])').evaluateAll((labels) => labels.map((label) => {
+        const box = label.querySelector('input')!.getBoundingClientRect();
+        const walker = document.createTreeWalker(label, NodeFilter.SHOW_TEXT, { acceptNode: (node) => (node.textContent?.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT) });
+        const range = document.createRange(); range.selectNodeContents(walker.nextNode()!);
+        const text = range.getBoundingClientRect();
+        return { boxWidth: box.width, gap: text.left - box.right, height: label.getBoundingClientRect().height, boxTop: box.top, textTop: text.top };
+      }));
+      expect(rows.length).toBeGreaterThanOrEqual(3);
+      for (const row of rows) {
+        expect(row.boxWidth).toBeLessThanOrEqual(40);
+        expect(row.gap).toBeGreaterThanOrEqual(0);
+        expect(row.gap).toBeLessThanOrEqual(16);
+        expect(row.height).toBeGreaterThanOrEqual(43.5);
+        expect(Math.abs(row.boxTop - row.textTop)).toBeLessThanOrEqual(6);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    });
+  }
 });

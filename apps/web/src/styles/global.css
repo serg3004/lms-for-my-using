@@ -74,6 +74,13 @@ textarea {
   background: var(--color-surface);
 }
 
+/* PR 443: the width above is for text fields; a box or a radio never stretches over its row (it pushed the label away). */
+input[type='checkbox'],
+input[type='radio'] {
+  width: auto;
+  flex: none;
+}
+
 input:focus,
 select:focus,
 textarea:focus,

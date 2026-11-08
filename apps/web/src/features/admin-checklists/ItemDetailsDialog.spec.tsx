@@ -70,4 +70,15 @@ describe('ItemDetailsDialog (PR 415)', () => {
   it('a plain tick box offers the single answer "Not ticked"', () => {
     expect(noteAnswerOptions(null, t)).toEqual([{ value: 'unchecked', label: 'Not ticked' }]);
   });
+  it('PR 443: boxes keep their own size and sit level with the first line of their caption', () => {
+    mount(undefined, { noteRule: 'on_answers' } as Partial<ChecklistItemSummary>);
+    const boxes = [...document.querySelectorAll('input[type="checkbox"]')] as HTMLInputElement[];
+    expect(boxes.length).toBeGreaterThan(1);
+    for (const box of boxes.filter((entry) => entry.getAttribute('role') !== 'switch')) {
+      expect(box.style.width).toBe('18px');
+      expect(box.style.flexGrow === '' || box.style.flexShrink === '0' || box.style.flex === '0 0 auto').toBe(true);
+      expect(box.closest('label')?.style.alignItems).toBe('flex-start');
+    }
+    expect(document.querySelector('input[role="switch"]')?.className).toContain('admin-switch');
+  });
 });
