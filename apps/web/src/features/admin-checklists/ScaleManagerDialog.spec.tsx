@@ -82,6 +82,7 @@ describe('ScaleManagerDialog level editor (PR 343)', () => {
     expect(api.createChecklistScale).toHaveBeenCalledWith({
       name: 'Yes/No',
       levels: [{ value: 1, label: 'No', score: 0, color: '#C62828' }, { value: 2, label: 'Yes', score: 100, color: '#2E7D32' }],
+      noteRule: 'off',
     });
     expect(onSaved).toHaveBeenCalledWith(saved);
     expect(onChanged).toHaveBeenCalled();
@@ -120,6 +121,7 @@ describe('ScaleManagerDialog level editor (PR 343)', () => {
     expect(api.updateChecklistScale).toHaveBeenCalledWith('s1', {
       name: 'Quality',
       levels: [{ value: 1, label: 'Low', score: 0, color: '#C62828' }, { value: 2, label: 'High', score: 90, color: '#2E7D32' }],
+      noteRule: 'off',
     });
   });
 
@@ -141,6 +143,7 @@ describe('ScaleManagerDialog level editor (PR 343)', () => {
     expect(api.updateChecklistScale).toHaveBeenCalledWith('s1', {
       name: 'Quality',
       levels: [{ value: 1, label: 'Low', score: 0, color: '#C62828' }, { value: 2, label: 'High', score: 80, color: '#2E7D32' }],
+      noteRule: 'off',
     });
   });
 
@@ -176,6 +179,7 @@ describe('ScaleManagerDialog colours (PR 369б)', () => {
     expect(api.updateChecklistScale).toHaveBeenCalledWith('s1', {
       name: 'Quality',
       levels: [{ value: 1, label: 'Low', score: 0, color: '#1565C0' }, { value: 2, label: 'High', score: 100, color: '#ABCDEF' }],
+      noteRule: 'off',
     });
   });
 

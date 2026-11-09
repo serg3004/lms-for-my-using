@@ -646,6 +646,17 @@ PR 358 scoring/completion details:
   and snapshots are not backfilled. PR 414: the checklist editor always sends `scaleId: null` when it
   adds a criterion (the scale is a per-criterion switch there), so criteria created in the editor have
   no scale until the switch is turned on; the API default for an omitted `scaleId` is unchanged. `PATCH` omission retains the current reference.
+- PR 457: the explanation rule can also be set once on an evaluation scale. `POST /checklist-scales` and `PATCH
+  /checklist-scales/:id` accept `noteRule` (`off` | `on_answers`), `noteAnswers` (level values of that scale as strings,
+  at least one when `on_answers`, 400 otherwise) and `noteRequired`; list/get return the three fields (columns
+  `note_rule`, `note_answers`, `note_required` of `checklist_scales`, default `off`; the default Yes/No scale keeps
+  `off`). `copy` copies the rule; editing the levels drops answers that are no longer levels and switches a rule left
+  without answers off. A criterion created without `noteRule`/`noteAnswers`/`noteRequired`, or switched to another
+  scale while its rule is `off` and the request sets none, takes the scale's rule; criteria that already exist do
+  not change when the scale's rule changes. `POST /checklist-items/:id/apply-note-rule` (`checklistsCreate`, editor of
+  the sheet) copies the criterion's `noteRule`, `noteAnswers` and `noteRequired` to the other non-deleted criteria of the
+  same checklist with the same scale in one statement and answers `{ updated }` (400 when the criterion has no scale);
+  started sessions keep their snapshot.
 - PR 415: `POST /checklists/:checklistId/items` and `PATCH /checklist-items/:id` accept `description` (up to 2000
   characters, `null` clears), `descriptionEnabled`, `noteRule` (`off` | `always` | `on_answers`), `noteAnswers`
   (strings: level values such as `"2"`, and `"unchecked"` for a plain tick box; at most 50) and `noteRequired`.

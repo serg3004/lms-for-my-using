@@ -16,10 +16,10 @@ const t = ((key: string, fallback?: string | Record<string, unknown>) => (typeof
 const item: ChecklistItemSummary = { id: 'i1', checklistId: 'c1', order: 1, text: 'Витрина выставлена', points: 10, isRequired: true, photoRequired: false };
 const options = noteAnswerOptions([{ value: 1, label: 'Нет' }, { value: 2, label: 'Да' }], t);
 
-function mount(onSave = vi.fn(async () => undefined), extra: Partial<ChecklistItemSummary> = {}) {
+function mount(onSave = vi.fn(async () => undefined), extra: Partial<ChecklistItemSummary> = {}, apply?: { applyCount: number; onApplyAll: (patch: unknown) => Promise<number> }) {
   const host = document.createElement('div');
   document.body.append(host);
-  act(() => createRoot(host).render(<ItemDetailsDialog item={{ ...item, ...extra }} onClose={() => undefined} onSave={onSave} open options={options} t={t} />));
+  act(() => createRoot(host).render(<ItemDetailsDialog item={{ ...item, ...extra }} onClose={() => undefined} onSave={onSave} open options={options} t={t} {...(apply ? { applyCount: apply.applyCount, onApplyAll: apply.onApplyAll as never } : {})} />));
   return { onSave };
 }
 const click = (element: Element) => act(() => { (element as HTMLElement).click(); });
@@ -80,5 +80,24 @@ describe('ItemDetailsDialog (PR 415)', () => {
       expect(box.closest('label')?.style.alignItems).toBe('flex-start');
     }
     expect(document.querySelector('input[role="switch"]')?.className).toContain('admin-switch');
+  });
+  it('PR 457: "Apply to all" asks first, then saves the criterion and copies its rule to the others of the scale', async () => {
+    const onApplyAll = vi.fn(async () => 3);
+    mount(vi.fn(async () => undefined), { scaleId: 's1' }, { applyCount: 3, onApplyAll });
+    select('on_answers');
+    click(document.querySelectorAll<HTMLInputElement>('fieldset input[type="checkbox"]')[0]!);
+    const apply = [...document.querySelectorAll('button')].find((button) => button.textContent === 'Apply to all criteria of the sheet with this scale')!;
+    click(apply);
+    expect(onApplyAll).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('Criteria with this scale:');
+    const confirm = [...document.querySelectorAll('button')].find((button) => button.textContent === 'Apply')!;
+    await act(async () => { confirm.click(); });
+    expect(onApplyAll).toHaveBeenCalledWith(expect.objectContaining({ noteRule: 'on_answers', noteAnswers: ['1'] }));
+    expect(document.querySelector('[role="status"]')?.textContent).toContain('Criteria changed:');
+  });
+
+  it('PR 457: no "Apply to all" button when no other criterion uses the scale', () => {
+    mount(vi.fn(async () => undefined), { scaleId: 's1' }, { applyCount: 0, onApplyAll: vi.fn(async () => 0) });
+    expect([...document.querySelectorAll('button')].some((button) => button.textContent?.startsWith('Apply to all'))).toBe(false);
   });
 });

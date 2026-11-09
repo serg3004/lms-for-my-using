@@ -26,7 +26,11 @@ describe('checklist item explanation rule (PR 415)', () => {
   });
 
   it('validates the new item fields', () => {
-    expect(createChecklistItemSchema.safeParse({ text: 'a' }).data).toMatchObject({ descriptionEnabled: false, noteRule: 'off', noteRequired: false });
+    // PR 457: a rule left out is not "off": the rule of the criterion's scale may apply.
+    const parsed = createChecklistItemSchema.safeParse({ text: 'a' }).data;
+    expect(parsed).toMatchObject({ descriptionEnabled: false });
+    expect(parsed?.noteRule).toBeUndefined();
+    expect(parsed?.noteRequired).toBeUndefined();
     expect(updateChecklistItemSchema.safeParse({ noteRule: 'sometimes' }).success).toBe(false);
     expect(updateChecklistItemSchema.safeParse({ noteAnswers: ['2', 'unchecked'], description: 'x'.repeat(2001) }).success).toBe(false);
     expect(updateChecklistItemSchema.safeParse({ noteAnswers: ['2', 'unchecked'], description: 'Проверить ценники' }).success).toBe(true);

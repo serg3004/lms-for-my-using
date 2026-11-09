@@ -1409,6 +1409,13 @@
         "hex": "{{label}}: code #RRGGBB"
       },
       "scaleManager": {
+        "errorNoteAnswers": "Choose at least one answer that opens the explanation.",
+        "noteTitle": "Default explanation",
+        "noteOn": "Show the explanation field for chosen answers",
+        "noteAnswers": "The field opens when the answer is:",
+        "noteRequired": "The explanation is required (the answer is not accepted without it)",
+        "noteHint": "Criteria that choose this scale get this rule; it can be changed in the criterion. Criteria that already exist are not changed.",
+        "levelN": "Level {{n}}",
         "title": "Evaluation scales",
         "error": "Unable to save the scale.",
         "name": "Scale name",
@@ -1751,6 +1758,12 @@
         "pointsHint": "Result = earned points / maximum; the checklist is passed at the pass threshold."
       },
       "itemDetails": {
+        "applyAll": "Apply to all criteria of the sheet with this scale",
+        "applied": "The rule is applied. Criteria changed: {{count}}.",
+        "applyAllTitle": "Apply the rule to all",
+        "applyAllConfirm": "Criteria with this scale: {{count}}. They will get this explanation rule instead of their own. Sessions already started do not change.",
+        "applyAllConfirmButton": "Apply",
+        "applyFailed": "Unable to apply the rule to the other criteria.",
         "action": "Description and explanation…",
         "title": "Criterion: description and explanation",
         "descriptionSwitch": "Description (a hint for whoever fills the sheet)",

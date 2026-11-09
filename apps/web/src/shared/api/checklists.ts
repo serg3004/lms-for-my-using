@@ -166,6 +166,11 @@ export function createChecklistItem(
   });
 }
 
+/** PR 457: copy the explanation rule of this criterion to the other criteria of the sheet with the same scale. */
+export function applyChecklistItemNoteRule(itemId: string) {
+  return apiRequest<{ updated: number }>(`/checklist-items/${encodeURIComponent(itemId)}/apply-note-rule`, { method: 'POST' });
+}
+
 export function updateChecklistItem(itemId: string, input: Record<string, unknown>) {
   return apiRequest<ChecklistItemSummary>(`/checklist-items/${encodeURIComponent(itemId)}`, {
     method: 'PATCH',
@@ -222,14 +227,16 @@ export function listChecklistScales() {
   return apiRequest<ChecklistScaleSummary[]>('/checklist-scales');
 }
 
-export function createChecklistScale(input: { name: string; levels: { value: number; label: string; score: number }[] }) {
+type ScaleNoteInput = { noteRule?: 'off' | 'on_answers'; noteAnswers?: string[]; noteRequired?: boolean };
+
+export function createChecklistScale(input: { name: string; levels: { value: number; label: string; score: number }[] } & ScaleNoteInput) {
   return apiRequest<ChecklistScaleSummary>('/checklist-scales', {
     method: 'POST',
     body: JSON.stringify(input),
   });
 }
 
-export function updateChecklistScale(scaleId: string, input: { name?: string; levels?: { value: number; label: string; score: number }[] }) {
+export function updateChecklistScale(scaleId: string, input: { name?: string; levels?: { value: number; label: string; score: number }[] } & ScaleNoteInput) {
   return apiRequest<ChecklistScaleSummary>(`/checklist-scales/${encodeURIComponent(scaleId)}`, {
     method: 'PATCH',
     body: JSON.stringify(input),

@@ -8,12 +8,26 @@ import { visibleFolderIds, type FolderActor } from './checklist-folder-tree.js';
 import { defaultScaleDefinition } from './checklist-default-scale.js';
 import type { CreateChecklistScaleInput, UpdateChecklistScaleInput } from './checklists.schemas.js';
 
+/** PR 457: the stored columns for a scale's default explanation rule ("off" clears the answers and "required"). */
+function noteData(input: { noteRule?: string; noteAnswers?: string[]; noteRequired?: boolean }) {
+  if (input.noteRule !== 'on_answers') return { noteRule: 'off', noteAnswers: Prisma.DbNull, noteRequired: false };
+  return { noteRule: 'on_answers', noteAnswers: input.noteAnswers ?? [], noteRequired: input.noteRequired === true };
+}
+
+function keepKnownAnswers(stored: unknown, values: number[]): string[] {
+  const known = new Set(values.map(String));
+  return Array.isArray(stored) ? stored.filter((answer): answer is string => typeof answer === 'string' && known.has(answer)) : [];
+}
+
 const scaleSelect = {
   id: true,
   organizationId: true,
   name: true,
   status: true,
   isDefault: true,
+  noteRule: true,
+  noteAnswers: true,
+  noteRequired: true,
   createdBy: true,
   createdAt: true,
   updatedAt: true,
@@ -98,7 +112,7 @@ export class ChecklistScaleService {
   async create(organizationId: string, input: CreateChecklistScaleInput, actorId: string) {
     const created = await this.prisma.$transaction(async (tx) => {
       const scale = await tx.checklistScale.create({
-        data: { organizationId, name: input.name, createdBy: actorId },
+        data: { organizationId, name: input.name, createdBy: actorId, ...noteData(input) },
       });
       await tx.checklistScaleLevel.createMany({
         data: input.levels.map((level) => ({ organizationId, scaleId: scale.id, ...level })),
@@ -128,7 +142,7 @@ export class ChecklistScaleService {
   async update(scaleId: string, organizationId: string, input: UpdateChecklistScaleInput, actorId: string) {
     const scale = await this.prisma.checklistScale.findFirst({
       where: { id: scaleId, organizationId },
-      select: { id: true, name: true, status: true, isDefault: true },
+      select: { id: true, name: true, status: true, isDefault: true, noteRule: true, noteAnswers: true },
     });
     if (!scale) throw new NotFoundException('Evaluation scale not found');
     this.assertNotDefault(scale);
@@ -144,9 +158,17 @@ export class ChecklistScaleService {
           data: input.levels.map((level) => ({ organizationId, scaleId, ...level })),
         });
       }
+      // PR 457: an answer that is no longer a level of the scale cannot open the explanation; a rule left without answers is switched off.
+      const keptNote = input.noteRule === undefined && input.levels && scale.noteRule === 'on_answers'
+        ? keepKnownAnswers(scale.noteAnswers, input.levels.map((level) => level.value))
+        : null;
       return tx.checklistScale.update({
         where: { id: scaleId, organizationId },
-        data: { ...(input.name !== undefined ? { name: input.name } : {}) },
+        data: {
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.noteRule !== undefined ? noteData(input) : {}),
+          ...(keptNote ? { noteRule: keptNote.length > 0 ? 'on_answers' : 'off', noteAnswers: keptNote.length > 0 ? keptNote : Prisma.DbNull } : {}),
+        },
       });
     });
 
@@ -177,7 +199,10 @@ export class ChecklistScaleService {
     const copyName = (name ?? `${source.name} (copy)`).slice(0, 255);
     const created = await this.prisma.$transaction(async (tx) => {
       const scale = await tx.checklistScale.create({
-        data: { organizationId, name: copyName, createdBy: actorId },
+        data: {
+          organizationId, name: copyName, createdBy: actorId, noteRule: source.noteRule,
+          noteAnswers: source.noteAnswers === null ? Prisma.DbNull : (source.noteAnswers as Prisma.InputJsonValue), noteRequired: source.noteRequired,
+        },
       });
       await tx.checklistScaleLevel.createMany({
         data: source.levels.map((level) => ({

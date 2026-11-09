@@ -2,7 +2,8 @@ import type { TFunction } from 'i18next';
 import { HighlightColorField } from '../../shared/HighlightColorField.js';
 import { Button, Input } from '../../shared/ui.js';
 import type { ChecklistScaleSummary } from '../../shared/api/types.js';
-import { SCALE_MAX_LEVELS, SCALE_MIN_LEVELS, createScaleLevelDraft, moveScaleLevelDraft, newScaleLevelDrafts, scaleLevelDraftsFromLevels, type ScaleDraftError, type ScaleLevelDraft } from './domain.js';
+import { CHECK_BOX, CHECK_ROW } from '../../shared/checkField.js';
+import { NO_SCALE_NOTE, SCALE_MAX_LEVELS, SCALE_MIN_LEVELS, createScaleLevelDraft, scaleNoteDraftFrom, type ScaleNoteDraft, moveScaleLevelDraft, newScaleLevelDrafts, scaleLevelDraftsFromLevels, type ScaleDraftError, type ScaleLevelDraft } from './domain.js';
 
 const SCALE_NAME_MAX = 255;
 
@@ -17,14 +18,15 @@ export type ScaleEditorState = {
   inUse: boolean;
   name: string;
   levels: ScaleLevelDraft[];
-};
+} & ScaleNoteDraft;
 
 export function newScaleEditor(): ScaleEditorState {
-  return { scaleId: null, readOnly: false, isDefault: false, inUse: false, name: '', levels: newScaleLevelDrafts() };
+  return { scaleId: null, readOnly: false, isDefault: false, inUse: false, name: '', levels: newScaleLevelDrafts(), ...NO_SCALE_NOTE };
 }
 
 export function scaleEditorFor(scale: ChecklistScaleSummary): ScaleEditorState {
-  return { scaleId: scale.id, readOnly: scale.isDefault || scale.status === 'archived', isDefault: scale.isDefault, inUse: scale.inUse, name: scale.name, levels: scaleLevelDraftsFromLevels(scale.levels) };
+  const levels = scaleLevelDraftsFromLevels(scale.levels);
+  return { scaleId: scale.id, readOnly: scale.isDefault || scale.status === 'archived', isDefault: scale.isDefault, inUse: scale.inUse, name: scale.name, levels, ...scaleNoteDraftFrom(scale, levels) };
 }
 
 export function scaleDraftErrorText(error: ScaleDraftError, t: TFunction) {
@@ -41,6 +43,8 @@ export function scaleDraftErrorText(error: ScaleDraftError, t: TFunction) {
       return t('admin.checklists.scaleManager.errorScore', 'Points must be a whole number from 0 to 1000.');
     case 'color':
       return t('admin.checklists.scaleManager.errorColor', 'Every level colour must be a code like #2E7D32.');
+    case 'noteAnswers':
+      return t('admin.checklists.scaleManager.errorNoteAnswers', 'Choose at least one answer that opens the explanation.');
   }
 }
 
@@ -145,6 +149,36 @@ export function ScaleEditor({ editor, onChange, error, t }: { editor: ScaleEdito
             + {t('admin.checklists.scaleManager.addLevel', 'Add level')}
           </Button>
         )}
+        {/* PR 457: the explanation rule set once for the scale; a criterion that picks the scale takes it and it is edited there as usual. */}
+        <fieldset style={{ border: 0, padding: 0, margin: '12px 0' }}>
+          <legend><b>{t('admin.checklists.scaleManager.noteTitle', 'Default explanation')}</b></legend>
+          <label style={CHECK_ROW}>
+            <input checked={editor.noteOn} disabled={editor.readOnly} onChange={(e) => onChange({ ...editor, noteOn: e.target.checked })} style={CHECK_BOX} type="checkbox" />
+            {t('admin.checklists.scaleManager.noteOn', 'Show the explanation field for chosen answers')}
+          </label>
+          {editor.noteOn && (
+            <>
+              <p className="admin-form__hint">{t('admin.checklists.scaleManager.noteAnswers', 'The field opens when the answer is:')}</p>
+              {editor.levels.map((level, index) => (
+                <label key={level.key} style={CHECK_ROW}>
+                  <input
+                    checked={editor.noteKeys.includes(level.key)}
+                    disabled={editor.readOnly}
+                    onChange={(e) => onChange({ ...editor, noteKeys: e.target.checked ? [...editor.noteKeys, level.key] : editor.noteKeys.filter((key) => key !== level.key) })}
+                    style={CHECK_BOX}
+                    type="checkbox"
+                  />
+                  {level.label.trim() || t('admin.checklists.scaleManager.levelN', 'Level {{n}}', { n: index + 1 })}
+                </label>
+              ))}
+              <label style={CHECK_ROW}>
+                <input checked={editor.noteRequired} disabled={editor.readOnly} onChange={(e) => onChange({ ...editor, noteRequired: e.target.checked })} style={CHECK_BOX} type="checkbox" />
+                {t('admin.checklists.scaleManager.noteRequired', 'The explanation is required (the answer is not accepted without it)')}
+              </label>
+            </>
+          )}
+          <p className="admin-form__hint">{t('admin.checklists.scaleManager.noteHint', 'Criteria that choose this scale get this rule; it can be changed in the criterion. Criteria that already exist are not changed.')}</p>
+        </fieldset>
         <p className="admin-form__hint">
           {t('admin.checklists.scaleManager.appliesToNew', 'Changes apply to new and not yet started sessions; sessions already started keep their own copy.')}
         </p>

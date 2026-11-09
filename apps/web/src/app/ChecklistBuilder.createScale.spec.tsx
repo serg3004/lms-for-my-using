@@ -80,6 +80,7 @@ describe('ChecklistBuilder: create a scale from the criterion dropdown (PR 343)'
     expect(api.createChecklistScale).toHaveBeenCalledWith({
       name: 'Да/Нет/Частично',
       levels: [{ value: 1, label: 'Нет', score: 0, color: '#C62828' }, { value: 2, label: 'Да', score: 100, color: '#2E7D32' }],
+      noteRule: 'off',
     });
     expect(api.updateChecklistItem).toHaveBeenCalledWith('item-1', { scaleId: 'scale-new' });
   });

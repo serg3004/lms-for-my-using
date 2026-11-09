@@ -148,7 +148,7 @@ describe('ChecklistScaleService', () => {
       );
 
       expect(prisma.checklistScale.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { organizationId, name: 'Service quality', createdBy: actorId } }),
+        expect.objectContaining({ data: { organizationId, name: 'Service quality', createdBy: actorId, noteRule: 'off', noteAnswers: Prisma.DbNull, noteRequired: false } }),
       );
       expect(prisma.checklistScaleLevel.createMany).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -205,6 +205,34 @@ describe('ChecklistScaleService', () => {
       const service = new ChecklistScaleService(prisma, fakeAuditLog());
 
       await expect(service.update(scaleId, organizationId, { name: 'Renamed' }, actorId)).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('default explanation rule (PR 457)', () => {
+    const levels = [{ value: 1, label: 'Да', score: 1 }, { value: 2, label: 'Нет', score: 0 }];
+
+    it('stores the rule of a new scale: the answers that open the field and "required"', async () => {
+      const prisma = createPrisma();
+      await new ChecklistScaleService(prisma, fakeAuditLog()).create(organizationId, { name: 'Да/Нет', levels, noteRule: 'on_answers', noteAnswers: ['2'], noteRequired: true }, actorId);
+      expect(prisma.checklistScale.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ noteRule: 'on_answers', noteAnswers: ['2'], noteRequired: true }) }),
+      );
+    });
+
+    it('updating the levels drops an answer that is no longer a level, and a rule left without answers is switched off', async () => {
+      const prisma = createPrisma({ checklistScale: { findFirst: jest.fn(async () => baseScale({ noteRule: 'on_answers', noteAnswers: ['2'], noteRequired: true })) } });
+      await new ChecklistScaleService(prisma, fakeAuditLog()).update(scaleId, organizationId, { levels: [{ value: 1, label: 'A', score: 1 }, { value: 3, label: 'B', score: 0 }] }, actorId);
+      expect(prisma.checklistScale.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ noteRule: 'off', noteAnswers: Prisma.DbNull }) }),
+      );
+    });
+
+    it('a copy of a scale keeps its rule', async () => {
+      const prisma = createPrisma({ checklistScale: { findFirst: jest.fn(async () => baseScale({ noteRule: 'on_answers', noteAnswers: ['2'], noteRequired: true })) } });
+      await new ChecklistScaleService(prisma, fakeAuditLog()).copy(scaleId, organizationId, undefined, actorId);
+      expect(prisma.checklistScale.create).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ noteRule: 'on_answers', noteAnswers: ['2'], noteRequired: true }) }),
+      );
     });
   });
 

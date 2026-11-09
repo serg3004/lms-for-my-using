@@ -52,7 +52,7 @@ export function ScaleManagerDialog({ open, onClose, onChanged, onSaved, startCre
 
   async function saveEditor() {
     if (!editor || editor.readOnly) return;
-    const invalid = validateScaleDraft(editor.name, editor.levels);
+    const invalid = validateScaleDraft(editor.name, editor.levels, editor);
     if (invalid) {
       setError(draftErrorText(invalid, t));
       return;
@@ -60,7 +60,7 @@ export function ScaleManagerDialog({ open, onClose, onChanged, onSaved, startCre
     setError(null);
     setSaving(true);
     try {
-      const input = scaleDraftToInput(editor.name, editor.levels);
+      const input = scaleDraftToInput(editor.name, editor.levels, editor);
       const saved = editor.scaleId ? await updateChecklistScale(editor.scaleId, input) : await createChecklistScale(input);
       setEditor(null);
       await reload();

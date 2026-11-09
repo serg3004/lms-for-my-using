@@ -1673,6 +1673,11 @@ model ChecklistScale {
   /// At most one per organization, enforced by a partial unique index added via raw SQL in this
   /// column's migration (Prisma's schema DSL has no WHERE-clause index syntax).
   isDefault      Boolean               @default(false) @map("is_default")
+  /// PR 457: the scale's default explanation rule ('off' | 'on_answers'), copied into a criterion that picks the scale
+  /// while it has no rule of its own. noteAnswers = the level values (strings) that open the field.
+  noteRule       String                @default("off") @map("note_rule")
+  noteAnswers    Json?                 @map("note_answers")
+  noteRequired   Boolean               @default(false) @map("note_required")
   createdBy      String?               @map("created_by") @db.Uuid
   createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz
