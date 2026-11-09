@@ -44,7 +44,7 @@ function PhotoRow({ checklistId, photo, index, count, title, disabled, onCaption
       <div style={{ width: 56, aspectRatio: '1 / 1', flex: 'none', borderRadius: 8, overflow: 'hidden', background: 'var(--color-surface-muted, #eef2ff)' }}>
         <ChecklistPhotoImage checklistId={checklistId} photo={photo} alt={t('admin.checklists.photos.alt', 'Image {{n}} of the sheet “{{title}}”', { n, title })} />
       </div>
-      <div style={{ flex: '1 1 160px', minWidth: 0 }}><RichTextField value={caption} maxLength={CHECKLIST_PHOTO_CAPTION_MAX_LENGTH} disabled={disabled} singleLine compact
+      <div style={{ flex: '1 1 160px', minWidth: 0 }}><RichTextField value={caption} maxLength={CHECKLIST_PHOTO_CAPTION_MAX_LENGTH} disabled={disabled} singleLine compact defaultAlign="center"
         label={t('admin.checklists.photos.caption', 'Caption of image {{n}}', { n })}
         onChange={setCaption} onBlur={() => { if (caption.trim() !== photo.caption) onCaption(photo.id, caption.trim()); }} /></div>
       {!disabled && (

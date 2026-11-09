@@ -98,7 +98,7 @@ export function ChecklistPhotoStrip({ checklistId, photos, title, collapsible = 
           >
             <ChecklistPhotoImage checklistId={checklistId} photo={photo} alt={alt(index)} />
           </button>
-          {photo.caption && <p style={{ margin: '4px 0 0', fontSize: 12.5, overflowWrap: 'anywhere' }}><RichText value={photo.caption} /></p>}
+          {photo.caption && <RichText as="p" defaultAlign="center" value={photo.caption} style={{ margin: '4px 0 0', fontSize: 12.5 }} />}
         </li>
       ))}
     </ul>
@@ -133,7 +133,7 @@ export function ChecklistPhotoStrip({ checklistId, photos, title, collapsible = 
               <div style={{ minHeight: 120, minWidth: 0, display: 'grid', placeItems: 'center' }}>
                 <ChecklistPhotoImage checklistId={checklistId} photo={opened} alt={alt(openIndex)} fit="contain" maxHeight={phone ? `calc(100dvh - ${CHROME}px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))` : `calc(90vh - ${CHROME}px)`} />
               </div>
-              {opened.caption && <p style={{ margin: 0, textAlign: 'center', overflowWrap: 'anywhere', maxHeight: '5em', overflowY: 'auto' }}><RichText value={opened.caption} /></p>}
+              {opened.caption && <RichText as="p" defaultAlign="center" value={opened.caption} style={{ margin: 0, maxHeight: '5em', overflowY: 'auto' }} />}
             </div>
           )}
         </Dialog>

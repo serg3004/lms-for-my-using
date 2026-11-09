@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DESCRIPTION_COLORS, descriptionAlign, descriptionContrast, descriptionHtml, descriptionRuns, descriptionText, sanitizeDescription } from './checklist-description.js';
+import { DESCRIPTION_COLORS, descriptionAlign, descriptionContrast, descriptionExplicitAlign, descriptionHtml, descriptionRuns, descriptionText, sanitizeDescription } from './checklist-description.js';
 
 describe('checklist description markup', () => {
   it('keeps ordinary text, literal brackets, entities and blank lines lossless', () => {
@@ -65,5 +65,24 @@ describe('rich text wire contract keeps the alignment', () => {
     expect(schema.parse('<p style="text-align:center;position:fixed">Текст</p>')).toBe('<p style="text-align:center">Текст</p>');
     expect(schema.parse('<p style="text-align:left">Текст</p>')).toBe('Текст');
     expect(schema.safeParse('<p style="text-align:center">Слишком длинный текст</p>').success).toBe(false);
+  });
+});
+
+describe('image caption alignment (PR 455)', () => {
+  it('keeps an explicit left only for captions; every other field is unchanged', async () => {
+    const { richTextSchema } = await import('./rich-text.js');
+    const caption = richTextSchema(50, 0, { keepLeft: true });
+    expect(caption.parse('<p style="text-align:left">Подпись</p>')).toBe('<p style="text-align:left">Подпись</p>');
+    expect(caption.parse('<p style="text-align:center">Подпись</p>')).toBe('<p style="text-align:center">Подпись</p>');
+    expect(caption.parse('<p><strong>Подпись</strong></p>')).toBe('<p><strong>Подпись</strong></p>');
+    expect(caption.parse('Подпись')).toBe('Подпись');
+    expect(richTextSchema(50).parse('<p style="text-align:left">Подпись</p>')).toBe('Подпись');
+  });
+
+  it('tells "not chosen" from "left"', () => {
+    expect(descriptionExplicitAlign('<p>A</p>')).toBeNull();
+    expect(descriptionExplicitAlign('<p style="text-align:left">A</p>')).toBe('left');
+    expect(descriptionExplicitAlign('<p style="text-align:left">A</p>', false)).toBeNull();
+    expect(descriptionAlign('<p style="text-align:left">A</p>')).toBe('left');
   });
 });
