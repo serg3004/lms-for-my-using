@@ -6,7 +6,7 @@ import { DndContext, SortableContext, useFlatListDnd } from './ChecklistSortable
 import { useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import { ApiClientError } from '../../shared/apiClient.js';
+import { apiErrorText } from '../../shared/apiValidationMessage.js';
 import {
   deleteChecklistPhoto,
   reorderChecklistPhotos,
@@ -86,7 +86,7 @@ export function ChecklistPhotosField({ checklistId, title, photos: initial, disa
     setPhotos(next);
     onChange?.(next);
   }
-  const fail = (err: unknown, fallback: string) => setError(err instanceof ApiClientError ? err.message : fallback);
+  const fail = (err: unknown, fallback: string) => setError(apiErrorText(err, fallback));
 
   async function onFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];

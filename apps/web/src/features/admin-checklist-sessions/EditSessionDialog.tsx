@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { TFunction } from 'i18next';
 
-import { ApiClientError } from '../../shared/apiClient.js';
+import { apiErrorText } from '../../shared/apiValidationMessage.js';
 import { listChecklistSessionParticipants, updateChecklistSession } from '../../shared/api/checklistSessions.js';
 import type { ChecklistSessionParticipant, ChecklistSessionSummary } from '../../shared/api/types.js';
 import { InlineFeedback, Input, WizardDialog } from '../../shared/ui.js';
@@ -64,7 +64,7 @@ export function EditSessionDialog({ session, onClose, onSaved, t }: Props) {
       onSaved();
       onClose();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t('admin.checklists.sessions.edit.error', 'Unable to save the session.'));
+      setError(apiErrorText(err, t('admin.checklists.sessions.edit.error', 'Unable to save the session.')));
     } finally {
       setBusy(false);
     }

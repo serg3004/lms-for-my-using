@@ -3,7 +3,7 @@ import { RichDescription } from '../../shared/RichDescription.js';
 import { useEffect, useId, useState } from 'react';
 import type { TFunction } from 'i18next';
 
-import { ApiClientError } from '../../shared/apiClient.js';
+import { apiErrorText } from '../../shared/apiValidationMessage.js';
 import {
   createChecklistFromOrgTemplate,
   createChecklistFromTemplate,
@@ -53,7 +53,7 @@ export function ChecklistTemplateDialog({ open, locale, folderId, onClose, onCre
     try {
       onCreated(await createChecklistFromOrgTemplate(template.id, folderId));
     } catch (e) {
-      setError(e instanceof ApiClientError ? e.message : t('admin.checklists.templates.createError', 'Unable to create a checklist from the template.'));
+      setError(apiErrorText(e, t('admin.checklists.templates.createError', 'Unable to create a checklist from the template.')));
     } finally {
       setBusyKey(null);
     }
@@ -67,7 +67,7 @@ export function ChecklistTemplateDialog({ open, locale, folderId, onClose, onCre
       setOrgTemplates((rows) => rows.map((row) => (row.id === updated.id ? updated : row)));
       setRenaming(null);
     } catch (e) {
-      setError(e instanceof ApiClientError ? e.message : t('admin.checklists.templates.manageError', 'Unable to change the template.'));
+      setError(apiErrorText(e, t('admin.checklists.templates.manageError', 'Unable to change the template.')));
     }
   }
 
@@ -77,7 +77,7 @@ export function ChecklistTemplateDialog({ open, locale, folderId, onClose, onCre
       await deleteChecklistOrgTemplate(template.id);
       setOrgTemplates((rows) => rows.filter((row) => row.id !== template.id));
     } catch (e) {
-      setError(e instanceof ApiClientError ? e.message : t('admin.checklists.templates.manageError', 'Unable to change the template.'));
+      setError(apiErrorText(e, t('admin.checklists.templates.manageError', 'Unable to change the template.')));
     }
   }
 
@@ -87,7 +87,7 @@ export function ChecklistTemplateDialog({ open, locale, folderId, onClose, onCre
     try {
       onCreated(await createChecklistFromTemplate(template.key, locale, folderId));
     } catch (e) {
-      setError(e instanceof ApiClientError ? e.message : t('admin.checklists.templates.createError', 'Unable to create a checklist from the template.'));
+      setError(apiErrorText(e, t('admin.checklists.templates.createError', 'Unable to create a checklist from the template.')));
     } finally {
       setBusyKey(null);
     }

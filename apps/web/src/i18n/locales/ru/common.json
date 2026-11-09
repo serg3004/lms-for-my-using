@@ -3682,5 +3682,36 @@
     "reset": "Сбросить форматирование",
     "limit": "Не более {{count}} символов.",
     "weight": "Начертание"
+  },
+  "validation": {
+    "line": "Поле «{{field}}»: {{problem}}",
+    "more": "и ещё {{count}}",
+    "generic": "Проверьте заполненные поля и повторите попытку.",
+    "problem": {
+      "answerSetRequired": "выберите набор ответов",
+      "titleRequired": "укажите название",
+      "feedbackNeedsField": "добавьте хотя бы одно поле",
+      "duplicate": "повторяющийся идентификатор",
+      "required": "заполните поле",
+      "tooSmall": "значение слишком маленькое или короткое",
+      "tooBig": "значение слишком большое или длинное",
+      "invalid": "недопустимое значение"
+    },
+    "field": {
+      "title": "Название",
+      "description": "Описание",
+      "passThreshold": "Порог зачёта",
+      "scaleLevels": "Уровни шкалы",
+      "feedbackLayout": "Обратная связь",
+      "appearance": "Оформление",
+      "answerSetId": "Набор ответов",
+      "accessMode": "Доступ",
+      "preSessionVisibility": "Что видит сотрудник до сессии",
+      "name": "Название",
+      "label": "Название",
+      "points": "Баллы",
+      "weight": "Вес",
+      "text": "Текст"
+    }
   }
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { TFunction } from 'i18next';
 
-import { ApiClientError } from '../../shared/apiClient.js';
+import { apiErrorText } from '../../shared/apiValidationMessage.js';
 import { sendChecklistSessionMessage } from '../../shared/api/checklistSessions.js';
 import type { ChecklistSessionSummary } from '../../shared/api/types.js';
 import { InlineFeedback, Textarea, WizardDialog } from '../../shared/ui.js';
@@ -40,7 +40,7 @@ export function MessageParticipantDialog({ session, onClose, onSent, t }: Props)
       onSent();
       onClose();
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t('admin.checklists.sessions.message.error', 'Unable to send the message.'));
+      setError(apiErrorText(err, t('admin.checklists.sessions.message.error', 'Unable to send the message.')));
     } finally {
       setBusy(false);
     }

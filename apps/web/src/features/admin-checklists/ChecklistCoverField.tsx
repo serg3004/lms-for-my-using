@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ApiClientError } from '../../shared/apiClient.js';
+import { apiErrorText } from '../../shared/apiValidationMessage.js';
 import { deleteChecklistCover, uploadChecklistCover } from '../../shared/api/checklists.js';
 import { ChecklistCover } from '../../shared/ChecklistCover.js';
 import { CHECKLIST_PHOTO_ACCEPT, CHECKLIST_PHOTO_MAX_MB, checklistPhotoErrorMessage, checklistUploadErrorMessage, isRetryableUploadError, validateChecklistPhoto } from '../../shared/checklistPhoto.js';
@@ -57,7 +57,7 @@ export function ChecklistCoverField({ checklistId, title, coverUpdatedAt }: {
       await deleteChecklistCover(checklistId);
       setCurrent(null);
     } catch (err) {
-      setError(err instanceof ApiClientError ? err.message : t('admin.checklists.cover.removeError', 'Unable to remove the thumbnail.'));
+      setError(apiErrorText(err, t('admin.checklists.cover.removeError', 'Unable to remove the thumbnail.')));
     } finally {
       setBusy(false);
     }
