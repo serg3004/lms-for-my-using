@@ -41,6 +41,8 @@ CI runs unit tests (with coverage and script checks) and database tests (migrati
 
 Documentation consistency is invoked through `pnpm docs:consistency:test`; generated drift and docs-impact enforcement remain inside that chain.
 
+Docs-impact has one narrow exception: a pull request authored by `dependabot[bot]` whose changed files are only `package.json`, `pnpm-lock.yaml` or `.github/workflows/*.yml` is treated as `reviewed-no-change` (dependency update by Dependabot) without a `Docs-Impact:` line. Any other changed file, or any other author, still requires a manual documentation target or the explicit line. Security, audit, Trivy and test gates are not affected.
+
 ### Dependency audit semantics
 
 The blocking decision for npm advisories is made by `scripts/check-dependency-audit.mjs`, not by the exit code of `pnpm audit` (which is non-zero for any finding). HIGH/CRITICAL advisories fail the gate unless covered by an unexpired entry in `audit-exceptions.json`; an expired entry lapses and the advisory blocks again. Fixable advisories are handled with `pnpm.overrides` in the root `package.json`; advisories without a fix need a time-boxed exception. `audit-exceptions.json` applies only to `pnpm audit`, not to Trivy or other scanners.

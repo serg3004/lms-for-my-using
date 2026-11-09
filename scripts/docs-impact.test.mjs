@@ -7,6 +7,7 @@ import test from 'node:test';
 import {
   changedFilesBetween,
   evaluateImpact,
+  isDependencyUpdate,
   matchesGlob,
   parseReviewedNoChange,
   readImpactContext,
@@ -129,6 +130,7 @@ test('PR context reads base/head/body while push mode requires no PR body', () =
         baseSha: 'base',
         headSha: 'head',
         body: 'Docs-Impact: x',
+        author: undefined,
         event: { pull_request: { base: { sha: 'base' }, head: { sha: 'head' }, body: 'Docs-Impact: x' } },
       },
     );
@@ -154,6 +156,35 @@ test('changed file detection uses repository-local base/head git diff including 
     const changed = changedFilesBetween(base, head, { repoRoot });
     assert.ok(changed.includes('apps/api/src/modules/courses/courses.controller.ts'));
     assert.ok(changed.includes('src/internal.ts'));
+  } finally {
+    rmSync(repoRoot, { recursive: true, force: true });
+  }
+});
+
+test('Dependabot dependency updates satisfy docs-impact only for manifest, lock and workflow files', () => {
+  const { repoRoot, config } = fixture();
+  try {
+    write(repoRoot, '.github/workflows/ci.yml');
+    runGit(repoRoot, ['add', '.']);
+    runGit(repoRoot, ['commit', '-m', 'workflow']);
+    config.mappings.push({ id: 'wf', sourceGlobs: ['.github/workflows/*.yml'], generatedTargets: [], manualTargets: ['docs/contracts/API_CONTRACTS.md'], reason: 'workflows' });
+    const validated = validateOwnership(config, { repoRoot });
+    assert.equal(evaluateImpact(validated, ['.github/workflows/ci.yml'], '').failures.length, 1);
+    const bot = { author: 'dependabot[bot]' };
+    const deps = ['package.json', 'apps/web/package.json', 'pnpm-lock.yaml', '.github/workflows/ci.yml'];
+    assert.equal(isDependencyUpdate('dependabot[bot]', deps), true);
+    assert.equal(isDependencyUpdate('dependabot[bot]', []), false);
+    assert.equal(isDependencyUpdate('someone', deps), false);
+
+    const source = 'apps/api/src/modules/courses/courses.controller.ts';
+    const ok = evaluateImpact(validated, deps, '', bot);
+    assert.equal(ok.failures.length, 0);
+
+    const mixed = evaluateImpact(validated, [...deps, source], '', bot);
+    assert.equal(mixed.failures.length, 1);
+
+    const human = evaluateImpact(validated, [source], '', { author: 'someone' });
+    assert.equal(human.failures.length, 1);
   } finally {
     rmSync(repoRoot, { recursive: true, force: true });
   }
