@@ -156,9 +156,21 @@ export function parseReviewedNoChange(body) {
   return reason;
 }
 
-export function evaluateImpact(validatedOwnership, changedFiles, prBody = '') {
+export const DEPENDABOT_LOGIN = 'dependabot[bot]';
+const DEPENDENCY_UPDATE_FILES = [/^(?:.*\/)?package\.json$/, /^pnpm-lock\.yaml$/, /^\.github\/workflows\/[^/]+\.ya?ml$/];
+
+/**
+ * A version bump by Dependabot is not a change of gates, jobs or procedures, so it needs no «Docs-Impact» line.
+ * Only the PR author `dependabot[bot]` qualifies, and only when every changed file is a dependency manifest, the lockfile
+ * or a workflow file: anything else added to the branch makes the usual rule apply again.
+ */
+export function isDependencyUpdate(author, changedFiles) {
+  return author === DEPENDABOT_LOGIN && changedFiles.length > 0 && changedFiles.every((path) => DEPENDENCY_UPDATE_FILES.some((pattern) => pattern.test(path)));
+}
+
+export function evaluateImpact(validatedOwnership, changedFiles, prBody = '', { author } = {}) {
   const changed = new Set(changedFiles);
-  const reviewedNoChange = parseReviewedNoChange(prBody);
+  const reviewedNoChange = parseReviewedNoChange(prBody) ?? (isDependencyUpdate(author, changedFiles) ? 'dependency update by Dependabot' : null);
   const triggered = [];
   const failures = [];
 
@@ -195,7 +207,7 @@ export function readImpactContext({ eventPath = process.env.GITHUB_EVENT_PATH } 
   const baseSha = event.pull_request.base?.sha;
   const headSha = event.pull_request.head?.sha;
   if (!baseSha || !headSha) throw new Error('pull_request event is missing base/head SHA');
-  return { mode: 'pull_request', baseSha, headSha, body: event.pull_request.body ?? '', event };
+  return { mode: 'pull_request', baseSha, headSha, body: event.pull_request.body ?? '', author: event.pull_request.user?.login, event };
 }
 
 export function formatFailures(failures) {
@@ -219,7 +231,7 @@ export function main({ repoRoot = defaultRepoRoot, ownershipPath = resolve(repoR
   }
 
   const changedFiles = changedFilesBetween(context.baseSha, context.headSha, { repoRoot });
-  const result = evaluateImpact(validatedOwnership, changedFiles, context.body);
+  const result = evaluateImpact(validatedOwnership, changedFiles, context.body, { author: context.author });
   if (result.failures.length > 0) {
     throw new Error(`documentation impact review is required\n${formatFailures(result.failures)}`);
   }
