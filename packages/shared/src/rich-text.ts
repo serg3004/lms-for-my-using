@@ -3,7 +3,7 @@ import { DESCRIPTION_MARKUP_LIMIT, descriptionText, sanitizeDescription } from '
 
 export const plainText = descriptionText;
 /** Shared wire contract: clean first, count visible characters, bound markup independently. */
-export const richTextSchema = (limit: number, minimum = 0) => z.string().trim()
-  .max(DESCRIPTION_MARKUP_LIMIT).transform(sanitizeDescription)
+export const richTextSchema = (limit: number, minimum = 0, options: { keepLeft?: boolean } = {}) => z.string().trim()
+  .max(DESCRIPTION_MARKUP_LIMIT).transform((value) => sanitizeDescription(value, options))
   .refine((value) => value.length <= DESCRIPTION_MARKUP_LIMIT && plainText(value).trim().length >= minimum && plainText(value).length <= limit,
     `Text must contain ${minimum}–${limit} visible characters`);

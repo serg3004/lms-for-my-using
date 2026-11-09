@@ -103,4 +103,16 @@ describe('ChecklistPhotoStrip (PR 421)', () => {
     await act(async () => { retry.click(); });
     expect(container.querySelector('ul img')).not.toBeNull();
   });
+  it('shows the caption as it was aligned in the builder: centered by default, an explicit left and right kept (PR 455)', async () => {
+    await render([
+      { id: 'n', caption: 'Без выбора', order: 0, updatedAt: '2026-11-05T00:00:00.000Z' },
+      { id: 'l', caption: '<p style="text-align:left">Слева</p>', order: 1, updatedAt: '2026-11-05T00:00:00.000Z' },
+      { id: 'r', caption: '<p style="text-align:right">Справа</p>', order: 2, updatedAt: '2026-11-05T00:00:00.000Z' },
+    ]);
+    const align = (text: string) => [...container.querySelectorAll('li p')].find((node) => node.textContent === text)?.getAttribute('style') ?? '';
+    expect(align('Без выбора')).toContain('text-align: center');
+    expect(align('Слева')).toContain('text-align: left');
+    expect(align('Справа')).toContain('text-align: right');
+    expect(container.querySelectorAll('li p p')).toHaveLength(0);
+  });
 });

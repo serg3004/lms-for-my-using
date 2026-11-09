@@ -225,4 +225,14 @@ test.describe('Extra sheet photos (PR 421)', () => {
       expect(await large.evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth + 1)).toBe(true);
     });
   }
+  test('a caption is centered until another alignment is chosen; "left" is stored explicitly (PR 455)', async ({ page }) => {
+    const server = await openEditor(page, 1);
+    const field = page.getByRole('textbox', { name: /^Подпись к изображению 1/ });
+    await expect(field.locator('p').first()).toHaveCSS('text-align', 'center');
+    await field.click();
+    await page.keyboard.press('ControlOrMeta+Shift+L');
+    await expect(field.locator('p').first()).not.toHaveCSS('text-align', 'center');
+    await field.blur();
+    await expect.poll(() => server.calls.find((call) => call.method === 'PATCH')?.body).toEqual({ caption: '<p style="text-align:left">Схема 1</p>' });
+  });
 });

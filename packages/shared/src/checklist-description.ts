@@ -35,14 +35,23 @@ export const blockAlign = (value: unknown): (typeof BLOCK_ALIGNS)[number] | unde
 
 /** One alignment per field: the first paragraph decides. Left is the default and is never written, old texts stay as they are. */
 export function descriptionAlign(value: string): DescriptionAlign {
-  if (!/<p\b/i.test(value)) return 'left';
-  let found: DescriptionAlign = 'left';
+  return descriptionExplicitAlign(value, false) ?? 'left';
+}
+
+/**
+ * PR 455: the alignment the author chose, or null when none was chosen. Image captions are centered by default, so for them
+ * "left" has to be stored (`keepLeft`); everywhere else left is the default and is never written.
+ */
+export function descriptionExplicitAlign(value: string, keepLeft = true): DescriptionAlign | null {
+  if (!/<p\b/i.test(value)) return null;
+  let found: DescriptionAlign | null = null;
+  const pattern = keepLeft ? /(?:^|;)\s*text-align\s*:\s*(left|center|right|justify)\s*(?:;|$)/i : /(?:^|;)\s*text-align\s*:\s*(center|right|justify)\s*(?:;|$)/i;
   function visit(nodes: HtmlNode[], depth: number): boolean {
     if (depth > 32) return true;
     for (const node of nodes) {
       if (!('name' in node) || !('attribs' in node) || !('children' in node) || blocked.has(node.name)) continue;
       if (node.name === 'p') {
-        const match = /(?:^|;)\s*text-align\s*:\s*(center|right|justify)\s*(?:;|$)/i.exec(node.attribs.style ?? '');
+        const match = pattern.exec(node.attribs.style ?? '');
         if (match) found = match[1]!.toLowerCase() as DescriptionAlign;
         return true;
       }
@@ -53,7 +62,9 @@ export function descriptionAlign(value: string): DescriptionAlign {
   visit(parseDocument(value, { decodeEntities: true }).children, 0);
   return found;
 }
-const wrapAlign = (html: string, align: DescriptionAlign) => align === 'left' ? `<p>${html}</p>` : `<p style="text-align:${align}">${html}</p>`;
+const wrapAlign = (html: string, align: DescriptionAlign, keepLeft = false) => align === 'left' && !keepLeft ? `<p>${html}</p>` : `<p style="text-align:${align}">${html}</p>`;
+/** The alignment written for a field: with `keepLeft` an explicit left survives, and "center" stays unwritten only through `centerDefault`. */
+export type AlignOptions = { keepLeft?: boolean };
 
 function readHtml(value: string): DescriptionRun[] {
   const runs: DescriptionRun[] = [];
@@ -86,11 +97,12 @@ function readHtml(value: string): DescriptionRun[] {
 }
 
 /** No URLs, arbitrary attributes, CSS functions or foreign namespaces survive this serializer. */
-export function sanitizeDescription(value: string): string {
+export function sanitizeDescription(value: string, options: AlignOptions = {}): string {
   if (!/<\/?[a-z][^<>]*>/i.test(value)) return value;
   const runs = readHtml(value);
-  const plain = runs.map((run) => run.text).join(''), align = descriptionAlign(value);
-  if (align === 'left' && !runs.some(({ bold, italic, underline, uppercase, size, color }) => bold || italic || underline || uppercase || size || color) && !/[<>]/.test(plain)) return plain;
+  const keepLeft = options.keepLeft === true;
+  const plain = runs.map((run) => run.text).join(''), align = (keepLeft ? descriptionExplicitAlign(value) : null) ?? descriptionAlign(value);
+  if (align === 'left' && !(keepLeft && descriptionExplicitAlign(value) === 'left') && !runs.some(({ bold, italic, underline, uppercase, size, color }) => bold || italic || underline || uppercase || size || color) && !/[<>]/.test(plain)) return plain;
   const html = runs.map((run) => {
     let content = escape(run.text).replaceAll('\n', '<br>');
     if (run.bold) content = `<strong>${content}</strong>`;
@@ -99,14 +111,14 @@ export function sanitizeDescription(value: string): string {
     const style = [run.size ? `font-size:${run.size}px` : '', run.color ? `color:${run.color}` : '', run.uppercase ? 'text-transform:uppercase' : ''].filter(Boolean).join(';');
     return style ? `<span style="${style}">${content}</span>` : content;
   }).join('');
-  return html ? wrapAlign(html, align) : '';
+  return html ? wrapAlign(html, align, keepLeft && descriptionExplicitAlign(value) === 'left') : '';
 }
 
 export function descriptionRuns(value: string): DescriptionRun[] {
   return isRichDescription(value) ? readHtml(value) : [{ text: value }];
 }
 export const descriptionText = (value: string) => descriptionRuns(value).map((run) => run.uppercase ? run.text.toUpperCase() : run.text).join('');
-export function descriptionHtml(value: string, options: { align?: boolean } = {}) {
+export function descriptionHtml(value: string, options: { align?: boolean; keepLeft?: boolean } = {}) {
   return isRichDescription(value) ? wrapAlign(`${descriptionRuns(value).map((run) => {
     let text = escape(run.text).replaceAll('\n', '<br>');
     if (run.bold) text = `<strong>${text}</strong>`;
@@ -114,7 +126,7 @@ export function descriptionHtml(value: string, options: { align?: boolean } = {}
     if (run.underline) text = `<u>${text}</u>`;
     const style = [run.size ? `font-size:${run.size}px` : '', run.color ? `color:${run.color}` : '', run.uppercase ? 'text-transform:uppercase' : ''].filter(Boolean).join(';');
     return style ? `<span style="${style}">${text}</span>` : text;
-  }).join('')}`, options.align === false ? 'left' : descriptionAlign(value)) : `<p>${escape(value).replaceAll('\n', '<br>')}</p>`;
+  }).join('')}`, options.align === false ? 'left' : (options.keepLeft ? descriptionExplicitAlign(value) : null) ?? descriptionAlign(value), options.keepLeft === true && options.align !== false && descriptionExplicitAlign(value) === 'left') : `<p>${escape(value).replaceAll('\n', '<br>')}</p>`;
 }
 export function descriptionContrast(color: string) {
   if (!/^#[\da-f]{6}$/i.test(color)) return 0;

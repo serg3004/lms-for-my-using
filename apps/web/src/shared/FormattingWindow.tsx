@@ -15,7 +15,9 @@ export const StyleMark = Mark.create({
   renderHTML: ({ HTMLAttributes }) => ['span', mergeAttributes({ style: [HTMLAttributes.color ? `color:${HTMLAttributes.color}` : '', HTMLAttributes.size ? `font-size:${HTMLAttributes.size}px` : '', HTMLAttributes.uppercase ? 'text-transform:uppercase' : ''].filter(Boolean).join(';') }), 0],
 });
 
-const alignOf = (value: unknown): DescriptionAlign => DESCRIPTION_ALIGNS.find((align) => align === value) ?? 'left';
+const alignOf = (value: unknown, fallback: DescriptionAlign = 'left'): DescriptionAlign => DESCRIPTION_ALIGNS.find((align) => align === value) ?? fallback;
+/** PR 455: the alignment of a text without a chosen one (image captions: center); every other field: left. */
+export const fieldDefaultAlign = (editor: Editor | null): DescriptionAlign => alignOf(editor?.extensionManager.extensions.find((extension) => extension.name === 'descriptionAlign')?.options.defaultAlign);
 const hasAlign = (editor: Editor | null) => !!editor?.schema.nodes.paragraph?.spec.attrs?.textAlign;
 
 /** One alignment per field (PR 438): stored as an attribute of every paragraph, serialised from the first one. */
@@ -26,13 +28,17 @@ function setFieldAlign(editor: Editor, align: DescriptionAlign) {
   });
 }
 
-export const AlignExtension = Extension.create({
+export const AlignExtension = Extension.create<{ defaultAlign: DescriptionAlign }>({
   name: 'descriptionAlign',
-  addGlobalAttributes: () => [{ types: ['paragraph'], attributes: { textAlign: {
-    default: 'left',
-    parseHTML: (element) => alignOf(element.style.textAlign),
-    renderHTML: (attributes) => attributes.textAlign && attributes.textAlign !== 'left' ? { style: `text-align:${attributes.textAlign}` } : {},
-  } } }],
+  addOptions: () => ({ defaultAlign: 'left' }),
+  addGlobalAttributes() {
+    const fallback = this.options.defaultAlign;
+    return [{ types: ['paragraph'], attributes: { textAlign: {
+      default: fallback,
+      parseHTML: (element) => alignOf(element.style.textAlign, fallback),
+      renderHTML: (attributes) => attributes.textAlign && attributes.textAlign !== 'left' ? { style: `text-align:${attributes.textAlign}` } : {},
+    } } }];
+  },
   addKeyboardShortcuts() {
     return { 'Mod-Shift-l': () => setFieldAlign(this.editor, 'left'), 'Mod-Shift-e': () => setFieldAlign(this.editor, 'center'), 'Mod-Shift-r': () => setFieldAlign(this.editor, 'right'), 'Mod-Shift-j': () => setFieldAlign(this.editor, 'justify') };
   },
@@ -133,8 +139,8 @@ export function useFormattingWindow(disabled: boolean) {
       <div role="group" aria-label={t('richDescription.size')} style={row}><span style={rowLabel}>{t('richDescription.size')}</span>{DESCRIPTION_SIZES.map((size, index) => <button key={size} type="button" className="admin-btn admin-btn--secondary" aria-pressed={Number(editor?.getAttributes('descriptionStyle').size ?? 16) === size} aria-label={`${t('richDescription.size')}: ${t(`richDescription.size${index}`)}`} onClick={() => style({ size })} style={{ ...tool, fontSize: [12, 14, 15, 17][index], fontWeight: index === 3 ? 700 : undefined }}>{t(`richDescription.size${index}`)}</button>)}</div>
       <div role="group" aria-label={t('richDescription.color')} style={row}><span style={rowLabel}>{t('richDescription.color')}</span>{DESCRIPTION_COLORS.map((value) => <button key={value} type="button" aria-label={`${t('richDescription.color')} ${value}`} aria-pressed={color.toUpperCase() === value} onClick={() => { setColor(value); style({ color: value }); }} style={{ width: 28, height: 28, minHeight: 28, borderRadius: '50%', padding: 0, background: value, border: color.toUpperCase() === value ? '2px solid var(--color-primary, #4f46e5)' : '2px solid var(--color-border)', cursor: 'pointer', flex: '0 0 28px' }} />)}<input aria-label={t('richDescription.customColor')} title={t('richDescription.customColor')} type="color" value={color} onChange={(event) => { setColor(event.target.value); style({ color: event.target.value.toUpperCase() }); }} style={{ width: 32, height: 32, border: 0, padding: 0, background: 'none', cursor: 'pointer' }} /></div>
       {descriptionContrast(color) < 4.5 && <p role="status" style={{ fontSize: 13, margin: 0 }}>{t('richDescription.lowContrast')}</p>}
-      {hasAlign(editor) && <div role="group" aria-label={t('richDescription.align')} style={row}><span style={rowLabel}>{t('richDescription.align')}</span>{DESCRIPTION_ALIGNS.map((value) => <button key={value} type="button" className="admin-btn admin-btn--secondary" aria-label={t(`richDescription.align_${value}`)} title={t(`richDescription.align_${value}`)} aria-pressed={alignOf(editor?.state.doc.firstChild?.attrs.textAlign) === value} onClick={() => { if (editor) { editor.chain().setTextSelection({ from: popup.from, to: popup.to }).run(); setFieldAlign(editor, value); } }} style={{ ...tool, minWidth: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><AlignIcon align={value} /></button>)}</div>}
-      <div style={row}><button type="button" className="admin-btn admin-btn--secondary" style={tool} onClick={() => { if (popup && editor) { editor.chain().setTextSelection({ from: popup.from, to: popup.to }).unsetAllMarks().run(); if (hasAlign(editor)) setFieldAlign(editor, 'left'); } }}>{t('richDescription.reset')}</button></div>
+      {hasAlign(editor) && <div role="group" aria-label={t('richDescription.align')} style={row}><span style={rowLabel}>{t('richDescription.align')}</span>{DESCRIPTION_ALIGNS.map((value) => <button key={value} type="button" className="admin-btn admin-btn--secondary" aria-label={t(`richDescription.align_${value}`)} title={t(`richDescription.align_${value}`)} aria-pressed={alignOf(editor?.state.doc.firstChild?.attrs.textAlign, fieldDefaultAlign(editor)) === value} onClick={() => { if (editor) { editor.chain().setTextSelection({ from: popup.from, to: popup.to }).run(); setFieldAlign(editor, value); } }} style={{ ...tool, minWidth: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><AlignIcon align={value} /></button>)}</div>}
+      <div style={row}><button type="button" className="admin-btn admin-btn--secondary" style={tool} onClick={() => { if (popup && editor) { editor.chain().setTextSelection({ from: popup.from, to: popup.to }).unsetAllMarks().run(); if (hasAlign(editor)) setFieldAlign(editor, fieldDefaultAlign(editor)); } }}>{t('richDescription.reset')}</button></div>
     </div>;
   return { editorRef, handleContextMenu, handleKeyDown, touchProps, windowNode };
 }
