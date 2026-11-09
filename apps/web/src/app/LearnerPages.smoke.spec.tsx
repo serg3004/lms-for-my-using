@@ -261,7 +261,7 @@ describe('learner page smoke rendering', () => {
           checklistId: 'checklist-1',
           userId: 'user-1',
           assignedBy: null,
-          status: 'completed',
+          status: 'in_progress',
           totalScore: 25,
           maxScore: 30,
           percentage: 83,
@@ -298,6 +298,9 @@ describe('learner page smoke rendering', () => {
     expect(html).toContain('Приёмка нового стажёра');
     expect(html).toContain('Все мои листы');
     expect(html).toContain('По назначению');
+    // PR 450: the unfinished attempt is in «Assigned»; «Completed» is empty
+    expect(html).toContain('Назначенные (1)');
+    expect(html).toContain('Завершённые (0)');
   });
 
   it('PR 328: shows the plain empty state and no list heading when nothing is available', () => {
