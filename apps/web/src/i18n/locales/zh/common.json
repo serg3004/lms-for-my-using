@@ -1,7 +1,5 @@
 {
   "checklistPreview": {
-    "employee": "姓名示例",
-    "department": "部门示例",
     "incomplete": "未完成",
     "scoreHint": "百分比按已回答的标准计算。跳过的标准不计入。",
     "yes": "是",

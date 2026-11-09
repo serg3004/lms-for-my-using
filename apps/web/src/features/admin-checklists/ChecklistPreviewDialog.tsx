@@ -113,7 +113,6 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
             {/* PR 445: the pictures of the sheet come first, above its title (the close button stays at the top). */}
             {props.showSheetPhotos !== false && props.checklistId && props.photos && <ChecklistPhotoStrip checklistId={props.checklistId} photos={props.photos} title={title} />}
             <h2 id={titleId} style={{ margin: 0 }}><RichText value={title} /></h2>
-            <p>{t('checklistPreview.employee', 'Sample employee')} / {t('checklistPreview.department', 'Sample department')}</p>
           </div>
           <button ref={closeButton} className="admin-dialog__close" style={{ flex: 'none', minWidth: 44, minHeight: 44 }} type="button" onClick={onClose} aria-label={t('admin.checklists.close', 'Close')}>×</button>
         </header>

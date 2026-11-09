@@ -9,7 +9,9 @@ for (const width of [375, 1440]) {
     const requests: string[] = [];
     page.on('request', (request) => requests.push(`${request.method()} ${request.url()}`));
     const dialog = await openSheetPreview(page);
-    await expect(dialog.getByText('Имя Фамилия / Подразделение')).toBeVisible();
+    // PR 456: no stub line with an employee name and a department under the title.
+    await expect(dialog.getByText('Имя Фамилия')).toHaveCount(0);
+    await expect(dialog.getByText('Подразделение')).toHaveCount(0);
     await expect(dialog.getByRole('heading', { name: '1 Подготовка рабочего места' })).toBeVisible();
     await expect(dialog.getByRole('heading', { name: '2 Порядок и безопасность' })).toHaveCount(1);
     await expect(dialog.locator('[role=textbox]')).toHaveCount(4);
@@ -82,16 +84,15 @@ test('an empty sheet cannot open a preview', async ({ page }) => {
   await expect(page.locator('#checklist-needs-items')).toBeVisible();
 });
 
-for (const [locale, preview, close, employee] of [
-  ['en', 'Preview', 'Close', 'Sample employee'],
-  ['kk', 'Алдын ала қарау', 'Жабу', 'Аты Тегі'],
-  ['zh', '预览', '关闭', '姓名示例'],
+for (const [locale, preview, close] of [
+  ['en', 'Preview', 'Close'],
+  ['kk', 'Алдын ала қарау', 'Жабу'],
+  ['zh', '预览', '关闭'],
 ]) {
   test(`preview controls are localized in ${locale}`, async ({ page }) => {
     await openPreviewBuilder(page, previewSheet(), locale);
     await page.getByRole('button', { name: preview, exact: true }).click();
     const dialog = page.getByRole('dialog', { name: '5S — рабочее место', exact: true });
-    await expect(dialog.getByText(new RegExp(employee))).toBeVisible();
     await expect(dialog.getByRole('button', { name: close, exact: true })).toHaveCount(2);
   });
 }
