@@ -2934,7 +2934,12 @@
     },
     "all": {
       "title": "我的全部清单",
-      "hint": "已分配的清单和自由清单在同一列表中。"
+      "hint": "已分配的清单和自由清单在同一列表中。",
+      "tabs": { "assigned": "已分配", "completed": "已完成", "label": "我的清单" },
+      "search": { "label": "搜索清单", "placeholder": "搜索…" },
+      "notFound": "未找到结果",
+      "emptyAssigned": "没有已分配的清单",
+      "emptyCompleted": "没有已完成的清单"
     },
     "finishCheck": "完成检查",
     "sendForReview": "提交审核",
