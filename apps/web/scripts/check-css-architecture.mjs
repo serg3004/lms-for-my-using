@@ -61,10 +61,10 @@ if (!/select option\s*\{[^}]*font:[^;]*system-ui/.test(globalCss)) {
 }
 
 // PR 452: `overflow-x: hidden` on both `html` and `body` made the body a scroll container and broke every `position: sticky`
-// (the learner sidebar scrolled away). Horizontal clipping stays on `html` only.
+// (the learner sidebar scrolled away). `body` clips with `overflow-x: clip` (after a `hidden` fallback) and never sets overflow-y.
 const bodyRule = /(?:^|\n)body\s*\{([^}]*)\}/.exec(globalCss)?.[1] ?? '';
-if (/overflow(-x|-y)?\s*:/.test(bodyRule)) {
-  throw new Error('global.css: `body` must not set overflow (it breaks position: sticky); clip horizontally on `html` only.');
+if (/overflow-y\s*:/.test(bodyRule) || (/overflow-x\s*:\s*hidden/.test(bodyRule) && !/overflow-x\s*:\s*clip/.test(bodyRule))) {
+  throw new Error('global.css: `body` may only clip with `overflow-x: clip` (a bare `overflow-x: hidden` breaks position: sticky).');
 }
 
 console.log(`CSS architecture: ${files.length} layered stylesheets, ${customPropertyDefinitions.size} unique tokens.`);
