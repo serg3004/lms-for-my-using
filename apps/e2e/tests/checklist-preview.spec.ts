@@ -41,7 +41,8 @@ for (const width of [375, 1440]) {
     const close = dialog.getByRole('button', { name: 'Закрыть', exact: true }).last();
     await close.focus();
     await page.keyboard.press('Tab');
-    await expect(dialog.getByRole('button', { name: 'Закрыть', exact: true }).first()).toBeFocused();
+    // PR 458: the first button is the device switch on a wide screen, the close cross on a narrow one.
+    await expect(dialog.locator('button').first()).toBeFocused();
     await page.keyboard.press('Shift+Tab');
     await expect(close).toBeFocused();
     await dialog.getByRole('button', { name: 'Сбросить', exact: true }).click();
@@ -205,4 +206,30 @@ test('PR 447: preview of a sheet without groups shows no «Без группы»
   await page.getByRole('button', { name: 'Предпросмотр', exact: true }).click();
   dialog = page.getByRole('dialog', { name: grouped.title, exact: true });
   await expect(dialog.getByRole('heading', { name: /Без группы/ })).toHaveCount(1);
+});
+
+test('PR 458: the preview switches between computer, tablet and phone frames without horizontal scroll', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript(() => window.sessionStorage.removeItem('lms.checklistPreviewDevice'));
+  await openPreviewBuilder(page);
+  const dialog = await openSheetPreview(page);
+  const frame = dialog.getByTestId('preview-frame');
+  const width = async () => Math.round((await frame.boundingBox())!.width);
+  const place = dialog.getByLabel('Рабочее место');
+  expect(await width()).toBe(800);
+  await dialog.getByRole('button', { name: 'Телефон', exact: true }).click();
+  await expect(dialog.getByTestId('preview-device-width')).toHaveText('390 px');
+  expect(await width()).toBe(390);
+  // A phone frame: touch-sized fields and one column, nothing wider than the frame.
+  expect((await place.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  expect((await place.boundingBox())!.width).toBeLessThanOrEqual(390);
+  await expect.poll(() => frame.evaluate((node) => node.scrollWidth <= node.clientWidth)).toBe(true);
+  await dialog.getByRole('button', { name: 'Планшет', exact: true }).click();
+  expect(await width()).toBe(768);
+  await dialog.getByRole('button', { name: 'Компьютер', exact: true }).click();
+  expect(await width()).toBe(800);
+  await page.setViewportSize({ width: 600, height: 900 });
+  await expect(dialog.getByRole('button', { name: 'Планшет', exact: true })).toBeDisabled();
+  await page.setViewportSize({ width: 375, height: 900 });
+  await expect(dialog.getByRole('group', { name: 'Устройство предпросмотра' })).toHaveCount(0);
 });

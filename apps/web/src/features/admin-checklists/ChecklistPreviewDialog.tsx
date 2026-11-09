@@ -17,6 +17,7 @@ import { Button } from '../../shared/ui.js';
 import { CriterionOptions, yesNoOptions, type CriterionOption } from '../../shared/CriterionOptions.js';
 import { AppearanceBlock, itemCardStyle } from '../../shared/AppearanceBlock.js';
 import type { Appearance } from '@lms/shared/checklist-appearance';
+import { PreviewDeviceSwitch, usePreviewDevice } from '../../shared/PreviewDeviceSwitch.js';
 import { computePreviewResult, groupItems, previewUnfinishedItems, type PreviewAnswer } from './domain.js';
 
 type PreviewProps = {
@@ -40,6 +41,8 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
   const { title, description, items, groups, showNumbering = true, contextFields, scoringMode, scaleLevels, passThreshold, feedbackEnabled, feedbackRequired, allowSkipAll, cameraOnly, onClose, t } = props;
   const dialog = useRef<HTMLDialogElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
+  // PR 458: the sheet is shown in a frame of the width of the chosen device.
+  const { device, choose, fits, canSwitch } = usePreviewDevice();
   const titleId = useId();
   const hintId = useId();
   const [answers, setAnswers] = useState<Record<string, PreviewAnswer>>({});
@@ -105,6 +108,8 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
         if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
         else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
       }}>
+      {canSwitch && <PreviewDeviceSwitch device={device} fits={fits} onChoose={choose} t={t} />}
+      <div className="admin-preview-frame" data-device={device} data-testid="preview-frame">
       <div className="admin-preview-panel">
         <AppearanceBlock appearance={props.appearance} kind="header" style={{ marginBottom: 8 }}>
         <header className="admin-preview-panel__header" style={{ marginBottom: 4 }}>
@@ -176,6 +181,7 @@ export function ChecklistPreviewDialog(props: PreviewProps) {
             <Button type="button" variant="secondary" onClick={onClose}>{t('admin.checklists.close', 'Close')}</Button>
           </div>
         </footer>
+      </div>
       </div>
     </dialog>
   );
