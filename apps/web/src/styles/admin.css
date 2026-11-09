@@ -2099,13 +2099,18 @@
   overflow-y: auto;
 }
 
+/* PR 458: the frame is the width of the chosen device; the touch sizes of a tablet/phone follow the choice, not the window. */
+.admin-preview-frame { container: sheet / inline-size; width: 100%; max-width: 800px; margin: 0 auto; }
+.admin-preview-frame[data-device='tablet'] { max-width: 768px; }
+.admin-preview-frame[data-device='phone'] { max-width: 390px; }
+.admin-preview-frame:not([data-device='desktop']) > .admin-preview-panel { box-shadow: 0 0 0 1px var(--color-border); }
+.admin-preview-frame:not([data-device='desktop']) :is(button, input, select, summary, textarea) { min-height: 44px; }
+.admin-preview-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; max-width: 800px; margin: 0 auto 12px; }
+
 .admin-preview-panel {
   background: var(--color-surface);
   border-radius: var(--radius-lg);
-  padding: clamp(12px, 3vw, 24px);
-  width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
+  padding: clamp(12px, 3cqw, 24px);
   overflow-wrap: anywhere;
 }
 

@@ -14,7 +14,9 @@ const assetDirectory = new URL('../dist/assets/', import.meta.url);
 // department-tree rules; the new CSS is the two-column layout, the breadcrumbs and the narrow-screen picker.
 // Bumped 92 KiB -> 94 KiB for the checklist criteria grid and drag handles (PR 402/403): the budget had ~280 B left; the shared
 // header/row grid with its card layout needed ~700 B.
-const maximumCssBytes = 94 * 1024;
+// Bumped 94 KiB -> 95 KiB for the preview device frame (PR 458): the budget had 13 B left; the frame, the toolbar and the touch sizes
+// of a tablet/phone needed ~480 B. The two panel rules (width, margin) moved to the frame instead of being duplicated.
+const maximumCssBytes = 95 * 1024;
 
 const cssAssets = (await readdir(assetDirectory)).filter((file) => file.endsWith('.css'));
 
