@@ -540,6 +540,10 @@ export type ChecklistScaleSummary = {
   levels: ChecklistScaleLevelSummary[];
   /** PR 344: the organization's protected Yes/No scale -- cannot be edited, archived or deleted (copy it instead). */
   isDefault: boolean;
+  /** PR 457: the scale's default explanation rule (answers are level values); absent in older responses. */
+  noteRule?: 'off' | 'on_answers';
+  noteAnswers?: string[] | null;
+  noteRequired?: boolean;
   /** PR 343: used by an assigned checklist (PR 369: still editable; sessions already started keep their own copy). */
   inUse: boolean;
 };

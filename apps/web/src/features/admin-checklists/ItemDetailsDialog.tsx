@@ -4,7 +4,9 @@ import { useId, useState } from 'react';
 import type { TFunction } from 'i18next';
 
 import type { ChecklistItemSummary } from '../../shared/api/types.js';
+import { ConfirmDialog } from '../../shared/adminPage.js';
 import { Button, Dialog, Select } from '../../shared/ui.js';
+import { apiErrorText } from '../../shared/apiValidationMessage.js';
 import { NOTE_ANSWER_UNCHECKED } from '../../app/checklistItemNote.js';
 import { CHECK_BOX, CHECK_ROW } from '../../shared/checkField.js';
 
@@ -20,12 +22,16 @@ export function noteAnswerOptions(levels: { value: number; label: string }[] | n
 }
 
 /** PR 415: the two independent switches of a criterion: its description (a hint) and the explanation rule. */
-export function ItemDetailsDialog({ item, options, open, onClose, onSave, t }: {
+export function ItemDetailsDialog({ item, options, open, onClose, onSave, applyCount = 0, onApplyAll, t }: {
   item: ChecklistItemSummary;
   options: NoteAnswerOption[];
   open: boolean;
   onClose: () => void;
   onSave: (patch: Patch) => Promise<void>;
+  /** PR 457: how many other criteria of the sheet use the same scale (the button "Apply to all" is offered when there are any). */
+  applyCount?: number;
+  /** Saves this criterion, then copies its explanation rule to the others; resolves with how many were changed. */
+  onApplyAll?: (patch: Patch) => Promise<number>;
   t: TFunction;
 }) {
   const titleId = useId();
@@ -36,22 +42,41 @@ export function ItemDetailsDialog({ item, options, open, onClose, onSave, t }: {
   const [required, setRequired] = useState(item.noteRequired === true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmApply, setConfirmApply] = useState(false);
+  const [applied, setApplied] = useState<number | null>(null);
   const needAnswer = rule === 'on_answers' && answers.length === 0;
+
+  const buildPatch = (): Patch => ({
+    descriptionEnabled,
+    description: description.trim() === '' ? null : description.trim(),
+    noteRule: rule,
+    noteAnswers: rule === 'on_answers' ? answers : null,
+    noteRequired: rule === 'off' ? false : required,
+  });
 
   async function save() {
     setSaving(true);
     setError(null);
     try {
-      await onSave({
-        descriptionEnabled,
-        description: description.trim() === '' ? null : description.trim(),
-        noteRule: rule,
-        noteAnswers: rule === 'on_answers' ? answers : null,
-        noteRequired: rule === 'off' ? false : required,
-      });
+      await onSave(buildPatch());
       onClose();
     } catch (cause) {
       setError(cause instanceof Error && cause.message ? cause.message : t('admin.checklists.itemDetails.saveFailed', 'Unable to save.'));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function applyAll() {
+    if (!onApplyAll) return;
+    setConfirmApply(false);
+    setSaving(true);
+    setError(null);
+    setApplied(null);
+    try {
+      setApplied(await onApplyAll(buildPatch()));
+    } catch (cause) {
+      setError(apiErrorText(cause, t('admin.checklists.itemDetails.applyFailed', 'Unable to apply the rule to the other criteria.')));
     } finally {
       setSaving(false);
     }
@@ -101,6 +126,23 @@ export function ItemDetailsDialog({ item, options, open, onClose, onSave, t }: {
           {t('admin.checklists.itemDetails.required', 'The explanation is required (the answer is not accepted without it)')}
         </label>
       )}
+      {onApplyAll && applyCount > 0 && (
+        <div style={{ margin: '12px 0' }}>
+          <Button disabled={saving || needAnswer} onClick={() => setConfirmApply(true)} type="button" variant="secondary">
+            {t('admin.checklists.itemDetails.applyAll', 'Apply to all criteria of the sheet with this scale')}
+          </Button>
+          {applied !== null && <p className="admin-form__hint" role="status">{t('admin.checklists.itemDetails.applied', 'The rule is applied. Criteria changed: {{count}}.', { count: applied })}</p>}
+        </div>
+      )}
+      <ConfirmDialog
+        open={confirmApply}
+        title={t('admin.checklists.itemDetails.applyAllTitle', 'Apply the rule to all')}
+        message={t('admin.checklists.itemDetails.applyAllConfirm', 'Criteria with this scale: {{count}}. They will get this explanation rule instead of their own. Sessions already started do not change.', { count: applyCount })}
+        confirmLabel={t('admin.checklists.itemDetails.applyAllConfirmButton', 'Apply')}
+        cancelLabel={t('admin.checklists.cancel', 'Cancel')}
+        onConfirm={() => void applyAll()}
+        onCancel={() => setConfirmApply(false)}
+      />
       <div className="ds-dialog__actions">
         <Button disabled={saving} onClick={onClose} type="button" variant="secondary">{t('admin.checklists.cancel', 'Cancel')}</Button>
         <Button disabled={saving || needAnswer} onClick={() => void save()} type="button" variant="primary">{t('admin.checklists.save', 'Save')}</Button>

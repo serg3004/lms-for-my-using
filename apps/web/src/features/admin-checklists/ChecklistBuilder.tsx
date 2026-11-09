@@ -30,6 +30,7 @@ import {
   listChecklistScales,
   updateChecklist,
   updateChecklistItem,
+  applyChecklistItemNoteRule,
   updateChecklistItemGroup,
 } from '../../shared/api/checklists.js';
 import type {
@@ -1314,6 +1315,13 @@ export function ChecklistBuilder({
             item={target}
             onClose={() => setDetailsItemId(null)}
             onSave={async (patch) => { await persistItem(target.id, patch); }}
+            applyCount={target.scaleId ? items.filter((entry) => entry.id !== target.id && entry.scaleId === target.scaleId).length : 0}
+            onApplyAll={async (patch) => {
+              await persistItem(target.id, patch);
+              const { updated } = await applyChecklistItemNoteRule(target.id);
+              setItems((prev) => prev.map((entry) => (entry.id !== target.id && entry.scaleId === target.scaleId ? { ...entry, noteRule: patch.noteRule, noteAnswers: patch.noteAnswers, noteRequired: patch.noteRequired } : entry)));
+              return updated;
+            }}
             open
             options={noteOptionsFor(target)}
             t={t}

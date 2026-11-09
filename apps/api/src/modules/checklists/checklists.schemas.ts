@@ -205,9 +205,10 @@ function itemNoteShape() {
   return {
     description: richTextSchema(2000).nullable().optional(),
     descriptionEnabled: z.boolean().default(false),
-    noteRule: z.enum(['off', 'always', 'on_answers']).default('off'),
+    // PR 457: left out, the rule of the criterion's scale (if any) is taken; Prisma's default is "off".
+    noteRule: z.enum(['off', 'always', 'on_answers']).optional(),
     noteAnswers: noteAnswersSchema.optional(),
-    noteRequired: z.boolean().default(false),
+    noteRequired: z.boolean().optional(),
   };
 }
 
@@ -639,13 +640,29 @@ const UNIQUE_LEVEL_VALUES_ISSUE = { message: 'level values must be unique within
 // Levels are always a full, ordered replacement, never a partial patch -- a scale is small enough
 // (max 20 levels, mirroring scaleLevelSchema above) that there is no meaningful "just add one
 // level" operation distinct from "here is the complete level set now".
+// PR 457: the scale's default explanation rule; answers are level values.
+const scaleNoteShape = {
+  noteRule: z.enum(['off', 'on_answers']).optional(),
+  noteAnswers: z.array(z.string().regex(/^\d{1,4}$/)).max(50).optional(),
+  noteRequired: z.boolean().optional(),
+};
+const SCALE_NOTE_ANSWERS_ISSUE = { message: 'Choose answers of this scale that open the explanation', path: ['noteAnswers'] };
+const scaleNoteValid = (input: { noteRule?: string; noteAnswers?: string[]; levels?: { value: number }[] }) => {
+  if (input.noteRule !== 'on_answers') return true;
+  const answers = input.noteAnswers ?? [];
+  if (answers.length === 0) return false;
+  return !input.levels || answers.every((answer) => input.levels!.some((level) => String(level.value) === answer));
+};
+
 export const createChecklistScaleSchema = z
   .object({
     name: z.string().trim().min(1).max(255),
     levels: z.array(checklistScaleLevelInputSchema).min(2).max(20),
+    ...scaleNoteShape,
   })
   .strict()
-  .refine((input) => hasUniqueLevelValues(input.levels), UNIQUE_LEVEL_VALUES_ISSUE);
+  .refine((input) => hasUniqueLevelValues(input.levels), UNIQUE_LEVEL_VALUES_ISSUE)
+  .refine(scaleNoteValid, SCALE_NOTE_ANSWERS_ISSUE);
 export type CreateChecklistScaleInput = z.infer<typeof createChecklistScaleSchema>;
 
 // Update replaces name and/or the full level set -- never partial-patches individual levels. Only
@@ -655,10 +672,12 @@ export const updateChecklistScaleSchema = z
   .object({
     name: z.string().trim().min(1).max(255),
     levels: z.array(checklistScaleLevelInputSchema).min(2).max(20),
+    ...scaleNoteShape,
   })
   .partial()
   .strict()
-  .refine((input) => !input.levels || hasUniqueLevelValues(input.levels), UNIQUE_LEVEL_VALUES_ISSUE);
+  .refine((input) => !input.levels || hasUniqueLevelValues(input.levels), UNIQUE_LEVEL_VALUES_ISSUE)
+  .refine(scaleNoteValid, SCALE_NOTE_ANSWERS_ISSUE);
 export type UpdateChecklistScaleInput = z.infer<typeof updateChecklistScaleSchema>;
 
 // PR 343: "Make a copy" of a scale (the way to change an in-use one). The client sends the localized

@@ -1219,12 +1219,17 @@ export class ChecklistsService {
     if (input.groupId) {
       await this.assertValidGroup(input.groupId, checklistId, organizationId);
     }
-    await this.assertValidNoteConfig({ noteRule: input.noteRule, noteAnswers: input.noteAnswers }, scaleId ?? null, organizationId);
+    // PR 457: a criterion created without a rule of its own takes the default rule of its scale.
+    const inherited = scaleId && input.noteRule === undefined ? await this.scaleNoteDefaults(scaleId, organizationId) : null;
+    const noteRule = input.noteRule ?? inherited?.noteRule ?? 'off';
+    const noteAnswers = inherited ? inherited.noteAnswers : input.noteAnswers;
+    await this.assertValidNoteConfig({ noteRule, noteAnswers }, scaleId ?? null, organizationId);
     const count = await this.prisma.checklistItem.count({ where: { checklistId, deletedAt: null } });
 
-    const { noteAnswers, ...rest } = input;
+    const rest = { ...input };
+    delete rest.noteAnswers;
     return this.prisma.checklistItem.create({
-      data: { ...rest, ...(noteAnswers ? { noteAnswers } : {}), scaleId, checklistId, organizationId, order: count },
+      data: { ...rest, noteRule, noteRequired: inherited ? inherited.noteRequired : input.noteRequired ?? false, ...(noteAnswers ? { noteAnswers } : {}), scaleId, checklistId, organizationId, order: count },
     });
   }
 
@@ -1238,6 +1243,13 @@ export class ChecklistsService {
       throw new NotFoundException('Checklist item not found');
     }
 
+    // PR 457: choosing another scale for a criterion that has no rule of its own (and the request sets none) takes the scale's default rule.
+    const inherited = input.scaleId && input.scaleId !== item.scaleId && item.noteRule === 'off' && input.noteRule === undefined && input.noteAnswers === undefined && input.noteRequired === undefined
+      ? await this.scaleNoteDefaults(input.scaleId, organizationId)
+      : null;
+    if (inherited && inherited.noteRule !== 'off') {
+      input = { ...input, noteRule: inherited.noteRule as 'on_answers', noteAnswers: inherited.noteAnswers, noteRequired: inherited.noteRequired };
+    }
     await this.assertValidNoteConfig(
       { noteRule: input.noteRule ?? item.noteRule, noteAnswers: input.noteAnswers === undefined ? item.noteAnswers : input.noteAnswers },
       input.scaleId === undefined ? item.scaleId : input.scaleId,
@@ -1263,6 +1275,31 @@ export class ChecklistsService {
       where: { id: itemId, organizationId },
       data: { ...rest, ...(noteAnswers === undefined ? {} : { noteAnswers: noteAnswers === null ? Prisma.DbNull : noteAnswers }) },
     });
+  }
+
+  /** PR 457: the default explanation rule stored with a scale (answers are level values), or null for an unknown scale. */
+  private async scaleNoteDefaults(scaleId: string, organizationId: string) {
+    const scale = await this.prisma.checklistScale.findFirst({ where: { id: scaleId, organizationId }, select: { noteRule: true, noteAnswers: true, noteRequired: true } });
+    if (!scale || scale.noteRule === 'off') return scale ? { noteRule: 'off', noteAnswers: undefined, noteRequired: false } : null;
+    return { noteRule: scale.noteRule, noteAnswers: parseNoteAnswers(scale.noteAnswers), noteRequired: scale.noteRequired };
+  }
+
+  /**
+   * PR 457: "Apply to all": copies the explanation rule of this criterion to the other criteria of the same checklist that use the
+   * same scale (one transaction). Criteria with another scale, deleted ones and started sessions (they keep their own snapshot) are not touched.
+   */
+  async applyNoteRuleToScale(itemId: string, organizationId: string) {
+    const item = await this.prisma.checklistItem.findFirst({
+      where: { id: itemId, organizationId, deletedAt: null },
+      select: { id: true, checklistId: true, scaleId: true, noteRule: true, noteAnswers: true, noteRequired: true },
+    });
+    if (!item) throw new NotFoundException('Checklist item not found');
+    if (!item.scaleId) throw new BadRequestException('The criterion has no evaluation scale, so there are no criteria to apply the rule to');
+    const result = await this.prisma.checklistItem.updateMany({
+      where: { organizationId, checklistId: item.checklistId, scaleId: item.scaleId, deletedAt: null, id: { not: item.id } },
+      data: { noteRule: item.noteRule, noteAnswers: item.noteAnswers === null ? Prisma.DbNull : (item.noteAnswers as Prisma.InputJsonValue), noteRequired: item.noteRequired },
+    });
+    return { updated: result.count };
   }
 
   /** PR 415: "on these answers" needs at least one answer, and a level must exist in the criterion's scale. */

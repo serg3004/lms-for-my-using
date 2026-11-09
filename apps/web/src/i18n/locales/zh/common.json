@@ -1409,6 +1409,13 @@
         "hex": "{{label}}：#RRGGBB 代码"
       },
       "scaleManager": {
+        "errorNoteAnswers": "请至少选择一个会打开说明的答案。",
+        "noteTitle": "默认说明",
+        "noteOn": "对所选答案显示说明栏",
+        "noteAnswers": "当答案为以下之一时打开该栏：",
+        "noteRequired": "说明为必填（没有说明则不接受该答案）",
+        "noteHint": "选择此量表的标准会获得此规则，可在标准中修改。已有的标准不会改变。",
+        "levelN": "第 {{n}} 级",
         "title": "评估量表",
         "error": "无法保存量表。",
         "name": "量表名称",
@@ -1751,6 +1758,12 @@
         "pointsHint": "结果 = 得分 / 最高分；达到及格线即通过。"
       },
       "itemDetails": {
+        "applyAll": "应用到清单中所有使用此量表的标准",
+        "applied": "规则已应用。已更改的标准数：{{count}}。",
+        "applyAllTitle": "将规则应用到全部",
+        "applyAllConfirm": "使用此量表的标准数：{{count}}。它们将采用此说明规则，替换自己的规则。已开始的会话不会改变。",
+        "applyAllConfirmButton": "应用",
+        "applyFailed": "无法将规则应用到其他标准。",
         "action": "说明与解释…",
         "title": "标准：说明与解释",
         "descriptionSwitch": "说明（给填写者的提示）",

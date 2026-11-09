@@ -79,6 +79,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/checklist-item-groups/{id}/copy` | `Checklists` | `bearer` |
 | `PATCH` | `/api/v1/checklist-items/{id}` | `Checklists` | `bearer` |
 | `DELETE` | `/api/v1/checklist-items/{id}` | `Checklists` | `bearer` |
+| `POST` | `/api/v1/checklist-items/{id}/apply-note-rule` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-org-templates` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-org-templates` | `Checklists` | `bearer` |
 | `PATCH` | `/api/v1/checklist-org-templates/{id}` | `Checklists` | `bearer` |

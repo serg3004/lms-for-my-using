@@ -54,9 +54,9 @@ export function ChecklistScalesPage({ observer = false }: { observer?: boolean }
   function saved() { navigate(base, { state: { scaleNotice: t('admin.checklists.scaleLibrary.saved') } }); }
   async function save() {
     if (!editor || editor.readOnly) return;
-    const invalid = validateScaleDraft(editor.name, editor.levels);
+    const invalid = validateScaleDraft(editor.name, editor.levels, editor);
     if (invalid) { setError(scaleDraftErrorText(invalid, t)); return; }
-    await mutate(async () => { const input = scaleDraftToInput(editor.name, editor.levels); if (editor.scaleId) await updateChecklistScale(editor.scaleId, input); else await createChecklistScale(input); saved(); });
+    await mutate(async () => { const input = scaleDraftToInput(editor.name, editor.levels, editor); if (editor.scaleId) await updateChecklistScale(editor.scaleId, input); else await createChecklistScale(input); saved(); });
   }
   const shell = (children: ReactNode) => observer ? <ObserverPageLayout>{children}</ObserverPageLayout> : <AdminPageLayout brandLabel={t('admin.navLink')} sidebarLabel={t('admin.navLink')} currentUser={currentUser!} navItems={[{ label: t('admin.checklists.title'), href: '/admin/checklists', isCurrent: true }]}>{children}</AdminPageLayout>;
   if (!canRead || (scaleId === 'new' && !canManage)) return shell(<PageState variant="error" message={t('admin.checklists.scaleLibrary.forbidden')} />);

@@ -431,6 +431,13 @@ export class ChecklistsController {
     const input = updateChecklistItemSchema.parse(body);
     return this.checklistsService.updateItem(itemId, request.currentUser!.organizationId, input);
   }
+  // PR 457: copy this criterion's explanation rule to the other criteria of the sheet with the same scale.
+  @Post('checklist-items/:id/apply-note-rule')
+  @Roles(...rolePolicies.checklistsCreate)
+  async applyNoteRule(@Param('id') itemId: string, @Req() request: AuthenticatedRequest) {
+    await this.checklistsService.assertCanEdit({ itemId }, request.currentUser!.organizationId, request.currentUser!);
+    return this.checklistsService.applyNoteRuleToScale(itemId, request.currentUser!.organizationId);
+  }
   @Delete('checklist-items/:id')
   @Roles(...rolePolicies.checklistsCreate)
   async deleteItem(@Param('id') itemId: string, @Req() request: AuthenticatedRequest) {

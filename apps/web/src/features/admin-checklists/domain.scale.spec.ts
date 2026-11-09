@@ -9,6 +9,7 @@ import {
   newScaleLevelDrafts,
   scaleDraftToInput,
   scaleLevelDraftsFromLevels,
+  scaleNoteDraftFrom,
   validateScaleDraft,
 } from './domain.js';
 
@@ -33,6 +34,7 @@ describe('scale editor domain (PR 343)', () => {
     expect(scaleDraftToInput(' Yes/No ', levels)).toEqual({
       name: 'Yes/No',
       levels: [{ value: 1, label: 'No', score: 0, color: '#E65100' }, { value: 2, label: 'Yes', score: 100, color: '#E65100' }],
+      noteRule: 'off',
     });
   });
 
@@ -114,4 +116,29 @@ it('previews a sheet without points (PR 416) with no score and completion by ans
   const items = [{ ...base, id: 'a', order: 0 }, { ...base, id: 'b', order: 1 }];
   expect(computePreviewResult(items, 'none', [], 70, { a: { checked: true } }, false, true)).toEqual({ totalScore: 0, maxScore: 0, percentage: 0, passed: false, allAnswered: false });
   expect(computePreviewResult(items, 'none', [], 70, { a: { checked: true }, b: { checked: true } }, false, true)).toEqual({ totalScore: 0, maxScore: 0, percentage: 0, passed: true, allAnswered: true });
+});
+
+describe('scale default explanation rule (PR 457)', () => {
+  const drafts = scaleLevelDraftsFromLevels([{ value: 1, label: 'Да', score: 1 }, { value: 2, label: 'Нет', score: 0 }]);
+
+  it('sends the answers by level position and "off" when the rule is not set', () => {
+    const noteKeys = [drafts[1]!.key];
+    expect(scaleDraftToInput('Да/Нет', drafts, { noteOn: true, noteKeys, noteRequired: true })).toMatchObject({ noteRule: 'on_answers', noteAnswers: ['2'], noteRequired: true });
+    expect(scaleDraftToInput('Да/Нет', drafts)).toMatchObject({ noteRule: 'off' });
+    expect(scaleDraftToInput('Да/Нет', drafts, { noteOn: true, noteKeys: [], noteRequired: true })).toMatchObject({ noteRule: 'off' });
+  });
+
+  it('follows a level when levels are moved, and needs an answer when the rule is on', () => {
+    const noteKeys = [drafts[1]!.key];
+    const moved = [drafts[1]!, drafts[0]!];
+    expect(scaleDraftToInput('Да/Нет', moved, { noteOn: true, noteKeys, noteRequired: false })).toMatchObject({ noteAnswers: ['1'] });
+    expect(validateScaleDraft('Да/Нет', drafts, { noteOn: true, noteKeys: [], noteRequired: false })).toBe('noteAnswers');
+    expect(validateScaleDraft('Да/Нет', drafts, { noteOn: true, noteKeys, noteRequired: false })).toBeNull();
+  });
+
+  it('turns the stored rule into a draft with the keys of the same levels', () => {
+    const draft = scaleNoteDraftFrom({ levels: [{ value: 1, label: 'Да', score: 1 }, { value: 2, label: 'Нет', score: 0 }], noteRule: 'on_answers', noteAnswers: ['2'], noteRequired: true }, drafts);
+    expect(draft).toEqual({ noteOn: true, noteKeys: [drafts[1]!.key], noteRequired: true });
+    expect(scaleNoteDraftFrom({ levels: [], noteRule: 'off' }, drafts)).toEqual({ noteOn: false, noteKeys: [], noteRequired: false });
+  });
 });

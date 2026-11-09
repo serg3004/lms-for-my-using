@@ -331,9 +331,21 @@ export function scaleLevelDraftsFromLevels(levels: ChecklistScaleLevelSummary[])
     .map((level) => createScaleLevelDraft(level.label, String(level.score), level.color ?? SCALE_LEVEL_COLORS.partial));
 }
 
-export type ScaleDraftError = 'name' | 'tooFewLevels' | 'tooManyLevels' | 'label' | 'score' | 'color';
+export type ScaleDraftError = 'name' | 'tooFewLevels' | 'tooManyLevels' | 'label' | 'score' | 'color' | 'noteAnswers';
 
-export function validateScaleDraft(name: string, levels: ScaleLevelDraft[]): ScaleDraftError | null {
+/** PR 457: the scale's default explanation rule while editing; answers are held by level key, so moving or removing levels keeps them straight. */
+export type ScaleNoteDraft = { noteOn: boolean; noteKeys: string[]; noteRequired: boolean };
+export const NO_SCALE_NOTE: ScaleNoteDraft = { noteOn: false, noteKeys: [], noteRequired: false };
+
+/** The draft of a stored scale rule: the answers (level values) become the keys of the drafts in the same order. */
+export function scaleNoteDraftFrom(scale: { levels: ChecklistScaleLevelSummary[]; noteRule?: string; noteAnswers?: string[] | null; noteRequired?: boolean }, drafts: ScaleLevelDraft[]): ScaleNoteDraft {
+  if (scale.noteRule !== 'on_answers') return NO_SCALE_NOTE;
+  const sorted = [...scale.levels].sort((a, b) => a.value - b.value);
+  const keys = sorted.flatMap((level, index) => (scale.noteAnswers ?? []).includes(String(level.value)) && drafts[index] ? [drafts[index]!.key] : []);
+  return { noteOn: true, noteKeys: keys, noteRequired: scale.noteRequired === true };
+}
+
+export function validateScaleDraft(name: string, levels: ScaleLevelDraft[], note: ScaleNoteDraft = NO_SCALE_NOTE): ScaleDraftError | null {
   if (!name.trim()) return 'name';
   if (levels.length < SCALE_MIN_LEVELS) return 'tooFewLevels';
   if (levels.length > SCALE_MAX_LEVELS) return 'tooManyLevels';
@@ -341,14 +353,18 @@ export function validateScaleDraft(name: string, levels: ScaleLevelDraft[]): Sca
   const validScore = (value: string) => /^\d+$/.test(value.trim()) && Number(value) <= SCALE_MAX_SCORE;
   if (levels.some((level) => !validScore(level.score))) return 'score';
   if (levels.some((level) => !HIGHLIGHT_COLOR_PATTERN.test(level.color))) return 'color';
+  if (note.noteOn && !levels.some((level) => note.noteKeys.includes(level.key))) return 'noteAnswers';
   return null;
 }
 
 /** Level numbers are always 1..n in row order, so they stay unique whatever the user adds, removes or moves. */
-export function scaleDraftToInput(name: string, levels: ScaleLevelDraft[]) {
+export function scaleDraftToInput(name: string, levels: ScaleLevelDraft[], note: ScaleNoteDraft = NO_SCALE_NOTE) {
+  const noteAnswers = levels.flatMap((level, index) => (note.noteKeys.includes(level.key) ? [String(index + 1)] : []));
   return {
     name: name.trim(),
     levels: levels.map((level, index) => ({ value: index + 1, label: level.label.trim(), score: Number(level.score), color: level.color })),
+    // PR 457: sent every time, so switching the rule off clears it on the server.
+    ...(note.noteOn && noteAnswers.length > 0 ? { noteRule: 'on_answers' as const, noteAnswers, noteRequired: note.noteRequired } : { noteRule: 'off' as const }),
   };
 }
 
