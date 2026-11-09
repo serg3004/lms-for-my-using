@@ -60,4 +60,11 @@ if (!/select option\s*\{[^}]*font:[^;]*system-ui/.test(globalCss)) {
   throw new Error('global.css must give `select option` a system font (the web font drew empty rows in the Windows popup).');
 }
 
+// PR 452: `overflow-x: hidden` on both `html` and `body` made the body a scroll container and broke every `position: sticky`
+// (the learner sidebar scrolled away). `body` clips with `overflow-x: clip` (after a `hidden` fallback) and never sets overflow-y.
+const bodyRule = /(?:^|\n)body\s*\{([^}]*)\}/.exec(globalCss)?.[1] ?? '';
+if (/overflow-y\s*:/.test(bodyRule) || (/overflow-x\s*:\s*hidden/.test(bodyRule) && !/overflow-x\s*:\s*clip/.test(bodyRule))) {
+  throw new Error('global.css: `body` may only clip with `overflow-x: clip` (a bare `overflow-x: hidden` breaks position: sticky).');
+}
+
 console.log(`CSS architecture: ${files.length} layered stylesheets, ${customPropertyDefinitions.size} unique tokens.`);
