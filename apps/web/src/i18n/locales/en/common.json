@@ -3682,5 +3682,36 @@
     "reset": "Clear formatting",
     "limit": "Maximum {{count}} characters.",
     "weight": "Style"
+  },
+  "validation": {
+    "line": "Field “{{field}}”: {{problem}}",
+    "more": "and {{count}} more",
+    "generic": "Check the filled fields and try again.",
+    "problem": {
+      "answerSetRequired": "choose an answer set",
+      "titleRequired": "enter a name",
+      "feedbackNeedsField": "add at least one field",
+      "duplicate": "a repeated identifier",
+      "required": "fill in the field",
+      "tooSmall": "the value is too small or too short",
+      "tooBig": "the value is too large or too long",
+      "invalid": "the value is not allowed"
+    },
+    "field": {
+      "title": "Title",
+      "description": "Description",
+      "passThreshold": "Pass threshold",
+      "scaleLevels": "Scale levels",
+      "feedbackLayout": "Feedback",
+      "appearance": "Appearance",
+      "answerSetId": "Answer set",
+      "accessMode": "Access",
+      "preSessionVisibility": "What the employee sees before the session",
+      "name": "Name",
+      "label": "Name",
+      "points": "Points",
+      "weight": "Weight",
+      "text": "Text"
+    }
   }
 }

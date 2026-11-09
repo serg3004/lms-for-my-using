@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react';
 import type { TFunction } from 'i18next';
 
-import { ApiClientError } from '../../shared/apiClient.js';
+import { apiErrorText } from '../../shared/apiValidationMessage.js';
 import { useOptionalSession } from '../../shared/session.js';
 import { getChecklistWorkplaceSettings, updateChecklistWorkplaceSettings } from '../../shared/api/checklists.js';
 import type { ChecklistFeedbackVisibility, ChecklistGeolocationPolicy, ChecklistWorkplaceSettingsView } from '../../shared/api/types.js';
@@ -30,7 +30,7 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
     setError(null);
     getChecklistWorkplaceSettings()
       .then((value) => { if (!cancelled) setSettings(value); })
-      .catch((e) => { if (!cancelled) setError(e instanceof ApiClientError ? e.message : t('admin.checklists.settings.loadError', 'Unable to load settings.')); });
+      .catch((e) => { if (!cancelled) setError(apiErrorText(e, t('admin.checklists.settings.loadError', 'Unable to load settings.'))); });
     return () => { cancelled = true; };
   }, [open, t]);
 
@@ -61,7 +61,7 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
       setSettings(updated);
       onClose();
     } catch (e) {
-      setError(e instanceof ApiClientError ? e.message : t('admin.checklists.settings.saveError', 'Unable to save settings.'));
+      setError(apiErrorText(e, t('admin.checklists.settings.saveError', 'Unable to save settings.')));
     } finally {
       setSaving(false);
     }

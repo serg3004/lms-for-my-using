@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from 'react';
 import type { TFunction } from 'i18next';
 
 import { ApiClientError } from '../../shared/apiClient.js';
+import { apiErrorText } from '../../shared/apiValidationMessage.js';
 import { archiveChecklistScale, copyChecklistScale, createChecklistScale, deleteChecklistScale, listChecklistScales, updateChecklistScale } from '../../shared/api/checklists.js';
 import type { ChecklistScaleSummary } from '../../shared/api/types.js';
 import { ConfirmDialog } from '../../shared/adminPage.js';
@@ -46,7 +47,7 @@ export function ScaleManagerDialog({ open, onClose, onChanged, onSaved, startCre
   }
 
   function failure(e: unknown) {
-    setError(e instanceof ApiClientError ? e.message : t('admin.checklists.scaleManager.error', 'Unable to save the scale.'));
+    setError(apiErrorText(e, t('admin.checklists.scaleManager.error', 'Unable to save the scale.')));
   }
 
   async function saveEditor() {
@@ -97,7 +98,7 @@ export function ScaleManagerDialog({ open, onClose, onChanged, onSaved, startCre
     } catch (e) {
       setError(e instanceof ApiClientError && e.status === 409
         ? t('admin.checklists.scaleManager.inUse', 'This scale is used by checklist criteria and cannot be deleted. Archive it instead.')
-        : e instanceof ApiClientError ? e.message : t('admin.checklists.scaleManager.error', 'Unable to save the scale.'));
+        : apiErrorText(e, t('admin.checklists.scaleManager.error', 'Unable to save the scale.')));
     }
   }
 

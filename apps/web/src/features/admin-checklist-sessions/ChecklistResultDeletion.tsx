@@ -2,7 +2,7 @@ import { plainText } from '@lms/shared/rich-text';
 import { useId, useRef, useState, type FormEvent } from 'react';
 import type { TFunction } from 'i18next';
 
-import { ApiClientError } from '../../shared/apiClient.js';
+import { apiErrorText } from '../../shared/apiValidationMessage.js';
 import { deleteChecklistResult, listDeletedChecklistResults, restoreChecklistResult } from '../../shared/api/checklists.js';
 import type { DeletedChecklistResult } from '../../shared/api/checklists.js';
 import { formatDate } from '../../shared/formatDate.js';
@@ -41,7 +41,7 @@ function DeleteResultForm({ instanceId, onClose, onDeleted, closeRef, t }: {
       await deleteChecklistResult(instanceId, trimmed);
       onDeleted();
     } catch (e) {
-      setError(e instanceof ApiClientError ? e.message : t('admin.checklists.resultDelete.error', 'Unable to delete the result.'));
+      setError(apiErrorText(e, t('admin.checklists.resultDelete.error', 'Unable to delete the result.')));
       setBusy(false);
     }
   }
@@ -81,7 +81,7 @@ export function DeletedChecklistResults({ t }: { t: TFunction }) {
       await restoreChecklistResult(id);
       reload();
     } catch (e) {
-      setError(e instanceof ApiClientError ? e.message : t('admin.checklists.resultDelete.restoreError', 'Unable to restore the result.'));
+      setError(apiErrorText(e, t('admin.checklists.resultDelete.restoreError', 'Unable to restore the result.')));
     } finally {
       setBusyId(null);
     }

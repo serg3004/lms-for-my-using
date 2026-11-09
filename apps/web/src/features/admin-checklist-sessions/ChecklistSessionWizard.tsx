@@ -3,7 +3,7 @@ import { SessionEmployeeImport, SessionImportReport, sessionImportError } from '
 import { useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 
-import { ApiClientError } from '../../shared/apiClient.js';
+import { apiErrorText } from '../../shared/apiValidationMessage.js';
 import { formatDate } from '../../shared/formatDate.js';
 import {
   bulkCreateChecklistSessions,
@@ -264,7 +264,7 @@ export function ChecklistSessionWizard({ open, importMode = false, fixedObserver
       else setSubmitResult({ created: partitioned.created.length, skipped: partitioned.skipped.length, failed: partitioned.failed.length });
       onCreated();
     } catch (error) {
-      setSubmitError(importMode ? sessionImportError(error, t) : error instanceof ApiClientError ? error.message : t('admin.checklists.sessions.wizard.submitError', 'Unable to create sessions.'));
+      setSubmitError(importMode ? sessionImportError(error, t) : apiErrorText(error, t('admin.checklists.sessions.wizard.submitError', 'Unable to create sessions.')));
     } finally {
       setSubmitting(false);
     }

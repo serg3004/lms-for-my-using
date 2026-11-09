@@ -3682,5 +3682,36 @@
     "reset": "Пішімдеуді тазарту",
     "limit": "Ең көбі {{count}} таңба.",
     "weight": "Жазу түрі"
+  },
+  "validation": {
+    "line": "«{{field}}» өрісі: {{problem}}",
+    "more": "және тағы {{count}}",
+    "generic": "Толтырылған өрістерді тексеріп, қайталап көріңіз.",
+    "problem": {
+      "answerSetRequired": "жауаптар жиынын таңдаңыз",
+      "titleRequired": "атауын енгізіңіз",
+      "feedbackNeedsField": "кемінде бір өріс қосыңыз",
+      "duplicate": "қайталанатын идентификатор",
+      "required": "өрісті толтырыңыз",
+      "tooSmall": "мән тым кішкентай немесе қысқа",
+      "tooBig": "мән тым үлкен немесе ұзын",
+      "invalid": "жарамсыз мән"
+    },
+    "field": {
+      "title": "Атауы",
+      "description": "Сипаттама",
+      "passThreshold": "Өту шегі",
+      "scaleLevels": "Шкала деңгейлері",
+      "feedbackLayout": "Кері байланыс",
+      "appearance": "Безендіру",
+      "answerSetId": "Жауаптар жиыны",
+      "accessMode": "Қолжетімділік",
+      "preSessionVisibility": "Қызметкер сессияға дейін не көреді",
+      "name": "Атауы",
+      "label": "Атауы",
+      "points": "Ұпай",
+      "weight": "Салмақ",
+      "text": "Мәтін"
+    }
   }
 }

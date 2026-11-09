@@ -3682,5 +3682,36 @@
     "reset": "清除格式",
     "limit": "最多 {{count}} 个字符。",
     "weight": "样式"
+  },
+  "validation": {
+    "line": "字段“{{field}}”：{{problem}}",
+    "more": "另有 {{count}} 项",
+    "generic": "请检查已填写的字段后重试。",
+    "problem": {
+      "answerSetRequired": "请选择答案集",
+      "titleRequired": "请输入名称",
+      "feedbackNeedsField": "请至少添加一个字段",
+      "duplicate": "标识重复",
+      "required": "请填写该字段",
+      "tooSmall": "值过小或过短",
+      "tooBig": "值过大或过长",
+      "invalid": "值不被允许"
+    },
+    "field": {
+      "title": "名称",
+      "description": "说明",
+      "passThreshold": "通过线",
+      "scaleLevels": "量表等级",
+      "feedbackLayout": "反馈",
+      "appearance": "外观",
+      "answerSetId": "答案集",
+      "accessMode": "访问",
+      "preSessionVisibility": "员工在会话前看到的内容",
+      "name": "名称",
+      "label": "名称",
+      "points": "分数",
+      "weight": "权重",
+      "text": "文本"
+    }
   }
 }

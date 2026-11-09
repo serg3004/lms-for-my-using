@@ -13,6 +13,8 @@ import { verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useOptionalSession } from '../../shared/session.js';
 import type { TFunction } from 'i18next';
 import { ApiClientError } from '../../shared/apiClient.js';
+import { apiErrorText, describeDetails } from '../../shared/apiValidationMessage.js';
+import { feedbackFieldLabel, feedbackFocusId, feedbackPrecheck } from './checklistErrorTargets.js';
 import { AdminPageHeader, ConfirmDialog, FormField } from '../../shared/adminPage.js';
 import { Badge, Button, ConfirmDialog as RichConfirmDialog, EmptyState, Menu, type BadgeVariant } from '../../shared/ui.js';
 import {
@@ -151,7 +153,8 @@ export function ChecklistBuilder({
   function goToErrorField() {
     if (!errorTab) return;
     changeTab(errorTab);
-    const id = errorField.current ? FIELD_INPUT_IDS[errorField.current] : undefined;
+    const path = errorField.current ?? '';
+    const id = feedbackFocusId(feedbackLayout, path.split('.')) ?? FIELD_INPUT_IDS[path.split('.')[0] ?? ''];
     window.setTimeout(() => document.getElementById(id ?? '')?.focus(), 0);
   }
   function openBlockSettings(target: BlockTarget, trigger: HTMLElement) { blockTrigger.current = trigger; setBlockTarget(target); }
@@ -251,7 +254,14 @@ export function ChecklistBuilder({
   function settingsErrorMessage(error: unknown) {
     return error instanceof ApiClientError && error.status === 409
       ? t('admin.checklists.pinnedLimit', 'Eight checklists are already pinned. Unpin one of them in its settings, then try again.')
-      : error instanceof ApiClientError ? error.message : t('admin.checklists.saveError', 'Unable to save checklist.');
+      : apiErrorText(error, t('admin.checklists.saveError', 'Unable to save checklist.'), feedbackFieldLabel(feedbackLayout));
+  }
+  /** PR 454: remembers which tab and control a failed save complained about, so the message can lead the author there. */
+  function markErrorField(path: string | undefined) {
+    errorField.current = path ?? null;
+    const top = path?.split('.')[0];
+    setErrorTab(top ? (MAIN_TAB_FIELDS.has(top) ? 'main' : 'settings') : null);
+    if (path) window.setTimeout(() => document.getElementById(feedbackFocusId(feedbackLayout, path.split('.')) ?? FIELD_INPUT_IDS[top ?? ''] ?? '')?.focus(), 0);
   }
   /** PR 417: where a failed save shows its error: next to the Save button, or in the top bar next to Publish. */
   const [headerError, setHeaderError] = useState<string | null>(null);
@@ -259,6 +269,13 @@ export function ChecklistBuilder({
     setSaveState({ status: 'saving' });
     setHeaderError(null);
     setErrorTab(null);
+    const missing = feedbackPrecheck(feedbackLayout);
+    if (missing.length > 0) {
+      markErrorField(missing[0]!.field);
+      const message = describeDetails(missing, feedbackFieldLabel(feedbackLayout));
+      if (origin === 'header') { setSaveState({ status: 'idle' }); setHeaderError(message); } else setSaveState({ status: 'error', message });
+      return false;
+    }
     try {
       await updateChecklist(checklist.id, settingsPayload);
       setSavedSnapshot(JSON.stringify(settingsPayload));
@@ -267,9 +284,7 @@ export function ChecklistBuilder({
       await onReload();
       return true;
     } catch (error) {
-      const field = error instanceof ApiClientError ? error.details.find((detail) => detail.field)?.field?.split('.')[0] : undefined;
-      errorField.current = field ?? null;
-      setErrorTab(field ? (MAIN_TAB_FIELDS.has(field) ? 'main' : 'settings') : null);
+      markErrorField(error instanceof ApiClientError ? error.details.find((detail) => detail.field)?.field : undefined);
       if (origin === 'header') {
         setSaveState({ status: 'idle' });
         setHeaderError(settingsErrorMessage(error));
@@ -398,7 +413,7 @@ export function ChecklistBuilder({
         ? prev.map((item) => (item.groupId === group.id ? { ...item, groupId: null } : item))
         : prev.filter((item) => item.groupId !== group.id)));
     } catch (error) {
-      setSaveState({ status: 'error', message: error instanceof ApiClientError ? error.message : t('admin.checklists.groupDeleteError', 'Unable to delete the group.') });
+      setSaveState({ status: 'error', message: apiErrorText(error, t('admin.checklists.groupDeleteError', 'Unable to delete the group.')) });
     }
   }
   async function copyGroup(groupId: string) {
@@ -475,7 +490,7 @@ export function ChecklistBuilder({
       if (withSettings) setSavedSnapshot(JSON.stringify(settingsPayload));
       await onReload();
     } catch (error) {
-      setHeaderError(error instanceof ApiClientError ? (error.status === 409 ? settingsErrorMessage(error) : error.message) : t('admin.checklists.publishError', 'Unable to publish checklist.'));
+      setHeaderError(error instanceof ApiClientError && error.status === 409 ? settingsErrorMessage(error) : apiErrorText(error, t('admin.checklists.publishError', 'Unable to publish checklist.'), feedbackFieldLabel(feedbackLayout)));
     }
   }
 
