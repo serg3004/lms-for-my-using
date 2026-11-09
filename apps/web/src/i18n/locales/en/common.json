@@ -2934,7 +2934,12 @@
     },
     "all": {
       "title": "All my checklists",
-      "hint": "Assigned checklists and free ones in one list."
+      "hint": "Assigned checklists and free ones in one list.",
+      "tabs": { "assigned": "Assigned", "completed": "Completed", "label": "My checklists" },
+      "search": { "label": "Search checklists", "placeholder": "Search…" },
+      "notFound": "Nothing found",
+      "emptyAssigned": "No assigned checklists",
+      "emptyCompleted": "No completed checklists yet"
     },
     "finishCheck": "Finish the check",
     "sendForReview": "Send for review",

@@ -5,7 +5,7 @@ import { checklistLabel, checklistNumbers } from '@lms/shared/checklist-numberin
 import { RichDescription } from '../shared/RichDescription.js';
 import { CriterionOptions, yesNoOptions } from '../shared/CriterionOptions.js';
 import { ObserverSessionsBlock } from './ObserverSessionsBlock.js';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
@@ -32,6 +32,8 @@ import {
   isChecklistRequirementSatisfied,
 } from './checklistCompletion.js';
 import { ChecklistDeadlineMeta } from './ChecklistDeadlineMeta.js';
+import { LearnerChecklistFilters, learnerRowTab, matchesSearch, tabFromHash } from './LearnerChecklistFilters.js';
+import type { LearnerListTab } from './LearnerChecklistFilters.js';
 import { LearnerChecklistSessions } from './LearnerChecklistSessions.js';
 export function findResultForItem(results: ChecklistItemResultSummary[], itemId: string) {
   return results.find((result) => result.itemId === itemId);
@@ -85,6 +87,17 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, op
   );
   const [startingId, setStartingId] = useState<string | null>(null);
   const [startError, setStartError] = useState<string | null>(null);
+  const [listTab, setListTab] = useState<LearnerListTab>(() => (typeof window === 'undefined' ? 'assigned' : tabFromHash(window.location.hash)));
+  const [query, setQuery] = useState('');
+  useEffect(() => {
+    const onHash = () => setListTab(tabFromHash(window.location.hash));
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  function chooseTab(next: LearnerListTab) {
+    setListTab(next);
+    try { window.history.replaceState(null, '', next === 'completed' ? '#completed' : window.location.pathname + window.location.search); } catch { /* the address is a convenience */ }
+  }
   if (loadState.status === 'loading') {
     return <main style={{ padding: 32 }}><PageState message={t('checklists.loading', 'Loading checklists...')} variant="loading" /></main>;
   }
@@ -143,6 +156,7 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, op
       free: checklist,
     })),
   ];
+  const shownRows = rows.filter((row) => learnerRowTab(row) === listTab && matchesSearch(row.title, query));
   const freeButton = (checklist: FreeChecklistSummary) => (
     <button
       type="button"
@@ -178,10 +192,22 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, op
       <PinnedChecklistTiles items={pinnedChecklists} title={t('checklists.free.pinnedTitle', 'Pinned checklists')} action={freeButton} />
       {rows.length > 0 && (
         <section aria-labelledby="all-checklists-title" style={{ marginTop: 24 }}>
-          <h2 id="all-checklists-title" style={{ color: COLORS.text, fontSize: 18 }}>{t('checklists.all.title', 'All my checklists')}</h2>
-          <p style={{ color: COLORS.muted }}>{t('checklists.all.hint', 'Assigned checklists and free ones in one list.')}</p>
+          <h2 id="all-checklists-title" className="ui-visually-hidden">{t('checklists.all.title', 'All my checklists')}</h2>
+          <LearnerChecklistFilters
+            tab={listTab}
+            counts={{ assigned: rows.filter((row) => learnerRowTab(row) === 'assigned').length, completed: rows.filter((row) => learnerRowTab(row) === 'completed').length }}
+            query={query}
+            onTab={chooseTab}
+            onQuery={setQuery}
+            t={t}
+          />
+          {shownRows.length === 0 && (
+            <p role="status" style={{ color: COLORS.muted }}>
+              {query.trim() ? t('checklists.all.notFound', 'Nothing found') : listTab === 'completed' ? t('checklists.all.emptyCompleted', 'No completed checklists yet') : t('checklists.all.emptyAssigned', 'No assigned checklists')}
+            </p>
+          )}
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 12 }}>
-            {rows.map((row) => (
+            {shownRows.map((row) => (
               <li
                 key={row.key}
                 style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 14, background: COLORS.surface, display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap', cursor: row.instance ? 'pointer' : 'default' }}
