@@ -29,16 +29,10 @@ body {
   margin: 0;
   /* PR 452: `overflow-x: hidden` on both `html` and `body` made the body a scroll container of its own, and every
      `position: sticky` element (the learner sidebar, the lesson side blocks, sticky bars) lost its viewport and scrolled away.
-     `clip` clips the same way without creating a scroll container; a browser that does not know `clip` gets `hidden` below. */
+     `clip` clips the same way without creating a scroll container; a browser that does not know `clip` still has the clipping of `html`. */
   overflow-x: clip;
   color: var(--color-text);
   background: var(--color-background);
-}
-
-@supports not (overflow-x: clip) {
-  body {
-    overflow-x: hidden;
-  }
 }
 
 body,
