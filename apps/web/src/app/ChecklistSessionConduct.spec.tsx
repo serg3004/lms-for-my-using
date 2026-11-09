@@ -307,6 +307,19 @@ describe('ConductScreen (real hooks)', () => {
     expect(html).toContain('Past sessions');
   });
 
+  it('PR 456: a free pass has no block with the employee name, an assigned one keeps it', () => {
+    const render = (accessMode: 'free' | 'assigned') => {
+      const base = instance();
+      return renderToStaticMarkup(
+        <ConductScreen data={{ session: session({ status: 'in_progress' }), instance: { ...base, checklist: { ...base.checklist!, accessMode } } }} onBack={onBack} onReload={onReload} onMutate={onMutate} t={t} />,
+      );
+    };
+    const free = render('free'), assigned = render('assigned');
+    expect(free).not.toContain('Leo Learner');
+    expect(free).toContain('Opening shift checklist');
+    expect(assigned).toContain('Leo Learner');
+  });
+
   it('renders the in_progress state on its first criterion, with Back disabled and Next available (feedback is a later step, PR 319)', () => {
     const html = renderToStaticMarkup(
       <ConductScreen data={{ session: session({ status: 'in_progress' }), instance: instance() }} onBack={onBack} onReload={onReload} onMutate={onMutate} t={t} />,

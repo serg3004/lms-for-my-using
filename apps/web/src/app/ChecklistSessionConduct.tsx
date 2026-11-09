@@ -622,14 +622,16 @@ function Header({ session, instance, t }: { session: ChecklistSessionSummary; in
     : 0;
   const elapsedLabel = session.startedAt ? formatElapsed(Math.max(0, elapsedMs)) : null;
 
+  // PR 456: in a free pass the employee and the observer are the same person: no block with their own name.
+  const ownName = instance.checklist?.accessMode === 'free';
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0' }}>
-      <Avatar firstName={session.learner.firstName} lastName={session.learner.lastName} size="lg" />
+      {!ownName && <Avatar firstName={session.learner.firstName} lastName={session.learner.lastName} size="lg" />}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, fontWeight: 700, color: COLORS.text }}>
+        {!ownName && <p style={{ margin: 0, fontWeight: 700, color: COLORS.text }}>
           {session.learner.firstName} {session.learner.lastName}
-        </p>
-        <p style={{ margin: 0, color: COLORS.muted, fontSize: 13 }}><RichText value={instance.checklist?.title ?? session.checklist.title} /></p>
+        </p>}
+        <p style={ownName ? { margin: 0, fontWeight: 700, color: COLORS.text } : { margin: 0, color: COLORS.muted, fontSize: 13 }}><RichText value={instance.checklist?.title ?? session.checklist.title} /></p>
       </div>
       <div style={{ display: 'grid', justifyItems: 'end', gap: 4 }}>
         <Badge variant={CHECKLIST_SESSION_STATUS_BADGE_VARIANT[session.status]} style={session.status === 'in_progress' ? { color: COLORS.text } : undefined}>
