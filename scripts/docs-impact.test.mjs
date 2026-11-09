@@ -181,7 +181,7 @@ test('Dependabot dependency updates satisfy docs-impact only for manifest, lock 
     assert.equal(ok.failures.length, 0);
 
     const mixed = evaluateImpact(validated, [...deps, source], '', bot);
-    assert.equal(mixed.failures.length, 1);
+    assert.equal(mixed.failures.length, 2);
 
     const human = evaluateImpact(validated, [source], '', { author: 'someone' });
     assert.equal(human.failures.length, 1);
