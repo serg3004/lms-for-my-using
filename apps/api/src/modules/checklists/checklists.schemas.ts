@@ -366,6 +366,18 @@ export const checklistSheetAnalyticsQuerySchema = z.object({
 });
 export type ChecklistSheetAnalyticsQuery = z.infer<typeof checklistSheetAnalyticsQuerySchema>;
 
+// PR 460: one sheet cut by criteria, groups, feedback fields or notes (the notes list is paged by 20).
+export const checklistItemAnalyticsQuerySchema = z.object({
+  by: z.enum(['criteria', 'groups', 'feedback', 'notes']),
+  from: z.string().datetime(),
+  to: z.string().datetime(),
+  departmentId: z.string().uuid().optional(),
+  managerId: z.union([z.string().uuid().toLowerCase(), z.literal('unassigned')]).optional(),
+  observerId: z.string().uuid().toLowerCase().optional(),
+  page: z.coerce.number().int().min(1).max(1000).default(1),
+});
+export type ChecklistItemAnalyticsQuery = z.infer<typeof checklistItemAnalyticsQuerySchema>;
+
 // PR 336: the export repeats the dashboard filters and the table view (search, toggle, sort).
 export const checklistManagerAnalyticsExportQuerySchema = checklistManagerAnalyticsQuerySchema.extend({
   table: z.enum(['employees', 'managers']).optional(),
