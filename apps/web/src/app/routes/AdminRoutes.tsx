@@ -29,6 +29,7 @@ const AdminRolesPage = lazy(() => import('../AdminRolesPage.js').then((m) => ({ 
 const AdminThemeSettingsPage = lazy(() => import('../AdminThemeSettingsPage.js').then((m) => ({ default: m.AdminThemeSettingsPage })));
 const AdminUsersPage = lazy(() => import('../AdminUsersPage.js').then((m) => ({ default: m.AdminUsersPage })));
 
+const AdminSheetAnalyticsPage = lazy(() => import('../SheetAnalyticsPage.js').then((m) => ({ default: m.AdminSheetAnalyticsPage })));
 const AdminChecklistAnalyticsPage = lazy(() => import('../AdminChecklistAnalyticsPage.js').then((m) => ({ default: m.AdminChecklistAnalyticsPage })));
 
 export function AdminRoutes() {
@@ -56,6 +57,7 @@ export function AdminRoutes() {
     <Route path="/admin/assessments" element={<AdminAssessmentBuilderPage />} />
     <Route path="/admin/checklists" element={<AdminChecklistsPage />} />
     <Route path="/admin/checklists/analytics" element={<AdminChecklistAnalyticsPage />} />
+    <Route path="/admin/checklists/sheet-analytics" element={<AdminSheetAnalyticsPage />} />
     <Route path="/admin/checklists/sessions" element={<AdminChecklistSessionsPage />} />
     <Route path="/admin/checklists/sessions/:id" element={<AdminChecklistSessionReportPage />} />
     <Route path="/admin/assignments" element={<AdminAssignmentCompletionPage />} />

@@ -140,3 +140,35 @@ export function exportManagerChecklistEmployees(query: ManagerChecklistEmployees
 export function exportManagerChecklistManagers(query: ManagerChecklistAnalyticsQuery & { format?: 'csv' | 'xlsx' }) {
   return apiRequest<{ filename: string; csv: string; rows: (string | number)[][]; rowCount: number }>(`/checklists/manager-analytics/export${buildQueryString({ ...query, table: 'managers' })}`);
 }
+
+// ---- PR 461: analytics over several sheets (the "Analytics" tab) ----
+
+export type SheetAnalyticsQuery = { from: string; to: string; checklistIds?: string[]; departmentId?: string; managerId?: string };
+
+export type SheetAnalyticsSheet = { id: string; title: string; status: string; folderId: string | null; sessionsInPeriod: number };
+
+export type SheetAnalyticsLevel = { value: number; label: string | null; labelKey: 'yes' | 'no' | null; color: string | null; count: number };
+export type SheetAnalyticsScale = { scaleKey: string; kind: 'yes_no' | 'sheet' | 'scale'; name: string | null; levels: SheetAnalyticsLevel[] };
+export type SheetAnalyticsMetrics = {
+  plan: { planned: number; completed: number; inProgress: number; notStarted: number; overdue: number; remaining: number };
+  completionPercentage: number | null;
+  selfCompleted: number;
+  averagePercentage: number | null;
+  criteria: { total: number; answered: number; skipped: number; remaining: number; zeroPoints: number };
+  scales: SheetAnalyticsScale[];
+  queue: { notStarted: number; oldestDays: number | null };
+};
+export type SheetAnalytics = {
+  total: SheetAnalyticsMetrics;
+  sheets: Array<SheetAnalyticsMetrics & { checklistId: string; title: string }>;
+  period: { from: string; to: string };
+  truncated: boolean;
+};
+
+export function listSheetAnalyticsSheets(query: Pick<SheetAnalyticsQuery, 'from' | 'to'>) {
+  return apiRequest<SheetAnalyticsSheet[]>(`/checklists/analytics/sheets${buildQueryString(query)}`);
+}
+
+export function getSheetAnalytics({ checklistIds, ...query }: SheetAnalyticsQuery) {
+  return apiRequest<SheetAnalytics>(`/checklists/analytics/overview${buildQueryString({ ...query, checklistIds: checklistIds?.join(',') })}`);
+}

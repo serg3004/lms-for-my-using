@@ -15,10 +15,19 @@ import { previewSessionImportPage } from '../fixtures/session-employee-import.js
 import { openManagementEdit, openManagementList, openManagementReport, openManagementWizard } from '../fixtures/session-management.js';
 import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 import { installManagerReportMocks, reportManagerA } from '../fixtures/checklist-manager-report.js';
+import { installSheetAnalyticsMocks } from '../fixtures/checklist-sheet-analytics.js';
 import { expect, test, type Page } from '@playwright/test';
 
 const widths = [320, 375, 768, 1024, 1280, 1440] as const;
 const height = 900;
+
+for (const width of [375, 1440]) test(`checklist analytics tab is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installSheetAnalyticsMocks(page, 'admin');
+  await page.goto('/admin/checklists/sheet-analytics');
+  await page.getByTestId('sheet-analytics-scale').first().waitFor();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `sheet-analytics-${width}`, false, { maxDiffPixels: 3000 });
+});
 
 for (const width of [375, 1440]) test(`typed assessment compatibility state is responsive at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height }); await openTypedAssessment(page);

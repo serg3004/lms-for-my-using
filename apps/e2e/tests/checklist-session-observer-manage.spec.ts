@@ -87,7 +87,7 @@ test.describe('instructor and mentor manage organization sessions (PR 360б)', (
     await page.route('**/api/v1/checklists/manager-analytics*', (route) => route.fulfill({ json: analytics }));
     await page.goto('/instructor/checklists/analytics');
     await expect(page.getByText('Ivy Everywhere').first()).toBeVisible();
-    await expect(page.getByRole('navigation', { name: 'Session sections' }).getByRole('link', { name: 'Analytics' })).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByRole('navigation', { name: 'Session sections' }).getByRole('link', { name: 'Analytics', exact: true })).toHaveAttribute('aria-current', 'page');
   });
 
   test('PR 360в: an admin assigned as an observer sees the queue on the sessions page, otherwise nothing extra', async ({ page }) => {

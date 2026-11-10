@@ -65,6 +65,8 @@ distribution/trend chart with an accessible table fallback, and an employee tabl
 drill-down into their sessions -- all through `GET /checklists/manager-analytics`
 (`checklistManagerAnalyticsRead`), scoped the same way.
 
+PR 461 adds the analytics over several sheets, beside it and without changing it: an administrator gets a fourth tab «Аналитика» in the strip of the Checklists page (`/admin/checklists/sheet-analytics`); an instructor and a mentor get the tab «Аналитика листов» next to their employee analytics (`/instructor/checklists/sheet-analytics`, `/mentor/sheet-analytics`); a manager switches «Сотрудники / Чек-листы» on `/manager/checklists` (the sheets view is `/manager/checklists/sheets`). The tab reads `GET /checklists/analytics/sheets` and `/overview` (PR 459); its state (period, sheets, department, manager) lives in the address bar.
+
 ### Report by manager (PR 356)
 
 «По руководителям» shows employees, completed sessions and average reviewed results for both

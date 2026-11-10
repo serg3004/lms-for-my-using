@@ -23,6 +23,7 @@ import {
 } from '../shared/api/manager.js';
 import type { ChecklistSessionParticipant, ChecklistSessionSummary, ChecklistSummary } from '../shared/api/types.js';
 import { ManagerPageLayout } from '../shared/managerLayout.js';
+import { ManagerViewSwitch } from './ManagerViewSwitch.js';
 import { Button, Card, DataTable, PageState, StatCard, StatsGrid, type Column, type DataTableSort } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 
@@ -350,6 +351,7 @@ export function ManagerChecklistsPage({ Layout = ManagerPageLayout }: { Layout?:
 
   return (
     <Layout currentPath="/manager/checklists">
+      {Layout === ManagerPageLayout && <ManagerViewSwitch current="employees" />}
       <header style={{ marginBottom: 20 }}>
         <div style={{ color: 'var(--color-primary)', fontSize: 12, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 8 }}>{t('manager.checklists.eyebrow', 'Workplace training')}</div>
         <h1 style={{ margin: 0, fontSize: 'clamp(28px,4vw,36px)' }}>{t('manager.checklists.title', 'Checklist analytics')}</h1>
