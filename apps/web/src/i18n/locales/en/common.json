@@ -3732,7 +3732,7 @@
   },
   "sheetAnalytics": {
     "tab": "Analytics",
-    "navTab": "Checklist analytics",
+    "navTab": "Analytics by checklist",
     "title": "Checklist analytics",
     "subtitle": "Completion, scores and answers across all your checklists or the ones you pick.",
     "loadError": "Unable to load analytics.",

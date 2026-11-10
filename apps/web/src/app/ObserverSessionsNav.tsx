@@ -53,7 +53,7 @@ export function ObserverSessionsNav({ current }: { current: 'conduct' | 'all' | 
     { key: 'library' as const, href: libraryPath(user) ?? allPath, label: t('checklistSessions.nav.library', 'Checklists') },
     { key: 'scales' as const, href: user?.roles.includes('instructor') ? '/instructor/checklists/scales' : '/mentor/scales', label: t('admin.checklists.scaleManager.title', 'Evaluation scales') },
     { key: 'analytics' as const, href: analyticsPath(user) ?? allPath, label: t('checklistSessions.nav.analytics', 'Analytics') },
-    { key: 'sheetAnalytics' as const, href: sheetAnalyticsPath(user) ?? allPath, label: t('sheetAnalytics.navTab', 'Checklist analytics') },
+    { key: 'sheetAnalytics' as const, href: sheetAnalyticsPath(user) ?? allPath, label: t('sheetAnalytics.navTab', 'Analytics by checklist') },
   ];
   return (
     <nav aria-label={t('checklistSessions.nav.label', 'Session sections')} className="admin-org-tabs">
