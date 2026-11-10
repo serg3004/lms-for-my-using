@@ -34,8 +34,15 @@ export function analyticsPath(user: SessionsNavUser): string | null {
   return null;
 }
 
+/** PR 461: the analytics over several sheets of an instructor or a mentor. */
+export function sheetAnalyticsPath(user: SessionsNavUser): string | null {
+  if (user?.roles.includes('instructor')) return '/instructor/checklists/sheet-analytics';
+  if (user?.roles.includes('mentor')) return '/mentor/sheet-analytics';
+  return null;
+}
+
 /** In-page tabs between "to conduct", "all sessions" and the checklist library -- no new menu item (PR 360б, 362). */
-export function ObserverSessionsNav({ current }: { current: 'conduct' | 'all' | 'library' | 'analytics' | 'scales' }) {
+export function ObserverSessionsNav({ current }: { current: 'conduct' | 'all' | 'library' | 'analytics' | 'sheetAnalytics' | 'scales' }) {
   const { t } = useTranslation();
   const user = useOptionalSession()?.currentUser;
   const allPath = allSessionsPath(user);
@@ -46,6 +53,7 @@ export function ObserverSessionsNav({ current }: { current: 'conduct' | 'all' | 
     { key: 'library' as const, href: libraryPath(user) ?? allPath, label: t('checklistSessions.nav.library', 'Checklists') },
     { key: 'scales' as const, href: user?.roles.includes('instructor') ? '/instructor/checklists/scales' : '/mentor/scales', label: t('admin.checklists.scaleManager.title', 'Evaluation scales') },
     { key: 'analytics' as const, href: analyticsPath(user) ?? allPath, label: t('checklistSessions.nav.analytics', 'Analytics') },
+    { key: 'sheetAnalytics' as const, href: sheetAnalyticsPath(user) ?? allPath, label: t('sheetAnalytics.navTab', 'Checklist analytics') },
   ];
   return (
     <nav aria-label={t('checklistSessions.nav.label', 'Session sections')} className="admin-org-tabs">

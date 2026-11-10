@@ -18,6 +18,7 @@ const InstructorChecklistSessionsPage = lazy(() => import('../InstructorChecklis
 const AllSessionsPage = lazy(() => import('../AdminChecklistSessionsPage.js').then((m) => ({ default: () => <m.AdminChecklistSessionsPage variant="observer" /> })));
 const SessionReportPage = lazy(() => import('../AdminChecklistSessionReportPage.js').then((m) => ({ default: () => <m.AdminChecklistSessionReportPage variant="observer" /> })));
 const LibraryPage = lazy(() => import('../AdminChecklistsPage.js').then((m) => ({ default: () => <m.AdminChecklistsPage variant="observer" /> })));
+const SheetAnalyticsPage = lazy(() => import('../SheetAnalyticsPage.js').then((m) => ({ default: m.ObserverSheetAnalyticsPage })));
 const AnalyticsPage = lazy(() => import('../ObserverChecklistAnalyticsPage.js').then((m) => ({ default: m.ObserverChecklistAnalyticsPage })));
 const InstructorChecklistSessionConductPage = lazy(() => import('../InstructorChecklistSessionConductPage.js').then((m) => ({ default: m.InstructorChecklistSessionConductPage })));
 
@@ -41,6 +42,7 @@ export function InstructorRoutes() {
       <Route path="courses/:courseId/students" element={<CourseStudentsRoute />} />
       <Route path="checklists" element={<InstructorChecklistReviewsPage />} />
       <Route path="checklists/analytics" element={<AnalyticsPage />} />
+      <Route path="checklists/sheet-analytics" element={<SheetAnalyticsPage />} />
       <Route path="checklists/library" element={<LibraryPage />} />
       <Route path="checklists/sessions" element={<InstructorChecklistSessionsPage />} />
       <Route path="checklists/sessions/all" element={<AllSessionsPage />} />

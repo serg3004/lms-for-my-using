@@ -9,6 +9,7 @@ const MentorChecklistReviewsPage = lazy(() => import('../MentorChecklistReviewsP
 const AllSessionsPage = lazy(() => import('../AdminChecklistSessionsPage.js').then((m) => ({ default: () => <m.AdminChecklistSessionsPage variant="observer" /> })));
 const SessionReportPage = lazy(() => import('../AdminChecklistSessionReportPage.js').then((m) => ({ default: () => <m.AdminChecklistSessionReportPage variant="observer" /> })));
 const LibraryPage = lazy(() => import('../AdminChecklistsPage.js').then((m) => ({ default: () => <m.AdminChecklistsPage variant="observer" /> })));
+const SheetAnalyticsPage = lazy(() => import('../SheetAnalyticsPage.js').then((m) => ({ default: m.ObserverSheetAnalyticsPage })));
 const AnalyticsPage = lazy(() => import('../ObserverChecklistAnalyticsPage.js').then((m) => ({ default: m.ObserverChecklistAnalyticsPage })));
 
 export function MentorRoutes() {
@@ -20,6 +21,7 @@ export function MentorRoutes() {
       <Route path="scales/:scaleId" element={<ChecklistScalesPage observer />} />
       <Route index element={<MentorChecklistReviewsPage />} />
       <Route path="analytics" element={<AnalyticsPage />} />
+      <Route path="sheet-analytics" element={<SheetAnalyticsPage />} />
       <Route path="library" element={<LibraryPage />} />
       <Route path="sessions" element={<AllSessionsPage />} />
       <Route path="sessions/:id" element={<SessionReportPage />} />
