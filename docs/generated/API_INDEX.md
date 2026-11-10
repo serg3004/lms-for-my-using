@@ -125,6 +125,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/checklists` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklists` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklists/analytics` | `Checklists` | `bearer` |
+| `GET` | `/api/v1/checklists/analytics/overview` | `Checklists` | `bearer` |
+| `GET` | `/api/v1/checklists/analytics/sheets` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklists/bulk` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklists/free` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklists/from-org-template` | `Checklists` | `bearer` |

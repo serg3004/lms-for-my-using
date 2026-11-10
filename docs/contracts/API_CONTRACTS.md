@@ -1104,6 +1104,18 @@ contract; `table=employees` (default) preserves the existing employee export. Bo
 buttons use the scoped server rows, localized headers and the same 5000-row cap. Export audit
 kind is `manager_managers`, with filters/format/row count, never raw rows.
 
+PR 459 adds the read-only analytics over several sheets for the "Analytics" tab, separate from `GET /checklists/manager-analytics`
+(which and its pages are unchanged). `GET /checklists/analytics/sheets?from&to` (`checklistManagerAnalyticsRead`) lists the sheets the viewer
+may pick with the number of sessions planned in the period; `GET /checklists/analytics/overview?from&to[&checklistIds=id,id][&departmentId][&managerId]`
+returns, in total and per sheet: `plan` (planned = sessions scheduled in the period except cancelled, completed, inProgress, notStarted, overdue,
+remaining), `completionPercentage`, `selfCompleted` (results finished without a session), `averagePercentage` (finished scored results),
+`criteria` (total, answered, skipped, remaining, zeroPoints), `scales` (answers by level of each scale as frozen in the session snapshot:
+`yes_no` with `labelKey` yes/no, a criterion scale, or the sheet scale; no fixed "No" metric) and `queue` (every session not started, whatever its
+date, with the age in days of the oldest). Access: an administrator gets every sheet; other roles get the sheets they created or observe, and the
+sheets the list shows them (no folder, or a folder opened to staff); a requested sheet outside that set is dropped, never reported. Employees are
+limited by `participantLearnerScope()` (a manager sees the own team). At most 5000 sessions and 5000 free results are read per call; `truncated`
+tells when the cap was hit. The employee table and `GET /checklists/manager-analytics` keep their behaviour.
+
 PR 336 adds two CSV exports, both JSON `{ filename, csv, rows, rowCount }` (the same rows as CSV and as typed cells for the
 browser-built .xlsx; optional `format=csv|xlsx` only labels the audit entry) so the existing
 authenticated client downloads them without a second transport: `GET /checklists/manager-analytics/export`

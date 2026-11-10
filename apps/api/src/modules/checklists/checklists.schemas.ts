@@ -353,6 +353,19 @@ export const checklistManagerAnalyticsQuerySchema = z.object({
 });
 export type ChecklistManagerAnalyticsQuery = z.infer<typeof checklistManagerAnalyticsQuerySchema>;
 
+// PR 459: analytics over several sheets (the "Analytics" tab); `checklistIds` is a comma-separated list, empty = every accessible sheet.
+export const checklistSheetAnalyticsQuerySchema = z.object({
+  from: z.string().datetime(),
+  to: z.string().datetime(),
+  checklistIds: z.preprocess(
+    (value) => (typeof value === 'string' ? value.split(',').map((part) => part.trim().toLowerCase()).filter(Boolean) : value),
+    z.array(z.string().uuid()).max(100).optional(),
+  ),
+  departmentId: z.string().uuid().optional(),
+  managerId: z.union([z.string().uuid().toLowerCase(), z.literal('unassigned')]).optional(),
+});
+export type ChecklistSheetAnalyticsQuery = z.infer<typeof checklistSheetAnalyticsQuerySchema>;
+
 // PR 336: the export repeats the dashboard filters and the table view (search, toggle, sort).
 export const checklistManagerAnalyticsExportQuerySchema = checklistManagerAnalyticsQuerySchema.extend({
   table: z.enum(['employees', 'managers']).optional(),

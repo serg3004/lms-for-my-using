@@ -63,6 +63,7 @@ import {
   checklistAnalyticsQuerySchema,
   checklistManagerAnalyticsExportQuerySchema,
   checklistManagerAnalyticsQuerySchema,
+  checklistSheetAnalyticsQuerySchema,
   checklistQueueQuerySchema,
   recalculateChecklistScoreSchema,
   markChecklistSessionObserverUnavailableSchema,
@@ -140,6 +141,23 @@ export class ChecklistsController {
     const user = request.currentUser!;
     const scope = await this.reviewAccess.reviewQueueScope(user);
     return this.checklistsService.getAnalytics(user.organizationId, checklistAnalyticsQuerySchema.parse(rawQuery), scope);
+  }
+
+  /** PR 459: the sheets the viewer may pick in the Analytics tab. */
+  @Get('checklists/analytics/sheets')
+  @Roles(...rolePolicies.checklistManagerAnalyticsRead)
+  async listAnalyticsSheets(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const query = checklistSheetAnalyticsQuerySchema.pick({ from: true, to: true }).parse(rawQuery);
+    return this.checklistsService.listAnalyticsSheets(user.organizationId, user, await this.reviewAccess.participantLearnerScope(user), query);
+  }
+
+  /** PR 459: metrics over several sheets (completion, scale levels, answered/left, plan/fact, queue). */
+  @Get('checklists/analytics/overview')
+  @Roles(...rolePolicies.checklistManagerAnalyticsRead)
+  async getSheetAnalytics(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.getSheetAnalytics(user.organizationId, user, await this.reviewAccess.participantLearnerScope(user), checklistSheetAnalyticsQuerySchema.parse(rawQuery));
   }
 
   @Get('checklists/manager-analytics')
