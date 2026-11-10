@@ -1,13 +1,13 @@
 import { plainText } from '@lms/shared/rich-text';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ApiClientError } from '../shared/apiClient.js';
 import { useSession } from '../shared/session.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { AdminPageHeader, AdminPageLayout, ChecklistsTabs, ConfirmDialog, type AdminNavItem } from '../shared/adminPage.js';
 import { ObserverPageLayout } from '../shared/observerLayout.js';
-import { ObserverSessionsNav } from './ObserverSessionsNav.js';
+import { ObserverSessionsNav, sheetAnalyticsPath } from './ObserverSessionsNav.js';
 import { ChecklistBuilder } from '../features/admin-checklists/ChecklistBuilder.js';
 import { ChecklistCreateMenu } from '../features/admin-checklists/ChecklistCreateMenu.js';
 import { ChecklistTemplateDialog } from '../features/admin-checklists/ChecklistTemplateDialog.js';
@@ -47,6 +47,9 @@ type AdminChecklistsData = { checklists: ChecklistSummary[]; folders?: Checklist
 export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' | 'observer' }) {
   const { t, i18n } = useTranslation();
   const { currentUser } = useSession();
+  const navigate = useNavigate();
+  // PR 462: the selected checklists open in the analytics tab of the role (admin tab or the observer's one).
+  const analyticsBase = variant === 'observer' ? sheetAnalyticsPath(currentUser) : '/admin/checklists/sheet-analytics';
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | ChecklistStatus>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -456,7 +459,7 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
             onCreateFolder={() => setFolderDialog({ kind: 'create', parent: selectedFolder })} onCreateChecklist={() => void createInOpenFolder()} canCreateFolder={canAddSubfolder(folders, selectedFolderId)}
             onOpenFolder={(folder) => selectFolder(folder.id)} onRenameFolder={(folder) => setFolderDialog({ kind: 'edit', folder })} onMoveFolder={(folder) => setMoveTargets({ sheets: [], folders: [folder] })} onDeleteFolder={(folder) => void requestFolderDelete(folder)}
             sort={sort} onSortChange={setSort} emptyMessage={emptyMessage}
-            batchActions={({ sheets, folders: pickedFolders }) => <ChecklistBulkBar selected={sheets} selectedFolders={pickedFolders} busy={bulkBusy} onAction={requestBulk} onMove={setMoveTargets} onRenameFolder={(folder) => setFolderDialog({ kind: 'edit', folder })} onDeleteSelection={(selection) => void requestSelectionDelete(selection)} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} t={t} />}
+            batchActions={({ sheets, folders: pickedFolders }) => <ChecklistBulkBar selected={sheets} selectedFolders={pickedFolders} busy={bulkBusy} onAction={requestBulk} onMove={setMoveTargets} onRenameFolder={(folder) => setFolderDialog({ kind: 'edit', folder })} onDeleteSelection={(selection) => void requestSelectionDelete(selection)} onAnalytics={analyticsBase ? (picked) => navigate(`${analyticsBase}?sheets=${picked.map((checklist) => checklist.id).join(',')}`) : undefined} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} t={t} />}
             t={t} />
         </div>
       </div>

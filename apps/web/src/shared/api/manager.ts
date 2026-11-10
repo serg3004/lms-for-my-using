@@ -172,3 +172,30 @@ export function listSheetAnalyticsSheets(query: Pick<SheetAnalyticsQuery, 'from'
 export function getSheetAnalytics({ checklistIds, ...query }: SheetAnalyticsQuery) {
   return apiRequest<SheetAnalytics>(`/checklists/analytics/overview${buildQueryString({ ...query, checklistIds: checklistIds?.join(',') })}`);
 }
+
+// ---- PR 462: one sheet cut by criteria, groups, feedback fields and notes ----
+
+export type ItemAnalyticsMetrics = {
+  total: number; answered: number; skipped: number; remaining: number;
+  completionPercentage: number | null; averagePercentage: number | null;
+  scoreSum: number; scoreMax: number; withNote: number; noteShare: number | null;
+  scales: SheetAnalyticsScale[];
+};
+export type ItemAnalyticsCriterion = ItemAnalyticsMetrics & { id: string; text: string; groupId: string | null };
+export type ItemAnalyticsGroup = ItemAnalyticsMetrics & { id: string | null; title: string | null; criteriaCount: number };
+export type ItemAnalyticsFeedbackField = { id: string; kind: 'text' | 'choice'; title: string; builtin: string | null; sessions: number; filled: number; notFilled: number; options: Array<{ id: string; name: string; count: number }> };
+export type ItemAnalyticsNote = { sessionId: string | null; itemId: string; itemText: string; comment: string | null; reviewComment: string | null; at: string | null; employee: string; observer: string | null };
+export type ItemAnalytics = {
+  by: 'criteria' | 'groups' | 'feedback' | 'notes';
+  instances: number;
+  criteria?: ItemAnalyticsCriterion[] | Array<{ id: string; text: string; answered: number; withNote: number; noteShare: number | null }>;
+  groups?: ItemAnalyticsGroup[];
+  feedback?: ItemAnalyticsFeedbackField[];
+  notes?: { total: number; page: number; pageSize: number; items: ItemAnalyticsNote[] };
+  period: { from: string; to: string };
+  truncated: boolean;
+};
+
+export function getItemAnalytics(checklistId: string, query: { by: ItemAnalytics['by']; from: string; to: string; departmentId?: string; managerId?: string; page?: number; itemId?: string }) {
+  return apiRequest<ItemAnalytics>(`/checklists/${encodeURIComponent(checklistId)}/analytics/items${buildQueryString(query)}`);
+}

@@ -133,6 +133,28 @@ describe('buildItemAnalytics: notes (PR 460)', () => {
     const second = buildItemAnalytics('notes', rows, SHEET, 2) as typeof first;
     expect(second.notes.items).toHaveLength(1);
   });
+  it('lists the notes of one criterion only when itemId is given (PR 462), the counts stay whole', () => {
+    const rows = Array.from({ length: 6 }, (_, index) => row({
+      sessionId: `s${index}`, finishedAt: new Date(Date.UTC(2026, 10, 1 + index, 9)),
+      results: [result('i1', { comment: `Заметка ${index}` }), result('i2', { reviewComment: index === 3 ? 'Проверено' : null })],
+    }));
+    const out = buildItemAnalytics('notes', rows, SHEET, 1, 'i2') as { criteria: Array<Rec>; notes: { total: number; items: Array<Rec> } };
+    expect(out.notes.total).toBe(1);
+    expect(out.notes.items).toHaveLength(1);
+    expect(out.notes.items[0]).toMatchObject({ itemId: 'i2', reviewComment: 'Проверено' });
+    expect(out.criteria.find((entry) => entry.id === 'i1')).toMatchObject({ withNote: 6 });
+  });
+});
+
+describe('buildItemAnalytics: raw score sums (PR 462)', () => {
+  it('returns scoreSum and scoreMax so a picked set of criteria can be totalled exactly', () => {
+    const out = buildItemAnalytics('criteria', [row({ results: [result('i1', { checked: true, points: 2 }), result('i2', { checked: false, points: 0 })] })], SHEET) as { criteria: Array<Rec> };
+    for (const entry of out.criteria) {
+      expect(typeof entry.scoreSum).toBe('number');
+      expect(typeof entry.scoreMax).toBe('number');
+      if (entry.scoreMax) expect(entry.averagePercentage).toBe(Math.round(((entry.scoreSum as number) / (entry.scoreMax as number)) * 100));
+    }
+  });
 });
 
 describe('checklistItemAnalyticsQuerySchema (PR 460)', () => {
@@ -141,6 +163,8 @@ describe('checklistItemAnalyticsQuerySchema (PR 460)', () => {
     expect(checklistItemAnalyticsQuerySchema.safeParse({ ...base, by: 'tables' }).success).toBe(false);
     expect(checklistItemAnalyticsQuerySchema.parse({ ...base, by: 'notes' }).page).toBe(1);
     expect(checklistItemAnalyticsQuerySchema.parse({ ...base, by: 'notes', page: '3', observerId: OTHER.toUpperCase() })).toMatchObject({ page: 3, observerId: OTHER });
+    expect(checklistItemAnalyticsQuerySchema.parse({ ...base, by: 'notes', itemId: ' i2 ' }).itemId).toBe('i2');
+    expect(checklistItemAnalyticsQuerySchema.safeParse({ ...base, by: 'notes', itemId: '' }).success).toBe(false);
   });
 });
 

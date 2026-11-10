@@ -1116,11 +1116,11 @@ sheets the list shows them (no folder, or a folder opened to staff); a requested
 limited by `participantLearnerScope()` (a manager sees the own team). At most 5000 sessions and 5000 free results are read per call; `truncated`
 tells when the cap was hit. The employee table and `GET /checklists/manager-analytics` keep their behaviour.
 
-PR 460 adds the cut of one sheet: `GET /checklists/:id/analytics/items?by=criteria|groups|feedback|notes&from&to[&departmentId][&managerId][&observerId][&page]`
+PR 460 adds the cut of one sheet: `GET /checklists/:id/analytics/items?by=criteria|groups|feedback|notes&from&to[&departmentId][&managerId][&observerId][&page][&itemId]`
 (`checklistManagerAnalyticsRead`), JSON `{ by, instances, period, truncated, ... }` read from the snapshots frozen with the sessions, so later sheet edits
 never change history and a criterion removed from the sheet keeps its frozen text. `criteria`: per criterion `total`, `answered`, `skipped`,
 `remaining`, `completionPercentage`, `averagePercentage` (score over the maximum of its scale or points; null for a sheet without points),
-`withNote`, `noteShare`, `scales` (answers by level of the criterion's own scale; yes/no only as `labelKey`). `groups`: the same per group
+`withNote`, `noteShare`, `scoreSum` and `scoreMax` (raw sums behind the average, PR 462, so a client can total any picked set of criteria exactly), `scales` (answers by level of the criterion's own scale; yes/no only as `labelKey`). `itemId` (PR 462) limits the `notes` list to one criterion; the per-criterion counts stay whole. `groups`: the same per group
 (`id` null = criteria without a group) with `criteriaCount`. `feedback`: per field of the frozen layout `sessions`, `filled`, `notFilled` and, for
 a choice field, `options[{ id, name, count }]` (text is not analysed). `notes`: per-criterion counts plus `notes { total, page, pageSize: 20, items[{ sessionId,
 itemId, itemText, comment, reviewComment, at, employee, observer }] }` newest first. Same filters, employee scope and access rule as PR 459; a sheet
