@@ -64,6 +64,7 @@ import {
   checklistManagerAnalyticsExportQuerySchema,
   checklistManagerAnalyticsQuerySchema,
   checklistSheetAnalyticsQuerySchema,
+  checklistItemAnalyticsQuerySchema,
   checklistQueueQuerySchema,
   recalculateChecklistScoreSchema,
   markChecklistSessionObserverUnavailableSchema,
@@ -158,6 +159,15 @@ export class ChecklistsController {
   async getSheetAnalytics(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     return this.checklistsService.getSheetAnalytics(user.organizationId, user, await this.reviewAccess.participantLearnerScope(user), checklistSheetAnalyticsQuerySchema.parse(rawQuery));
+  }
+
+  /** PR 460: one sheet by criteria, groups, feedback fields or notes. */
+  @Get('checklists/:id/analytics/items')
+  @Roles(...rolePolicies.checklistManagerAnalyticsRead)
+  async getItemAnalytics(@Param('id') id: string, @Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new BadRequestException('Invalid checklist id');
+    const user = request.currentUser!;
+    return this.checklistsService.getItemAnalytics(user.organizationId, user, await this.reviewAccess.participantLearnerScope(user), id, checklistItemAnalyticsQuerySchema.parse(rawQuery));
   }
 
   @Get('checklists/manager-analytics')

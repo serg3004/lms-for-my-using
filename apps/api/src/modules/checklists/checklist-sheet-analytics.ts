@@ -140,13 +140,26 @@ export function buildSheetAnalytics(
   };
 }
 
+/** The employee scope of an analytics read: the viewer's own scope plus the optional department and manager filters. */
+export function analyticsEmployeeFilter(organizationId: string, userScope: Prisma.UserWhereInput, query: { departmentId?: string; managerId?: string }): Prisma.UserWhereInput {
+  return {
+    AND: [
+      userScope,
+      ...(query.departmentId ? [{ departmentMemberships: { some: { organizationId, isPrimary: true, effectiveTo: null, departmentId: query.departmentId } } }] : []),
+      ...(query.managerId && query.managerId !== 'unassigned' ? [{ departmentMemberships: { some: { organizationId, isPrimary: true, effectiveTo: null, department: { managers: { some: { organizationId, userId: query.managerId, type: { in: ['DIRECT', 'FUNCTIONAL'] as ('DIRECT' | 'FUNCTIONAL')[] }, isPrimary: true, effectiveTo: null } } } } } }] : []),
+      ...(query.managerId === 'unassigned' ? [{ departmentMemberships: { none: { organizationId, isPrimary: true, effectiveTo: null, department: { managers: { some: { organizationId, isPrimary: true, effectiveTo: null } } } } } }] : []),
+    ],
+  };
+}
+
 const MAX_INSTANCES = 5000;
 
 /** Plain helper (built in ChecklistsService's constructor body, not injected). */
 export class ChecklistSheetAnalytics {
   constructor(private readonly prisma: PrismaService) {}
 
-  private async accessible(organizationId: string, actor: FolderActor) {
+  /** The sheets the viewer may open in the analytics (PR 459 rule), full rows. */
+  async accessible(organizationId: string, actor: FolderActor) {
     const [sheets, folders, observed] = await Promise.all([
       this.prisma.checklist.findMany({ where: { organizationId, deletedAt: null }, select: { id: true, title: true, createdBy: true, folderId: true, status: true } }),
       this.prisma.checklistFolder.findMany({ where: { organizationId, deletedAt: null }, select: { id: true, parentId: true, createdBy: true, visibleToStaff: true } }),
@@ -180,14 +193,7 @@ export class ChecklistSheetAnalytics {
 
     const from = new Date(query.from);
     const to = new Date(query.to);
-    const employeeFilter: Prisma.UserWhereInput = {
-      AND: [
-        userScope,
-        ...(query.departmentId ? [{ departmentMemberships: { some: { organizationId, isPrimary: true, effectiveTo: null, departmentId: query.departmentId } } }] : []),
-        ...(query.managerId && query.managerId !== 'unassigned' ? [{ departmentMemberships: { some: { organizationId, isPrimary: true, effectiveTo: null, department: { managers: { some: { organizationId, userId: query.managerId, type: { in: ['DIRECT', 'FUNCTIONAL'] as ('DIRECT' | 'FUNCTIONAL')[] }, isPrimary: true, effectiveTo: null } } } } } }] : []),
-        ...(query.managerId === 'unassigned' ? [{ departmentMemberships: { none: { organizationId, isPrimary: true, effectiveTo: null, department: { managers: { some: { organizationId, isPrimary: true, effectiveTo: null } } } } } }] : []),
-      ],
-    };
+    const employeeFilter = analyticsEmployeeFilter(organizationId, userScope, query);
     const instanceSelect = {
       checklistId: true, status: true, percentage: true, scored: true, templateSnapshot: true,
       results: { select: { itemId: true, answerState: true, scaleLevel: true, checked: true, points: true } },
