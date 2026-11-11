@@ -16,6 +16,7 @@ import { openManagementEdit, openManagementList, openManagementReport, openManag
 import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 import { installManagerReportMocks, reportManagerA } from '../fixtures/checklist-manager-report.js';
 import { installSheetAnalyticsMocks, sheetA } from '../fixtures/checklist-sheet-analytics.js';
+import { GOOD_CODE, openPublicPage } from '../fixtures/checklist-public-page.js';
 import { expect, test, type Page } from '@playwright/test';
 
 const widths = [320, 375, 768, 1024, 1280, 1440] as const;
@@ -1316,4 +1317,20 @@ for (const width of [375, 1440]) test(`checklist public access card is responsiv
   await expectNoPageOverflow(page);
   await page.waitForLoadState('networkidle');
   await expect(card).toHaveScreenshot(`checklist-public-access-${width}.png`, { maxDiffPixels: 3000 });
+});
+
+// PR 467: the page of the link and QR code, `/c/:token`: the front page (name and code) and the pass with the code before sending.
+for (const width of [390, 1280]) test(`checklist public page is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height });
+  await openPublicPage(page);
+  await page.getByRole('img', { name: /Картинка с кодом/ }).waitFor();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `checklist-public-front-${width}`, false, { fullPage: true, maxDiffPixels: 3000 });
+  await page.getByLabel('Ваше имя').fill('Айдос Нурланов');
+  await page.getByLabel('Код с картинки').fill(GOOD_CODE);
+  await page.getByRole('button', { name: 'Начать', exact: true }).click();
+  await page.getByText('Проходы свободны').waitFor();
+  await page.getByRole('img', { name: /Картинка с кодом/ }).waitFor();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `checklist-public-pass-${width}`, false, { fullPage: true, maxDiffPixels: 3000 });
 });

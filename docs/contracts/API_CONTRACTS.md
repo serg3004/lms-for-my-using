@@ -1127,7 +1127,7 @@ stops being published or free (status change, bulk action, folder deletion) gets
 
 PR 465 adds the guest side of the link, `/api/v1/public/checklists/:token/...` (no session; `@PublicAccess()`). The token names the one sheet, a pass key in the
 `X-Guest-Pass` header names the one pass. A wrong, malformed, switched-off, reissued, unpublished, non-free or deleted link answers one 404 for every reason.
-`GET /:token` returns `{ title, description, criteriaCount, guestNameRequired, guestPhotosAllowed, audience }`; `GET /:token/captcha` returns `{ challenge, svg, expiresAt }`
+`GET /:token` returns `{ title, description, criteriaCount, photoRequiredCount, guestNameRequired, guestPhotosAllowed, audience }` (PR 467 added `photoRequiredCount`: a sheet with required photos cannot be finished while guest photos are off); `GET /:token/captcha` returns `{ challenge, svg, expiresAt }`
 (own code-captcha: 5 characters drawn as SVG, HMAC-signed challenge, 5 minutes, single use per process); `POST /:token/start` takes `{ guestName?, captchaChallenge, captchaCode }`
 and returns `{ instanceId, passKey, instance }` (400 with detail code `CAPTCHA_INVALID` / `CAPTCHA_EXPIRED`, 400 for a missing or over-long name, 429 `DAILY_LIMIT` when the sheet already
 started `dailyLimit` guest passes in 24 hours, default 200, set with `PATCH .../public-access { dailyLimit }`). Pass operations: `GET /:token/passes/:id`,

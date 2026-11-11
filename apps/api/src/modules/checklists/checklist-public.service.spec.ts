@@ -36,7 +36,7 @@ function setup(sheetOverrides: Partial<Sheet> = {}) {
   };
   const prisma = {
     checklist: { findFirst: async ({ where }: { where: { publicToken: string } }) => sheets.find((s) => s.publicToken === where.publicToken && !s.deletedAt) ?? null },
-    checklistItem: { count: async () => 3 },
+    checklistItem: { count: async ({ where }: { where: { photoRequired?: boolean } }) => (where.photoRequired ? 1 : 3) },
     user: {
       findFirst: async ({ where }: { where: { organizationId: string; email: string } }) => users.find((u) => u.organizationId === where.organizationId && u.email === where.email) ?? null,
       create: jest.fn(async ({ data }: { data: { organizationId: string; email: string } }) => { const user = { id: guestId, ...data }; users.push(user); return user; }),
@@ -83,7 +83,7 @@ async function expectStatus(promise: Promise<unknown>, status: number) {
 describe('ChecklistPublicService (PR 465)', () => {
   it('opens the front page only for a valid token', async () => {
     const { service } = setup();
-    await expect(service.open(TOKEN)).resolves.toMatchObject({ title: 'Лист', criteriaCount: 3, guestNameRequired: true, guestPhotosAllowed: false });
+    await expect(service.open(TOKEN)).resolves.toMatchObject({ title: 'Лист', criteriaCount: 3, photoRequiredCount: 1, guestNameRequired: true, guestPhotosAllowed: false });
     await expect(service.open('B'.repeat(32))).rejects.toBeInstanceOf(NotFoundException);
     await expect(service.open('short')).rejects.toBeInstanceOf(NotFoundException);
     await expect(service.open("'; DROP TABLE checklists; --".padEnd(32, 'x'))).rejects.toBeInstanceOf(NotFoundException);
