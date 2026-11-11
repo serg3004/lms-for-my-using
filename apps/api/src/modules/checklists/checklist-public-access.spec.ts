@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { jest } from '@jest/globals';
 
-import { ChecklistPublicAccess, isEligibleForPublicAccess, newPublicToken, publicAccessOffData } from './checklist-public-access.js';
+import { ChecklistPublicAccess, GUEST_USER_EMAIL, isEligibleForPublicAccess, markGuestPassesDisabled, newPublicToken, publicAccessOffData } from './checklist-public-access.js';
 import { updateChecklistPublicAccessSchema } from './checklists.schemas.js';
 import { ChecklistsService } from './checklists.service.js';
 
@@ -12,14 +12,14 @@ const instructorActor = { id: '44444444-4444-4444-4444-444444444444', roles: ['i
 
 type Row = {
   id: string; organizationId: string; deletedAt: Date | null; status: string; accessMode: string;
-  publicAccess: 'off' | 'registered' | 'everyone'; publicToken: string | null; guestNameRequired: boolean; guestPhotosAllowed: boolean;
+  publicAccess: 'off' | 'registered' | 'everyone'; publicToken: string | null; guestNameRequired: boolean; guestPhotosAllowed: boolean; publicDailyLimit: number;
   publicAccessChangedAt: Date | null; publicAccessChangedBy: string | null;
 };
 
 function setup(overrides: Partial<Row> = {}) {
   const row: Row = {
     id: sheetId, organizationId: orgId, deletedAt: null, status: 'published', accessMode: 'free', publicAccess: 'off', publicToken: null,
-    guestNameRequired: true, guestPhotosAllowed: false, publicAccessChangedAt: null, publicAccessChangedBy: null, ...overrides,
+    guestNameRequired: true, guestPhotosAllowed: false, publicDailyLimit: 200, publicAccessChangedAt: null, publicAccessChangedBy: null, ...overrides,
   };
   const prisma = {
     checklist: {
@@ -33,7 +33,9 @@ function setup(overrides: Partial<Row> = {}) {
         return { count: 1 };
       },
     },
-    user: { findFirst: async () => ({ id: adminActor.id, firstName: 'Анна', lastName: 'Админова' }) },
+    user: { findFirst: async (args: { where: { email?: string } }) => (args.where.email ? null : { id: adminActor.id, firstName: 'Анна', lastName: 'Админова' }) },
+    checklistInstance: { findMany: async () => [] },
+    checklistInstanceEvent: { createMany: async () => ({ count: 0 }) },
   };
   const record = jest.fn(async () => undefined);
   const helper = new ChecklistPublicAccess(prisma as never, { record } as never);
@@ -125,6 +127,15 @@ describe('ChecklistPublicAccess (PR 464)', () => {
     expect(row.publicToken).toBe('t');
   });
 
+  it('a daily limit changes without touching the stamp, and out-of-range values are refused', async () => {
+    const { helper, row } = setup({ publicAccess: 'everyone', publicToken: 't' });
+    const state = await helper.update(orgId, sheetId, adminActor, { dailyLimit: 50 });
+    expect(state.dailyLimit).toBe(50);
+    expect(row.publicAccessChangedAt).toBeNull();
+    expect(updateChecklistPublicAccessSchema.safeParse({ dailyLimit: 0 }).success).toBe(false);
+    expect(updateChecklistPublicAccessSchema.safeParse({ dailyLimit: 10_001 }).success).toBe(false);
+  });
+
   it('the off data stamps who and when', () => {
     const now = new Date();
     expect(publicAccessOffData('u', now)).toEqual({ publicAccess: 'off', publicAccessChangedAt: now, publicAccessChangedBy: 'u' });
@@ -144,7 +155,7 @@ describe('ChecklistsService.updateChecklist closes the public entry (PR 464)', (
   function build(sheet: Record<string, unknown>) {
     const update = jest.fn(async ({ data }: { data: Record<string, unknown> }) => ({ ...sheet, ...data, title: 'Лист', id: sheetId }));
     const record = jest.fn(async () => undefined);
-    const prisma = { checklist: { findFirst: async () => sheet, update } };
+    const prisma = { checklist: { findFirst: async () => sheet, update }, user: { findFirst: async () => null }, checklistInstance: { findMany: async () => [] }, checklistInstanceEvent: { createMany: async () => ({ count: 0 }) } };
     const service = new ChecklistsService(prisma as never, {} as never, { record } as never);
     return { service, update, record };
   }
@@ -165,5 +176,36 @@ describe('ChecklistsService.updateChecklist closes the public entry (PR 464)', (
     const second = build({ ...base, publicAccess: 'off' });
     await second.service.updateChecklist(sheetId, orgId, { status: 'draft' } as never, adminActor.id).catch(() => undefined);
     expect(second.update.mock.calls[0]?.[0].data).not.toHaveProperty('publicAccess');
+  });
+});
+
+describe('markGuestPassesDisabled (PR 465)', () => {
+  const build = (guest: { id: string } | null, open: Array<{ id: string }>) => {
+    const createMany = jest.fn(async () => ({ count: open.length }));
+    const findMany = jest.fn(async () => open);
+    const db = { user: { findFirst: jest.fn(async () => guest) }, checklistInstance: { findMany }, checklistInstanceEvent: { createMany } };
+    return { db, createMany, findMany };
+  };
+
+  it('marks each open, not yet marked guest pass of the sheets once', async () => {
+    const { db, createMany, findMany } = build({ id: 'guest' }, [{ id: 'i1' }, { id: 'i2' }]);
+    await markGuestPassesDisabled(db as never, orgId, [sheetId], 'reissued');
+    expect(db.user.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { organizationId: orgId, email: GUEST_USER_EMAIL } }));
+    expect(findMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ userId: 'guest', status: { in: ['assigned', 'in_progress'] }, events: { none: { eventType: 'guest_link_disabled' } } }) }));
+    expect(createMany).toHaveBeenCalledWith({ data: [
+      { organizationId: orgId, instanceId: 'i1', eventType: 'guest_link_disabled', metadata: { reason: 'reissued' } },
+      { organizationId: orgId, instanceId: 'i2', eventType: 'guest_link_disabled', metadata: { reason: 'reissued' } },
+    ] });
+  });
+
+  it('does nothing without a guest user, without open passes or without sheets', async () => {
+    const noGuest = build(null, [{ id: 'i1' }]);
+    await markGuestPassesDisabled(noGuest.db as never, orgId, [sheetId], 'switched_off');
+    expect(noGuest.createMany).not.toHaveBeenCalled();
+    const none = build({ id: 'guest' }, []);
+    await markGuestPassesDisabled(none.db as never, orgId, [sheetId], 'switched_off');
+    expect(none.createMany).not.toHaveBeenCalled();
+    await markGuestPassesDisabled(none.db as never, orgId, [], 'switched_off');
+    expect(none.db.user.findFirst).toHaveBeenCalledTimes(1);
   });
 });

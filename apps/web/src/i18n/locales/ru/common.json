@@ -623,6 +623,7 @@
         "checklist.folder_deleted": "Удалена папка чек-листов",
         "checklist.public_access.updated": "Изменён публичный вход в чек-лист",
         "checklist.public_access.reissued": "Выпущена новая публичная ссылка на чек-лист",
+        "checklist.public_access.limit_reached": "Достигнут дневной предел гостевых прохождений листа",
         "checklist_instance.assigned": "Чек-лист назначен",
         "checklist_item_result.reviewed": "Пункт чек-листа проверен",
         "certificate.issued": "Сертификат выдан"

@@ -303,6 +303,16 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/progress` | `Progress` | `bearer` |
 | `GET` | `/api/v1/progress/summary` | `Progress` | `bearer` |
 | `GET` | `/api/v1/progress/{id}` | `Progress` | `bearer` |
+| `GET` | `/api/v1/public/checklists/{token}` | `ChecklistPublic` | `bearer` |
+| `GET` | `/api/v1/public/checklists/{token}/captcha` | `ChecklistPublic` | `bearer` |
+| `GET` | `/api/v1/public/checklists/{token}/passes/{instanceId}` | `ChecklistPublic` | `bearer` |
+| `POST` | `/api/v1/public/checklists/{token}/passes/{instanceId}/finish` | `ChecklistPublic` | `bearer` |
+| `PATCH` | `/api/v1/public/checklists/{token}/passes/{instanceId}/items/{itemId}` | `ChecklistPublic` | `bearer` |
+| `DELETE` | `/api/v1/public/checklists/{token}/passes/{instanceId}/items/{itemId}/answer` | `ChecklistPublic` | `bearer` |
+| `POST` | `/api/v1/public/checklists/{token}/passes/{instanceId}/items/{itemId}/photo` | `ChecklistPublic` | `bearer` |
+| `POST` | `/api/v1/public/checklists/{token}/passes/{instanceId}/items/{itemId}/skip` | `ChecklistPublic` | `bearer` |
+| `POST` | `/api/v1/public/checklists/{token}/start` | `ChecklistPublic` | `bearer` |
+| `POST` | `/api/v1/public/checklists/{token}/start-signed-in` | `ChecklistPublic` | `bearer` |
 | `GET` | `/api/v1/questions/{id}` | `AssessmentQuestions` | `bearer` |
 | `PATCH` | `/api/v1/questions/{id}` | `AssessmentQuestions` | `bearer` |
 | `DELETE` | `/api/v1/questions/{id}` | `AssessmentQuestions` | `bearer` |

@@ -1125,6 +1125,22 @@ is not published and free, 403 not an administrator, 404 sheet missing, 409 `exp
 stops being published or free (status change, bulk action, folder deletion) gets `publicAccess = off` automatically. A guest pass belongs to one service user of the organization
 (no sign-in, no memberships; created in PR 465) and `ChecklistInstance.guestName` holds the typed name.
 
+PR 465 adds the guest side of the link, `/api/v1/public/checklists/:token/...` (no session; `@PublicAccess()`). The token names the one sheet, a pass key in the
+`X-Guest-Pass` header names the one pass. A wrong, malformed, switched-off, reissued, unpublished, non-free or deleted link answers one 404 for every reason.
+`GET /:token` returns `{ title, description, criteriaCount, guestNameRequired, guestPhotosAllowed, audience }`; `GET /:token/captcha` returns `{ challenge, svg, expiresAt }`
+(own code-captcha: 5 characters drawn as SVG, HMAC-signed challenge, 5 minutes, single use per process); `POST /:token/start` takes `{ guestName?, captchaChallenge, captchaCode }`
+and returns `{ instanceId, passKey, instance }` (400 with detail code `CAPTCHA_INVALID` / `CAPTCHA_EXPIRED`, 400 for a missing or over-long name, 429 `DAILY_LIMIT` when the sheet already
+started `dailyLimit` guest passes in 24 hours, default 200, set with `PATCH .../public-access { dailyLimit }`). Pass operations: `GET /:token/passes/:id`,
+`PATCH .../items/:itemId`, `DELETE .../items/:itemId/answer`, `POST .../items/:itemId/skip`, `POST .../items/:itemId/photo` (403 unless `guestPhotosAllowed`), and
+`POST .../finish` (`{ captchaChallenge, captchaCode }`, a fresh code). They reuse the employee operations, so scoring, snapshot and required-criteria rules are the same, and answer
+the instance without `organizationId`, `userId`, `assignedBy` and reviewer fields. `registered` audience: open, captcha and start answer 401 with detail `returnTo = /c/:token`;
+a signed-in employee uses `POST /:token/start-signed-in` (roles of `checklistsStartFree`, same organization only) which starts the ordinary free pass under their own account.
+The pass key is `HMAC(instanceId | token)`: reissuing the link or switching the entry off stops every guest pass at once, and open guest passes get a `guest_link_disabled` event.
+Per-address limits (in `api-hardening`, keyed by route pattern, never by the token): open and captcha 120, start 20, finish 20, other pass saves 1200 per 15 minutes; 429 carries
+`Retry-After` and detail `retryAfterSeconds` (the whole window, an upper bound); an unreachable shared store answers 503 (fail closed). A guest pass belongs to one archived service user
+`guest@guest.invalid` per organization (cannot sign in, not in user lists); parallel passes of one sheet by that user are allowed only on this path. Audit: `checklist.public_access.limit_reached`
+once per sheet and day, without the token.
+
 PR 460 adds the cut of one sheet: `GET /checklists/:id/analytics/items?by=criteria|groups|feedback|notes&from&to[&departmentId][&managerId][&observerId][&page][&itemId]`
 (`checklistManagerAnalyticsRead`), JSON `{ by, instances, period, truncated, ... }` read from the snapshots frozen with the sessions, so later sheet edits
 never change history and a criterion removed from the sheet keeps its frozen text. `criteria`: per criterion `total`, `answered`, `skipped`,

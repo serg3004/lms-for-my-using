@@ -71,6 +71,36 @@ export const DEFAULT_SENSITIVE_RATE_LIMIT_POLICY: SensitiveRateLimitPolicy = {
   global: { maxRequests: 10_000, windowMs: 60_000 },
 };
 
+/**
+ * PR 465: the guest side of a checklist link has no account to limit, so it is limited by client address: opening and
+ * requesting a code, starting a pass, sending the result, and (loosely) every other save of a pass. The token in the path
+ * is never part of a key or a metric label.
+ */
+export type PublicChecklistRouteKind = 'open' | 'start' | 'finish' | 'pass';
+
+export const DEFAULT_PUBLIC_CHECKLIST_RATE_LIMITS: Record<PublicChecklistRouteKind, RateLimitRule> = {
+  open: { maxRequests: 120, windowMs: 15 * 60_000 },
+  start: { maxRequests: 20, windowMs: 15 * 60_000 },
+  finish: { maxRequests: 20, windowMs: 15 * 60_000 },
+  pass: { maxRequests: 1200, windowMs: 15 * 60_000 },
+};
+
+const PUBLIC_CHECKLIST_PATH = /^\/api\/v1\/public\/checklists\/[^/]+(\/.*)?$/;
+
+export function matchPublicChecklistRoute(method: string | undefined, path: string): { kind: PublicChecklistRouteKind; route: string } | undefined {
+  const match = PUBLIC_CHECKLIST_PATH.exec(path);
+  if (!match) return undefined;
+  const rest = match[1] ?? '';
+  const prefix = '/api/v1/public/checklists/:token';
+  if (method === 'GET' && (rest === '' || rest === '/captcha')) return { kind: 'open', route: `${prefix}${rest}` };
+  if (method === 'POST' && rest === '/start') return { kind: 'start', route: `${prefix}/start` };
+  if (method === 'POST' && /^\/passes\/[^/]+\/finish$/.test(rest)) return { kind: 'finish', route: `${prefix}/passes/:id/finish` };
+  // Signing in is a different gate (its own session); everything else of a pass is a save.
+  if (rest === '/start-signed-in') return undefined;
+  if (rest.startsWith('/passes/')) return { kind: 'pass', route: `${prefix}/passes/:id/...` };
+  return undefined;
+}
+
 type RateLimitEntry = {
   count: number;
   resetAt: number;
@@ -95,6 +125,7 @@ export type RateLimitObservability = {
 
 export type SensitiveRateLimitOptions = {
   observability?: RateLimitObservability;
+  publicChecklistLimits?: Record<PublicChecklistRouteKind, RateLimitRule>;
 };
 
 export type MinimalRedis = {
@@ -224,16 +255,23 @@ export function createSensitiveRouteRateLimitMiddleware(
   const resolvedStore = store ?? createInMemoryRateLimitStore();
   let redisUnavailable = false;
 
+  const publicLimits = options.publicChecklistLimits ?? DEFAULT_PUBLIC_CHECKLIST_RATE_LIMITS;
+
   return async (request, response, next) => {
-    if (!isRateLimitedRoute(request)) {
+    const publicRoute = matchPublicChecklistRoute(request.method, getRequestPath(request));
+    if (!publicRoute && !isRateLimitedRoute(request)) {
       next();
       return;
     }
 
-    const requestPath = getRequestPath(request);
-    const accountKey = getNormalizedAccountKey(request, requestPath);
+    // A guest route is keyed and labelled by its pattern, never by the token it carries.
+    const requestPath = publicRoute ? publicRoute.route : getRequestPath(request);
+    const accountKey = publicRoute ? undefined : getNormalizedAccountKey(request, requestPath);
+    const publicRule = publicRoute ? publicLimits[publicRoute.kind] : undefined;
     const rules = [
-      { key: ruleKey(`ip:${getClientKey(request)}`, requestPath, policy.ip), rule: policy.ip },
+      ...(publicRule
+        ? [{ key: ruleKey(`ip:${getClientKey(request)}`, requestPath, publicRule), rule: publicRule }]
+        : [{ key: ruleKey(`ip:${getClientKey(request)}`, requestPath, policy.ip), rule: policy.ip }]),
       { key: `global:${policy.global.windowMs}`, rule: policy.global },
       ...(accountKey
         ? policy.account.map((rule) => ({ key: ruleKey(`account:${accountKey}`, requestPath, rule), rule }))
@@ -280,13 +318,17 @@ export function createSensitiveRouteRateLimitMiddleware(
       options.observability?.rejected?.('redis', requestPath);
       response.statusCode = TOO_MANY_REQUESTS_STATUS;
       response.setHeader('Content-Type', 'application/json');
+      // The store only counts, so the wait is the whole window: an upper bound, never a shorter promise than the truth.
+      const retryAfterSeconds = publicRule ? Math.ceil(publicRule.windowMs / 1000) : undefined;
+      if (retryAfterSeconds !== undefined) response.setHeader('Retry-After', String(retryAfterSeconds));
       response.end(
         JSON.stringify(
           createApiErrorResponse({
             statusCode: TOO_MANY_REQUESTS_STATUS,
             code: TOO_MANY_REQUESTS_CODE,
-            message: TOO_MANY_REQUESTS_MESSAGE,
-            path: request.url ?? requestPath,
+            message: retryAfterSeconds === undefined ? TOO_MANY_REQUESTS_MESSAGE : `${TOO_MANY_REQUESTS_MESSAGE}, try again in at most ${retryAfterSeconds} seconds`,
+            path: publicRoute ? requestPath : request.url ?? requestPath,
+            ...(retryAfterSeconds === undefined ? {} : { details: [{ field: 'retryAfterSeconds', code: 'RETRY_AFTER', message: String(retryAfterSeconds) }] }),
           }),
         ),
       );

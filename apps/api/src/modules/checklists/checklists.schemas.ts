@@ -385,9 +385,24 @@ export const updateChecklistPublicAccessSchema = z.object({
   access: z.enum(['off', 'registered', 'everyone']).optional(),
   guestNameRequired: z.boolean().optional(),
   guestPhotosAllowed: z.boolean().optional(),
+  /** PR 465: guest passes that may be started per sheet in 24 hours. */
+  dailyLimit: z.number().int().min(1).max(10_000).optional(),
   expectedChangedAt: z.string().datetime().nullable().optional(),
-}).strict().refine((value) => value.access !== undefined || value.guestNameRequired !== undefined || value.guestPhotosAllowed !== undefined, { message: 'Nothing to change' });
+}).strict().refine((value) => value.access !== undefined || value.guestNameRequired !== undefined || value.guestPhotosAllowed !== undefined || value.dailyLimit !== undefined, { message: 'Nothing to change' });
 export type UpdateChecklistPublicAccessInput = z.infer<typeof updateChecklistPublicAccessSchema>;
+
+// PR 465: the guest side of the link. The captcha answer travels with the start and with the final send.
+const captchaFields = {
+  captchaChallenge: z.string().min(1).max(200),
+  captchaCode: z.string().min(1).max(32),
+};
+export const startPublicChecklistSchema = z.object({
+  guestName: z.string().max(200).optional(),
+  ...captchaFields,
+}).strict();
+export type StartPublicChecklistInput = z.infer<typeof startPublicChecklistSchema>;
+export const finishPublicChecklistSchema = z.object(captchaFields).strict();
+export type FinishPublicChecklistInput = z.infer<typeof finishPublicChecklistSchema>;
 
 // PR 463: the export of the "Analytics" tab repeats its current view; the cuts of one sheet need `checklistId`.
 export const checklistAnalyticsExportQuerySchema = z.object({

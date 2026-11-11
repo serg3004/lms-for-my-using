@@ -5,6 +5,7 @@ import {
   createRedisRateLimitStore,
   createSecurityHeadersMiddleware,
   createSensitiveRouteRateLimitMiddleware,
+  matchPublicChecklistRoute,
   type MinimalRedis,
 } from './api-hardening';
 
@@ -428,5 +429,68 @@ describe('Redis rate limit store', () => {
       ['redis'],
     ]);
     expect(recordRequest).toHaveBeenLastCalledWith('redis', '/api/v1/auth/login');
+  });
+  describe('guest routes of a checklist link (PR 465)', () => {
+    const token = 'A'.repeat(32);
+    const base = `/api/v1/public/checklists/${token}`;
+
+    it.each([
+      ['GET', base, 'open', '/api/v1/public/checklists/:token'],
+      ['GET', `${base}/captcha`, 'open', '/api/v1/public/checklists/:token/captcha'],
+      ['POST', `${base}/start`, 'start', '/api/v1/public/checklists/:token/start'],
+      ['POST', `${base}/passes/abc/finish`, 'finish', '/api/v1/public/checklists/:token/passes/:id/finish'],
+      ['PATCH', `${base}/passes/abc/items/def`, 'pass', '/api/v1/public/checklists/:token/passes/:id/...'],
+      ['GET', `${base}/passes/abc`, 'pass', '/api/v1/public/checklists/:token/passes/:id/...'],
+    ])('classifies %s %s as %s without the token in the route', (method, url, kind, route) => {
+      expect(matchPublicChecklistRoute(method, url)).toEqual({ kind, route });
+    });
+
+    it('leaves signed-in start and unrelated routes alone', () => {
+      expect(matchPublicChecklistRoute('POST', `${base}/start-signed-in`)).toBeUndefined();
+      expect(matchPublicChecklistRoute('GET', '/api/v1/checklists/free')).toBeUndefined();
+      expect(matchPublicChecklistRoute('POST', `${base}/unknown`)).toBeUndefined();
+    });
+
+    it('answers 429 with the waiting time after the limit of starts, per address, and logs no token', async () => {
+      const store = createInMemoryRateLimitStore(() => 1_000);
+      const rejected = jest.fn();
+      const middleware = createSensitiveRouteRateLimitMiddleware(store, undefined, {
+        observability: { modeChanged: jest.fn(), recordRequest: jest.fn(), rejected },
+        publicChecklistLimits: { open: { maxRequests: 5, windowMs: 60_000 }, start: { maxRequests: 2, windowMs: 60_000 }, finish: { maxRequests: 2, windowMs: 60_000 }, pass: { maxRequests: 5, windowMs: 60_000 } },
+      });
+      const request = createRequest({ method: 'POST', url: `${base}/start`, body: {}, ip: '10.0.0.1' });
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const tracker = createNextTracker();
+        await middleware(request as never, createResponse() as never, tracker.next.bind(tracker));
+        expect(tracker.calls).toBe(1);
+      }
+      const response = createResponse();
+      const tracker = createNextTracker();
+      await middleware(request as never, response as never, tracker.next.bind(tracker));
+      expect(tracker.calls).toBe(0);
+      expect(response.statusCode).toBe(429);
+      expect(response.headers.get('Retry-After')).toBe('60');
+      expect(response.body).not.toContain(token);
+      expect(JSON.parse(response.body)).toMatchObject({ error: { code: 'TOO_MANY_REQUESTS', details: [{ field: 'retryAfterSeconds', message: '60' }] } });
+      expect(rejected).toHaveBeenCalledWith('redis', '/api/v1/public/checklists/:token/start');
+
+      // Another address is not affected, and a different kind of request has its own counter.
+      const other = createNextTracker();
+      await middleware(createRequest({ method: 'POST', url: `${base}/start`, body: {}, ip: '10.0.0.2' }) as never, createResponse() as never, other.next.bind(other));
+      expect(other.calls).toBe(1);
+      const open = createNextTracker();
+      await middleware(createRequest({ method: 'GET', url: base, body: undefined, ip: '10.0.0.1' }) as never, createResponse() as never, open.next.bind(open));
+      expect(open.calls).toBe(1);
+    });
+
+    it('fails closed with 503 when the shared store is down', async () => {
+      const store = { increment: jest.fn<Promise<number>, [string, number]>().mockRejectedValue(new Error('down')) };
+      const middleware = createSensitiveRouteRateLimitMiddleware(store, undefined, { observability: { modeChanged: jest.fn(), recordRequest: jest.fn() } });
+      const response = createResponse();
+      const tracker = createNextTracker();
+      await middleware(createRequest({ method: 'POST', url: `${base}/start`, body: {} }) as never, response as never, tracker.next.bind(tracker));
+      expect(tracker.calls).toBe(0);
+      expect(response.statusCode).toBe(503);
+    });
   });
 });

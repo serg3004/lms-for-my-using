@@ -13,6 +13,7 @@ import { AssignmentsController } from '../assignments/assignments.controller.js'
 import { AuditLogController } from '../audit-log/audit-log.controller.js';
 import { CertificatesController } from '../certificates/certificates.controller.js';
 import { ChecklistsController } from '../checklists/checklists.controller.js';
+import { ChecklistPublicController } from '../checklists/checklist-public.controller.js';
 import { ChecklistFoldersController } from '../checklists/checklist-folders.controller.js';
 import { CourseMaterialsController } from '../course-materials/course-materials.controller.js';
 import { MaterialMalwareScanController } from '../course-materials/material-malware-scan.controller.js';
@@ -56,6 +57,7 @@ const controllerEntries: ControllerEntry[] = [
   { file: 'auth/auth.controller.ts', Controller: AuthController },
   { file: 'certificates/certificates.controller.ts', Controller: CertificatesController },
   { file: 'checklists/checklist-folders.controller.ts', Controller: ChecklistFoldersController },
+  { file: 'checklists/checklist-public.controller.ts', Controller: ChecklistPublicController },
   { file: 'checklists/checklists.controller.ts', Controller: ChecklistsController },
   { file: 'course-materials/course-materials.controller.ts', Controller: CourseMaterialsController },
   { file: 'course-materials/material-malware-scan.controller.ts', Controller: MaterialMalwareScanController },

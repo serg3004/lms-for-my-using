@@ -12,13 +12,16 @@ import { ChecklistSessionReminderDelivery } from './checklist-session-reminder-d
 import { ChecklistSessionReminderWorker } from './checklist-session-reminder.worker.js';
 import { ChecklistSessionService } from './checklist-session.service.js';
 import { ChecklistWorkplaceSettingsService } from './checklist-workplace-settings.service.js';
+import { ChecklistPublicController } from './checklist-public.controller.js';
+import { ChecklistPublicService } from './checklist-public.service.js';
 import { ChecklistsController } from './checklists.controller.js';
 import { ChecklistsService } from './checklists.service.js';
 @Module({
   imports: [AuthModule, DatabaseModule, UploadModule],
-  controllers: [ChecklistsController, ChecklistFoldersController],
+  controllers: [ChecklistsController, ChecklistFoldersController, ChecklistPublicController],
   providers: [
     ChecklistsService,
+    ChecklistPublicService,
     ChecklistFoldersService,
     ChecklistReviewAccessService,
     ChecklistWorkplaceSettingsService,
