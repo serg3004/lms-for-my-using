@@ -73,6 +73,8 @@ PR 464 stores the settings of the link/QR entry of a free sheet (off / for regis
 
 PR 465 makes the link work for guests: a guest opens the link, types a name (when the sheet asks for it), solves the picture code and starts a pass; answers are saved as for an employee and the result is sent with a fresh code. The sheet's «registered» audience sends a guest to sign in first. Switching the entry off or reissuing the link stops open guest passes at once and marks them «link disabled»; a sheet has a daily limit of guest passes (default 200). Guest photos stay off unless allowed on the sheet.
 
+PR 466 puts the entry by link and QR code into the sheet's settings (card «Прохождение чек-листа», only for «Свободное прохождение»): one audience switch (off / registered / everyone) for both, guest name required or optional, guest photos (off by default), the guest passes per day, the link with «Скопировать» and the QR code with PNG and SVG download. Only an administrator changes anything; others see the state. Switching on, switching off and reissuing each ask for confirmation that says what stops working; the warning about an open-to-everyone link stays on the screen while that mode is on. The link is `/c/<token>`; the guest page it opens arrives in PR 467.
+
 PR 463 adds «Скачать CSV» and «Скачать Excel» to the overview table and to every cut of one sheet. The file is the current view of the screen from `GET /checklists/analytics/export`: the same period, filters, ticked rows, search and sorting, a total row, the answers-by-scale-level block, and the whole notes list for the notes cut; an empty view downloads nothing and says so. Access is the screen's own and the audit log keeps counts and filter ids only.
 
 ### Report by manager (PR 356)

@@ -449,6 +449,28 @@ export type ChecklistFolder = {
   childFolderCount?: number;
 };
 export type ChecklistFolderList = { folders: ChecklistFolder[]; checklistCount: number };
+/** PR 466: entry to a free sheet by link / QR. `token` and `changedBy` come only for an administrator. */
+export type ChecklistPublicAccessMode = 'off' | 'registered' | 'everyone';
+export type ChecklistPublicAccessState = {
+  checklistId: string;
+  access: ChecklistPublicAccessMode;
+  guestNameRequired: boolean;
+  guestPhotosAllowed: boolean;
+  dailyLimit: number;
+  eligible: boolean;
+  hasLink: boolean;
+  changedAt: string | null;
+  changedBy: { id: string; name: string } | null;
+  token: string | null;
+};
+export type ChecklistPublicAccessUpdate = {
+  access?: ChecklistPublicAccessMode;
+  guestNameRequired?: boolean;
+  guestPhotosAllowed?: boolean;
+  dailyLimit?: number;
+  /** The stamp the screen saw (null = never changed); a stale one answers 409. */
+  expectedChangedAt?: string | null;
+};
 export type ChecklistFolderDeleteImpact = { folders: number; checklists: number; movedToDraft: Array<{ id: string; title: string }> };
 
 /** PR 397: per-sheet overrides of the organization module settings; a `null` group means "as in the organization". */

@@ -52,6 +52,7 @@ import { ContextMenu, useContextMenu } from '../../shared/ContextMenu.js';
 import { InlineNameField, focusNameField } from './InlineNameField.js';
 import { ChecklistCoverField } from './ChecklistCoverField.js';
 import { ChecklistPhotosField } from './ChecklistPhotosField.js';
+import { ChecklistPublicAccessCard } from './ChecklistPublicAccessCard.js';
 import { ChecklistCheckboxOption, ChecklistHelpTip } from './ChecklistHelpTip.js';
 import { ChecklistItemsEditor } from './ChecklistItemsEditor.js';
 import { DndContext, DragHandle, GroupShell, ItemsSortable, SortableBox, SortableContext, useChecklistLayoutDnd, useFlatListDnd } from './ChecklistSortable.js';
@@ -1103,6 +1104,16 @@ export function ChecklistBuilder({
                 checked={pinned}
                 disabled={checklist.status !== 'published'}
                 onChange={setPinned}
+              />
+            )}
+            {/* PR 466: the entry by link / QR follows the saved sheet; an unsaved switch to free access shows the "save first" note. */}
+            {accessMode === 'free' && (
+              <ChecklistPublicAccessCard
+                checklistId={checklist.id}
+                isAdmin={canSwitchAccessMode}
+                savedAccessMode={checklist.accessMode ?? 'assigned'}
+                status={checklist.status}
+                title={checklist.title}
               />
             )}
                       <details>
