@@ -20,6 +20,11 @@ import type { UpdateChecklistPublicAccessInput } from './checklists.schemas.js';
  */
 
 export const PUBLIC_TOKEN_BYTES = 24;
+/** The one service user per organization that owns every guest pass (cannot sign in: archived, no usable password). */
+export const GUEST_USER_EMAIL = 'guest@guest.invalid';
+export const DEFAULT_PUBLIC_DAILY_LIMIT = 200;
+/** Shape of an issued token (192 bits as base64url); anything else is rejected before the database is asked. */
+export const PUBLIC_TOKEN_PATTERN = /^[A-Za-z0-9_-]{32}$/;
 
 /** 192 bits of randomness as URL-safe text (32 characters). */
 export function newPublicToken(): string {
@@ -31,8 +36,29 @@ export const isEligibleForPublicAccess = (sheet: { status: string; accessMode: s
 /** The columns written when a sheet loses its eligibility (draft, archive, "by assignment", folder deletion). */
 export const publicAccessOffData = (actorId: string | null, now = new Date()) => ({ publicAccess: 'off' as const, publicAccessChangedAt: now, publicAccessChangedBy: actorId });
 
+/**
+ * Guest passes that are still open when the entry is switched off or the link is reissued stop accepting answers (the link
+ * is gone); this leaves a mark on them so an administrator reading the session sees why it stays unfinished. One mark per pass.
+ */
+export async function markGuestPassesDisabled(
+  db: Pick<Prisma.TransactionClient, 'user' | 'checklistInstance' | 'checklistInstanceEvent'>,
+  organizationId: string,
+  checklistIds: readonly string[],
+  reason: 'switched_off' | 'reissued' | 'sheet_closed',
+): Promise<void> {
+  if (checklistIds.length === 0) return;
+  const guest = await db.user.findFirst({ where: { organizationId, email: GUEST_USER_EMAIL }, select: { id: true } });
+  if (!guest) return;
+  const open = await db.checklistInstance.findMany({
+    where: { organizationId, userId: guest.id, checklistId: { in: [...checklistIds] }, status: { in: ['assigned', 'in_progress'] }, deletedAt: null, events: { none: { eventType: 'guest_link_disabled' } } },
+    select: { id: true },
+  });
+  if (open.length === 0) return;
+  await db.checklistInstanceEvent.createMany({ data: open.map((instance) => ({ organizationId, instanceId: instance.id, eventType: 'guest_link_disabled' as const, metadata: { reason } })) });
+}
+
 const selectState = {
-  id: true, status: true, accessMode: true, publicAccess: true, publicToken: true, guestNameRequired: true, guestPhotosAllowed: true,
+  id: true, status: true, accessMode: true, publicAccess: true, publicToken: true, guestNameRequired: true, guestPhotosAllowed: true, publicDailyLimit: true,
   publicAccessChangedAt: true, publicAccessChangedBy: true,
 } as const;
 type StateRow = Prisma.ChecklistGetPayload<{ select: typeof selectState }>;
@@ -45,6 +71,7 @@ export type PublicAccessState = {
   access: 'off' | 'registered' | 'everyone';
   guestNameRequired: boolean;
   guestPhotosAllowed: boolean;
+  dailyLimit: number;
   /** A published sheet with free access: the only kind that can have the entry on. */
   eligible: boolean;
   hasLink: boolean;
@@ -57,7 +84,7 @@ export type PublicAccessState = {
 
 /** Plain helper (built in ChecklistsService's constructor body, not injected). */
 export class ChecklistPublicAccess {
-  constructor(private readonly prisma: { checklist: Prisma.TransactionClient['checklist']; user: Prisma.TransactionClient['user'] }, private readonly auditLog: Pick<AuditLogService, 'record'>) {}
+  constructor(private readonly prisma: Pick<Prisma.TransactionClient, 'checklist' | 'user' | 'checklistInstance' | 'checklistInstanceEvent'>, private readonly auditLog: Pick<AuditLogService, 'record'>) {}
 
   private async load(organizationId: string, checklistId: string): Promise<StateRow> {
     const sheet = await this.prisma.checklist.findFirst({ where: { id: checklistId, organizationId, deletedAt: null }, select: selectState });
@@ -77,6 +104,7 @@ export class ChecklistPublicAccess {
       access: sheet.publicAccess,
       guestNameRequired: sheet.guestNameRequired,
       guestPhotosAllowed: sheet.guestPhotosAllowed,
+      dailyLimit: sheet.publicDailyLimit,
       eligible: isEligibleForPublicAccess(sheet),
       hasLink: sheet.publicToken !== null,
       changedAt: sheet.publicAccessChangedAt ? sheet.publicAccessChangedAt.toISOString() : null,
@@ -103,6 +131,7 @@ export class ChecklistPublicAccess {
     const data: Prisma.ChecklistUpdateInput = {};
     if (input.guestNameRequired !== undefined && input.guestNameRequired !== sheet.guestNameRequired) data.guestNameRequired = input.guestNameRequired;
     if (input.guestPhotosAllowed !== undefined && input.guestPhotosAllowed !== sheet.guestPhotosAllowed) data.guestPhotosAllowed = input.guestPhotosAllowed;
+    if (input.dailyLimit !== undefined && input.dailyLimit !== sheet.publicDailyLimit) data.publicDailyLimit = input.dailyLimit;
     if (accessChanged) {
       data.publicAccess = nextAccess;
       data.publicAccessChangedAt = new Date();
@@ -120,8 +149,9 @@ export class ChecklistPublicAccess {
       targetId: checklistId,
       summary: accessChanged ? `Changed the link entry of a checklist: ${sheet.publicAccess} -> ${nextAccess}` : 'Changed the guest rules of the link entry of a checklist',
       // Settings only. The token never goes into the log.
-      metadata: { previousAccess: sheet.publicAccess, access: updated.publicAccess, guestNameRequired: updated.guestNameRequired, guestPhotosAllowed: updated.guestPhotosAllowed },
+      metadata: { previousAccess: sheet.publicAccess, access: updated.publicAccess, guestNameRequired: updated.guestNameRequired, guestPhotosAllowed: updated.guestPhotosAllowed, dailyLimit: updated.publicDailyLimit },
     });
+    if (accessChanged && nextAccess === 'off') await markGuestPassesDisabled(this.prisma, organizationId, [checklistId], 'switched_off');
     return this.present(organizationId, updated, actor);
   }
 
@@ -140,6 +170,7 @@ export class ChecklistPublicAccess {
       summary: 'Reissued the link of a checklist; the previous link no longer works',
       metadata: { access: updated.publicAccess },
     });
+    await markGuestPassesDisabled(this.prisma, organizationId, [checklistId], 'reissued');
     return this.present(organizationId, updated, actor);
   }
 

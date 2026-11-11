@@ -623,6 +623,7 @@
         "checklist.folder_deleted": "Checklist folder deleted",
         "checklist.public_access.updated": "Checklist public entry changed",
         "checklist.public_access.reissued": "Checklist public link reissued",
+        "checklist.public_access.limit_reached": "Daily limit of guest passes of a checklist reached",
         "checklist_instance.assigned": "Checklist assigned",
         "checklist_item_result.reviewed": "Checklist item reviewed",
         "certificate.issued": "Certificate issued"

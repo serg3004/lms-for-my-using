@@ -623,6 +623,7 @@
         "checklist.folder_deleted": "已删除检查清单文件夹",
         "checklist.public_access.updated": "检查清单公开入口已更改",
         "checklist.public_access.reissued": "检查清单公开链接已重新生成",
+        "checklist.public_access.limit_reached": "已达到检查清单访客填写的每日上限",
         "checklist_instance.assigned": "分配了检查清单",
         "checklist_item_result.reviewed": "审核了检查清单项",
         "certificate.issued": "颁发了证书"

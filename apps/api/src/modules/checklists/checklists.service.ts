@@ -20,7 +20,7 @@ import { ChecklistItemAnalytics } from './checklist-item-analytics.js';
 import { ChecklistSheetPhotos, sheetPhotosInclude } from './checklist-sheet-photos.js';
 import { assertObserversBelongToOrganization, freezeReportSettings, loadEffectiveSettings, overridesToColumns, presentOverrides, presentStaffChecklist, SHEET_OVERRIDES_SELECT } from './checklist-settings-overrides.js';
 import { ChecklistBulkActions, type ChecklistBulkAction } from './checklist-bulk-actions.js';
-import { ChecklistPublicAccess, publicAccessOffData } from './checklist-public-access.js';
+import { ChecklistPublicAccess, markGuestPassesDisabled, publicAccessOffData } from './checklist-public-access.js';
 import { visibleFolderIds, type FolderActor } from './checklist-folder-tree.js';
 import { isNoteRequired, parseNoteAnswers } from './checklist-item-note.js';
 import { ChecklistResultDeletion } from './checklist-result-deletion.js';
@@ -758,6 +758,7 @@ export class ChecklistsService {
       metadata: { fields: Object.keys(input) },
     });
     if (closePublicEntry) {
+      await markGuestPassesDisabled(this.prisma, organizationId, [checklistId], 'sheet_closed');
       await this.auditLog.record({
         organizationId,
         actorId,
@@ -1389,6 +1390,8 @@ export class ChecklistsService {
     input: AssignChecklistInput,
     assignedBy: string,
     db: Prisma.TransactionClient | PrismaService = this.prisma,
+    /** PR 465: many guests share one service user, so their parallel passes of one sheet are not a conflict. */
+    options: { allowParallelActive?: boolean } = {},
   ) {
     const checklist = await db.checklist.findFirst({
       where: { id: checklistId, organizationId, deletedAt: null },
@@ -1412,7 +1415,7 @@ export class ChecklistsService {
       throw new NotFoundException('User not found');
     }
 
-    const activeInstance = await db.checklistInstance.findFirst({
+    const activeInstance = options.allowParallelActive ? null : await db.checklistInstance.findFirst({
       where: { checklistId, userId: input.userId, status: { in: ['assigned', 'in_progress', 'submitted'] }, deletedAt: null },
       select: { id: true },
     });

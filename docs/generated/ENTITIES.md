@@ -83,7 +83,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `ChecklistContextFieldType` | `text`, `textarea`, `date` |
 | `ChecklistFeedbackVisibility` | `after_completion`, `live` |
 | `ChecklistGeolocationPolicy` | `off`, `optional`, `required` |
-| `ChecklistInstanceEventType` | `assigned`, `started`, `item_answered`, `photo_attached`, `submitted`, `reviewer_assigned`, `item_approved`, `item_rejected`, `completed`, `expired` |
+| `ChecklistInstanceEventType` | `assigned`, `started`, `item_answered`, `photo_attached`, `submitted`, `reviewer_assigned`, `item_approved`, `item_rejected`, `completed`, `expired`, `guest_link_disabled` |
 | `ChecklistInstanceStatus` | `assigned`, `in_progress`, `submitted`, `completed`, `expired` |
 | `ChecklistLocationCapturePoint` | `start`, `end` |
 | `ChecklistLocationCaptureStatus` | `captured`, `denied`, `unavailable` |

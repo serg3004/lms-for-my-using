@@ -201,6 +201,7 @@ enum ChecklistInstanceEventType {
   item_rejected
   completed
   expired
+  guest_link_disabled
 }
 
 enum ChecklistGeolocationPolicy {
@@ -1212,6 +1213,8 @@ model Checklist {
   guestPhotosAllowed           Boolean                       @default(false) @map("guest_photos_allowed")
   publicAccessChangedAt        DateTime?                     @map("public_access_changed_at") @db.Timestamptz
   publicAccessChangedBy        String?                       @map("public_access_changed_by") @db.Uuid
+  // PR 465: at most this many guest passes may be started per sheet in 24 hours.
+  publicDailyLimit             Int                           @default(200) @map("public_daily_limit")
   // PR 422: how the blocks look (header, general information, group, criterion card) plus per-group/criterion
   // overrides keyed by id. Sanitized to #RRGGBB colours and fixed sets on write; null = the standard look.
   appearance                   Json?
