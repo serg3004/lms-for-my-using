@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Page, type Route } from '@playwright/test';
 import type { ChecklistSummary } from '../../web/src/shared/api/types.js';
 
 // Synthetic 5S sheet: matches the reference's structure, contains no owner's personal data.
@@ -42,9 +42,13 @@ function plainText(html: string): string {
   return out;
 }
 
-export async function openPreviewBuilder(page: Page, sheet = previewSheet(), locale = 'ru', answerSets: unknown[] = []) {
-  await page.route('**/api/v1/**', (route) => {
+/** A test's own mock for some of the builder's requests: it answers (and returns true) or leaves the request to the fixture. */
+export type PreviewMock = (route: Route, path: string) => boolean | Promise<boolean>;
+
+export async function openPreviewBuilder(page: Page, sheet = previewSheet(), locale = 'ru', answerSets: unknown[] = [], mock?: PreviewMock) {
+  await page.route('**/api/v1/**', async (route) => {
     const path = new URL(route.request().url()).pathname.replace('/api/v1', '');
+    if (mock && await mock(route, path)) return undefined;
     if (route.request().method() !== 'GET') return route.fulfill({ status: 405, json: { message: 'Read-only preview fixture' } });
     if (path === '/auth/me') return route.fulfill({ json: {
       id: 'preview-admin', organizationId: sheet.organizationId, email: 'admin@example.invalid', firstName: 'Preview', lastName: 'Admin',

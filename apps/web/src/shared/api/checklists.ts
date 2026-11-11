@@ -10,6 +10,8 @@ import type {
   ChecklistFolderBulkResult,
   ChecklistFolderDeleteImpact,
   ChecklistFolderList,
+  ChecklistPublicAccessState,
+  ChecklistPublicAccessUpdate,
   ChecklistAnalyticsQuery,
   ChecklistInstanceEvent,
   ChecklistInstanceSummary,
@@ -83,6 +85,18 @@ export type ChecklistOrgTemplateSummary = { id: string; title: string; descripti
 
 export function listChecklistOrgTemplates() {
   return apiRequest<{ items: ChecklistOrgTemplateSummary[] }>('/checklist-org-templates');
+}
+
+export function getChecklistPublicAccess(checklistId: string) {
+  return apiRequest<ChecklistPublicAccessState>(`/checklists/${encodeURIComponent(checklistId)}/public-access`);
+}
+
+export function updateChecklistPublicAccess(checklistId: string, input: ChecklistPublicAccessUpdate) {
+  return apiRequest<ChecklistPublicAccessState>(`/checklists/${encodeURIComponent(checklistId)}/public-access`, { method: 'PATCH', body: JSON.stringify(input) });
+}
+
+export function reissueChecklistPublicAccess(checklistId: string) {
+  return apiRequest<ChecklistPublicAccessState>(`/checklists/${encodeURIComponent(checklistId)}/public-access/reissue`, { method: 'POST' });
 }
 
 export function createChecklistOrgTemplate(sourceChecklistId: string, title?: string) {

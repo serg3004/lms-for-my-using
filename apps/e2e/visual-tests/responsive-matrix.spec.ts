@@ -7,7 +7,7 @@ import { openTypedAssessment } from '../fixtures/assessment-typed-compat.js';
 import { longreadPlaybackServer } from '../fixtures/longread-playback.js';
 import { openLongreadEntrypoints } from '../fixtures/longread-entrypoints.js';
 import { longreadCourseId } from '../fixtures/longread-editor.js';
-import { openPreviewBuilder, openSheetPreview } from '../fixtures/checklist-preview.js';
+import { openPreviewBuilder, openSheetPreview, previewSheet } from '../fixtures/checklist-preview.js';
 import { longreadCompositeFixture, longreadEditorServer } from '../fixtures/longread-editor.js';
 import { longreadReaderServer, openLongreadPreview } from '../fixtures/longread-reader.js';
 import { sessionReportFixture } from '../fixtures/session-report.js';
@@ -1297,4 +1297,23 @@ for (const width of [320, 1440]) test(`checklist author rich text preview at ${w
   await expect(page.getByRole('dialog', { name: 'Лист наблюдения', exact: true })).toBeVisible();
   await expectNoPageOverflow(page);
   await expectVisualMatch(page, `checklist-rich-author-${width}`, true, { fullPage: false, maxDiffPixels: 3000 });
+});
+
+// PR 466: the card «Доступ по ссылке и QR-коду» of a free published sheet, switched on for everyone (the QR code is deterministic).
+for (const width of [375, 1440]) test(`checklist public access card is responsive at ${width}px`, async ({ page }) => {
+  const sheet = previewSheet();
+  Object.assign(sheet, { status: 'published', accessMode: 'free', title: 'Receiving 5S' });
+  await page.setViewportSize({ width, height });
+  const state = { checklistId: sheet.id, access: 'everyone', guestNameRequired: true, guestPhotosAllowed: false, dailyLimit: 200, eligible: true, hasLink: true, changedAt: null, changedBy: null, token: 'k3Jf9QxLw2Zp7VbN4mTa8RcYd6HsUe0G' };
+  await openPreviewBuilder(page, sheet, 'ru', [], async (route, path) => {
+    if (!path.endsWith('/public-access')) return false;
+    await route.fulfill({ json: state });
+    return true;
+  });
+  await page.locator('#checklist-tab-settings').click();
+  const card = page.getByTestId('public-access-card');
+  await card.getByTestId('public-access-qr').locator('svg').waitFor();
+  await expectNoPageOverflow(page);
+  await page.waitForLoadState('networkidle');
+  await expect(card).toHaveScreenshot(`checklist-public-access-${width}.png`, { maxDiffPixels: 3000 });
 });
