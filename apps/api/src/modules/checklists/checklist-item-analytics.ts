@@ -82,6 +82,9 @@ function present(metrics: Metrics) {
     remaining: Math.max(0, metrics.total - metrics.answered - metrics.skipped),
     completionPercentage: metrics.total > 0 ? Math.round((metrics.answered / metrics.total) * 100) : null,
     averagePercentage: metrics.scoreMax > 0 ? Math.round((metrics.scoreSum / metrics.scoreMax) * 100) : null,
+    // PR 462: the raw sums, so the screen can recompute the total over a hand-picked set of criteria exactly.
+    scoreSum: metrics.scoreSum,
+    scoreMax: metrics.scoreMax,
     withNote: metrics.withNote,
     noteShare: metrics.answered > 0 ? Math.round((metrics.withNote / metrics.answered) * 100) : null,
     scales: [...metrics.levels.entries()].map(([scaleKey, block]) => ({ scaleKey, ...block, levels: [...block.levels].sort((a, b) => a.value - b.value) })),
@@ -152,12 +155,13 @@ function buildFeedback(rows: readonly ItemAnalyticsRow[]) {
 export const NOTES_PAGE_SIZE = 20;
 
 /** Notes: the per-criterion counts come from the criteria cut, the list is every note, newest first, paged. */
-function buildNotes(rows: readonly ItemAnalyticsRow[], sheetId: string, page: number) {
+function buildNotes(rows: readonly ItemAnalyticsRow[], sheetId: string, page: number, itemId?: string) {
   const { criteria } = buildCriteriaAndGroups(rows, sheetId);
   const list: Array<{ sessionId: string | null; itemId: string; itemText: string; comment: string | null; reviewComment: string | null; at: string | null; employee: string; observer: string | null }> = [];
   for (const row of rows) {
     const texts = new Map((row.snapshot?.checklist?.items ?? []).map((item) => [item.id, item.text ?? '']));
     for (const result of row.results) {
+      if (itemId && result.itemId !== itemId) continue;
       if (!hasText(result.comment) && !hasText(result.reviewComment)) continue;
       list.push({ sessionId: row.sessionId, itemId: result.itemId, itemText: texts.get(result.itemId) ?? '', comment: hasText(result.comment) ? result.comment : null, reviewComment: hasText(result.reviewComment) ? result.reviewComment : null, at: row.finishedAt ? row.finishedAt.toISOString() : null, employee: row.employee, observer: row.observer });
     }
@@ -170,12 +174,12 @@ function buildNotes(rows: readonly ItemAnalyticsRow[], sheetId: string, page: nu
 }
 
 /** Pure: the requested cut of the prepared rows (rows arrive newest first). */
-export function buildItemAnalytics(by: ChecklistItemAnalyticsQuery['by'], rows: readonly ItemAnalyticsRow[], sheetId: string, page = 1) {
+export function buildItemAnalytics(by: ChecklistItemAnalyticsQuery['by'], rows: readonly ItemAnalyticsRow[], sheetId: string, page = 1, itemId?: string) {
   const base = { by, instances: rows.length };
   if (by === 'criteria') return { ...base, criteria: buildCriteriaAndGroups(rows, sheetId).criteria };
   if (by === 'groups') return { ...base, groups: buildCriteriaAndGroups(rows, sheetId).groups };
   if (by === 'feedback') return { ...base, feedback: buildFeedback(rows) };
-  return { ...base, ...buildNotes(rows, sheetId, page) };
+  return { ...base, ...buildNotes(rows, sheetId, page, itemId) };
 }
 
 const MAX_ROWS = 5000;
@@ -220,6 +224,6 @@ export class ChecklistItemAnalytics {
     ];
     // Newest first, so the latest frozen text of a criterion wins.
     rows.sort((a, b) => (b.finishedAt?.getTime() ?? 0) - (a.finishedAt?.getTime() ?? 0));
-    return { ...buildItemAnalytics(query.by, rows, checklistId, query.page), period: { from: query.from, to: query.to }, truncated: sessions.length >= MAX_ROWS || selfDone.length >= MAX_ROWS };
+    return { ...buildItemAnalytics(query.by, rows, checklistId, query.page, query.itemId), period: { from: query.from, to: query.to }, truncated: sessions.length >= MAX_ROWS || selfDone.length >= MAX_ROWS };
   }
 }

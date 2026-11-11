@@ -76,7 +76,7 @@ export function selectionDeleteMessage(impact: ChecklistFolderDeleteImpact, sele
   return `${base} ${t('admin.checklists.folders.deleteMoved', 'Checklists with assignments in progress are not deleted but moved to drafts at the root: {{titles}}.', { titles })}`;
 }
 
-export function ChecklistBulkBar({ selected, selectedFolders = [], busy, onAction, onMove, onEdit, onCopy, onRenameFolder, onDeleteSelection, t }: {
+export function ChecklistBulkBar({ selected, selectedFolders = [], busy, onAction, onMove, onEdit, onCopy, onRenameFolder, onDeleteSelection, onAnalytics, t }: {
   selected: ChecklistSummary[];
   /** PR 410: the selected folders; with any, only moving, deleting and (for exactly one) renaming apply. */
   selectedFolders?: ChecklistFolder[];
@@ -90,6 +90,8 @@ export function ChecklistBulkBar({ selected, selectedFolders = [], busy, onActio
   onRenameFolder?: (folder: ChecklistFolder) => void;
   /** PR 410: deletes a selection that contains folders (one confirmation, one report). */
   onDeleteSelection?: (selection: { sheets: ChecklistSummary[]; folders: ChecklistFolder[] }) => void;
+  /** PR 462: opens the analytics tab with the selected checklists; omitted where the role has no such tab. */
+  onAnalytics?: (sheets: ChecklistSummary[]) => void;
   t: TFunction;
 }) {
   const hasFolders = selectedFolders.length > 0;
@@ -102,6 +104,7 @@ export function ChecklistBulkBar({ selected, selectedFolders = [], busy, onActio
       {singleFolder && onRenameFolder && <Button disabled={busy} onClick={() => onRenameFolder(singleFolder)} size="sm" type="button" variant="secondary">{t('admin.checklists.folders.renameFolder', 'Rename folder')}</Button>}
       <Button disabled={busy || !single} onClick={() => single && onEdit(single)} size="sm" title={unavailable} type="button" variant="secondary">{t('admin.checklists.edit', 'Edit')}</Button>
       <Button disabled={busy || !single} onClick={() => single && void onCopy(single)} size="sm" title={unavailable} type="button" variant="secondary">{t('admin.checklists.copy', 'Copy')}</Button>
+      {onAnalytics && <Button disabled={busy || hasFolders || selected.length === 0} onClick={() => onAnalytics(selected)} size="sm" title={unavailable} type="button" variant="secondary">{t('admin.checklists.analytics', 'Analytics')}</Button>}
       {onMove && <Button disabled={busy} onClick={() => onMove(selection)} size="sm" type="button" variant="secondary">{t('admin.checklists.folders.moveOpen', 'Move to folder…')}</Button>}
       <Button disabled={busy || hasFolders} onClick={() => onAction('publish', selected)} size="sm" title={unavailable} type="button" variant="secondary">{t('admin.checklists.action.publish', 'Publish')}</Button>
       <Button disabled={busy || hasFolders} onClick={() => onAction('draft', selected)} size="sm" title={unavailable} type="button" variant="secondary">{t('admin.checklists.action.toDraft', 'Move to draft')}</Button>

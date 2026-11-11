@@ -375,6 +375,8 @@ export const checklistItemAnalyticsQuerySchema = z.object({
   managerId: z.union([z.string().uuid().toLowerCase(), z.literal('unassigned')]).optional(),
   observerId: z.string().uuid().toLowerCase().optional(),
   page: z.coerce.number().int().min(1).max(1000).default(1),
+  // PR 462: the notes list of one criterion only.
+  itemId: z.string().trim().min(1).max(100).optional(),
 });
 export type ChecklistItemAnalyticsQuery = z.infer<typeof checklistItemAnalyticsQuerySchema>;
 

@@ -10,13 +10,15 @@ import {
   listSheetAnalyticsSheets,
   type SheetAnalytics,
   type SheetAnalyticsMetrics,
-  type SheetAnalyticsScale,
   type SheetAnalyticsSheet,
 } from '../shared/api/manager.js';
 import { ManagerPageLayout } from '../shared/managerLayout.js';
+import { useSession } from '../shared/session.js';
 import { ObserverPageLayout } from '../shared/observerLayout.js';
 import { Card, DataTable, PageState, StatCard, StatsGrid, type Column } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
+import { percent, ScaleLevelBars } from './SheetAnalyticsParts.js';
+import { SheetItemAnalytics } from './SheetItemAnalytics.js';
 import { resolvePeriodRange } from './ManagerChecklistsPage.js';
 import { ManagerViewSwitch } from './ManagerViewSwitch.js';
 import { ObserverSessionsNav } from './ObserverSessionsNav.js';
@@ -44,33 +46,7 @@ export function filterSheets(sheets: readonly SheetAnalyticsSheet[], query: stri
   return needle ? sheets.filter((sheet) => plainText(sheet.title).toLowerCase().includes(needle)) : [...sheets];
 }
 
-const percent = (value: number | null) => (value === null ? '—' : `${value}%`);
-const FALLBACK_COLORS = ['#0f9f6e', '#d97706', '#dc2626', '#4f46e5', '#0e7490', '#6b7280'];
-
-/** The answer levels of one scale as bars: names and colours come from the scale itself, whatever its levels are called. */
-export function ScaleLevelBars({ scale, t }: { scale: SheetAnalyticsScale; t: (key: string, fallback: string) => string }) {
-  const total = scale.levels.reduce((sum, level) => sum + level.count, 0);
-  const title = scale.kind === 'yes_no' ? t('sheetAnalytics.scaleYesNo', 'Yes / No criteria') : scale.kind === 'sheet' ? t('sheetAnalytics.scaleSheet', 'Scale of the sheet') : scale.name ?? '';
-  return (
-    <section aria-label={title} data-testid="sheet-analytics-scale" style={{ display: 'grid', gap: 8 }}>
-      <h3 style={{ margin: 0, fontSize: 16 }}>{title}</h3>
-      {scale.levels.map((level, index) => {
-        const label = level.labelKey === 'yes' ? t('sheetAnalytics.yes', 'Yes') : level.labelKey === 'no' ? t('sheetAnalytics.no', 'No') : level.label ?? String(level.value);
-        const share = total > 0 ? Math.round((level.count / total) * 100) : 0;
-        const color = level.color ?? (level.labelKey === 'no' ? '#dc2626' : level.labelKey === 'yes' ? '#0f9f6e' : FALLBACK_COLORS[index % FALLBACK_COLORS.length]);
-        return (
-          <div key={`${level.value}-${level.label}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) auto', gap: '2px 12px', alignItems: 'center' }}>
-            <span style={{ overflowWrap: 'anywhere' }}>{label}</span>
-            <strong>{level.count} · {share}%</strong>
-            <div aria-hidden="true" style={{ gridColumn: '1 / -1', height: 8, borderRadius: 4, background: 'var(--color-border, #e3e8ef)', overflow: 'hidden' }}>
-              <div style={{ width: `${share}%`, height: '100%', background: color }} />
-            </div>
-          </div>
-        );
-      })}
-    </section>
-  );
-}
+export { ScaleLevelBars };
 
 function SummaryCards({ metrics, t }: { metrics: SheetAnalyticsMetrics; t: (key: string, fallback: string) => string }) {
   const { plan, criteria, queue } = metrics;
@@ -102,7 +78,7 @@ function SheetsTable({ rows, t }: { rows: Row[]; t: (key: string, fallback: stri
 }
 
 /** The tab itself; each role mounts it in its own layout and with its own tab strip. */
-export function SheetAnalyticsContent({ Layout, currentPath }: { Layout: ComponentType<{ children: ReactNode; currentPath?: string }>; currentPath: string }) {
+export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { Layout: ComponentType<{ children: ReactNode; currentPath?: string }>; currentPath: string; sessionPath?: (sessionId: string) => string }) {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const period: Period = PERIODS.includes(searchParams.get('period') as Period) ? (searchParams.get('period') as Period) : 'month';
@@ -224,6 +200,19 @@ export function SheetAnalyticsContent({ Layout, currentPath }: { Layout: Compone
           <section aria-labelledby="sheet-analytics-table"><h2 id="sheet-analytics-table" style={{ fontSize: 20 }}>{t('sheetAnalytics.tableLabel', 'Metrics by checklist')}</h2><SheetsTable rows={state.data.sheets} t={t} /></section>
         </div>
       ))}
+      {selected.length === 1 && sheetsState.status !== 'loading' && (
+        <div style={{ marginTop: 24 }}>
+          <SheetItemAnalytics
+            departmentId={departmentId || undefined}
+            from={from}
+            managerId={managerId || undefined}
+            sessionPath={sessionPath}
+            sheetId={selected[0]!}
+            title={plainText(sheets.find((sheet) => sheet.id === selected[0])?.title ?? '') || t('sheetAnalytics.unknownSheet', 'Checklist')}
+            to={to}
+          />
+        </div>
+      )}
     </Layout>
   );
 }
@@ -245,10 +234,12 @@ function ManagerSheetAnalyticsLayout({ children }: { children: ReactNode }) {
 }
 
 export function AdminSheetAnalyticsPage() {
-  return <SheetAnalyticsContent Layout={AdminSheetAnalyticsLayout} currentPath="/admin/checklists" />;
+  return <SheetAnalyticsContent Layout={AdminSheetAnalyticsLayout} currentPath="/admin/checklists" sessionPath={(id) => `/admin/checklists/sessions/${id}`} />;
 }
 export function ObserverSheetAnalyticsPage() {
-  return <SheetAnalyticsContent Layout={ObserverSheetAnalyticsLayout} currentPath="" />;
+  const { currentUser } = useSession();
+  const sessionPath = currentUser?.roles.includes('instructor') ? (id: string) => `/instructor/checklists/sessions/all/${id}` : (id: string) => `/mentor/sessions/${id}`;
+  return <SheetAnalyticsContent Layout={ObserverSheetAnalyticsLayout} currentPath="" sessionPath={sessionPath} />;
 }
 export function ManagerSheetAnalyticsPage() {
   return <SheetAnalyticsContent Layout={ManagerSheetAnalyticsLayout} currentPath="/manager/checklists" />;
