@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { rolePolicies } from '../auth/roles.js';
@@ -56,13 +56,13 @@ describe('analytics tab: no third-party product name anywhere (PR 463)', () => {
   const word = ['i', 'Spring'].join('').toLowerCase();
   const skip = new Set(['node_modules', 'dist', '.git', 'coverage', 'test-results', 'playwright-report']);
   const text = /\.(ts|tsx|js|mjs|json|md|css|html|yml|yaml|prisma|sql)$/;
+  // Directory entries come with their type, and a file is only read (never checked first), so nothing can change in between.
   function walk(dir: string, found: string[]) {
-    for (const name of readdirSync(dir)) {
-      if (skip.has(name)) continue;
-      const path = join(dir, name);
-      const info = statSync(path);
-      if (info.isDirectory()) walk(path, found);
-      else if (text.test(name) && info.size < 2_000_000 && readFileSync(path, 'utf8').toLowerCase().includes(word)) found.push(path.slice(root.length + 1));
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (skip.has(entry.name)) continue;
+      const path = join(dir, entry.name);
+      if (entry.isDirectory()) walk(path, found);
+      else if (entry.isFile() && text.test(entry.name) && readFileSync(path, 'utf8').toLowerCase().includes(word)) found.push(path.slice(root.length + 1));
     }
   }
   it('finds it in no source file, text, plan or document', () => {
