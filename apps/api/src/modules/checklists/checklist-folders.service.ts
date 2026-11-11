@@ -135,7 +135,7 @@ export class ChecklistFoldersService {
       }
       if (impact.busyIds.length > 0) {
         // A draft cannot stay pinned in the free catalog.
-        await tx.checklist.updateMany({ where: { id: { in: impact.busyIds }, organizationId }, data: { status: 'draft', folderId: null, pinned: false } });
+        await tx.checklist.updateMany({ where: { id: { in: impact.busyIds }, organizationId }, data: { status: 'draft', folderId: null, pinned: false, publicAccess: 'off', publicAccessChangedAt: now } });
       }
       await tx.checklistFolder.updateMany({ where: { id: { in: folderIds }, organizationId, deletedAt: null }, data: { deletedAt: now } });
       return impact.summary;

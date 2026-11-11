@@ -380,6 +380,15 @@ export const checklistItemAnalyticsQuerySchema = z.object({
 });
 export type ChecklistItemAnalyticsQuery = z.infer<typeof checklistItemAnalyticsQuerySchema>;
 
+// PR 464: entry to a free checklist by link / QR code. `expectedChangedAt` is the stamp the screen saw (null = never changed).
+export const updateChecklistPublicAccessSchema = z.object({
+  access: z.enum(['off', 'registered', 'everyone']).optional(),
+  guestNameRequired: z.boolean().optional(),
+  guestPhotosAllowed: z.boolean().optional(),
+  expectedChangedAt: z.string().datetime().nullable().optional(),
+}).strict().refine((value) => value.access !== undefined || value.guestNameRequired !== undefined || value.guestPhotosAllowed !== undefined, { message: 'Nothing to change' });
+export type UpdateChecklistPublicAccessInput = z.infer<typeof updateChecklistPublicAccessSchema>;
+
 // PR 463: the export of the "Analytics" tab repeats its current view; the cuts of one sheet need `checklistId`.
 export const checklistAnalyticsExportQuerySchema = z.object({
   view: z.enum(['sheets', 'criteria', 'groups', 'feedback', 'notes']),

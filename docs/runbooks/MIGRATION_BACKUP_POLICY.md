@@ -816,3 +816,13 @@ rollout. An older API ignores the column; an older web client ignores the flag a
 pictures. Application rollback leaves the column in place. Disposable PostgreSQL checks cover the
 default, copy/template retention and the live (unfrozen) value in assigned sessions; they are not
 production backup/restore evidence.
+
+### Public link/QR entry to free sheets (PR 464)
+
+Migration `20261111120000_checklist_public_access` is additive and backward-compatible:
+
+- creates the enum `ChecklistPublicAccess` (`off`, `registered`, `everyone`);
+- adds to `checklists` the columns `public_access` (`NOT NULL DEFAULT 'off'`), `public_token` (nullable, unique index `checklists_public_token_key`), `guest_name_required` (`NOT NULL DEFAULT true`), `guest_photos_allowed` (`NOT NULL DEFAULT false`), `public_access_changed_at` and `public_access_changed_by` (nullable, a plain id without a foreign key);
+- adds nullable `checklist_instances.guest_name`.
+
+Every existing sheet keeps the entry off with no token, so no backfill is needed and nothing changes for current users. The token is a secret: it is stored as issued and never written to the audit log or application logs. A database restore brings back the tokens of the restored moment, so after restoring from an older backup an administrator should check the sheets with the entry on and reissue the link when a leaked or revoked token could have returned. Apply under the normal verified production backup policy before the API/web rollout; an older API ignores the columns. Application rollback leaves the columns in place. Disposable PostgreSQL checks are not production backup/restore evidence.

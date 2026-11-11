@@ -228,6 +228,14 @@ enum ChecklistAccessMode {
   free
 }
 
+/// PR 464: who may open a free sheet through its permanent link / QR code. `off` (default) = nobody, `registered` =
+/// only a signed-in user of the organization, `everyone` = anybody, as a guest without an account.
+enum ChecklistPublicAccess {
+  off
+  registered
+  everyone
+}
+
 /// PR 296 observation-sheet builder: what an employee can see about a session before it starts.
 /// Distinct from ChecklistFeedbackVisibility above, which governs when *feedback* becomes visible
 /// after a session completes -- this axis is about the sheet's *structure* beforehand.
@@ -1194,6 +1202,16 @@ model Checklist {
   // PR 362в: when false only the creator and an admin may edit the sheet. The column default keeps every
   // checklist created before this change editable by all; the create schema defaults new ones to false.
   allowEditByAll               Boolean                       @default(true) @map("allow_edit_by_all")
+  // PR 464: entry by link / QR code. Only an administrator changes these (even when allowEditByAll is on). The token
+  // is random (192 bits) and unique; it is kept while the entry is switched off (so a printed QR code works again
+  // when it is switched back on) and replaced on reissue. Never written to the audit log or the logs.
+  // `publicAccessChangedBy` is a plain id (no foreign key): the audit log keeps who did it, this is only the last actor.
+  publicAccess                 ChecklistPublicAccess         @default(off) @map("public_access")
+  publicToken                  String?                       @unique @map("public_token")
+  guestNameRequired            Boolean                       @default(true) @map("guest_name_required")
+  guestPhotosAllowed           Boolean                       @default(false) @map("guest_photos_allowed")
+  publicAccessChangedAt        DateTime?                     @map("public_access_changed_at") @db.Timestamptz
+  publicAccessChangedBy        String?                       @map("public_access_changed_by") @db.Uuid
   // PR 422: how the blocks look (header, general information, group, criterion card) plus per-group/criterion
   // overrides keyed by id. Sanitized to #RRGGBB colours and fixed sets on write; null = the standard look.
   appearance                   Json?
@@ -1346,6 +1364,8 @@ model ChecklistInstance {
   organizationId     String                   @map("organization_id") @db.Uuid
   checklistId        String                   @map("checklist_id") @db.Uuid
   userId             String                   @map("user_id") @db.Uuid
+  // PR 464: set only for a pass through the public link as a guest; the owner is then the organization's service user "Guest".
+  guestName          String?                  @map("guest_name")
   assignedBy         String?                  @map("assigned_by") @db.Uuid
   reviewerId         String?                  @map("reviewer_id") @db.Uuid
   reviewAssignedAt   DateTime?                @map("review_assigned_at") @db.Timestamptz

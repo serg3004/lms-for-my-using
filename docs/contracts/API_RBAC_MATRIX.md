@@ -166,6 +166,8 @@ Employee analytics and exports (PR 363): `checklistManagerAnalyticsRead` is admi
 
 Sheet analytics (PR 459): `GET /checklists/analytics/sheets` and `GET /checklists/analytics/overview` use `checklistManagerAnalyticsRead` (admin, manager, instructor, mentor). Sheets: an administrator sees all; the other roles only sheets they created or observe and sheets the checklist list shows them (no folder or a folder opened to staff); a sheet outside that set is left out of the answer, not refused. Employees: `participantLearnerScope()` as in the employee analytics.
 
+Public entry settings (PR 464): `GET /checklists/:id/public-access` uses `checklistsRead` (admin, manager, instructor, mentor: the state is visible, the token and the last editor only to an administrator); `PATCH /checklists/:id/public-access` and `POST /checklists/:id/public-access/reissue` use `checklistAccessSettingsWrite` (admin only, even when `allowEditByAll` is on; an instructor-creator gets 403).
+
 Sheet cut (PR 460): `GET /checklists/:id/analytics/items` uses `checklistManagerAnalyticsRead` with the same access rule and employee scope as PR 459; a sheet the viewer may not open answers 404 (not 403), so a closed sheet's existence is not revealed.
 
 Analytics export (PR 463): `GET /checklists/analytics/export` uses `checklistManagerAnalyticsRead` and reads through the same operations as the screen, so it carries the same access rule (administrator all sheets, others own, observed and visible sheets), the same employee scope and the same 404 for a closed sheet; the audit entry holds counts and filter ids only.

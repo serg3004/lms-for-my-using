@@ -31,6 +31,7 @@ import {
   createChecklistOrgTemplateSchema,
   deleteChecklistResultSchema,
   updateChecklistOrgTemplateSchema,
+  updateChecklistPublicAccessSchema,
   checklistLocationCapturePointSchema,
   checklistSessionParticipantsQuerySchema,
   createChecklistItemGroupSchema,
@@ -93,6 +94,11 @@ type PdfDownloadResponse = {
   set(headers: Record<string, string>): PdfDownloadResponse;
   send(body: Buffer): PdfDownloadResponse;
 };
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function assertUuid(id: string) {
+  if (!UUID_PATTERN.test(id)) throw new BadRequestException('Invalid checklist id');
+}
 
 @Controller()
 @UseGuards(AuthGuard, RolesGuard)
@@ -168,6 +174,32 @@ export class ChecklistsController {
   async exportAnalytics(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     return this.checklistsService.exportAnalytics(user.organizationId, user, await this.reviewAccess.participantLearnerScope(user), checklistAnalyticsExportQuerySchema.parse(rawQuery));
+  }
+
+  /** PR 464: public (link/QR) entry settings of a free sheet. Read: every sheet role (the token only for an administrator). */
+  @Get('checklists/:id/public-access')
+  @Roles(...rolePolicies.checklistsRead)
+  async getPublicAccess(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    assertUuid(id);
+    const user = request.currentUser!;
+    return this.checklistsService.getPublicAccess(user.organizationId, id, user);
+  }
+
+  @Patch('checklists/:id/public-access')
+  @Roles(...rolePolicies.checklistAccessSettingsWrite)
+  async updatePublicAccess(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    assertUuid(id);
+    const user = request.currentUser!;
+    return this.checklistsService.updatePublicAccess(user.organizationId, id, user, updateChecklistPublicAccessSchema.parse(body));
+  }
+
+  /** PR 464: a new token; the old link stops working at once. */
+  @Post('checklists/:id/public-access/reissue')
+  @Roles(...rolePolicies.checklistAccessSettingsWrite)
+  async reissuePublicAccess(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    assertUuid(id);
+    const user = request.currentUser!;
+    return this.checklistsService.reissuePublicAccess(user.organizationId, id, user);
   }
 
   /** PR 460: one sheet by criteria, groups, feedback fields or notes. */

@@ -20,6 +20,7 @@ import { ChecklistItemAnalytics } from './checklist-item-analytics.js';
 import { ChecklistSheetPhotos, sheetPhotosInclude } from './checklist-sheet-photos.js';
 import { assertObserversBelongToOrganization, freezeReportSettings, loadEffectiveSettings, overridesToColumns, presentOverrides, presentStaffChecklist, SHEET_OVERRIDES_SELECT } from './checklist-settings-overrides.js';
 import { ChecklistBulkActions, type ChecklistBulkAction } from './checklist-bulk-actions.js';
+import { ChecklistPublicAccess, publicAccessOffData } from './checklist-public-access.js';
 import { visibleFolderIds, type FolderActor } from './checklist-folder-tree.js';
 import { isNoteRequired, parseNoteAnswers } from './checklist-item-note.js';
 import { ChecklistResultDeletion } from './checklist-result-deletion.js';
@@ -46,6 +47,7 @@ import {
   SkipChecklistItemInput,
   SubmitChecklistItemResultInput,
   UpdateChecklistInput,
+  type UpdateChecklistPublicAccessInput,
   UpdateChecklistItemGroupInput,
   UpdateChecklistLayoutInput,
   UpdateChecklistItemInput,
@@ -364,6 +366,7 @@ export class ChecklistsService {
     this.sheetAnalytics = new ChecklistSheetAnalytics(prisma);
     this.itemAnalytics = new ChecklistItemAnalytics(prisma, this.sheetAnalytics);
     this.analyticsExport = new ChecklistAnalyticsExport(this.sheetAnalytics, this.itemAnalytics, auditLog);
+    this.publicAccess = new ChecklistPublicAccess(prisma, auditLog);
     this.bulkActions = new ChecklistBulkActions(prisma, auditLog, {
       setStatus: (id, organizationId, status, actorId) => this.updateChecklist(id, organizationId, { status }, actorId),
       remove: (id, organizationId, actorId) => this.deleteChecklist(id, organizationId, actorId),
@@ -378,6 +381,20 @@ export class ChecklistsService {
   private readonly itemAnalytics: ChecklistItemAnalytics;
   private readonly analyticsExport: ChecklistAnalyticsExport;
   private readonly bulkActions: ChecklistBulkActions;
+  private readonly publicAccess: ChecklistPublicAccess;
+
+  /** PR 464: public (link/QR) entry settings; only an administrator changes them. */
+  getPublicAccess(organizationId: string, id: string, actor: { id: string; roles: readonly string[] }) {
+    return this.publicAccess.get(organizationId, id, actor);
+  }
+
+  updatePublicAccess(organizationId: string, id: string, actor: { id: string; roles: readonly string[] }, input: UpdateChecklistPublicAccessInput) {
+    return this.publicAccess.update(organizationId, id, actor, input);
+  }
+
+  reissuePublicAccess(organizationId: string, id: string, actor: { id: string; roles: readonly string[] }) {
+    return this.publicAccess.reissue(organizationId, id, actor);
+  }
 
   /** PR 394: bulk archive / draft / publish / delete with per-sheet outcomes. */
   bulkAction(action: ChecklistBulkAction, ids: readonly string[], organizationId: string, actor: { id: string; roles: readonly string[] }, folderId: string | null = null) {
@@ -684,7 +701,7 @@ export class ChecklistsService {
   async updateChecklist(checklistId: string, organizationId: string, input: UpdateChecklistInput, actorId: string | null = null) {
     const checklist = await this.prisma.checklist.findFirst({
       where: { id: checklistId, organizationId, deletedAt: null },
-      select: { id: true, scoringMode: true, scaleLevels: true, accessMode: true, status: true, pinned: true, feedbackEnabled: true, feedbackRequired: true, feedbackLayout: true },
+      select: { id: true, scoringMode: true, scaleLevels: true, accessMode: true, status: true, pinned: true, publicAccess: true, feedbackEnabled: true, feedbackRequired: true, feedbackLayout: true },
     });
 
     if (!checklist) {
@@ -710,8 +727,13 @@ export class ChecklistsService {
     }
     if (moduleSettings?.observers) await assertObserversBelongToOrganization(this.prisma, organizationId, moduleSettings.observers.userIds);
 
+    // PR 464: a sheet that stops being published and free closes its public entry (the token is kept, never shown).
+    const stillPublicEligible = (input.accessMode ?? checklist.accessMode) === 'free' && (input.status ?? checklist.status) === 'published';
+    const closePublicEntry = !stillPublicEligible && checklist.publicAccess !== 'off';
+
     const updated = await this.updateWithPinLimit(checklistId, organizationId, pinned, {
       ...rest,
+      ...(closePublicEntry ? publicAccessOffData(actorId, new Date()) : {}),
       ...(moduleSettings ? overridesToColumns(moduleSettings) : {}),
       ...(pinned !== undefined ? { pinned } : {}),
       ...(scaleLevels !== undefined
@@ -735,6 +757,17 @@ export class ChecklistsService {
       summary: `Updated checklist ${updated.title}`,
       metadata: { fields: Object.keys(input) },
     });
+    if (closePublicEntry) {
+      await this.auditLog.record({
+        organizationId,
+        actorId,
+        action: 'checklist.public_access.updated',
+        targetType: 'checklist',
+        targetId: checklistId,
+        summary: `Public entry closed for checklist ${updated.title}`,
+        metadata: { previousAccess: checklist.publicAccess, access: 'off', reason: 'sheet_not_free_published' },
+      });
+    }
 
     return presentStaffChecklist(updated);
   }

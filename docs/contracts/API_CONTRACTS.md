@@ -1116,6 +1116,15 @@ sheets the list shows them (no folder, or a folder opened to staff); a requested
 limited by `participantLearnerScope()` (a manager sees the own team). At most 5000 sessions and 5000 free results are read per call; `truncated`
 tells when the cap was hit. The employee table and `GET /checklists/manager-analytics` keep their behaviour.
 
+PR 464 adds the settings of the public (link/QR) entry to a free sheet; the guest operations themselves come in PR 465. `GET /checklists/:id/public-access` returns
+`{ checklistId, access: off|registered|everyone, guestNameRequired, guestPhotosAllowed, eligible, hasLink, changedAt, changedBy, token }`; `token` and `changedBy`
+are filled only for an administrator. `PATCH /checklists/:id/public-access` takes `{ access?, guestNameRequired?, guestPhotosAllowed?, expectedChangedAt? }` (at least one
+of the three settings, strict); `POST /checklists/:id/public-access/reissue` issues a new token and the old link stops working at once. Errors: 400 enabling a sheet that
+is not published and free, 403 not an administrator, 404 sheet missing, 409 `expectedChangedAt` differs from the stored stamp (checked in the write condition). The token has
+192 bits, is unique, is kept while the entry is off, and is never written to the audit log (`checklist.public_access.updated` / `.reissued` carry settings only). A sheet that
+stops being published or free (status change, bulk action, folder deletion) gets `publicAccess = off` automatically. A guest pass belongs to one service user of the organization
+(no sign-in, no memberships; created in PR 465) and `ChecklistInstance.guestName` holds the typed name.
+
 PR 460 adds the cut of one sheet: `GET /checklists/:id/analytics/items?by=criteria|groups|feedback|notes&from&to[&departmentId][&managerId][&observerId][&page][&itemId]`
 (`checklistManagerAnalyticsRead`), JSON `{ by, instances, period, truncated, ... }` read from the snapshots frozen with the sessions, so later sheet edits
 never change history and a criterion removed from the sheet keeps its frozen text. `criteria`: per criterion `total`, `answered`, `skipped`,
