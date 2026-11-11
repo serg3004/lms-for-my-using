@@ -86,7 +86,7 @@ describe('ChecklistPublicAccessCard (PR 466)', () => {
     // The warning stays on the screen while the mode is on, the link and QR code appear.
     expect(text()).toContain('Чек-лист открыт для любого, у кого есть ссылка');
     expect((container.querySelector('#checklist-public-link') as HTMLInputElement).value).toBe(`${window.location.origin}/c/${TOKEN}`);
-    expect(container.querySelector('[data-testid="public-access-qr"] svg')).not.toBeNull();
+    expect(container.querySelector('[data-testid="public-access-qr"] img')).not.toBeNull();
     expect(container.querySelector('#checklist-guest-name')).not.toBeNull();
   });
 

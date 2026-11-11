@@ -1312,7 +1312,7 @@ for (const width of [375, 1440]) test(`checklist public access card is responsiv
   });
   await page.locator('#checklist-tab-settings').click();
   const card = page.getByTestId('public-access-card');
-  await card.getByTestId('public-access-qr').locator('svg').waitFor();
+  await card.getByTestId('public-access-qr').locator('img').waitFor();
   await expectNoPageOverflow(page);
   await page.waitForLoadState('networkidle');
   await expect(card).toHaveScreenshot(`checklist-public-access-${width}.png`, { maxDiffPixels: 3000 });

@@ -54,7 +54,7 @@ test('an administrator switches the link on for everyone, copies the link and do
 
   await expect(card.getByText('Чек-лист открыт для любого, у кого есть ссылка')).toBeVisible();
   await expect(page.locator('#checklist-public-link')).toHaveValue(new RegExp(`/c/${TOKEN}$`));
-  await expect(card.getByTestId('public-access-qr').locator('svg')).toBeVisible();
+  await expect(card.getByTestId('public-access-qr').locator('img')).toBeVisible();
   await expect(card.getByLabel('Имя гостя')).toBeVisible();
 
   await card.getByRole('button', { name: 'Скопировать', exact: true }).click();
@@ -110,6 +110,6 @@ test('a draft sheet explains that the link comes with publishing', async ({ page
 for (const width of [390, 320]) test(`the card fits a phone (${width}px) with the link and the QR code shown`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 });
   await openPublicAccess(page, { status: 'published', accessMode: 'free' }, { access: 'everyone', token: TOKEN, changedAt: '2026-11-01T10:00:00.000Z' });
-  await expect(page.getByTestId('public-access-qr').locator('svg')).toBeVisible();
+  await expect(page.getByTestId('public-access-qr').locator('img')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });

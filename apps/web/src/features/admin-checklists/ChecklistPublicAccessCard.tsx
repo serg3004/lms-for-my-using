@@ -192,7 +192,11 @@ export function ChecklistPublicAccessCard({ checklistId, title, savedAccessMode,
               </div>
               <div style={{ display: 'grid', gap: 8, justifyItems: 'start', minWidth: 0 }}>
                 <span className="admin-form__hint">{t('admin.checklists.publicAccess.qr', 'QR code')}</span>
-                {qr && <div data-testid="public-access-qr" dangerouslySetInnerHTML={{ __html: qr }} style={{ width: 'min(100%, 192px)', lineHeight: 0, border: '1px solid var(--color-border, #d4d4d8)' }} />}
+                {qr && (
+                  <div data-testid="public-access-qr" style={{ width: 'min(100%, 192px)', lineHeight: 0, border: '1px solid var(--color-border, #d4d4d8)' }}>
+                    <img alt={t('admin.checklists.publicAccess.qr', 'QR code')} src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(qr)}`} style={{ width: '100%', height: 'auto', display: 'block' }} />
+                  </div>
+                )}
                 <div style={row}>
                   <Button onClick={() => void savePng()} size="sm" type="button" variant="secondary">{t('admin.checklists.publicAccess.downloadPng', 'Download PNG')}</Button>
                   <Button onClick={() => link && downloadQrSvg(link, title)} size="sm" type="button" variant="secondary">{t('admin.checklists.publicAccess.downloadSvg', 'Download SVG')}</Button>
