@@ -26,7 +26,7 @@ export function sheetAnalyticsFixture(ids: string[]): SheetAnalytics {
   return { total: metrics(planned, completed, rows.flatMap((row) => row.scales)), sheets: rows, period: { from: '2026-10-01T00:00:00.000Z', to: '2026-11-01T00:00:00.000Z' }, truncated: false };
 }
 
-export async function installSheetAnalyticsMocks(page: Page, role: 'admin' | 'manager' | 'instructor', itemRequests: URL[] = []) {
+export async function installSheetAnalyticsMocks(page: Page, role: 'admin' | 'manager' | 'instructor', itemRequests: URL[] = [], exportRequests: URL[] = []) {
   const requests: URL[] = [];
   await page.route('**/api/v1/**', (route) => {
     const url = new URL(route.request().url());
@@ -38,6 +38,11 @@ export async function installSheetAnalyticsMocks(page: Page, role: 'admin' | 'ma
     if (path === '/checklists/analytics/overview') {
       requests.push(url);
       return route.fulfill({ json: sheetAnalyticsFixture((url.searchParams.get('checklistIds') ?? '').split(',').filter(Boolean)) });
+    }
+    if (path === '/checklists/analytics/export') {
+      exportRequests.push(url);
+      const view = url.searchParams.get('view') ?? 'sheets';
+      return route.fulfill({ json: { filename: `checklist-analytics-${view}-2026-11-11.csv`, csv: '\uFEFF"Чек-лист"\r\n"Охрана труда"\r\n', rows: [['Чек-лист'], ['Охрана труда']], rowCount: 1 } });
     }
     const itemsMatch = /^\/checklists\/([^/]+)\/analytics\/items$/.exec(path);
     if (itemsMatch) {

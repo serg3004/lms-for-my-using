@@ -65,6 +65,7 @@ import {
   checklistManagerAnalyticsQuerySchema,
   checklistSheetAnalyticsQuerySchema,
   checklistItemAnalyticsQuerySchema,
+  checklistAnalyticsExportQuerySchema,
   checklistQueueQuerySchema,
   recalculateChecklistScoreSchema,
   markChecklistSessionObserverUnavailableSchema,
@@ -159,6 +160,14 @@ export class ChecklistsController {
   async getSheetAnalytics(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     return this.checklistsService.getSheetAnalytics(user.organizationId, user, await this.reviewAccess.participantLearnerScope(user), checklistSheetAnalyticsQuerySchema.parse(rawQuery));
+  }
+
+  /** PR 463: the current view of the Analytics tab as CSV/XLSX (declared before `checklists/:id/...` so `analytics` is never read as an id). */
+  @Get('checklists/analytics/export')
+  @Roles(...rolePolicies.checklistManagerAnalyticsRead)
+  async exportAnalytics(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.exportAnalytics(user.organizationId, user, await this.reviewAccess.participantLearnerScope(user), checklistAnalyticsExportQuerySchema.parse(rawQuery));
   }
 
   /** PR 460: one sheet by criteria, groups, feedback fields or notes. */

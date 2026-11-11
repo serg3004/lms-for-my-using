@@ -3801,6 +3801,10 @@
     "openReport": "Отчёт сессии",
     "prev": "Назад",
     "next": "Далее",
-    "unknownSheet": "Чек-лист"
+    "unknownSheet": "Чек-лист",
+    "exportCsv": "Скачать CSV",
+    "exportXlsx": "Скачать Excel",
+    "exportError": "Не удалось выгрузить этот вид.",
+    "exportEmpty": "В этом виде нечего выгружать."
   }
 }

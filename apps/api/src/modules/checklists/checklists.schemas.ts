@@ -380,6 +380,28 @@ export const checklistItemAnalyticsQuerySchema = z.object({
 });
 export type ChecklistItemAnalyticsQuery = z.infer<typeof checklistItemAnalyticsQuerySchema>;
 
+// PR 463: the export of the "Analytics" tab repeats its current view; the cuts of one sheet need `checklistId`.
+export const checklistAnalyticsExportQuerySchema = z.object({
+  view: z.enum(['sheets', 'criteria', 'groups', 'feedback', 'notes']),
+  from: z.string().datetime(),
+  to: z.string().datetime(),
+  checklistIds: checklistSheetAnalyticsQuerySchema.shape.checklistIds,
+  checklistId: z.string().uuid().toLowerCase().optional(),
+  departmentId: z.string().uuid().optional(),
+  managerId: z.union([z.string().uuid().toLowerCase(), z.literal('unassigned')]).optional(),
+  // Picked criteria or groups of the screen (empty = all), the text search and the sorting of the table.
+  pick: z.preprocess(
+    (value) => (typeof value === 'string' ? value.split(',').map((part) => part.trim()).filter(Boolean) : value),
+    z.array(z.string().min(1).max(100)).max(500).optional(),
+  ),
+  q: z.string().trim().min(1).max(120).optional(),
+  sort: z.enum(['order', 'completion', 'average']).optional(),
+  itemId: z.string().trim().min(1).max(100).optional(),
+  // Only recorded in the audit entry: the client builds the .xlsx from the same `rows`.
+  format: z.enum(['csv', 'xlsx']).default('csv'),
+}).refine((value) => value.view === 'sheets' || value.checklistId !== undefined, { message: 'checklistId is required for a cut of one sheet', path: ['checklistId'] });
+export type ChecklistAnalyticsExportQuery = z.infer<typeof checklistAnalyticsExportQuerySchema>;
+
 // PR 336: the export repeats the dashboard filters and the table view (search, toggle, sort).
 export const checklistManagerAnalyticsExportQuerySchema = checklistManagerAnalyticsQuerySchema.extend({
   table: z.enum(['employees', 'managers']).optional(),
