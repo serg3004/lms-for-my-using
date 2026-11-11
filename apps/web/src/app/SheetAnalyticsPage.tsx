@@ -18,6 +18,7 @@ import { ObserverPageLayout } from '../shared/observerLayout.js';
 import { Card, DataTable, PageState, StatCard, StatsGrid, type Column } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { percent, ScaleLevelBars } from './SheetAnalyticsParts.js';
+import { SheetAnalyticsExport } from './SheetAnalyticsExport.js';
 import { SheetItemAnalytics } from './SheetItemAnalytics.js';
 import { resolvePeriodRange } from './ManagerChecklistsPage.js';
 import { ManagerViewSwitch } from './ManagerViewSwitch.js';
@@ -197,7 +198,11 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
               </div>
             </Card>
           )}
-          <section aria-labelledby="sheet-analytics-table"><h2 id="sheet-analytics-table" style={{ fontSize: 20 }}>{t('sheetAnalytics.tableLabel', 'Metrics by checklist')}</h2><SheetsTable rows={state.data.sheets} t={t} /></section>
+          <section aria-labelledby="sheet-analytics-table" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 8 }}>
+            <h2 id="sheet-analytics-table" style={{ fontSize: 20, margin: 0 }}>{t('sheetAnalytics.tableLabel', 'Metrics by checklist')}</h2>
+            <SheetAnalyticsExport query={{ view: 'sheets', from, to, checklistIds: selected.length ? selected : undefined, departmentId: departmentId || undefined, managerId: managerId || undefined }} sheetName={t('sheetAnalytics.tableLabel', 'Metrics by checklist')} />
+            <SheetsTable rows={state.data.sheets} t={t} />
+          </section>
         </div>
       ))}
       {selected.length === 1 && sheetsState.status !== 'loading' && (

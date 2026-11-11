@@ -90,3 +90,41 @@ test('a sheet without sessions in the period says so', async ({ page }) => {
   await page.goto(`/admin/checklists/sheet-analytics?sheets=${sheetA}`);
   await expect(page.getByText('По этому чек-листу за период ещё нет сессий.')).toBeVisible();
 });
+
+test.describe('export of the current view (PR 463)', () => {
+  test('the overview and the picked criteria download with the filters of the screen', async ({ page }) => {
+    const exportRequests: URL[] = [];
+    await installSheetAnalyticsMocks(page, 'admin', [], exportRequests);
+    await page.goto('/admin/checklists/sheet-analytics');
+    const [csv] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Скачать CSV' }).click()]);
+    expect(csv.suggestedFilename()).toBe('checklist-analytics-sheets-2026-11-11.csv');
+    expect(exportRequests.at(-1)?.searchParams.get('view')).toBe('sheets');
+    expect(exportRequests.at(-1)?.searchParams.get('checklistIds')).toBeNull();
+    expect(exportRequests.at(-1)?.searchParams.get('format')).toBe('csv');
+
+    await page.goto(`/admin/checklists/sheet-analytics?sheets=${sheetA}`);
+    const detail = page.getByTestId('item-analytics');
+    await detail.getByRole('checkbox', { name: 'Учитывать: Каски надеты' }).click();
+    await detail.getByRole('checkbox', { name: 'Учитывать: Проход свободен' }).click();
+    await detail.getByLabel('Сортировка').selectOption('completion');
+    const [xlsx] = await Promise.all([page.waitForEvent('download'), detail.getByRole('button', { name: 'Скачать Excel' }).click()]);
+    expect(xlsx.suggestedFilename()).toBe('checklist-analytics-criteria-2026-11-11.xlsx');
+    const request = exportRequests.at(-1)!;
+    expect(request.searchParams.get('view')).toBe('criteria');
+    expect(request.searchParams.get('checklistId')).toBe(sheetA);
+    expect(request.searchParams.get('pick')).toBe('c3');
+    expect(request.searchParams.get('sort')).toBe('completion');
+    expect(request.searchParams.get('format')).toBe('xlsx');
+  });
+
+  test('an empty view says there is nothing to export and a failed export shows an error', async ({ page }) => {
+    await installSheetAnalyticsMocks(page, 'admin');
+    await page.route('**/api/v1/checklists/analytics/export**', (route) => route.fulfill({ json: { filename: 'x.csv', csv: '', rows: [['Чек-лист']], rowCount: 0 } }));
+    await page.goto('/admin/checklists/sheet-analytics');
+    await page.getByRole('button', { name: 'Скачать CSV' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'нечего выгружать' })).toBeVisible();
+    await page.route('**/api/v1/checklists/analytics/export**', (route) => route.fulfill({ status: 500, json: { message: 'boom' } }));
+    await page.getByRole('button', { name: 'Скачать Excel' }).click();
+    await expect(page.getByRole('status').filter({ hasText: 'Не удалось выгрузить этот вид' })).toBeVisible();
+  });
+});

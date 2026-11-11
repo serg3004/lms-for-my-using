@@ -155,7 +155,7 @@ function buildFeedback(rows: readonly ItemAnalyticsRow[]) {
 export const NOTES_PAGE_SIZE = 20;
 
 /** Notes: the per-criterion counts come from the criteria cut, the list is every note, newest first, paged. */
-function buildNotes(rows: readonly ItemAnalyticsRow[], sheetId: string, page: number, itemId?: string) {
+function buildNotes(rows: readonly ItemAnalyticsRow[], sheetId: string, page: number, itemId?: string, pageSize = NOTES_PAGE_SIZE) {
   const { criteria } = buildCriteriaAndGroups(rows, sheetId);
   const list: Array<{ sessionId: string | null; itemId: string; itemText: string; comment: string | null; reviewComment: string | null; at: string | null; employee: string; observer: string | null }> = [];
   for (const row of rows) {
@@ -169,17 +169,17 @@ function buildNotes(rows: readonly ItemAnalyticsRow[], sheetId: string, page: nu
   list.sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''));
   return {
     criteria: criteria.map((entry) => ({ id: entry.id, text: entry.text, answered: entry.answered, withNote: entry.withNote, noteShare: entry.noteShare })),
-    notes: { total: list.length, page, pageSize: NOTES_PAGE_SIZE, items: list.slice((page - 1) * NOTES_PAGE_SIZE, page * NOTES_PAGE_SIZE) },
+    notes: { total: list.length, page, pageSize, items: list.slice((page - 1) * pageSize, page * pageSize) },
   };
 }
 
 /** Pure: the requested cut of the prepared rows (rows arrive newest first). */
-export function buildItemAnalytics(by: ChecklistItemAnalyticsQuery['by'], rows: readonly ItemAnalyticsRow[], sheetId: string, page = 1, itemId?: string) {
+export function buildItemAnalytics(by: ChecklistItemAnalyticsQuery['by'], rows: readonly ItemAnalyticsRow[], sheetId: string, page = 1, itemId?: string, pageSize = NOTES_PAGE_SIZE) {
   const base = { by, instances: rows.length };
   if (by === 'criteria') return { ...base, criteria: buildCriteriaAndGroups(rows, sheetId).criteria };
   if (by === 'groups') return { ...base, groups: buildCriteriaAndGroups(rows, sheetId).groups };
   if (by === 'feedback') return { ...base, feedback: buildFeedback(rows) };
-  return { ...base, ...buildNotes(rows, sheetId, page, itemId) };
+  return { ...base, ...buildNotes(rows, sheetId, page, itemId, pageSize) };
 }
 
 const MAX_ROWS = 5000;
@@ -189,7 +189,8 @@ const personName = (person: { firstName: string; lastName: string } | null | und
 export class ChecklistItemAnalytics {
   constructor(private readonly prisma: PrismaService, private readonly access: ChecklistSheetAnalytics) {}
 
-  async items(organizationId: string, actor: FolderActor, userScope: Prisma.UserWhereInput, checklistId: string, query: ChecklistItemAnalyticsQuery) {
+  /** `allNotes` (PR 463, the export) returns the whole notes list in one page instead of 20. */
+  async items(organizationId: string, actor: FolderActor, userScope: Prisma.UserWhereInput, checklistId: string, query: ChecklistItemAnalyticsQuery, options: { allNotes?: boolean } = {}) {
     const accessible = await this.access.accessible(organizationId, actor);
     // A sheet the viewer may not open is indistinguishable from one that does not exist.
     if (!accessible.some((sheet) => sheet.id === checklistId)) throw new NotFoundException('Checklist not found');
@@ -224,6 +225,6 @@ export class ChecklistItemAnalytics {
     ];
     // Newest first, so the latest frozen text of a criterion wins.
     rows.sort((a, b) => (b.finishedAt?.getTime() ?? 0) - (a.finishedAt?.getTime() ?? 0));
-    return { ...buildItemAnalytics(query.by, rows, checklistId, query.page, query.itemId), period: { from: query.from, to: query.to }, truncated: sessions.length >= MAX_ROWS || selfDone.length >= MAX_ROWS };
+    return { ...buildItemAnalytics(query.by, rows, checklistId, options.allNotes ? 1 : query.page, query.itemId, options.allNotes ? 1_000_000 : NOTES_PAGE_SIZE), period: { from: query.from, to: query.to }, truncated: sessions.length >= MAX_ROWS || selfDone.length >= MAX_ROWS };
   }
 }

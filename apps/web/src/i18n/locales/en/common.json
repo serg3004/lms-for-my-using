@@ -3801,6 +3801,10 @@
     "openReport": "Session report",
     "prev": "Previous",
     "next": "Next",
-    "unknownSheet": "Checklist"
+    "unknownSheet": "Checklist",
+    "exportCsv": "Download CSV",
+    "exportXlsx": "Download Excel",
+    "exportError": "Unable to export this view.",
+    "exportEmpty": "There is nothing to export for this view."
   }
 }

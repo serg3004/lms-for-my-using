@@ -3801,6 +3801,10 @@
     "openReport": "场次报告",
     "prev": "上一页",
     "next": "下一页",
-    "unknownSheet": "检查表"
+    "unknownSheet": "检查表",
+    "exportCsv": "下载 CSV",
+    "exportXlsx": "下载 Excel",
+    "exportError": "无法导出此视图。",
+    "exportEmpty": "此视图没有可导出的内容。"
   }
 }

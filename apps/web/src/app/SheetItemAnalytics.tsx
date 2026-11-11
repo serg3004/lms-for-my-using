@@ -14,6 +14,7 @@ import {
 } from '../shared/api/manager.js';
 import { Button, Card, DataTable, PageState, StatCard, StatsGrid, type Column } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
+import { SheetAnalyticsExport } from './SheetAnalyticsExport.js';
 import { percent, ScaleLevelBars } from './SheetAnalyticsParts.js';
 
 /**
@@ -230,6 +231,15 @@ export function SheetItemAnalytics({ sheetId, title, from, to, departmentId, man
           <Button aria-pressed={entry.key === activeCut} key={entry.key} onClick={() => update({ cut: entry.key === 'criteria' ? '' : entry.key, pick: '', qi: '', note: '', np: '' })} size="sm" type="button" variant={entry.key === activeCut ? 'primary' : 'secondary'}>{entry.label}</Button>
         ))}
       </div>
+
+      <SheetAnalyticsExport
+        query={{
+          view: activeCut, from, to, checklistId: sheetId, departmentId, managerId,
+          ...(activeCut === 'criteria' || activeCut === 'groups' ? { pick: livePicked, q: search.trim() || undefined, sort: sort === 'order' ? undefined : sort } : {}),
+          ...(activeCut === 'notes' && noteItem ? { itemId: noteItem } : {}),
+        }}
+        sheetName={cuts.find((entry) => entry.key === activeCut)?.label ?? title}
+      />
 
       {(activeCut === 'criteria' || activeCut === 'groups') && (
         <>

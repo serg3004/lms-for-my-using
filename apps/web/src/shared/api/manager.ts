@@ -199,3 +199,19 @@ export type ItemAnalytics = {
 export function getItemAnalytics(checklistId: string, query: { by: ItemAnalytics['by']; from: string; to: string; departmentId?: string; managerId?: string; page?: number; itemId?: string }) {
   return apiRequest<ItemAnalytics>(`/checklists/${encodeURIComponent(checklistId)}/analytics/items${buildQueryString(query)}`);
 }
+
+// ---- PR 463: the export of the current view of the Analytics tab ----
+
+export type SheetAnalyticsExportQuery = {
+  view: 'sheets' | 'criteria' | 'groups' | 'feedback' | 'notes';
+  from: string; to: string;
+  checklistIds?: string[]; checklistId?: string; departmentId?: string; managerId?: string;
+  pick?: string[]; q?: string; sort?: 'order' | 'completion' | 'average'; itemId?: string;
+  format: 'csv' | 'xlsx';
+};
+
+export function exportSheetAnalytics({ checklistIds, pick, ...query }: SheetAnalyticsExportQuery) {
+  return apiRequest<{ filename: string; csv: string; rows: (string | number)[][]; rowCount: number }>(
+    `/checklists/analytics/export${buildQueryString({ ...query, checklistIds: checklistIds?.join(','), pick: pick?.join(',') })}`,
+  );
+}

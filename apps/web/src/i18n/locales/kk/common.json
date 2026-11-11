@@ -3801,6 +3801,10 @@
     "openReport": "Сессия есебі",
     "prev": "Артқа",
     "next": "Алға",
-    "unknownSheet": "Чек-парақ"
+    "unknownSheet": "Чек-парақ",
+    "exportCsv": "CSV жүктеу",
+    "exportXlsx": "Excel жүктеу",
+    "exportError": "Бұл көріністі жүктеу мүмкін болмады.",
+    "exportEmpty": "Бұл көріністе жүктейтін ештеңе жоқ."
   }
 }

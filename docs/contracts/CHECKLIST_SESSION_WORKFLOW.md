@@ -69,6 +69,8 @@ PR 461 adds the analytics over several sheets, beside it and without changing it
 
 PR 462 opens one sheet by its items: the button «Аналитика» in the bar of selected checklists (library of an administrator, an instructor and a mentor; one or several sheets) opens the tab with those sheets preselected (`?sheets=id,id`). With exactly one sheet chosen, a section under the overview shows the cuts «Критерии / Группы / Обратная связь / Примечания» from `GET /checklists/:id/analytics/items`: criteria and groups with completion, average score, answered/left and notes, search by text, sorting, and a tick per row that recounts the total (and the level bars) over the ticked rows from the raw score sums; feedback with filled/not filled and the spread of chosen options; notes filtered by criterion, newest first, paged, with a link to the session report where the role has one. A cut with nothing to show (no groups, no feedback) is hidden; a sheet without sessions in the period, a deleted sheet and a sheet outside the viewer's access get their own messages. Cut, search, ticked rows, notes criterion and notes page live in the address bar (`cut`, `qi`, `pick`, `note`, `np`).
 
+PR 463 adds «Скачать CSV» and «Скачать Excel» to the overview table and to every cut of one sheet. The file is the current view of the screen from `GET /checklists/analytics/export`: the same period, filters, ticked rows, search and sorting, a total row, the answers-by-scale-level block, and the whole notes list for the notes cut; an empty view downloads nothing and says so. Access is the screen's own and the audit log keeps counts and filter ids only.
+
 ### Report by manager (PR 356)
 
 «По руководителям» shows employees, completed sessions and average reviewed results for both

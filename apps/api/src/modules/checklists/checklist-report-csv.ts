@@ -20,7 +20,7 @@ export function serializeReportCsv(rows: ReportCell[][]): string {
 
 export const MAX_EXPORT_ROWS = 5000;
 
-type Locale = 'ru' | 'en' | 'kk' | 'zh';
+export type Locale = 'ru' | 'en' | 'kk' | 'zh';
 const LOCALES: readonly Locale[] = ['ru', 'en', 'kk', 'zh'];
 export function exportLocale(locale: string | null | undefined): Locale {
   const base = (locale ?? '').toLowerCase().slice(0, 2);

@@ -15,6 +15,7 @@ import { performanceBand, type ManagerPerformanceBand } from './checklist-perfor
 import { managerExportRows, employeeExportRows, exportLocale, MAX_EXPORT_ROWS, serializeReportCsv, viewEmployees } from './checklist-report-csv.js';
 import { ChecklistOrgTemplates } from './checklist-org-templates.js';
 import { ChecklistSheetAnalytics } from './checklist-sheet-analytics.js';
+import { ChecklistAnalyticsExport } from './checklist-analytics-export.js';
 import { ChecklistItemAnalytics } from './checklist-item-analytics.js';
 import { ChecklistSheetPhotos, sheetPhotosInclude } from './checklist-sheet-photos.js';
 import { assertObserversBelongToOrganization, freezeReportSettings, loadEffectiveSettings, overridesToColumns, presentOverrides, presentStaffChecklist, SHEET_OVERRIDES_SELECT } from './checklist-settings-overrides.js';
@@ -32,6 +33,7 @@ import {
   ChecklistManagerAnalyticsQuery,
   ChecklistSheetAnalyticsQuery,
   ChecklistItemAnalyticsQuery,
+  ChecklistAnalyticsExportQuery,
   ChecklistModuleSettingsInput,
   ChecklistListQuery,
   ChecklistQueueQuery,
@@ -361,6 +363,7 @@ export class ChecklistsService {
     );
     this.sheetAnalytics = new ChecklistSheetAnalytics(prisma);
     this.itemAnalytics = new ChecklistItemAnalytics(prisma, this.sheetAnalytics);
+    this.analyticsExport = new ChecklistAnalyticsExport(this.sheetAnalytics, this.itemAnalytics, auditLog);
     this.bulkActions = new ChecklistBulkActions(prisma, auditLog, {
       setStatus: (id, organizationId, status, actorId) => this.updateChecklist(id, organizationId, { status }, actorId),
       remove: (id, organizationId, actorId) => this.deleteChecklist(id, organizationId, actorId),
@@ -373,6 +376,7 @@ export class ChecklistsService {
   private readonly sheetPhotos: ChecklistSheetPhotos;
   private readonly sheetAnalytics: ChecklistSheetAnalytics;
   private readonly itemAnalytics: ChecklistItemAnalytics;
+  private readonly analyticsExport: ChecklistAnalyticsExport;
   private readonly bulkActions: ChecklistBulkActions;
 
   /** PR 394: bulk archive / draft / publish / delete with per-sheet outcomes. */
@@ -1725,6 +1729,11 @@ export class ChecklistsService {
   /** PR 460: one sheet by criteria, groups, feedback fields or notes (404 for a sheet the viewer may not open). */
   getItemAnalytics(organizationId: string, actor: { id: string; roles: readonly string[] }, userScope: Prisma.UserWhereInput, checklistId: string, query: ChecklistItemAnalyticsQuery) {
     return this.itemAnalytics.items(organizationId, actor, userScope, checklistId, query);
+  }
+
+  /** PR 463: the current view of the Analytics tab as CSV/XLSX rows. */
+  exportAnalytics(organizationId: string, actor: { id: string; roles: readonly string[]; locale?: string | null }, userScope: Prisma.UserWhereInput, query: ChecklistAnalyticsExportQuery) {
+    return this.analyticsExport.export(organizationId, actor, userScope, query);
   }
 
   async getManagerAnalytics(

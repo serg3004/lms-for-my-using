@@ -1127,6 +1127,14 @@ itemId, itemText, comment, reviewComment, at, employee, observer }] }` newest fi
 the viewer may not open answers 404; `observerId` leaves out results finished without a session. At most 5000 sessions and 5000 free results per call
 (`truncated`).
 
+PR 463 adds the export of the Analytics tab: `GET /checklists/analytics/export?view=sheets|criteria|groups|feedback|notes&from&to[&checklistIds][&checklistId][&departmentId][&managerId][&pick][&q][&sort=order|completion|average][&itemId][&format=csv|xlsx]`
+(`checklistManagerAnalyticsRead`; `checklistId` is required for every view except `sheets`). It repeats the current view of the screen through the same
+read operations (so the access rule and the employee scope are the screen's own) and answers `{ filename, csv, rows, rowCount }` like the other report exports;
+`rows` start with the header row of the viewer's language, end with a total row and a level block where the view has scales, and `rowCount` counts data rows
+only (limit 5000, otherwise 400). `pick` keeps the ticked criteria or groups (`__none__` is the group-less row), `q` and `sort` match the table of the screen,
+`itemId` limits the notes to one criterion, the notes are exported whole. The export writes one `checklist_report.exported` audit entry (kind
+`analytics_<view>`, format, row count, filter ids; no names, answers or notes).
+
 PR 336 adds two CSV exports, both JSON `{ filename, csv, rows, rowCount }` (the same rows as CSV and as typed cells for the
 browser-built .xlsx; optional `format=csv|xlsx` only labels the audit entry) so the existing
 authenticated client downloads them without a second transport: `GET /checklists/manager-analytics/export`
