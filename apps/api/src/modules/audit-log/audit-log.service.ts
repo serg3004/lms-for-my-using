@@ -37,6 +37,8 @@ export type AuditLogAction =
   | 'checklist.folder_created'
   | 'checklist.folder_updated'
   | 'checklist.folder_deleted'
+  | 'checklist.public_access.updated'
+  | 'checklist.public_access.reissued'
   | 'checklist.folder_bulk_move'
   | 'checklist.folder_bulk_delete'
   | 'checklist.created_from_template'

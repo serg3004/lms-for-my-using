@@ -621,6 +621,8 @@
         "checklist.folder_created": "Checklist folder created",
         "checklist.folder_updated": "Checklist folder changed",
         "checklist.folder_deleted": "Checklist folder deleted",
+        "checklist.public_access.updated": "Checklist public entry changed",
+        "checklist.public_access.reissued": "Checklist public link reissued",
         "checklist_instance.assigned": "Checklist assigned",
         "checklist_item_result.reviewed": "Checklist item reviewed",
         "certificate.issued": "Certificate issued"
