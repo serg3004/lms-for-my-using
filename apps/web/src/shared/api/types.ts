@@ -597,6 +597,9 @@ export type ChecklistInstanceSummary = {
   organizationId: string;
   checklistId: string;
   userId: string;
+  /** PR 468: a pass through the public link or QR code; `userId` is then the organization's service user, not a person. */
+  isGuest?: boolean;
+  guestName?: string | null;
   assignedBy: string | null;
   reviewerId: string | null;
   reviewAssignedAt: string | null;
@@ -640,6 +643,8 @@ export type ChecklistInstanceEvent = {
 
 export type ChecklistReviewQueueQuery = {
   assignment?: 'mine' | 'unassigned' | 'all';
+  /** PR 468: only passes through the public link or QR code, or none of them. */
+  guests?: 'only' | 'hide';
   checklistId?: string;
   learnerId?: string;
   status?: ChecklistInstanceStatus;

@@ -52,7 +52,7 @@ describe('MentorChecklistReviewsPage smoke tests', () => {
   it('renders the review queue under the mentor layout', () => {
     // Call order: 1 openId, 2 tab, 3 page, 4 useAsyncData's internal state.
     useStateAtCalls({
-      4: {
+      5: {
         status: 'loaded',
         data: {
           firstName: 'Mentor',

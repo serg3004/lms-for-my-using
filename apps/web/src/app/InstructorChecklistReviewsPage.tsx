@@ -20,6 +20,7 @@ import type {
 import type { ChecklistInstanceSummary } from '../shared/api/types.js';
 import { InstructorPageLayout } from '../shared/instructorLayout.js';
 import { Button, PageState, Pagination, StatCard, StatsGrid, Toolbar } from '../shared/ui.js';
+import { guestLabel } from '../shared/guestLabel.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { ChecklistDeadlineMeta } from './ChecklistDeadlineMeta.js';
 import { ChecklistReviewPhotoEvidence } from './ChecklistReviewPhotoEvidence.js';
@@ -58,11 +59,13 @@ export function InstructorChecklistReviewsPage({ Layout = InstructorPageLayout }
   const { t } = useTranslation();
   const [openInstance, setOpenInstance] = useState<ChecklistInstanceSummary | null>(null);
   const [tab, setTab] = useState<QueueTab>('mine');
+  // PR 468: everyone, only the passes made through the public link or QR code, or none of them.
+  const [guests, setGuests] = useState<'all' | 'only' | 'hide'>('all');
   const [page, setPage] = useState(1);
   const { state: loadState, reload: load } = useAsyncData<InstructorChecklistReviewsData>(
     async () => {
       const [queue, analytics, currentUser] = await Promise.all([
-        searchChecklistReviewQueue({ assignment: tab, page, pageSize: 20 }),
+        searchChecklistReviewQueue({ assignment: tab, page, pageSize: 20, ...(guests === 'all' ? {} : { guests }) }),
         getChecklistAnalytics(),
         getCurrentUser(),
       ]);
@@ -77,7 +80,7 @@ export function InstructorChecklistReviewsPage({ Layout = InstructorPageLayout }
         lastName: currentUser?.lastName,
       };
     },
-    [t, tab, page],
+    [t, tab, guests, page],
     {
       unauthenticated: t('checklistReview.sessionExpired', 'Your session expired. Sign in again.'),
       error: t('checklistReview.loadError', 'Unable to load pending reviews.'),
@@ -151,11 +154,18 @@ export function InstructorChecklistReviewsPage({ Layout = InstructorPageLayout }
               </div>
             }
             right={
-              // PR 319: conducting a session moved to its own route, no longer a local-state tab
-              // sharing this page's review-queue data load.
-              <Link className="ds-button ds-button--secondary ds-button--sm" to="/instructor/checklists/sessions">
-                {t('checklistReview.tabs.sessions', 'Conduct')}
-              </Link>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <select aria-label={t('guest.filter', 'Guests')} className="ds-input" value={guests} onChange={(event) => { setGuests(event.target.value as 'all' | 'only' | 'hide'); setPage(1); }}>
+                  <option value="all">{t('guest.filterAll', 'Employees and guests')}</option>
+                  <option value="only">{t('guest.filterOnly', 'Guests only')}</option>
+                  <option value="hide">{t('guest.filterHide', 'Without guests')}</option>
+                </select>
+                {/* PR 319: conducting a session moved to its own route, no longer a local-state tab
+                    sharing this page's review-queue data load. */}
+                <Link className="ds-button ds-button--secondary ds-button--sm" to="/instructor/checklists/sessions">
+                  {t('checklistReview.tabs.sessions', 'Conduct')}
+                </Link>
+              </div>
             }
           />
         )}
@@ -182,7 +192,7 @@ export function InstructorChecklistReviewsPage({ Layout = InstructorPageLayout }
                   onClick={() => setOpenInstance(instance)}
                 >
                   <strong>{plainText(instance.checklist?.title ?? '')}</strong>
-                  <p style={{ color: COLORS.muted, marginBottom: 0 }}>{t('checklistReview.submittedBy', 'Submitted by user {{userId}}', { userId: instance.userId })}</p>
+                  <p style={{ color: COLORS.muted, marginBottom: 0 }}>{instance.isGuest ? t('guest.submittedBy', 'Submitted by {{label}} (link or QR)', { label: guestLabel(t, instance.guestName) }) : t('checklistReview.submittedBy', 'Submitted by user {{userId}}', { userId: instance.userId })}</p>
                   <p style={{ color: COLORS.muted, marginBottom: 0, fontSize: 12.5 }}>
                     {instance.reviewerId === null
                       ? t('checklistReview.reviewerUnassigned', 'Unassigned')
@@ -285,7 +295,7 @@ function ReviewDetail({
       </button>
 
       <h2 style={{ color: COLORS.text, marginBottom: 4 }}><RichText value={checklist.title} /></h2>
-      <p style={{ color: COLORS.muted }}>{t('checklistReview.submittedBy', 'Submitted by user {{userId}}', { userId: instance.userId })}</p>
+      <p style={{ color: COLORS.muted }}>{instance.isGuest ? t('guest.submittedBy', 'Submitted by {{label}} (link or QR)', { label: guestLabel(t, instance.guestName) }) : t('checklistReview.submittedBy', 'Submitted by user {{userId}}', { userId: instance.userId })}</p>
       <ChecklistDeadlineMeta instance={instance} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '10px 0' }}>

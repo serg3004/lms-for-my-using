@@ -1106,7 +1106,7 @@ kind is `manager_managers`, with filters/format/row count, never raw rows.
 
 PR 459 adds the read-only analytics over several sheets for the "Analytics" tab, separate from `GET /checklists/manager-analytics`
 (which and its pages are unchanged). `GET /checklists/analytics/sheets?from&to` (`checklistManagerAnalyticsRead`) lists the sheets the viewer
-may pick with the number of sessions planned in the period; `GET /checklists/analytics/overview?from&to[&checklistIds=id,id][&departmentId][&managerId]`
+may pick with the number of sessions planned in the period; `GET /checklists/analytics/overview?from&to[&checklistIds=id,id][&departmentId][&managerId]` (PR 468: every metrics block also carries `guests: { completed, averagePercentage }`, passes through the public link or QR code; they are inside the totals and never inside a department or a manager)
 returns, in total and per sheet: `plan` (planned = sessions scheduled in the period except cancelled, completed, inProgress, notStarted, overdue,
 remaining), `completionPercentage`, `selfCompleted` (results finished without a session), `averagePercentage` (finished scored results),
 `criteria` (total, answered, skipped, remaining, zeroPoints), `scales` (answers by level of each scale as frozen in the session snapshot:
