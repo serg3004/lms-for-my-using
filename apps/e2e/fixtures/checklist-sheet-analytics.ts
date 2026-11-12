@@ -15,7 +15,7 @@ function metrics(planned: number, completed: number, scales: SheetAnalyticsMetri
   return {
     plan: { planned, completed, inProgress: 0, notStarted: planned - completed, overdue: 1, remaining: planned - completed },
     completionPercentage: planned ? Math.round((completed / planned) * 100) : null, selfCompleted: 0, averagePercentage: completed ? 81 : null,
-    criteria: { total: 12, answered: 8, skipped: 1, remaining: 3, zeroPoints: 2 }, scales, queue: { notStarted: planned - completed, oldestDays: 3 },
+    criteria: { total: 12, answered: 8, skipped: 1, remaining: 3, zeroPoints: 2 }, scales, queue: { notStarted: planned - completed, oldestDays: 3 }, guests: { completed: 0, averagePercentage: null },
   };
 }
 

@@ -29,6 +29,7 @@ type ItemRow = CriterionRow | GroupRow;
 
 const T = {
   total: { ru: 'Итого', en: 'Total', kk: 'Жиыны', zh: '合计' },
+  guests: { ru: 'Гости (по ссылке или QR)', en: 'Guests (by link or QR)', kk: 'Қонақтар (сілтеме немесе QR арқылы)', zh: '访客（通过链接或二维码）' },
   noGroup: { ru: 'Без группы', en: 'Without a group', kk: 'Топсыз', zh: '未分组' },
   yes: { ru: 'Да', en: 'Yes', kk: 'Иә', zh: '是' },
   no: { ru: 'Нет', en: 'No', kk: 'Жоқ', zh: '否' },
@@ -157,7 +158,7 @@ const metricCells = (row: Pick<Metrics, 'completionPercentage' | 'averagePercent
 ];
 
 type SheetsOverview = {
-  total: { scales: ScaleLike[]; plan: { planned: number; completed: number; overdue: number }; completionPercentage: number | null; averagePercentage: number | null; criteria: { total: number; answered: number; skipped: number; remaining: number }; queue: { notStarted: number } };
+  total: { guests?: { completed: number; averagePercentage: number | null }; scales: ScaleLike[]; plan: { planned: number; completed: number; overdue: number }; completionPercentage: number | null; averagePercentage: number | null; criteria: { total: number; answered: number; skipped: number; remaining: number }; queue: { notStarted: number } };
   sheets: Array<SheetsOverview['total'] & { checklistId: string; title: string }>;
 };
 
@@ -171,6 +172,10 @@ export function sheetsExportRows(data: SheetsOverview, locale: Locale): ReportCe
     [...HEADERS.sheets[locale]],
     ...data.sheets.map((row) => line(plainText(row.title), row)),
     line(t('total', locale), data.total),
+    // PR 468: guests (no account) are inside the total; their own line says how many and with what average.
+    ...(data.total.guests && data.total.guests.completed > 0
+      ? [[t('guests', locale), '', data.total.guests.completed, '', '', blank(data.total.guests.averagePercentage), '', '', ''] as ReportCell[]]
+      : []),
     ...levelRows(data.total.scales, locale),
   ];
 }

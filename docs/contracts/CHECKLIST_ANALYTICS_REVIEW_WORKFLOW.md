@@ -10,7 +10,8 @@ else. Manager access remains restricted to users in managed groups.
 
 `GET /checklist-instances/review-queue` is paginated and filtered on the server. `assignment` accepts `mine`,
 `unassigned`, or `all`; checklist, learner, status, pass outcome, submission range, page, and page size are
-supported. The legacy pending-review endpoint remains available during client migration.
+supported; PR 468 adds `guests=only|hide` (passes through the public link or QR code, which have no account), which only narrows
+what the caller's own scope already allows. Every instance read carries `isGuest` and `guestName`. The legacy pending-review endpoint remains available during client migration.
 
 ## Metrics
 

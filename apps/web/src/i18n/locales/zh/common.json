@@ -2969,6 +2969,15 @@
     "again": "再填一次",
     "finishCaptchaHint": "提交答案前，请输入图片中的验证码。"
   },
+  "guest": {
+    "filter": "访客",
+    "filterAll": "员工和访客",
+    "filterOnly": "仅访客",
+    "filterHide": "不含访客",
+    "label": "访客",
+    "labelNamed": "访客：{{name}}",
+    "submittedBy": "提交人：{{label}}（链接或二维码）"
+  },
   "checklists": {
     "navLink": "检查清单",
     "title": "检查清单",
@@ -3824,6 +3833,7 @@
     }
   },
   "sheetAnalytics": {
+    "guests": "访客（链接或二维码）",
     "tab": "分析",
     "navTab": "清单分析",
     "title": "清单分析",

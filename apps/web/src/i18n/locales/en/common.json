@@ -2969,6 +2969,15 @@
     "again": "Pass again",
     "finishCaptchaHint": "To send the answers, enter the code from the picture."
   },
+  "guest": {
+    "filter": "Guests",
+    "filterAll": "Employees and guests",
+    "filterOnly": "Guests only",
+    "filterHide": "Without guests",
+    "label": "Guest",
+    "labelNamed": "Guest: {{name}}",
+    "submittedBy": "Submitted by {{label}} (link or QR)"
+  },
   "checklists": {
     "navLink": "Checklists",
     "sessionExpired": "Your session has expired. Please sign in again.",
@@ -3824,6 +3833,7 @@
     }
   },
   "sheetAnalytics": {
+    "guests": "Guests (link or QR)",
     "tab": "Analytics",
     "navTab": "Analytics by checklist",
     "title": "Checklist analytics",

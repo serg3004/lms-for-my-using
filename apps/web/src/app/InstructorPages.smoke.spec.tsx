@@ -106,7 +106,7 @@ describe('Instructor pages smoke tests', () => {
   it('InstructorChecklistReviewsPage renders the review queue without crashing', () => {
     // Call order in InstructorChecklistReviewsPage: 1 openId, 2 tab, 3 page, 4 useAsyncData's internal state.
     useStateAtCalls({
-      4: {
+      5: {
         status: 'loaded',
         data: {
           firstName: 'Instructor',
@@ -224,7 +224,7 @@ describe('Instructor pages smoke tests', () => {
     };
     // Call order: 1 openInstance, 2 tab, 3 page, 4 useAsyncData's internal state, then
     // ReviewDetail + ChecklistReviewPhotoEvidence add state hooks after that.
-    useStateAtCalls({ 1: loaded.data.instances[0], 4: loaded });
+    useStateAtCalls({ 1: loaded.data.instances[0], 5: loaded });
 
     const html = renderToStaticMarkup(
       <MemoryRouter>
@@ -243,7 +243,7 @@ describe('Instructor pages smoke tests', () => {
 
   it('renders analytics KPI cards and queue tabs above the review queue', () => {
     useStateAtCalls({
-      4: {
+      5: {
         status: 'loaded',
         data: {
           firstName: 'Instructor',
@@ -291,7 +291,7 @@ describe('Instructor pages smoke tests', () => {
       results: [],
     };
     useStateAtCalls({
-      4: {
+      5: {
         status: 'loaded',
         data: {
           firstName: 'Instructor', lastName: 'User', currentUserId: 'user-2', isAdmin: false,
@@ -332,7 +332,7 @@ describe('Instructor pages smoke tests', () => {
         }],
       },
     };
-    useStateAtCalls({ 1: loaded.data.instances[0], 4: loaded });
+    useStateAtCalls({ 1: loaded.data.instances[0], 5: loaded });
 
     const html = renderToStaticMarkup(
       <MemoryRouter>
@@ -360,7 +360,7 @@ describe('Instructor pages smoke tests', () => {
         }],
       },
     };
-    useStateAtCalls({ 1: loaded.data.instances[0], 4: loaded });
+    useStateAtCalls({ 1: loaded.data.instances[0], 5: loaded });
 
     const html = renderToStaticMarkup(
       <MemoryRouter>

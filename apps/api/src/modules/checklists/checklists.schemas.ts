@@ -335,6 +335,8 @@ export const checklistQueueQuerySchema = z.object({
   checklistId: z.string().uuid().optional(), learnerId: z.string().uuid().optional(),
   status: checklistInstanceStatusSchema.optional(), passed: z.enum(['true', 'false']).optional(),
   from: z.string().datetime().optional(), to: z.string().datetime().optional(),
+  // PR 468: passes through the public link or QR code (no account): only those, or none of them.
+  guests: z.enum(['only', 'hide']).optional(),
   page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(25),
 });
 export type ChecklistQueueQuery = z.infer<typeof checklistQueueQuerySchema>;

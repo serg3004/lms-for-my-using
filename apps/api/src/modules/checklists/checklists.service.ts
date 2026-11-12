@@ -23,6 +23,7 @@ import { ChecklistBulkActions, type ChecklistBulkAction } from './checklist-bulk
 import { ChecklistPublicAccess, markGuestPassesDisabled, publicAccessOffData } from './checklist-public-access.js';
 import { visibleFolderIds, type FolderActor } from './checklist-folder-tree.js';
 import { isNoteRequired, parseNoteAnswers } from './checklist-item-note.js';
+import { GUEST_USER_EMAIL } from './checklist-public-access.js';
 import { ChecklistResultDeletion } from './checklist-result-deletion.js';
 import { findTemplate, renderTemplate, templateLocale } from './checklist-templates.js';
 import {
@@ -193,6 +194,9 @@ const instanceSelect = {
   organizationId: true,
   checklistId: true,
   userId: true,
+  // PR 468: a pass through the public link has no account; the sheet's people see it as "Guest: name".
+  guestName: true,
+  user: { select: { email: true } },
   assignedBy: true,
   reviewerId: true,
   reviewAssignedAt: true,
@@ -1699,7 +1703,7 @@ export class ChecklistsService {
   }
 
   async searchReviewQueue(organizationId: string, reviewerId: string, query: ChecklistQueueQuery, userScope: object = {}) {
-    const where: Prisma.ChecklistInstanceWhereInput = {
+    const queueWhere: Prisma.ChecklistInstanceWhereInput = {
       organizationId, deletedAt: null, ...userScope,
       ...(query.assignment === 'mine' ? { reviewerId } : query.assignment === 'unassigned' ? { reviewerId: null } : {}),
       ...(query.checklistId ? { checklistId: query.checklistId } : {}),
@@ -1708,6 +1712,10 @@ export class ChecklistsService {
       ...(query.passed ? { passed: query.passed === 'true' } : {}),
       ...((query.from || query.to) ? { submittedAt: { ...(query.from ? { gte: new Date(query.from) } : {}), ...(query.to ? { lte: new Date(query.to) } : {}) } } : {}),
     };
+    // PR 468: the guests filter narrows whatever the viewer's own scope already allows.
+    const where: Prisma.ChecklistInstanceWhereInput = query.guests
+      ? { AND: [queueWhere, { user: { email: query.guests === 'only' ? GUEST_USER_EMAIL : { not: GUEST_USER_EMAIL } } }] }
+      : queueWhere;
     const [items, total] = await this.prisma.$transaction([
       this.prisma.checklistInstance.findMany({ where, orderBy: [{ submittedAt: 'asc' }, { id: 'asc' }], skip: (query.page - 1) * query.pageSize, take: query.pageSize, select: instanceWithSnapshotSelect }),
       this.prisma.checklistInstance.count({ where }),
@@ -2984,6 +2992,8 @@ export class ChecklistsService {
       organizationId: instance.organizationId,
       checklistId: instance.checklistId,
       userId: instance.userId,
+      isGuest: instance.user?.email === GUEST_USER_EMAIL,
+      guestName: instance.guestName,
       assignedBy: instance.assignedBy,
       reviewerId: instance.reviewerId,
       reviewAssignedAt: instance.reviewAssignedAt,

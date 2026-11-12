@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 
 import type { PrismaService } from '../../database/prisma.service.js';
 import { visibleFolderIds, type FolderActor, type FolderNode } from './checklist-folder-tree.js';
+import { GUEST_USER_EMAIL } from './checklist-public-access.js';
 import type { ChecklistSheetAnalyticsQuery } from './checklists.schemas.js';
 
 /**
@@ -35,6 +36,8 @@ export type AnalyticsInstance = {
   instanceStatus: string;
   percentage: number;
   scored: boolean;
+  /** PR 468: a pass through the public link or QR code (no account); counted in the totals and shown on its own line. */
+  guest?: boolean;
   snapshot: Snapshot;
   results: ReadonlyArray<{ itemId: string; answerState: string; scaleLevel: number | null; checked: boolean; points: number }>;
 };
@@ -49,9 +52,10 @@ export type ScaleBlock = {
 type Counters = {
   planned: number; completed: number; inProgress: number; notStarted: number; overdue: number; selfCompleted: number;
   scoredCount: number; scoreTotal: number; criteriaTotal: number; answered: number; skipped: number; zeroPoints: number;
+  guestCompleted: number; guestScoredCount: number; guestScoreTotal: number;
   scales: Map<string, ScaleBlock>;
 };
-const emptyCounters = (): Counters => ({ planned: 0, completed: 0, inProgress: 0, notStarted: 0, overdue: 0, selfCompleted: 0, scoredCount: 0, scoreTotal: 0, criteriaTotal: 0, answered: 0, skipped: 0, zeroPoints: 0, scales: new Map() });
+const emptyCounters = (): Counters => ({ planned: 0, completed: 0, inProgress: 0, notStarted: 0, overdue: 0, selfCompleted: 0, scoredCount: 0, scoreTotal: 0, criteriaTotal: 0, answered: 0, skipped: 0, zeroPoints: 0, guestCompleted: 0, guestScoredCount: 0, guestScoreTotal: 0, scales: new Map() });
 
 function addLevel(counters: Counters, scaleKey: string, base: Omit<ScaleBlock, 'levels' | 'scaleKey'>, level: { value: number; label: string | null; labelKey: 'yes' | 'no' | null; color: string | null }) {
   const block = counters.scales.get(scaleKey) ?? { scaleKey, ...base, levels: [] };
@@ -74,6 +78,10 @@ function addInstance(counters: Counters, instance: AnalyticsInstance, now: Date)
   }
   const finished = sessionStatus === 'completed' || (sessionStatus === null && instance.instanceStatus === 'completed');
   if (finished && instance.scored) { counters.scoredCount += 1; counters.scoreTotal += instance.percentage; }
+  if (instance.guest && finished) {
+    counters.guestCompleted += 1;
+    if (instance.scored) { counters.guestScoredCount += 1; counters.guestScoreTotal += instance.percentage; }
+  }
 
   const checklist = instance.snapshot?.checklist;
   const items = checklist?.items ?? [];
@@ -109,6 +117,8 @@ function present(counters: Counters) {
     plan: { planned: counters.planned, completed: counters.completed, inProgress: counters.inProgress, notStarted: counters.notStarted, overdue: counters.overdue, remaining: counters.planned - counters.completed },
     completionPercentage: rate(counters.completed, counters.planned),
     selfCompleted: counters.selfCompleted,
+    // PR 468: the guests' own line; their passes are inside the totals above and never inside a department or a manager.
+    guests: { completed: counters.guestCompleted, averagePercentage: counters.guestScoredCount ? Math.round(counters.guestScoreTotal / counters.guestScoredCount) : null },
     averagePercentage: counters.scoredCount ? Math.round(counters.scoreTotal / counters.scoredCount) : null,
     criteria: { total: counters.criteriaTotal, answered: counters.answered, skipped: counters.skipped, remaining: Math.max(0, counters.criteriaTotal - counters.answered - counters.skipped), zeroPoints: counters.zeroPoints },
     scales: [...counters.scales.values()].map((block) => ({ ...block, levels: [...block.levels].sort((a, b) => a.value - b.value) })),
@@ -195,7 +205,7 @@ export class ChecklistSheetAnalytics {
     const to = new Date(query.to);
     const employeeFilter = analyticsEmployeeFilter(organizationId, userScope, query);
     const instanceSelect = {
-      checklistId: true, status: true, percentage: true, scored: true, templateSnapshot: true,
+      checklistId: true, status: true, percentage: true, scored: true, templateSnapshot: true, user: { select: { email: true } },
       results: { select: { itemId: true, answerState: true, scaleLevel: true, checked: true, points: true } },
     } as const;
     const [sessions, selfDone, waiting] = await Promise.all([
@@ -214,6 +224,7 @@ export class ChecklistSheetAnalytics {
     ]);
     const toInstance = (instance: (typeof selfDone)[number], sessionStatus: AnalyticsInstance['sessionStatus'], scheduledAt: Date | null): AnalyticsInstance => ({
       checklistId: instance.checklistId, sessionStatus, scheduledAt, instanceStatus: instance.status, percentage: instance.percentage, scored: instance.scored,
+      guest: instance.user?.email === GUEST_USER_EMAIL,
       snapshot: (instance.templateSnapshot ?? null) as Snapshot, results: instance.results,
     });
     const instances = [
