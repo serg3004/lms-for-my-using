@@ -154,7 +154,7 @@ export type SheetAnalyticsMetrics = {
   completionPercentage: number | null;
   selfCompleted: number;
   /** PR 468: passes through the public link or QR code (no account); they are inside the totals. */
-  guests: { completed: number; averagePercentage: number | null };
+  guests?: { completed: number; averagePercentage: number | null };
   averagePercentage: number | null;
   criteria: { total: number; answered: number; skipped: number; remaining: number; zeroPoints: number };
   scales: SheetAnalyticsScale[];

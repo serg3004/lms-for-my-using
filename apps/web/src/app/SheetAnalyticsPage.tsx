@@ -58,7 +58,7 @@ function SummaryCards({ metrics, t }: { metrics: SheetAnalyticsMetrics; t: (key:
       <StatCard label={t('sheetAnalytics.answered', 'Answered')} value={criteria.answered} trend={`${t('sheetAnalytics.remaining', 'Left')}: ${criteria.remaining}`} />
       <StatCard label={t('sheetAnalytics.planned', 'Planned in period')} value={plan.planned} trend={`${t('sheetAnalytics.fact', 'Done')}: ${plan.completed} · ${t('sheetAnalytics.overdue', 'Overdue')}: ${plan.overdue}`} />
       <StatCard label={t('sheetAnalytics.queue', 'Not started')} value={queue.notStarted} trend={queue.oldestDays === null ? undefined : t('sheetAnalytics.oldest', 'Oldest: {{days}} d').replace('{{days}}', String(queue.oldestDays))} />
-      {metrics.guests.completed > 0 && <StatCard label={t('sheetAnalytics.guests', 'Guests (link or QR)')} value={metrics.guests.completed} trend={`${t('sheetAnalytics.average', 'Average score')}: ${percent(metrics.guests.averagePercentage)}`} />}
+      {(metrics.guests?.completed ?? 0) > 0 && <StatCard label={t('sheetAnalytics.guests', 'Guests (link or QR)')} value={metrics.guests?.completed ?? 0} trend={`${t('sheetAnalytics.average', 'Average score')}: ${percent(metrics.guests?.averagePercentage ?? null)}`} />}
     </StatsGrid>
   );
 }
