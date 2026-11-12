@@ -89,8 +89,12 @@ export class ChecklistPublicService {
   async open(token: string) {
     const sheet = await this.resolve(token);
     this.requireOpenToGuests(sheet);
-    const criteriaCount = await this.prisma.checklistItem.count({ where: { checklistId: sheet.id, deletedAt: null } });
-    return { title: sheet.title, description: sheet.description, criteriaCount, guestNameRequired: sheet.guestNameRequired, guestPhotosAllowed: sheet.guestPhotosAllowed, audience: sheet.publicAccess };
+    const [criteriaCount, photoRequiredCount] = await Promise.all([
+      this.prisma.checklistItem.count({ where: { checklistId: sheet.id, deletedAt: null } }),
+      this.prisma.checklistItem.count({ where: { checklistId: sheet.id, deletedAt: null, photoRequired: true } }),
+    ]);
+    // `photoRequiredCount` lets the page say up front that a sheet which demands photos cannot be finished while guest photos are off.
+    return { title: sheet.title, description: sheet.description, criteriaCount, photoRequiredCount, guestNameRequired: sheet.guestNameRequired, guestPhotosAllowed: sheet.guestPhotosAllowed, audience: sheet.publicAccess };
   }
 
   async newCaptcha(token: string) {

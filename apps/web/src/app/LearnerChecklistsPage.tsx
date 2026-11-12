@@ -6,7 +6,7 @@ import { RichDescription } from '../shared/RichDescription.js';
 import { CriterionOptions, yesNoOptions } from '../shared/CriterionOptions.js';
 import { ObserverSessionsBlock } from './ObserverSessionsBlock.js';
 import { useEffect, useRef, useState } from 'react';
-import type { ChangeEvent } from 'react';
+import type { ChangeEvent, ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ApiClientError } from '../shared/apiClient.js';
@@ -264,16 +264,43 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, op
 function without<T>(record: Record<string, T>, key: string): Record<string, T> {
   return Object.fromEntries(Object.entries(record).filter(([entry]) => entry !== key));
 }
-function ChecklistTaking({
+/**
+ * The operations the taking screen needs. The employee's own pass uses the signed-in API (the default); PR 467 hands the same
+ * screen the guest operations of a public link, so a guest answers with exactly the same component and the same rules.
+ */
+export type ChecklistTakingApi = {
+  submit: (instanceId: string, itemId: string, input: { checked?: boolean; scaleLevel?: number; photoUrl?: string; comment?: string }) => Promise<unknown>;
+  uploadPhoto: (instanceId: string, itemId: string, file: File) => Promise<unknown>;
+  removePhoto: (instanceId: string, itemId: string) => Promise<unknown>;
+  finish: (instanceId: string) => Promise<unknown>;
+};
+
+const signedInTakingApi: ChecklistTakingApi = {
+  submit: (instanceId, itemId, input) => submitChecklistItemResult(instanceId, itemId, input),
+  uploadPhoto: (instanceId, itemId, file) => uploadChecklistItemPhoto(instanceId, itemId, file),
+  removePhoto: (instanceId, itemId) => removeChecklistItemPhoto(instanceId, itemId),
+  finish: (instanceId) => finishChecklistInstance(instanceId),
+};
+
+export function ChecklistTaking({
   instance,
   onBack,
   onUpdated,
   t,
+  api = signedInTakingApi,
+  photos = 'full',
+  beforeFinish,
 }: {
   instance: ChecklistInstanceSummary;
-  onBack: () => void;
+  /** Without it the "back to the list" link is not drawn (a guest has no list). */
+  onBack?: () => void;
   onUpdated: () => Promise<void>;
   t: TFunction;
+  api?: ChecklistTakingApi;
+  /** `full`: attach, preview, replace; `attach`: attach and replace without a preview (a guest cannot read the stored photo); `off`: no photo control. */
+  photos?: 'full' | 'attach' | 'off';
+  /** Extra content right above the finish bar (the guest's code check). */
+  beforeFinish?: ReactNode;
 }) {
   const checklist = instance.checklist;
   const [submitting, setSubmitting] = useState<string | null>(null);
@@ -295,7 +322,7 @@ function ChecklistTaking({
     setSubmitting(item.id);
     setError(null);
     try {
-      await submitChecklistItemResult(instance.id, item.id, input);
+      await api.submit(instance.id, item.id, input);
       setPendingAnswers((current) => without(current, item.id));
       setNoteDrafts((current) => without(current, item.id));
       await onUpdated();
@@ -322,7 +349,7 @@ function ChecklistTaking({
     if (invalid) { setError(checklistPhotoErrorMessage(invalid, t)); return; }
     setSubmitting(item.id);
     try {
-      await uploadChecklistItemPhoto(instance.id, item.id, file);
+      await api.uploadPhoto(instance.id, item.id, file);
       await onUpdated();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : t('checklists.photoUploadError', 'Unable to attach this photo.'));
@@ -336,7 +363,7 @@ function ChecklistTaking({
   async function finish() {
     setError(null);
     try {
-      await finishChecklistInstance(instance.id);
+      await api.finish(instance.id);
       await onUpdated();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : t('checklists.finishError', 'Unable to finish the check.'));
@@ -346,7 +373,7 @@ function ChecklistTaking({
     setError(null);
     setSubmitting(item.id);
     try {
-      await removeChecklistItemPhoto(instance.id, item.id);
+      await api.removePhoto(instance.id, item.id);
       await onUpdated();
     } catch (err) {
       setError(err instanceof ApiClientError ? err.message : t('checklists.photoRemoveError', 'Unable to remove this photo.'));
@@ -356,9 +383,11 @@ function ChecklistTaking({
   }
   return (
     <div>
-      <button type="button" onClick={onBack} style={{ border: 'none', background: 'none', color: COLORS.primary, fontWeight: 600, cursor: 'pointer', padding: 0, marginBottom: 16 }}>
-        ← {t('checklists.backToList', 'All checklists')}
-      </button>
+      {onBack && (
+        <button type="button" onClick={onBack} style={{ border: 'none', background: 'none', color: COLORS.primary, fontWeight: 600, cursor: 'pointer', padding: 0, marginBottom: 16 }}>
+          ← {t('checklists.backToList', 'All checklists')}
+        </button>
+      )}
       <AppearanceBlock appearance={checklist.appearance} kind="header" style={{ marginBottom: 8 }}>
       {/* PR 421/445: extra pictures of the sheet, visible during the pass, first, above the title. */}
       {checklist.showSheetPhotos !== false && checklist.photos && checklist.photos.length > 0 && <ChecklistPhotoStrip checklistId={checklist.id} photos={checklist.photos} title={checklist.title} />}
@@ -446,12 +475,13 @@ function ChecklistTaking({
                   </div>
                 );
               })()}
-              {item.photoRequired && (
+              {item.photoRequired && photos !== 'off' && (
                 <PhotoAttachment
                   instanceId={instance.id}
                   item={item}
                   result={result}
                   cameraOnly={checklist.forbidGalleryPhotos === true}
+                  previewable={photos === 'full'}
                   editable={editable}
                   busy={submitting === item.id}
                   onSelectFile={(file) => void uploadPhoto(item, file)}
@@ -463,6 +493,7 @@ function ChecklistTaking({
           );
         })}
       </div>
+      {editable && beforeFinish}
       {editable && <ChecklistFinishBar requiresReview={checklist.requiresReview === true} missing={missingTitles} onFinish={finish} t={t} />}
       {instance.status === 'completed' && checklist.scoringMode === 'none' && (
         <div style={{ marginTop: 20, borderRadius: 14, padding: '16px 18px', background: COLORS.successSoft, color: '#166534' }}>
@@ -497,6 +528,7 @@ function PhotoAttachment({
   item,
   result,
   cameraOnly,
+  previewable,
   editable,
   busy,
   onSelectFile,
@@ -507,6 +539,7 @@ function PhotoAttachment({
   item: ChecklistItemSummary;
   result: ChecklistItemResultSummary | undefined;
   cameraOnly: boolean;
+  previewable: boolean;
   editable: boolean;
   busy: boolean;
   onSelectFile: (file: File) => void;
@@ -532,7 +565,12 @@ function PhotoAttachment({
         disabled={!canAct}
         style={{ display: 'none' }}
       />
-      {attached ? (
+      {attached && !previewable ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, color: COLORS.text }}>{t('checklists.photoAttached', 'Photo attached')}</span>
+          <Button disabled={!canAct} onClick={() => inputRef.current?.click()} size="sm" style={{ minHeight: 44 }} type="button" variant="secondary">{t('checklists.photoReplace', 'Replace')}</Button>
+        </div>
+      ) : attached ? (
         <ChecklistPhotoProof
           instanceId={instanceId}
           itemId={item.id}
