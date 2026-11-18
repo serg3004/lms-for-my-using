@@ -155,7 +155,7 @@
    - записываем актуальные `lastComparedAt` и `lastComparedSha`;
    - сохраняем только подтверждённые сознательные отличия;
    - не объявляем страницу `aligned`, если проверка выявила необъяснённое расхождение.
-10. Актуализируем `docs/product/future/UI_REFRESH_IMPLEMENTATION_PLAN.md`:
+10. Актуализируем `docs/archive/completed-plans/UI_REFRESH_IMPLEMENTATION_PLAN.md`:
     - общий статус — реализовано;
     - PR 309–323 — выполнены;
     - удаляем устаревшее утверждение, что оставшиеся PR не начаты;

@@ -82,14 +82,14 @@ Current role model фиксированный. Для чек-листов вла
 
 В PR 349 выполняется сверка текущего доступа и подготовка [общего плана модели ролей](../product/future/CUSTOM_ROLE_PERMISSIONS_PLAN.md). Внедрение настраиваемых ролей, миграций и интерфейса их назначения в этот PR не входит. Текущая модель остаётся фиксированной до отдельной реализации. Это уточняет DEC-RBAC-001 для потребности чек-листов; состав разрешений и области первого выпуска требуют утверждения в плане реализации.
 
-Источник: ответ владельца в задаче PR 349 от 2026-10-27; [этап PR 349](../product/future/CHECKLIST_WORKPLACE_TRAINING_PARITY_PLAN.md).
+Источник: ответ владельца в задаче PR 349 от 2026-10-27; [этап PR 349](../archive/completed-plans/CHECKLIST_WORKPLACE_TRAINING_PARITY_PLAN.md).
 
 ## DEC-CHKS-006 — Формат импорта сотрудников к проведению
 
 **Решено владельцем 2026-10-29:** «Только email; общие настройки сессий в диалоге».
 CSV/Excel содержит одну колонку `email`. Чек-лист, наблюдатель и время выбираются в диалоге для
 всего списка. Формат не назначает новые роли и не расширяет область сотрудников. Источник:
-ответ владельца в задаче [PR 364](../product/future/CHECKLIST_ROLE_PERMISSIONS_PLAN.md).
+ответ владельца в задаче [PR 364](../archive/completed-plans/CHECKLIST_ROLE_PERMISSIONS_PLAN.md).
 
 ## DEC-CHKS-005 — Руководители в отчёте обучения на рабочем месте
 
@@ -97,7 +97,7 @@ CSV/Excel содержит одну колонку `email`. Чек-лист, н�
 
 Сотрудник учитывается один раз у каждого различного руководителя. Если обе должности занимает один пользователь, повторного учёта в его строке нет. При двух разных руководителях строки пересекаются, а общие итоги по сотрудникам остаются без повторов. Это уточнение заменяет исходное предположение PR 356 о ровно одном руководителе на сотрудника; зона доступа не расширяется.
 
-Источник: ответ владельца в задаче PR 356 от 2026-10-28; [этап PR 356](../product/future/CHECKLIST_WORKPLACE_TRAINING_PARITY_PLAN.md).
+Источник: ответ владельца в задаче PR 356 от 2026-10-28; [этап PR 356](../archive/completed-plans/CHECKLIST_WORKPLACE_TRAINING_PARITY_PLAN.md).
 
 ## DEC-DS-001 — Primary/accent badge variant
 
@@ -113,7 +113,7 @@ Current waiver validator проверяет обязательные поля, u
 
 ## DEC-CHKS-001 — Workplace-training session critical/low performance thresholds
 
-**Источник:** `docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md` (PR 285/286),
+**Источник:** `docs/archive/completed-plans/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md` (PR 285/286),
 `docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md`.
 
 `ChecklistWorkplaceSettings` (PR 286) ships `moduleEnabled=false` и `highPerformanceThreshold=90` как safe defaults.
@@ -127,7 +127,7 @@ Current waiver validator проверяет обязательные поля, u
 
 ## DEC-CHKS-002 — Workplace-training session data retention policy
 
-**Источник:** `docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md` (PR 304).
+**Источник:** `docs/archive/completed-plans/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md` (PR 304).
 
 Checklist-session данные (location captures с exact coordinates, photo evidence, session timeline/audit trail)
 хранятся бессрочно — retention/deletion policy не задана. Требуется owner-решение: retention period для exact
@@ -138,7 +138,7 @@ PR 304 (audit trail и access scoping не зависят от retention period)
 
 ## DEC-CHKS-003 — Workplace-training reminders currently inert in production (blocked on DEC-INFRA-001/DEC-MAIL-001)
 
-**Источник:** `docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md` (PR 308),
+**Источник:** `docs/archive/completed-plans/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md` (PR 308),
 `docs/quality/READINESS_AND_SECURITY_GATES.md` ("Checklist workplace-training production gates" секция).
 
 Live Railway read-back (`reasonable-reprieve`/production, 2026-09-25, подтверждено owner-скриншотом текущих

@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-09-22
-**Context:** `docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md`, PR 285 — first PR of the
+**Context:** `docs/archive/completed-plans/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md`, PR 285 — first PR of the
 Checklist workplace-training extension (PR 285–308). No runtime code changes in this PR; this document is the
 gate PR 286+ depend on.
 

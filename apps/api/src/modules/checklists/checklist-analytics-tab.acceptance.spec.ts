@@ -5,7 +5,7 @@ import { rolePolicies } from '../auth/roles.js';
 import { accessibleAnalyticsSheetIds } from './checklist-sheet-analytics.js';
 
 /**
- * PR 463: acceptance guard for gaps 37-41 of docs/product/future/CHECKLIST_ANALYTICS_TAB_PLAN.md (block 1, the API side).
+ * PR 463: acceptance guard for gaps 37-41 of docs/archive/completed-plans/CHECKLIST_ANALYTICS_TAB_PLAN.md (block 1, the API side).
  * It fails when a later change drops a role from the tab, widens or narrows the sheet access rule, removes a route
  * of the tab, or lets the competitor's name into the repository (the owner calls it "эталон").
  */

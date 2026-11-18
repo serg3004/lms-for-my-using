@@ -1,6 +1,6 @@
 # План развития: Чек-лист — права и роли по таблице владельца (этап 4)
 
-**Основание:** таблица прав владельца `CHECKLIST_ROLE_PERMISSIONS_TABLE.md` (22 строки × 5 ролей: администратор, руководитель, инструктор / наблюдатель, наставник, сотрудник; присланная 2026-10-27), сверка с `main` после PR 358 — `apps/api/src/modules/auth/roles.ts` (`rolePolicies`), `ChecklistsController`, `ChecklistReviewAccessService`, `checklist-session.service.ts`, `docs/contracts/API_RBAC_MATRIX.md`, `docs/product/future/CHECKLIST_WORKPLACE_TRAINING_PARITY_PLAN.md` (PR 343–358) и `docs/product/future/CUSTOM_ROLE_PERMISSIONS_PLAN.md`.
+**Основание:** таблица прав владельца `CHECKLIST_ROLE_PERMISSIONS_TABLE.md` (22 строки × 5 ролей: администратор, руководитель, инструктор / наблюдатель, наставник, сотрудник; присланная 2026-10-27), сверка с `main` после PR 358 — `apps/api/src/modules/auth/roles.ts` (`rolePolicies`), `ChecklistsController`, `ChecklistReviewAccessService`, `checklist-session.service.ts`, `docs/contracts/API_RBAC_MATRIX.md`, `docs/archive/completed-plans/CHECKLIST_WORKPLACE_TRAINING_PARITY_PLAN.md` (PR 343–358) и `docs/product/future/CUSTOM_ROLE_PERMISSIONS_PLAN.md`.
 **Статус:** функциональные PR 359–367 реализованы и слиты в `main` (сверено 2026-10-29, `185d7331`). Дополнительные проверки доступности и визуальные эталоны PR 360б реализованы: 28 axe-аудитов без нарушений, 48 эталонов получены контролируемым workflow и просмотрены. Итоговый CI этой ветки проверяется в Pull Request. Индивидуальные наборы прав в этот план не входят.
 **Цель:** это **не новый модуль**. Привести фиксированные роли и права модуля «Чек-листы» к таблице владельца: таблица становится эталоном, код и тесты сверяются с ней автоматически.
 
@@ -18,7 +18,7 @@
 
 ## Итог сверки
 
-Все 22 строки [эталонной таблицы](CHECKLIST_ROLE_PERMISSIONS_TABLE.md) имеют статус «реализовано»; машиночитаемый источник — `apps/api/src/modules/checklists/checklist-role-permissions.table.ts`. Тест-сторож `checklist-role-permissions.parity.spec.ts` сверяет таблицу и ролевые политики; фактическое поведение областей проверяется отдельными unit- и DB-тестами доступа. Исходная сверка разрывов до PR 359–367 больше не используется как описание реализации.
+Все 22 строки [эталонной таблицы](../../product/future/CHECKLIST_ROLE_PERMISSIONS_TABLE.md) имеют статус «реализовано»; машиночитаемый источник — `apps/api/src/modules/checklists/checklist-role-permissions.table.ts`. Тест-сторож `checklist-role-permissions.parity.spec.ts` сверяет таблицу и ролевые политики; фактическое поведение областей проверяется отдельными unit- и DB-тестами доступа. Исходная сверка разрывов до PR 359–367 больше не используется как описание реализации.
 
 Текущие области доступа определяются `rolePolicies` и `ChecklistReviewAccessService`, семантика описана в [API_RBAC_MATRIX.md](../../contracts/API_RBAC_MATRIX.md). Ниже сохранены результаты этапов и критерии готовности. Основания решений и принятые при реализации толкования разделены в заключительной сводке.
 
@@ -283,7 +283,7 @@
 | 6 | Просмотр свободного листа (PR 366) | Сотрудник видит свой результат; остальные роли — результаты в своей области доступа. Толкование закреплено при реализации PR 366 с опорой на правило просмотра результатов из плана паритета; новый ответ владельца здесь не подразумевается. |
 | 7 | Шаблоны (PR 367) | Решено владельцем 2026-10-29: нужны шаблоны организации, которые администратор создаёт из листа и может удалять. Реализовано через `ChecklistTemplate` вместе со встроенными шаблонами. |
 
-Индивидуальные наборы прав нужны по DEC-CHKS-004 (2026-10-27), но их реализация остаётся в [CUSTOM_ROLE_PERMISSIONS_PLAN.md](CUSTOM_ROLE_PERMISSIONS_PLAN.md). Завершение PR 359–367 не означает внедрения настраиваемых ролей.
+Индивидуальные наборы прав нужны по DEC-CHKS-004 (2026-10-27), но их реализация остаётся в [CUSTOM_ROLE_PERMISSIONS_PLAN.md](../../product/future/CUSTOM_ROLE_PERMISSIONS_PLAN.md). Завершение PR 359–367 не означает внедрения настраиваемых ролей.
 
 # Вне плана
 

@@ -248,7 +248,7 @@ enum ChecklistPreSessionVisibility {
 
 /// PR 296 observation-sheet builder "Общая информация" fields, filled by the observer before a
 /// session's criteria. Kept intentionally small (text/textarea/date) -- a "select" type is a
-/// documented future gap, see docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md.
+/// documented future gap, see docs/archive/completed-plans/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md.
 enum ChecklistContextFieldType {
   text
   textarea
@@ -762,7 +762,7 @@ enum OrgExternalReferenceEntityType {
 /// is never a foreign key target and no other table references it. One internal entity may have
 /// multiple rows here (one per source system); archiving the internal entity never deletes its
 /// mapping history. No connector, polling, webhook, or background sync is implemented by this
-/// model -- see docs/product/future/ORG_STRUCTURE_IMPLEMENTATION_PLAN.md PR 283.
+/// model -- see docs/archive/completed-plans/ORG_STRUCTURE_IMPLEMENTATION_PLAN.md PR 283.
 model OrgExternalReference {
   id             String                         @id @default(uuid()) @db.Uuid
   organizationId String                         @map("organization_id") @db.Uuid
@@ -1322,7 +1322,7 @@ model ChecklistItem {
   isRequired         Boolean               @default(true) @map("is_required")
   photoRequired      Boolean               @default(false) @map("photo_required")
   // Workplace-training session criteria config (PR 290 reads these; see
-  // docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md PR 288/290).
+  // docs/archive/completed-plans/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md PR 288/290).
   // Distinct from isRequired: isRequired gates normal (non-session) submission; allowSkip/
   // autoSkipUnanswered govern the session answerState machine, which excludes skipped items
   // from both the scoring numerator and denominator.
