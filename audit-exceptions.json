@@ -8,6 +8,12 @@
       "expires": "2027-01-20"
     },
     {
+      "id": "GHSA-fc5q-39xc-vjpf",
+      "owner": "300481afanaskov@gmail.com",
+      "reason": "picomatch <=4.0.7 ReDoS on single-branch repeated extglob patterns such as +(*). Published 2026-11-18 with no patched release on npm (4.0.7 is the latest 4.x). picomatch is only a transitive dependency of build and test tooling (vite, tinyglobby, typescript-eslint, jest, Nest CLI); no application code passes user input to it as a glob. Re-check on expiry and drop this exception as soon as picomatch publishes a fix.",
+      "expires": "2026-12-31"
+    },
+    {
       "id": "GHSA-mrhx-c7xc-m3w5",
       "owner": "300481afanaskov@gmail.com",
       "reason": "zod <4.6.6 unbounded issue allocation when validating huge arrays (DoS). The repo is on zod 3.x and the only patched release is 4.6.6, a major upgrade that Dependabot ignores on purpose and that needs its own migration PR. Request bodies are size-limited by the API and most array schemas set .max(). Re-check on expiry; drop this exception once zod 4 lands.",
