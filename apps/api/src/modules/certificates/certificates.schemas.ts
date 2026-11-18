@@ -1,10 +1,10 @@
 import { z } from 'zod';
 
 export const issueCertificateSchema = z.object({
-  organizationId: z.string().uuid(),
-  courseId: z.string().uuid(),
-  userId: z.string().uuid(),
-  assessmentAttemptId: z.string().uuid().optional(),
+  organizationId: z.guid(),
+  courseId: z.guid(),
+  userId: z.guid(),
+  assessmentAttemptId: z.guid().optional(),
 });
 
 export type IssueCertificateInput = z.infer<typeof issueCertificateSchema>;

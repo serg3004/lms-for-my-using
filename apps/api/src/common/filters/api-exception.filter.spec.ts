@@ -69,6 +69,18 @@ describe('ApiExceptionFilter', () => {
     expect(host.getJsonBody()?.timestamp).toEqual(expect.any(String));
   });
 
+  it('keeps the published zod 3 issue codes for enums, literals, size, type and unknown keys', () => {
+    const schema = z.object({ kind: z.enum(['a', 'b']), only: z.literal('x'), name: z.string().min(2), count: z.number() }).strict();
+    const result = schema.safeParse({ kind: 'c', only: 'y', name: 'a', count: 'n', extra: 1 });
+    const host = createHost();
+    if (result.success) throw new Error('Expected validation error');
+
+    new ApiExceptionFilter().catch(result.error, host.host);
+
+    const codes = Object.fromEntries((host.getJsonBody() as { error: { details: { field: string; code: string }[] } }).error.details.map((d) => [d.field || '(root)', d.code]));
+    expect(codes).toEqual({ kind: 'invalid_enum_value', only: 'invalid_literal', name: 'too_small', count: 'invalid_type', '(root)': 'unrecognized_keys' });
+  });
+
   it('formats Nest HTTP exceptions', () => {
     const filter = new ApiExceptionFilter();
     const host = createHost('/api/v1/conflict');

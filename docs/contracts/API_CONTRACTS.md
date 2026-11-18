@@ -51,6 +51,8 @@ Representative shape:
 
 Do not document additional fields as guaranteed unless the current shared/runtime contract contains them.
 
+Validation uses zod 4. The machine-readable `details[].code` keeps the names published before the migration (`invalid_string`, `invalid_enum_value`, `invalid_literal`, `too_small`, `too_big`, `invalid_type`, `unrecognized_keys`); the filter maps the zod 4 names back and a test guards it. Texts in `details[].message` come from zod and may change with its releases, so clients must rely on `code` and `field`. Id fields accept any 8-4-4-4-12 hex id (`z.guid()`), as before. Update (`PATCH`) schemas must not invent values: zod 4 applies `.default()` inside `.partial()`, so defaulted fields are re-declared without a default and a test checks that every exported `update*` schema parses an empty body to nothing.
+
 ## List-query evolution
 
 Pagination/filter/sort behavior is endpoint-specific until code proves a shared runtime response contract. Existing response shapes must not change silently.

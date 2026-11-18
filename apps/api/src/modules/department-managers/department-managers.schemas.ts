@@ -5,9 +5,9 @@ import { departmentManagerModeSchema } from '../departments/public.js';
 export const departmentManagerTypeSchema = z.enum(['DIRECT', 'FUNCTIONAL']);
 
 export const createDepartmentManagerSchema = z.object({
-  organizationId: z.string().uuid(),
-  departmentId: z.string().uuid(),
-  userId: z.string().uuid(),
+  organizationId: z.guid(),
+  departmentId: z.guid(),
+  userId: z.guid(),
   type: departmentManagerTypeSchema,
   isPrimary: z.boolean().default(false),
 });

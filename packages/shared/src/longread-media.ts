@@ -39,7 +39,7 @@ export function resolveEmbedUrl(raw: string): EmbedSource | null {
   } catch { return null; }
 }
 
-const fileId = z.string().uuid().nullable().default(null);
+const fileId = z.guid().nullable().default(null);
 const presentation = { caption: richTextSchema(2000).default(''), width: z.number().int().min(10).max(100).default(100) };
 export const audioContentSchema = z.object({ fileId, caption: richTextSchema(2000).default('') }).strict();
 const videoPresentation = { ...presentation, poster: z.object({ fileId }).strict().nullable().default(null) };

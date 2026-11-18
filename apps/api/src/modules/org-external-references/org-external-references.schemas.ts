@@ -19,9 +19,9 @@ export const sourceSystemSchema = z
 export const externalIdSchema = z.string().trim().min(1).max(255);
 
 export const createOrgExternalReferenceSchema = z.object({
-  organizationId: z.string().uuid(),
+  organizationId: z.guid(),
   entityType: orgExternalReferenceEntityTypeSchema,
-  entityId: z.string().uuid(),
+  entityId: z.guid(),
   sourceSystem: sourceSystemSchema,
   externalId: externalIdSchema,
 });
@@ -29,7 +29,7 @@ export type CreateOrgExternalReferenceInput = z.infer<typeof createOrgExternalRe
 
 export const listOrgExternalReferencesQuerySchema = paginationQuerySchema.extend({
   entityType: orgExternalReferenceEntityTypeSchema.optional(),
-  entityId: z.string().uuid().optional(),
+  entityId: z.guid().optional(),
   sourceSystem: sourceSystemSchema.optional(),
 });
 export type ListOrgExternalReferencesQuery = z.infer<typeof listOrgExternalReferencesQuerySchema>;

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const reportsSummaryQuerySchema = z.object({
-  departmentId: z.string().uuid().optional(),
+  departmentId: z.guid().optional(),
   includeDescendants: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
 });
 

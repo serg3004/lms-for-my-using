@@ -4,11 +4,11 @@ export const assignmentStatusSchema = z.enum(['assigned', 'completed', 'cancelle
 
 export const createAssignmentSchema = z
   .object({
-    organizationId: z.string().uuid(),
-    courseId: z.string().uuid(),
-    userId: z.string().uuid().optional(),
-    groupId: z.string().uuid().optional(),
-    departmentId: z.string().uuid().optional(),
+    organizationId: z.guid(),
+    courseId: z.guid(),
+    userId: z.guid().optional(),
+    groupId: z.guid().optional(),
+    departmentId: z.guid().optional(),
     includeDescendants: z.boolean().default(false),
     status: assignmentStatusSchema.default('assigned'),
     dueAt: z.coerce.date().optional(),

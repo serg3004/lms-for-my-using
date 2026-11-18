@@ -11,7 +11,7 @@ export const listUsersQuerySchema = paginationQuerySchema.extend({
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;
 
 export const createUserSchema = z.object({
-  organizationId: z.string().uuid(),
+  organizationId: z.guid(),
   email: z.string().trim().email().max(320).transform((email) => email.toLowerCase()),
   password: z.string().min(8).max(255),
   firstName: z.string().trim().min(1).max(80),
@@ -31,7 +31,7 @@ export const createBulkUserItemSchema = createUserSchema.omit({ organizationId: 
 
 export const createBulkUsersSchema = z
   .object({
-    organizationId: z.string().uuid(),
+    organizationId: z.guid(),
     users: z.array(createBulkUserItemSchema).min(1).max(usersBulkCreateMaxItems),
   })
   .superRefine((input, context) => {
@@ -53,9 +53,9 @@ export const createBulkUsersSchema = z
 export const usersImportMaxItems = 100;
 
 export const importUsersSchema = z.object({
-  organizationId: z.string().uuid(),
+  organizationId: z.guid(),
   mode: z.enum(['validateOnly', 'create']).default('validateOnly'),
-  users: z.array(z.record(z.unknown())).min(1).max(usersImportMaxItems),
+  users: z.array(z.record(z.string(), z.unknown())).min(1).max(usersImportMaxItems),
 });
 
 export const updateUserSchema = createUserSchema

@@ -112,7 +112,7 @@ const tableSchema = z.object({
 });
 
 const nestedBlockShape = z.object({
-  id: z.string().uuid(),
+  id: z.guid(),
   type: blockTypeSchema,
   schemaVersion: z.number().int().min(1).max(1000).default(LONGREAD_SCHEMA_VERSION),
   title: z.string().trim().max(200).nullable().optional(),
@@ -123,11 +123,11 @@ const nestedBlockShape = z.object({
 const slotBlocks = z.array(z.unknown()).max(MAX_BLOCKS_PER_SLOT);
 const columnsShape = z.object({
   count: z.union([z.literal(2), z.literal(3)]),
-  columns: z.array(z.object({ id: z.string().uuid(), blocks: slotBlocks }).strict()).min(2).max(3),
+  columns: z.array(z.object({ id: z.guid(), blocks: slotBlocks }).strict()).min(2).max(3),
 }).strict();
 const itemsShape = z.object({
   items: z.array(z.object({
-    id: z.string().uuid(),
+    id: z.guid(),
     title: z.string().trim().min(1).max(100),
     open: z.boolean().optional(),
     blocks: slotBlocks,
@@ -219,11 +219,11 @@ export function collectContentIds(value: unknown, found: string[] = []): string[
 }
 
 export const imageContentSchema = z.object({
-  fileId: z.string().uuid().nullable().default(null), alt: z.string().max(2000).default(''),
+  fileId: z.guid().nullable().default(null), alt: z.string().max(2000).default(''),
   caption: richTextSchema(2000).default(''), width: z.number().int().min(10).max(100).default(100),
   align: z.enum(['start', 'center', 'end']).default('center'),
 }).strict();
-const attachmentsSchema = z.object({ files: z.array(z.object({ fileId: z.string().uuid(), label: z.string().max(255).optional() }).strict()) }).strict();
+const attachmentsSchema = z.object({ files: z.array(z.object({ fileId: z.guid(), label: z.string().max(255).optional() }).strict()) }).strict();
 
 const KNOWN_BLOCKS = {
   exercise: exerciseContentSchema,

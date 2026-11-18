@@ -27,7 +27,7 @@ export const loginSchema = z.object({
 });
 
 export const passwordResetRequestSchema = z.object({
-  organizationId: z.string().uuid(),
+  organizationId: z.guid(),
   email: z.string().trim().email().max(320).transform((email) => email.toLowerCase()),
 });
 
@@ -46,8 +46,8 @@ export const updatePreferencesSchema = z.object({
 }).strict();
 
 export const currentUserSchema = z.object({
-  id: z.string().uuid(),
-  organizationId: z.string().uuid(),
+  id: z.guid(),
+  organizationId: z.guid(),
   email: z.string().email(),
   firstName: z.string(),
   lastName: z.string(),

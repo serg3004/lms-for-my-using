@@ -12,9 +12,9 @@ const materialSlugSchema = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 
 export const createCourseMaterialSchema = z.object({
-  organizationId: z.string().uuid(),
-  courseId: z.string().uuid(),
-  lessonId: z.string().uuid().optional(),
+  organizationId: z.guid(),
+  courseId: z.guid(),
+  lessonId: z.guid().optional(),
   title: z.string().trim().min(1).max(160),
   slug: materialSlugSchema,
   description: richTextSchema(1000).optional(),
@@ -41,7 +41,7 @@ export const updateCourseMaterialSchema = z
     fileName: z.string().trim().max(255).nullable(),
     fileUrl: z.string().trim().url().max(2048).nullable(),
     status: courseMaterialStatusSchema,
-    lessonId: z.string().uuid().nullable(),
+    lessonId: z.guid().nullable(),
   })
   .partial();
 export type UpdateCourseMaterialInput = z.infer<typeof updateCourseMaterialSchema>;

@@ -15,9 +15,9 @@ const departmentDescriptionSchema = richTextSchema(1000);
 const sortOrderSchema = z.number().int().min(0).max(1_000_000);
 
 export const createDepartmentSchema = z.object({
-  organizationId: z.string().uuid(),
-  parentId: z.string().uuid().optional(),
-  departmentTypeId: z.string().uuid().optional(),
+  organizationId: z.guid(),
+  parentId: z.guid().optional(),
+  departmentTypeId: z.guid().optional(),
   name: departmentNameSchema,
   code: departmentCodeSchema.optional(),
   description: departmentDescriptionSchema.optional(),
@@ -30,7 +30,7 @@ export type CreateDepartmentInput = z.infer<typeof createDepartmentSchema>;
 export const updateDepartmentSchema = z
   .object({
     name: departmentNameSchema,
-    departmentTypeId: z.string().uuid().nullable(),
+    departmentTypeId: z.guid().nullable(),
     code: departmentCodeSchema.nullable(),
     description: departmentDescriptionSchema.nullable(),
     sortOrder: sortOrderSchema,
@@ -39,13 +39,13 @@ export const updateDepartmentSchema = z
 export type UpdateDepartmentInput = z.infer<typeof updateDepartmentSchema>;
 
 export const moveDepartmentSchema = z.object({
-  parentId: z.string().uuid().nullable(),
+  parentId: z.guid().nullable(),
 });
 export type MoveDepartmentInput = z.infer<typeof moveDepartmentSchema>;
 
 export const listDepartmentsQuerySchema = paginationQuerySchema.extend({
   search: z.string().trim().min(1).max(120).optional(),
-  departmentTypeId: z.string().uuid().optional(),
+  departmentTypeId: z.guid().optional(),
   status: departmentStatusSchema.optional(),
 });
 export type ListDepartmentsQuery = z.infer<typeof listDepartmentsQuerySchema>;
@@ -56,7 +56,7 @@ export const departmentStatusFilterQuerySchema = z.object({
 export type DepartmentStatusFilterQuery = z.infer<typeof departmentStatusFilterQuerySchema>;
 
 export const createDepartmentTypeSchema = z.object({
-  organizationId: z.string().uuid(),
+  organizationId: z.guid(),
   code: departmentCodeSchema,
   name: departmentNameSchema,
   sortOrder: sortOrderSchema.default(0),

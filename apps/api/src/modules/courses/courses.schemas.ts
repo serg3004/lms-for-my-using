@@ -13,7 +13,7 @@ const courseSlugSchema = z
 export const courseCategorySchema = z.enum(['safety', 'management']);
 
 export const createCourseSchema = z.object({
-  organizationId: z.string().uuid(),
+  organizationId: z.guid(),
   title: z.string().trim().min(1).max(160),
   slug: courseSlugSchema,
   description: richTextSchema(1000).optional(),
@@ -23,7 +23,11 @@ export const createCourseSchema = z.object({
   selfEnrollmentEnabled: z.boolean().default(false),
 });
 
-export const updateCourseSchema = createCourseSchema.omit({ organizationId: true }).partial();
+/** zod 4 applies `.default()` inside `.partial()`, so the defaulted fields are re-declared without defaults: a PATCH must change only what it sends. */
+export const updateCourseSchema = createCourseSchema
+  .omit({ organizationId: true })
+  .extend({ status: courseStatusSchema, selfEnrollmentEnabled: z.boolean() })
+  .partial();
 
 export const updateCourseStatusSchema = z.object({
   status: courseStatusSchema,
@@ -34,7 +38,7 @@ export type UpdateCourseInput = z.infer<typeof updateCourseSchema>;
 export type UpdateCourseStatusInput = z.infer<typeof updateCourseStatusSchema>;
 
 export const assignCourseInstructorSchema = z.object({
-  instructorId: z.string().uuid(),
+  instructorId: z.guid(),
 });
 
 export type AssignCourseInstructorInput = z.infer<typeof assignCourseInstructorSchema>;
