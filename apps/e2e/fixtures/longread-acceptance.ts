@@ -17,7 +17,7 @@ export function writable(draft: LongreadDraft): SaveLongread {
 /** Only provisioning/cleanup use Prisma. All authoring, publication and learning use the real HTTP API. No route interception. */
 export async function acceptanceFixture(browser: Browser, baseURL: string) {
   const database = new URL(process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/lms');
-  if (!['postgres:', 'postgresql:'].includes(database.protocol) || process.env.NODE_ENV !== 'test' || !/(?:^|[_-])test(?:$|[_-])/.test(database.pathname.slice(1)) || !['127.0.0.1', 'localhost', '::1', '[::1]'].includes(database.hostname)) {
+  if (!['postgres:', 'postgresql:'].includes(database.protocol) || process.env.NODE_ENV !== 'test' || !/(?:^|[_-])test(?:$|[_-])/.test(database.pathname.slice(1)) || !['127.0.0.1', 'localhost', '::1', '[::1]', ...(process.env.CI ? ['postgres'] : [])].includes(database.hostname)) {
     throw new Error('Longread acceptance requires NODE_ENV=test and an explicitly named local test database');
   }
   const db = new PrismaClient(), organizations: string[] = [], actors: Actor[] = [];
