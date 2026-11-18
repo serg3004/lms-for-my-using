@@ -1682,6 +1682,11 @@ Observers open their existing detail screen; former observers and deleted-sessio
 the appropriate own list because detail access has ended. Unavailable learner detail returns a
 localized error with a back action. Generic portal and email copy supports RU/EN/KK/ZH.
 
+The email copy (`checklist-session-notification-text.ts`, chosen by the recipient locale with a Russian
+fallback) and the portal copy (`notifications.types` in the web `common.json` files) are two sources of
+the same wording; `checklist-session-notification-text.spec.ts` fails CI if they diverge, if an email is
+not written in its recipient language, or if the fallback changes (PR 469).
+
 Mail uses the existing `ChecklistSessionReminderDelivery` and common Resend/SMTP capability
 (or the existing delivery hook with `kind: session_change`). Without either configured capability,
 delivery is a no-op and the portal notice remains durable. Failures propagate for queue retry and
