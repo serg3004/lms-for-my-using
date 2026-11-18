@@ -112,7 +112,7 @@ no SCIM endpoint, HRIS polling, webhook sync, or background reconciliation exist
 ## Checklist workplace-training settings
 
 `GET/PATCH /checklists/workplace-settings` is tenant-scoped configuration for the planned Checklist
-"workplace training session" mode (`docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md`,
+"workplace training session" mode (`docs/archive/completed-plans/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md`,
 `docs/architecture/adr/ADR_CHECKLIST_SESSION_OVERLAY.md`). `organizationId` always comes from the
 authenticated caller, never a request parameter or body field. A tenant that has never written a
 settings row reads back documented safe defaults instead of a 404: `moduleEnabled=false`,

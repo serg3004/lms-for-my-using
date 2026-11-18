@@ -6,7 +6,7 @@ import ru from '../i18n/locales/ru/common.json';
 import zh from '../i18n/locales/zh/common.json';
 
 /**
- * PR 463: acceptance guard for gaps 37-41 of docs/product/future/CHECKLIST_ANALYTICS_TAB_PLAN.md (block 1, the screen side):
+ * PR 463: acceptance guard for gaps 37-41 of docs/archive/completed-plans/CHECKLIST_ANALYTICS_TAB_PLAN.md (block 1, the screen side):
  * every role with rights on sheets has the tab, the bulk bar has the button, the metrics of the plan are on the screen
  * and in the four languages, and the export is offered in both formats.
  */

@@ -80,7 +80,7 @@ Repository code/config proves intended/implemented behavior, not current product
 
 ## Checklist workplace-training production gates (PR 308)
 
-`docs/product/future/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md`'s PR 308 requires each
+`docs/archive/completed-plans/CHECKLIST_WORKPLACE_TRAINING_IMPLEMENTATION_PLAN.md`'s PR 308 requires each
 of its listed production gates to be confirmed by actual verification, not left "unknown" when
 prior work already confirmed it. Fresh Railway read-back (`serg3004/lms-for-my-using`, project
 `reasonable-reprieve`, environment `production`, services `api`/`web`/`minio`/`malware-scanner`,

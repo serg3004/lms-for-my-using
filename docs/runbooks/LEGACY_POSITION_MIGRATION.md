@@ -140,5 +140,5 @@ export const legacyPositionMapping: LegacyPositionMappingEntry[] = [
 
 ## Связанные документы
 
-- [`docs/product/future/ORG_STRUCTURE_IMPLEMENTATION_PLAN.md`](../product/future/ORG_STRUCTURE_IMPLEMENTATION_PLAN.md) — PR 275/276/277 план.
+- [`docs/archive/completed-plans/ORG_STRUCTURE_IMPLEMENTATION_PLAN.md`](../archive/completed-plans/ORG_STRUCTURE_IMPLEMENTATION_PLAN.md) — PR 275/276/277 план.
 - [`docs/runbooks/MIGRATION_BACKUP_POLICY.md`](./MIGRATION_BACKUP_POLICY.md) — общая схема-миграция policy.

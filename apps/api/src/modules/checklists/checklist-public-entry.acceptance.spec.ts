@@ -7,7 +7,7 @@ import { analyticsEmployeeFilter, buildSheetAnalytics, type AnalyticsInstance } 
 import { sheetsExportRows } from './checklist-analytics-export.js';
 
 /**
- * PR 468: acceptance guard for gaps 42-44 of docs/product/future/CHECKLIST_ANALYTICS_TAB_PLAN.md (block 2: the link and QR entry).
+ * PR 468: acceptance guard for gaps 42-44 of docs/archive/completed-plans/CHECKLIST_ANALYTICS_TAB_PLAN.md (block 2: the link and QR entry).
  * It fails when a later change lets a non-administrator switch the entry on or reissue the link, opens another sheet or
  * another guest's pass to a guest, writes the token to the audit log, drops the code check or the rate limit, turns guest
  * photos on by default, or lets guests into a department, a manager's team or a differently-scoped view.
