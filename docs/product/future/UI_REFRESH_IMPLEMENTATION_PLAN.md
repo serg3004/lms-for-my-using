@@ -677,8 +677,8 @@ Docker и в текущем агентском окружении не выпо�
 
 # Definition of Done
 
-- [ ] PR 309–323 смёржены;
+- [x] PR 309–323 смёржены;
 - [ ] ни один PR не менял `apps/web/src/styles/tokens.css` или `defaultThemeSettings`;
-- [ ] обязательный CI зелёный на каждом PR, visual baselines обновлены через workflow и просмотрены агентом;
+- [x] обязательный CI зелёный на каждом PR, visual baselines обновлены через workflow и просмотрены агентом;
 - [ ] у всех записей плана в manifest `parityStatus: aligned` или сознательные отличия в `knownDifferences`;
-- [ ] `pnpm docs:consistency:test` зелёный.
+- [x] `pnpm docs:consistency:test` зелёный.
