@@ -86,4 +86,4 @@
 - E2E, Accessibility, Visual и workflow эталонов работают в `mcr.microsoft.com/playwright:v1.65.0-noble`: шаги `Resolve Playwright version`, кэш браузера и `scripts/install-playwright-deps.sh` (повторы и смена зеркала apt) убраны, скрипт удалён (откат через историю git). Версия `@playwright/test` закреплена точно, тег образа сверяет `scripts/check-playwright-image.mjs` в `Quality & security`.
 - Postgres в контейнерных задачах доступен по имени сервиса (`postgres:5432`).
 - Все визуальные эталоны пересозданы в образе workflow `update-visual-baselines.yml` (он тоже работает в образе: генерация в контейнере, коммит отдельной задачей на обычном раннере).
-- Замеры времени CI до и после: см. описание PR 471 и записи ниже.
+- Замеры времени полного CI: до — около 6 минут (прогон PR 469, #1040); после — около 6 минут (три прогона подряд на одной голове, 16:39–16:45, 16:47–16:53 и третий). Шаг установки системных пакетов отсутствует. Пересозданы 11 эталонов (шрифтовые различия `public-home`, `longread-reader`, `admin-course-builder`, `scale-library-detail`).
