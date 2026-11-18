@@ -6,7 +6,7 @@ export const assessmentQuestionTypeSchema = questionTypeSchema;
 export const assessmentQuestionScoringModeSchema = scoringModeSchema;
 
 export const createAssessmentQuestionSchema = z.object({
-  organizationId: z.string().uuid(),
+  organizationId: z.guid(),
   definition: questionDefinitionSchema.nullable().optional(),
   type: assessmentQuestionTypeSchema.default('single_choice'),
   title: z.string().trim().min(1).max(200),
@@ -19,7 +19,7 @@ export const createAssessmentQuestionSchema = z.object({
 
 export const createAssessmentAnswerOptionSchema = z
   .object({
-    organizationId: z.string().uuid(),
+    organizationId: z.guid(),
     text: z.string().trim().min(1).max(2000).optional(),
     imageUrl: z.string().trim().min(1).max(2000).optional(),
     isCorrect: z.boolean().default(false),

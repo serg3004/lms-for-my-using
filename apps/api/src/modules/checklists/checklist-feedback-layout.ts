@@ -25,7 +25,7 @@ export const feedbackFieldSchema: z.ZodType<FeedbackFieldDef> = z
     title: richTextSchema(255),
     required: z.boolean().default(false),
     builtin: z.enum(FEEDBACK_BUILTIN_IDS).optional(),
-    answerSetId: z.string().uuid().optional(),
+    answerSetId: z.guid().optional(),
     multiple: z.boolean().optional(),
   })
   .strict()

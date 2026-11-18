@@ -26,7 +26,7 @@ export const checklistAccessModeSchema = z.enum(['assigned', 'free']);
 export const checklistContextFieldTypeSchema = z.enum(['text', 'textarea', 'date']);
 
 export const contextFieldSchema = z.object({
-  id: z.string().uuid(),
+  id: z.guid(),
   label: richTextSchema(120, 1),
   type: checklistContextFieldTypeSchema,
   required: z.boolean(),
@@ -52,9 +52,9 @@ export type ChecklistListQuery = z.infer<typeof checklistListQuerySchema>;
 export const bulkChecklistActionSchema = z
   .object({
     action: z.enum(['archive', 'draft', 'publish', 'delete', 'move']),
-    ids: z.array(z.string().uuid()).min(1).max(100),
+    ids: z.array(z.guid()).min(1).max(100),
     // Only for `move`: the target folder, null = the root. The key must be present for a move.
-    folderId: z.string().uuid().nullable().optional(),
+    folderId: z.guid().nullable().optional(),
   })
   .refine((input) => input.action !== 'move' || input.folderId !== undefined, { message: 'folderId is required for move', path: ['folderId'] });
 export type BulkChecklistActionInput = z.infer<typeof bulkChecklistActionSchema>;
@@ -63,21 +63,21 @@ export type BulkChecklistActionInput = z.infer<typeof bulkChecklistActionSchema>
 const folderNameSchema = z.string().trim().min(1).max(255);
 export const createChecklistFolderSchema = z.object({
   name: folderNameSchema,
-  parentId: z.string().uuid().nullable().optional(),
+  parentId: z.guid().nullable().optional(),
   visibleToStaff: z.boolean().optional(),
 });
 export type CreateChecklistFolderInput = z.infer<typeof createChecklistFolderSchema>;
 export const updateChecklistFolderSchema = z
-  .object({ name: folderNameSchema, parentId: z.string().uuid().nullable(), visibleToStaff: z.boolean() })
+  .object({ name: folderNameSchema, parentId: z.guid().nullable(), visibleToStaff: z.boolean() })
   .partial()
   .refine((input) => Object.keys(input).length > 0, { message: 'Nothing to change' });
 export type UpdateChecklistFolderInput = z.infer<typeof updateChecklistFolderSchema>;
 
 /** PR 407: partial success with the same per-folder access and tree rules as single operations. */
 export const bulkChecklistFolderSchema = z.object({
-  ids: z.array(z.string().uuid()).min(1).max(100),
+  ids: z.array(z.guid()).min(1).max(100),
   action: z.enum(['move', 'delete']),
-  parentId: z.string().uuid().nullable().optional(),
+  parentId: z.guid().nullable().optional(),
 }).strict().refine((input) => input.action !== 'move' || input.parentId !== undefined, { message: 'parentId is required for move', path: ['parentId'] });
 export type BulkChecklistFolderInput = z.infer<typeof bulkChecklistFolderSchema>;
 
@@ -88,9 +88,9 @@ export const appearanceSchema = z
   .transform((value) => sanitizeAppearance(value));
 
 export const createChecklistSchema = z.object({
-  organizationId: z.string().uuid(),
+  organizationId: z.guid(),
   title: richTextSchema(200, 1),
-  folderId: z.string().uuid().nullable().optional(),
+  folderId: z.guid().nullable().optional(),
   description: richTextSchema(2000).optional(),
   scoringMode: checklistScoringModeSchema.default('sum_points'),
   passThreshold: z.number().int().min(0).max(100).default(80),
@@ -123,14 +123,14 @@ export const checklistTemplatesQuerySchema = z.object({
 
 export const createChecklistFromTemplateSchema = z.object({
   templateKey: z.string().trim().min(1).max(80),
-  folderId: z.string().uuid().nullable().optional(),
+  folderId: z.guid().nullable().optional(),
   locale: z.string().trim().max(10).optional(),
 });
 
 // ---- PR 367: administrator-only result deletion and organization templates ----
 export const deleteChecklistResultSchema = z.object({ reason: z.string().trim().min(3).max(500) });
 export const createChecklistOrgTemplateSchema = z.object({
-  sourceChecklistId: z.string().uuid(),
+  sourceChecklistId: z.guid(),
   title: richTextSchema(200, 1).optional(),
   description: richTextSchema(2000).nullable().optional(),
 });
@@ -138,7 +138,7 @@ export const updateChecklistOrgTemplateSchema = z
   .object({ title: richTextSchema(200, 1), description: richTextSchema(2000).nullable() })
   .partial()
   .refine((input) => Object.keys(input).length > 0, { message: 'Nothing to update' });
-export const createChecklistFromOrgTemplateSchema = z.object({ templateId: z.string().uuid(), folderId: z.string().uuid().nullable().optional() });
+export const createChecklistFromOrgTemplateSchema = z.object({ templateId: z.guid(), folderId: z.guid().nullable().optional() });
 
 // PR 397: per-sheet overrides of the organization module settings. `null` returns a group to "as in the
 // organization"; the geolocation group is the sheet's own `defaultLocationCapturePolicy` (null = inherit).
@@ -151,7 +151,7 @@ export const checklistModuleSettingsSchema = z
     observers: z.object({
       eligibility: z.enum(['any_user', 'selected_roles', 'selected_users']),
       roles: z.array(z.nativeEnum(UserRole)).max(5).refine((roles) => new Set(roles).size === roles.length, 'Duplicate observer roles'),
-      userIds: z.array(z.string().uuid()).max(500).refine((ids) => new Set(ids).size === ids.length, 'Duplicate observer users'),
+      userIds: z.array(z.guid()).max(500).refine((ids) => new Set(ids).size === ids.length, 'Duplicate observer users'),
     }).strict().nullable(),
   })
   .partial()
@@ -184,7 +184,7 @@ export const updateChecklistSchema = z
     pinned: z.boolean(),
     allowEditByAll: z.boolean(),
     // PR 395: move the sheet into a folder; null = back to the root.
-    folderId: z.string().uuid().nullable(),
+    folderId: z.guid().nullable(),
     moduleSettings: checklistModuleSettingsSchema,
   })
   .partial();
@@ -225,10 +225,10 @@ export const createChecklistItemSchema = z
     // Optional reusable evaluation scale (PR 293) -- independent of scoringMode='scale'/
     // Checklist.scaleLevels above. Validity (exists in org, not archived) is checked in the
     // service, not here (needs a DB lookup this schema can't do).
-    scaleId: z.string().uuid().nullable().optional(),
+    scaleId: z.guid().nullable().optional(),
     // Optional ChecklistItemGroup (PR 296 observation-sheet builder). Validity (exists in org,
     // belongs to the same checklist) is checked in the service.
-    groupId: z.string().uuid().optional(),
+    groupId: z.guid().optional(),
     ...itemNoteShape(),
   })
   .refine(requiresAllowSkipForAutoSkip, AUTO_SKIP_REQUIRES_ALLOW_SKIP_ISSUE);
@@ -248,8 +248,8 @@ export const updateChecklistItemSchema = z
     weight: z.number().int().min(1).max(100),
     allowSkip: z.boolean(),
     autoSkipUnanswered: z.boolean(),
-    scaleId: z.string().uuid().nullable(),
-    groupId: z.string().uuid().nullable(),
+    scaleId: z.guid().nullable(),
+    groupId: z.guid().nullable(),
     description: richTextSchema(2000).nullable(),
     descriptionEnabled: z.boolean(),
     noteRule: z.enum(['off', 'always', 'on_answers']),
@@ -283,15 +283,15 @@ export type DeleteChecklistItemGroupQuery = z.infer<typeof deleteChecklistItemGr
 // PR 402: whole-layout reorder (drag-and-drop) — groups in order, each with its criteria, plus
 // the criteria that stay outside any group.
 export const updateChecklistLayoutSchema = z.object({
-  groups: z.array(z.object({ id: z.string().uuid(), itemIds: z.array(z.string().uuid()).max(2000) })).max(500),
-  ungroupedItemIds: z.array(z.string().uuid()).max(2000),
+  groups: z.array(z.object({ id: z.guid(), itemIds: z.array(z.guid()).max(2000) })).max(500),
+  ungroupedItemIds: z.array(z.guid()).max(2000),
 });
 export type UpdateChecklistLayoutInput = z.infer<typeof updateChecklistLayoutSchema>;
 
 export const assignChecklistSchema = z.object({
-  userId: z.string().uuid(),
+  userId: z.guid(),
   dueAt: z.string().datetime().optional(),
-  reviewerId: z.string().uuid().nullable().optional(),
+  reviewerId: z.guid().nullable().optional(),
 });
 export type AssignChecklistInput = z.infer<typeof assignChecklistSchema>;
 
@@ -299,8 +299,8 @@ export const MAX_BULK_CHECKLIST_TARGETS = 100;
 export const MAX_BULK_CHECKLIST_RECIPIENTS = 1_000;
 
 const bulkChecklistTargetSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('user'), id: z.string().uuid() }).strict(),
-  z.object({ type: z.literal('group'), id: z.string().uuid() }).strict(),
+  z.object({ type: z.literal('user'), id: z.guid() }).strict(),
+  z.object({ type: z.literal('group'), id: z.guid() }).strict(),
   z.object({ type: z.literal('manager_team') }).strict(),
 ]);
 
@@ -329,10 +329,10 @@ export type ReviewChecklistItemResultInput = z.infer<typeof reviewChecklistItemR
 export const skipChecklistItemSchema = z.object({ comment: z.string().trim().max(1000).optional() }).strict();
 export type SkipChecklistItemInput = z.infer<typeof skipChecklistItemSchema>;
 
-export const assignChecklistReviewerSchema = z.object({ reviewerId: z.string().uuid().nullable() }).strict();
+export const assignChecklistReviewerSchema = z.object({ reviewerId: z.guid().nullable() }).strict();
 export const checklistQueueQuerySchema = z.object({
   assignment: z.enum(['mine', 'unassigned', 'all']).default('mine'),
-  checklistId: z.string().uuid().optional(), learnerId: z.string().uuid().optional(),
+  checklistId: z.guid().optional(), learnerId: z.guid().optional(),
   status: checklistInstanceStatusSchema.optional(), passed: z.enum(['true', 'false']).optional(),
   from: z.string().datetime().optional(), to: z.string().datetime().optional(),
   // PR 468: passes through the public link or QR code (no account): only those, or none of them.
@@ -341,17 +341,17 @@ export const checklistQueueQuerySchema = z.object({
 });
 export type ChecklistQueueQuery = z.infer<typeof checklistQueueQuerySchema>;
 export const checklistAnalyticsQuerySchema = z.object({
-  checklistId: z.string().uuid().optional(), from: z.string().datetime().optional(), to: z.string().datetime().optional(),
+  checklistId: z.guid().optional(), from: z.string().datetime().optional(), to: z.string().datetime().optional(),
 });
 export type ChecklistAnalyticsQuery = z.infer<typeof checklistAnalyticsQuerySchema>;
 
 // ---- PR 299: manager checklist analytics ----
 export const checklistManagerAnalyticsQuerySchema = z.object({
-  managerId: z.union([z.string().uuid().toLowerCase(), z.literal('unassigned')]).optional(),
+  managerId: z.union([z.guid().toLowerCase(), z.literal('unassigned')]).optional(),
   from: z.string().datetime(),
   to: z.string().datetime(),
-  checklistId: z.string().uuid().optional(),
-  departmentId: z.string().uuid().optional(),
+  checklistId: z.guid().optional(),
+  departmentId: z.guid().optional(),
 });
 export type ChecklistManagerAnalyticsQuery = z.infer<typeof checklistManagerAnalyticsQuerySchema>;
 
@@ -361,10 +361,10 @@ export const checklistSheetAnalyticsQuerySchema = z.object({
   to: z.string().datetime(),
   checklistIds: z.preprocess(
     (value) => (typeof value === 'string' ? value.split(',').map((part) => part.trim().toLowerCase()).filter(Boolean) : value),
-    z.array(z.string().uuid()).max(100).optional(),
+    z.array(z.guid()).max(100).optional(),
   ),
-  departmentId: z.string().uuid().optional(),
-  managerId: z.union([z.string().uuid().toLowerCase(), z.literal('unassigned')]).optional(),
+  departmentId: z.guid().optional(),
+  managerId: z.union([z.guid().toLowerCase(), z.literal('unassigned')]).optional(),
 });
 export type ChecklistSheetAnalyticsQuery = z.infer<typeof checklistSheetAnalyticsQuerySchema>;
 
@@ -373,9 +373,9 @@ export const checklistItemAnalyticsQuerySchema = z.object({
   by: z.enum(['criteria', 'groups', 'feedback', 'notes']),
   from: z.string().datetime(),
   to: z.string().datetime(),
-  departmentId: z.string().uuid().optional(),
-  managerId: z.union([z.string().uuid().toLowerCase(), z.literal('unassigned')]).optional(),
-  observerId: z.string().uuid().toLowerCase().optional(),
+  departmentId: z.guid().optional(),
+  managerId: z.union([z.guid().toLowerCase(), z.literal('unassigned')]).optional(),
+  observerId: z.guid().toLowerCase().optional(),
   page: z.coerce.number().int().min(1).max(1000).default(1),
   // PR 462: the notes list of one criterion only.
   itemId: z.string().trim().min(1).max(100).optional(),
@@ -412,9 +412,9 @@ export const checklistAnalyticsExportQuerySchema = z.object({
   from: z.string().datetime(),
   to: z.string().datetime(),
   checklistIds: checklistSheetAnalyticsQuerySchema.shape.checklistIds,
-  checklistId: z.string().uuid().toLowerCase().optional(),
-  departmentId: z.string().uuid().optional(),
-  managerId: z.union([z.string().uuid().toLowerCase(), z.literal('unassigned')]).optional(),
+  checklistId: z.guid().toLowerCase().optional(),
+  departmentId: z.guid().optional(),
+  managerId: z.union([z.guid().toLowerCase(), z.literal('unassigned')]).optional(),
   // Picked criteria or groups of the screen (empty = all), the text search and the sorting of the table.
   pick: z.preprocess(
     (value) => (typeof value === 'string' ? value.split(',').map((part) => part.trim()).filter(Boolean) : value),
@@ -464,7 +464,7 @@ export const updateChecklistWorkplaceSettingsSchema = z
     resultColorHigh: highlightColorSchema.nullable(),
     observerEligibility: z.enum(['any_user', 'selected_roles', 'selected_users']),
     observerRoles: z.array(z.nativeEnum(UserRole)).max(5).refine((roles) => new Set(roles).size === roles.length, 'Duplicate observer roles'),
-    observerUserIds: z.array(z.string().uuid()).max(500).refine((ids) => new Set(ids).size === ids.length, 'Duplicate observer users'),
+    observerUserIds: z.array(z.guid()).max(500).refine((ids) => new Set(ids).size === ids.length, 'Duplicate observer users'),
   })
   .partial()
   .strict()
@@ -493,8 +493,8 @@ const sessionDurationMinutesSchema = z.number().int().min(1).max(1440).nullable(
 
 export const createChecklistSessionSchema = z
   .object({
-    instanceId: z.string().uuid(),
-    observerId: z.string().uuid().toLowerCase(),
+    instanceId: z.guid(),
+    observerId: z.guid().toLowerCase(),
     scheduledAt: z.string().datetime().nullable().optional(),
     durationMinutes: sessionDurationMinutesSchema,
     locationCapturePolicy: checklistGeolocationPolicySchema.optional(),
@@ -507,7 +507,7 @@ export type CreateChecklistSessionInput = z.infer<typeof createChecklistSessionS
 // Allowed only while the session is still `scheduled` — enforces "no participant changes after start".
 export const updateChecklistSessionSchema = z
   .object({
-    observerId: z.string().uuid().toLowerCase().optional(),
+    observerId: z.guid().toLowerCase().optional(),
     scheduledAt: z.string().datetime().nullable().optional(),
     durationMinutes: sessionDurationMinutesSchema,
     locationCapturePolicy: checklistGeolocationPolicySchema.optional(),
@@ -558,7 +558,7 @@ export type SubmitChecklistSessionFeedbackInput = z.infer<typeof submitChecklist
 
 export const submitChecklistSessionContextSchema = z
   .object({
-    values: z.record(z.string().uuid(), z.string().max(DESCRIPTION_MARKUP_LIMIT)).refine((values) => Object.keys(values).length <= 20, 'At most 20 context values are allowed'),
+    values: z.record(z.guid(), z.string().max(DESCRIPTION_MARKUP_LIMIT)).refine((values) => Object.keys(values).length <= 20, 'At most 20 context values are allowed'),
     version: z.number().int().min(1),
   })
   .strict();
@@ -576,11 +576,11 @@ export type RecalculateChecklistScoreInput = z.infer<typeof recalculateChecklist
 
 export const checklistSessionQuerySchema = z.object({
   status: checklistSessionStatusSchema.optional(),
-  observerId: z.string().uuid().toLowerCase().optional(),
-  checklistId: z.string().uuid().optional(),
-  learnerId: z.string().uuid().optional(),
+  observerId: z.guid().toLowerCase().optional(),
+  checklistId: z.guid().optional(),
+  learnerId: z.guid().optional(),
   // PR 325: the learner's current primary department (same definition as manager analytics).
-  departmentId: z.string().uuid().optional(),
+  departmentId: z.guid().optional(),
   // Matches the admin sessions list screen's "Период" filter -- against scheduledAt.
   scheduledFrom: z.string().datetime().optional(),
   scheduledTo: z.string().datetime().optional(),
@@ -591,7 +591,7 @@ export const checklistSessionQuerySchema = z.object({
   // keeps the schedule order every other screen relies on.
   sort: z.enum(['scheduled', 'recent']).default('scheduled'),
   // PR 332: leave the session currently open out of its own history.
-  excludeSessionId: z.string().uuid().optional(),
+  excludeSessionId: z.guid().optional(),
   // PR 336: only the export route reads it (audit); lists ignore it.
   format: z.enum(['csv', 'xlsx']).optional(),
   page: z.coerce.number().int().min(1).default(1),
@@ -634,7 +634,7 @@ export type SubmitChecklistLocationCaptureInput = z.infer<typeof submitChecklist
 export const MAX_BULK_CHECKLIST_SESSION_RECIPIENTS = 100;
 
 const recipientSessionScheduleSchema = z.object({
-  learnerId: z.string().uuid(),
+  learnerId: z.guid(),
   scheduledAt: z.string().datetime(),
   durationMinutes: sessionDurationMinutesSchema,
   timezone: z.string().trim().min(1).max(64).optional(),
@@ -645,9 +645,9 @@ const recipientSessionScheduleSchema = z.object({
 // learnerIds, never a pre-existing instanceId (single create still requires one).
 export const bulkCreateChecklistSessionSchema = z
   .object({
-    checklistId: z.string().uuid(),
-    learnerIds: z.array(z.string().uuid()).min(1).max(MAX_BULK_CHECKLIST_SESSION_RECIPIENTS),
-    observerId: z.string().uuid().toLowerCase(),
+    checklistId: z.guid(),
+    learnerIds: z.array(z.guid()).min(1).max(MAX_BULK_CHECKLIST_SESSION_RECIPIENTS),
+    observerId: z.guid().toLowerCase(),
     scheduledAt: z.string().datetime().nullable().optional(),
     durationMinutes: sessionDurationMinutesSchema,
     schedules: z.array(recipientSessionScheduleSchema).min(1).max(MAX_BULK_CHECKLIST_SESSION_RECIPIENTS).optional(),
@@ -672,9 +672,9 @@ export const bulkCreateChecklistSessionSchema = z
 export type BulkCreateChecklistSessionInput = z.infer<typeof bulkCreateChecklistSessionSchema>;
 
 export const importChecklistSessionsSchema = z.object({
-  operationId: z.string().uuid(),
-  checklistId: z.string().uuid(),
-  observerId: z.string().uuid().toLowerCase(),
+  operationId: z.guid(),
+  checklistId: z.guid(),
+  observerId: z.guid().toLowerCase(),
   scheduledAt: z.string().datetime().nullable().optional(),
   durationMinutes: sessionDurationMinutesSchema,
   locationCapturePolicy: checklistGeolocationPolicySchema.optional(),
@@ -686,7 +686,7 @@ export const checklistSessionParticipantRoleSchema = z.enum(['learner', 'observe
 export const checklistSessionParticipantsQuerySchema = z.object({
   role: checklistSessionParticipantRoleSchema,
   // PR 397: with it the observer list follows that sheet's observer override.
-  checklistId: z.string().uuid().optional(),
+  checklistId: z.guid().optional(),
   search: z.string().trim().min(1).max(120).optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
@@ -763,7 +763,7 @@ export type CopyChecklistScaleInput = z.infer<typeof copyChecklistScaleSchema>;
 // PR 373: explicit selection; all observations must be authorized before any export is returned.
 export const checklistSessionSummaryQuerySchema = z.object({
   ids: z.preprocess((value) => typeof value === 'string' ? value.split(',') : value,
-    z.array(z.string().uuid()).min(1).max(50).refine((ids) => new Set(ids).size === ids.length, 'Duplicate session IDs')),
+    z.array(z.guid()).min(1).max(50).refine((ids) => new Set(ids).size === ids.length, 'Duplicate session IDs')),
   format: z.enum(['csv', 'xlsx']).default('xlsx'),
 }).strict();
 export type ChecklistSessionSummaryQuery = z.infer<typeof checklistSessionSummaryQuerySchema>;

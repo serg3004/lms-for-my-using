@@ -11,7 +11,7 @@ const groupSlugSchema = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 
 export const createGroupSchema = z.object({
-  organizationId: z.string().uuid(),
+  organizationId: z.guid(),
   name: z.string().trim().min(1).max(120),
   slug: groupSlugSchema,
   description: richTextSchema(500).optional(),
@@ -33,13 +33,13 @@ export const updateGroupSchema = z
 export type UpdateGroupInput = z.infer<typeof updateGroupSchema>;
 
 export const assignGroupMemberSchema = z.object({
-  userId: z.string().uuid(),
+  userId: z.guid(),
 });
 
 export type AssignGroupMemberInput = z.infer<typeof assignGroupMemberSchema>;
 
 export const assignGroupManagerSchema = z.object({
-  managerId: z.string().uuid(),
+  managerId: z.guid(),
 });
 
 export type AssignGroupManagerInput = z.infer<typeof assignGroupManagerSchema>;

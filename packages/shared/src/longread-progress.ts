@@ -1,6 +1,6 @@
 import { z } from 'zod';
 export const continueContentSchema = z.object({ mode: z.enum(['free', 'answered', 'correct']).default('free'), minViewSeconds: z.number().int().min(0).max(86400).default(0) }).strict();
-export const longreadCompletionInputSchema = z.object({ version: z.number().int().min(1), chapter: z.string().regex(/^[A-Za-z0-9_-]{1,120}$/), blockId: z.string().uuid().optional() }).strict();
+export const longreadCompletionInputSchema = z.object({ version: z.number().int().min(1), chapter: z.string().regex(/^[A-Za-z0-9_-]{1,120}$/), blockId: z.guid().optional() }).strict();
 export const completionReasonSchema = z.object({ code: z.enum(['unanswered', 'incorrect', 'exhausted', 'file_unavailable', 'time', 'locked', 'continue_required']), blockId: z.string().optional(), remainingSeconds: z.number().int().min(0).optional() });
 export type CompletionReason = z.infer<typeof completionReasonSchema>;
 export const longreadCompletionSchema = z.object({
@@ -9,9 +9,9 @@ export const longreadCompletionSchema = z.object({
     gates: z.array(z.object({ blockId: z.string(), passed: z.boolean(), reasons: z.array(completionReasonSchema) })) })),
 });
 export type LongreadCompletion = z.infer<typeof longreadCompletionSchema>;
-export const chapterLearningSchema = z.object({ enteredAt: z.string().datetime(), completedAt: z.string().datetime().optional(), passed: z.array(z.string().uuid()).max(1000).default([]) });
-export const versionLearningSchema = z.object({ chapters: z.record(chapterLearningSchema), summary: longreadCompletionSchema.optional() });
-export const learningHistorySchema = z.record(versionLearningSchema);
+export const chapterLearningSchema = z.object({ enteredAt: z.string().datetime(), completedAt: z.string().datetime().optional(), passed: z.array(z.guid()).max(1000).default([]) });
+export const versionLearningSchema = z.object({ chapters: z.record(z.string(), chapterLearningSchema), summary: longreadCompletionSchema.optional() });
+export const learningHistorySchema = z.record(z.string(), versionLearningSchema);
 export type VersionLearning = z.infer<typeof versionLearningSchema>;
 /** Both the reader and existing admin progress reports expose this server-written projection. */
 export function publicLongreadProgress<T extends { longreadReadingState?: unknown }>(row: T) {

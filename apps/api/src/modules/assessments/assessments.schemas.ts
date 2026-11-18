@@ -4,9 +4,9 @@ import { richTextSchema } from '@lms/shared/rich-text';
 export const assessmentStatusSchema = z.enum(['draft', 'published', 'archived']);
 
 export const createAssessmentSchema = z.object({
-  organizationId: z.string().uuid(),
-  courseId: z.string().uuid(),
-  lessonId: z.string().uuid().optional(),
+  organizationId: z.guid(),
+  courseId: z.guid(),
+  lessonId: z.guid().optional(),
   title: z.string().trim().min(1).max(200),
   slug: z.string().trim().min(1).max(120),
   description: richTextSchema(2000).optional(),

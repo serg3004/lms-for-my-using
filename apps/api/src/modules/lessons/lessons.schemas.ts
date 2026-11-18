@@ -12,8 +12,8 @@ const lessonSlugSchema = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 
 export const createLessonSchema = z.object({
-  organizationId: z.string().uuid(),
-  courseId: z.string().uuid(),
+  organizationId: z.guid(),
+  courseId: z.guid(),
   title: z.string().trim().min(1).max(160),
   slug: lessonSlugSchema,
   description: richTextSchema(1000).optional(),
@@ -41,6 +41,6 @@ export const updateLessonSchema = z
 export type UpdateLessonInput = z.infer<typeof updateLessonSchema>;
 
 export const reorderLessonsSchema = z.object({
-  lessonIds: z.array(z.string().uuid()).min(1),
+  lessonIds: z.array(z.guid()).min(1),
 });
 export type ReorderLessonsInput = z.infer<typeof reorderLessonsSchema>;

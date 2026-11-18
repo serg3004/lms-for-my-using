@@ -73,7 +73,7 @@ describe('API response contracts', () => {
   });
 
   it('validates paginated DTOs with their item contract', () => {
-    const schema = paginatedResponseSchema(z.object({ id: z.string().uuid(), title: z.string() }).strict());
+    const schema = paginatedResponseSchema(z.object({ id: z.guid(), title: z.string() }).strict());
     const response = {
       items: [{ id: '11111111-1111-4111-8111-111111111111', title: 'Course' }],
       page: 1,

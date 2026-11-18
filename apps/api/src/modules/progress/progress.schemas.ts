@@ -11,10 +11,10 @@ export const progressSummaryQuerySchema = z.object({
 export type ProgressSummaryQuery = z.infer<typeof progressSummaryQuerySchema>;
 
 export const createProgressSchema = z.object({
-  organizationId: z.string().uuid(),
-  courseId: z.string().uuid(),
-  lessonId: z.string().uuid().optional(),
-  userId: z.string().uuid(),
+  organizationId: z.guid(),
+  courseId: z.guid(),
+  lessonId: z.guid().optional(),
+  userId: z.guid(),
   status: progressStatusSchema.default('in_progress'),
   score: z.number().int().min(0).max(100).optional(),
   completedAt: z.coerce.date().optional(),

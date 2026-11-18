@@ -11,22 +11,22 @@ export const listDepartmentUsersQuerySchema = paginationQuerySchema.extend({
 export type ListDepartmentUsersQuery = z.infer<typeof listDepartmentUsersQuerySchema>;
 
 export const createDepartmentMembershipSchema = z.object({
-  organizationId: z.string().uuid(),
-  departmentId: z.string().uuid(),
-  userId: z.string().uuid(),
+  organizationId: z.guid(),
+  departmentId: z.guid(),
+  userId: z.guid(),
   isPrimary: z.boolean().default(false),
-  positionId: z.string().uuid().optional(),
+  positionId: z.guid().optional(),
 });
 export type CreateDepartmentMembershipInput = z.infer<typeof createDepartmentMembershipSchema>;
 
 export const departmentTransferSchema = z.object({
-  departmentId: z.string().uuid(),
-  positionId: z.string().uuid().optional(),
+  departmentId: z.guid(),
+  positionId: z.guid().optional(),
 });
 export type DepartmentTransferInput = z.infer<typeof departmentTransferSchema>;
 
 export const bulkTransferSchema = z.object({
-  userIds: z.array(z.string().uuid()).min(1).max(MAX_BULK_TRANSFER_USERS),
-  positionId: z.string().uuid().optional(),
+  userIds: z.array(z.guid()).min(1).max(MAX_BULK_TRANSFER_USERS),
+  positionId: z.guid().optional(),
 });
 export type BulkTransferInput = z.infer<typeof bulkTransferSchema>;

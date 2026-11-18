@@ -6,9 +6,9 @@ export const positionCourseStatusSchema = z.enum(['active', 'archived']);
 const dueDaysSchema = z.number().int().min(0).max(3650);
 
 export const createPositionCourseSchema = z.object({
-  organizationId: z.string().uuid(),
-  positionId: z.string().uuid(),
-  courseId: z.string().uuid(),
+  organizationId: z.guid(),
+  positionId: z.guid(),
+  courseId: z.guid(),
   requirement: positionCourseRequirementSchema.default('REQUIRED'),
   dueDays: dueDaysSchema.optional(),
 });
@@ -23,8 +23,8 @@ export const updatePositionCourseSchema = z
 export type UpdatePositionCourseInput = z.infer<typeof updatePositionCourseSchema>;
 
 export const listPositionCoursesQuerySchema = z.object({
-  positionId: z.string().uuid().optional(),
-  courseId: z.string().uuid().optional(),
+  positionId: z.guid().optional(),
+  courseId: z.guid().optional(),
   status: positionCourseStatusSchema.optional(),
 });
 export type ListPositionCoursesQuery = z.infer<typeof listPositionCoursesQuerySchema>;

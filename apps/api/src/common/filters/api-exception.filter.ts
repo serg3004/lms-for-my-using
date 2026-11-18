@@ -157,9 +157,19 @@ function normalizeZodError(error: ZodError): NormalizedApiError {
     details: error.issues.map((issue) => ({
       field: issue.path.join('.'),
       message: issue.message,
-      code: issue.code,
+      code: legacyZodIssueCode(issue),
     })),
   };
+}
+
+/**
+ * Keeps the machine-readable `details[].code` of validation errors as published in the API contract
+ * (zod 3 names), so clients written against it do not notice the zod 4 migration.
+ */
+function legacyZodIssueCode(issue: ZodError['issues'][number]): string {
+  if (issue.code === 'invalid_format') return 'invalid_string';
+  if (issue.code === 'invalid_value') return issue.values.length > 1 ? 'invalid_enum_value' : 'invalid_literal';
+  return issue.code;
 }
 
 function normalizePrismaError(error: PrismaLikeError): NormalizedApiError {

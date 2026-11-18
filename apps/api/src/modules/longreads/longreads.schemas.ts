@@ -6,7 +6,7 @@ export const MAX_CHAPTERS = 200;
 export const MAX_BLOCKS_PER_CHAPTER = 1000;
 export const MAX_BLOCKS_PER_DOCUMENT = 5000;
 
-const uuid = z.string().uuid();
+const uuid = z.guid();
 
 /** Reader settings; the reader itself arrives in PR 385, the values are stored and validated from the start. */
 export const longreadSettingsSchema = z.object({

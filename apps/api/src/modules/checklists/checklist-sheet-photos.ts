@@ -11,7 +11,7 @@ export const SHEET_PHOTO_CAPTION_MAX_LENGTH = 200;
 
 export const sheetPhotoCaptionSchema = z.object({ caption: richTextSchema(SHEET_PHOTO_CAPTION_MAX_LENGTH, 0, { keepLeft: true }).default('') });
 export const updateSheetPhotoSchema = z.object({ caption: richTextSchema(SHEET_PHOTO_CAPTION_MAX_LENGTH, 0, { keepLeft: true }) });
-export const reorderSheetPhotosSchema = z.object({ ids: z.array(z.string().uuid()).max(MAX_SHEET_PHOTOS) });
+export const reorderSheetPhotosSchema = z.object({ ids: z.array(z.guid()).max(MAX_SHEET_PHOTOS) });
 
 /** What the API shows of a picture: never the storage key or the MIME type. */
 export const sheetPhotoSelect = { id: true, caption: true, order: true, updatedAt: true } as const;

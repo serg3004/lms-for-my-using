@@ -4,9 +4,9 @@ export const reportingLineTypeSchema = z.enum(['DIRECT', 'FUNCTIONAL', 'PROJECT'
 
 export const createReportingLineSchema = z
   .object({
-    organizationId: z.string().uuid(),
-    employeeId: z.string().uuid(),
-    managerId: z.string().uuid(),
+    organizationId: z.guid(),
+    employeeId: z.guid(),
+    managerId: z.guid(),
     type: reportingLineTypeSchema,
     isPrimary: z.boolean().default(false),
   })

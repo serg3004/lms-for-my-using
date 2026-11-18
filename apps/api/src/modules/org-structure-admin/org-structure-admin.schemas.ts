@@ -9,7 +9,7 @@ export const previewImportFieldsSchema = z.object({
 export const commitImportSchema = z.object({ token: z.string().min(43).max(256) });
 export const historyQuerySchema = z.object({
   entityType: z.string().trim().min(1).max(80).optional(),
-  entityId: z.string().uuid().optional(),
+  entityId: z.guid().optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(25),
 });

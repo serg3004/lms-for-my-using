@@ -62,9 +62,9 @@ export type PublicQuestionDefinition =
   | { type: 'short_answer'; caseSensitive: boolean; whitespace: 'exact' | 'trim' | 'collapse' };
 
 export const assessmentAnswerSchema = z.object({
-  questionId: z.string().uuid(),
-  selectedOptionId: z.string().uuid().optional(),
-  selectedOptionIds: z.array(z.string().uuid()).min(1).optional(),
+  questionId: z.guid(),
+  selectedOptionId: z.guid().optional(),
+  selectedOptionIds: z.array(z.guid()).min(1).optional(),
   response: questionResponseSchema.optional(),
 }).strict().refine((value) => [value.selectedOptionId, value.selectedOptionIds, value.response].filter((field) => field !== undefined).length === 1, { message: 'Answer requires exactly one format' });
 export type AssessmentAnswer = z.infer<typeof assessmentAnswerSchema>;

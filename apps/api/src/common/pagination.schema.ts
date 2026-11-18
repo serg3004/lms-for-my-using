@@ -7,6 +7,6 @@ export const paginationQuerySchema = z.object({
 
 /** Keyset pagination for feeds where deep offset pagination is avoidable. */
 export const cursorPaginationQuerySchema = z.object({
-  cursor: z.string().uuid().optional(),
+  cursor: z.guid().optional(),
   limit: z.coerce.number().int().positive().max(100).default(20),
 });

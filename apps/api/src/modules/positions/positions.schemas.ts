@@ -10,7 +10,7 @@ const positionTitleSchema = z.string().trim().min(1).max(160);
 const positionDescriptionSchema = richTextSchema(1000);
 
 export const createPositionSchema = z.object({
-  organizationId: z.string().uuid(),
+  organizationId: z.guid(),
   code: positionCodeSchema,
   title: positionTitleSchema,
   description: positionDescriptionSchema.optional(),
