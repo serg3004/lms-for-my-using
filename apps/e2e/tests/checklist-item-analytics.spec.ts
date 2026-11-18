@@ -104,8 +104,12 @@ test.describe('export of the current view (PR 463)', () => {
 
     await page.goto(`/admin/checklists/sheet-analytics?sheets=${sheetA}`);
     const detail = page.getByTestId('item-analytics');
+    // Wait for the loaded screen and for each pick to land before the next click: a click during a re-render was lost (flake on main, 2026-11-18).
+    await expect(detail.getByText('Итого по всем')).toBeVisible();
     await detail.getByRole('checkbox', { name: 'Учитывать: Каски надеты' }).click();
+    await expect(page).toHaveURL(/pick=c2(,|%2C)c3/);
     await detail.getByRole('checkbox', { name: 'Учитывать: Проход свободен' }).click();
+    await expect(page).toHaveURL(/pick=c3/);
     await detail.getByLabel('Сортировка').selectOption('completion');
     const [xlsx] = await Promise.all([page.waitForEvent('download'), detail.getByRole('button', { name: 'Скачать Excel' }).click()]);
     expect(xlsx.suggestedFilename()).toBe('checklist-analytics-criteria-2026-11-11.xlsx');
