@@ -1,10 +1,10 @@
 name: Update visual regression baselines
 
-# Manual-only: regenerates apps/e2e/visual-tests/*-snapshots/*.png on the same
-# ubuntu-latest Chromium build the "Checks" CI job uses, then pushes the result
-# back to the branch that was dispatched. See apps/e2e/visual-tests/README.md.
+# Manual-only: regenerates apps/e2e/visual-tests/*-snapshots/*.png inside the same pinned
+# official Playwright image the "Visual regression" CI job uses (PR 471), then pushes the
+# result back to the branch that was dispatched. See apps/e2e/visual-tests/README.md.
 #
-# Baselines must be generated on the exact browser build CI installs -- a
+# Baselines must be generated on the exact browser build CI uses -- a
 # baseline captured on a different OS or Chromium version fails as noisy
 # anti-aliasing/font-rendering diffs that are not real UI regressions. This
 # workflow is the controlled, reviewable way to do that: it never runs on
@@ -23,10 +23,10 @@ permissions:
   actions: write
 
 jobs:
-  update-baselines:
-    name: Regenerate baselines
+  verify:
+    name: Verify branch
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
 
     steps:
       - name: Checkout
@@ -59,6 +59,20 @@ jobs:
           echo "HEAD=$(git rev-parse HEAD)"
           echo "origin/main=$(git rev-parse origin/main)"
 
+  generate:
+    name: Generate baselines in the Playwright image
+    runs-on: ubuntu-latest
+    needs: [verify]
+    timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.0-noble
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+
       - name: Set up pnpm
         uses: pnpm/action-setup@v6
         with:
@@ -72,9 +86,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Install Playwright browser
-        run: pnpm exec playwright install --with-deps chromium
 
       - name: Regenerate visual baselines
         shell: bash
@@ -102,28 +113,13 @@ jobs:
           appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\n## Visual baseline failure\n\n\`\`\`text\n${tail}\n\`\`\`\n`);
           NODE
 
-      - name: Commit updated baselines
-        id: commit
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add apps/e2e/visual-tests/responsive-matrix.spec.ts-snapshots/
-          if git diff --cached --quiet; then
-            echo "No baseline changes to commit."
-            exit 0
-          fi
-          git commit -m "chore(e2e): regenerate visual baselines on ubuntu-latest Chromium"
-          git push origin HEAD:${{ github.ref_name }}
-          echo "pushed=true" >> "$GITHUB_OUTPUT"
-
-      # A push made with GITHUB_TOKEN does not start CI. Start it explicitly on the branch so the
-      # new baseline commit gets the same required checks as any other commit (workflow_dispatch
-      # started with GITHUB_TOKEN is allowed to trigger a run).
-      - name: Run CI on the baseline commit
-        if: steps.commit.outputs.pushed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run ci.yml --ref "${{ github.ref_name }}"
+      - name: Upload regenerated baselines
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-baselines
+          path: apps/e2e/visual-tests/responsive-matrix.spec.ts-snapshots/
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Upload failure artifacts
         if: failure()
@@ -135,3 +131,45 @@ jobs:
             test-results/
           if-no-files-found: ignore
           retention-days: 7
+
+  commit:
+    name: Commit baselines
+    runs-on: ubuntu-latest
+    needs: [generate]
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Download regenerated baselines
+        uses: actions/download-artifact@v4
+        with:
+          name: visual-baselines
+          path: apps/e2e/visual-tests/responsive-matrix.spec.ts-snapshots/
+
+      - name: Commit updated baselines
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/e2e/visual-tests/responsive-matrix.spec.ts-snapshots/
+          if git diff --cached --quiet; then
+            echo "No baseline changes to commit."
+            exit 0
+          fi
+          git commit -m "chore(e2e): regenerate visual baselines in the Playwright image"
+          git push origin HEAD:${{ github.ref_name }}
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+
+      # A push made with GITHUB_TOKEN does not start CI. Start it explicitly on the branch so the
+      # new baseline commit gets the same required checks as any other commit (workflow_dispatch
+      # started with GITHUB_TOKEN is allowed to trigger a run).
+      - name: Run CI on the baseline commit
+        if: steps.commit.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ci.yml --ref "${{ github.ref_name }}"

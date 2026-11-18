@@ -9,7 +9,7 @@
 
 Font rendering and anti-aliasing differ across operating systems, so a baseline
 captured on macOS/Windows will never match a Linux run pixel-for-pixel. CI runs on
-`ubuntu-latest` (`.github/workflows/ci.yml`), so **baselines must be generated on
+the pinned official Playwright image `mcr.microsoft.com/playwright:v<version>-noble` (`.github/workflows/ci.yml`, PR 471), so **baselines must be generated in that image on
 Linux** — Playwright's default snapshot naming already suffixes files with the
 platform (`-linux`), so mismatched-platform baselines fail loudly as "missing
 snapshot" rather than silently comparing against the wrong image.
@@ -31,8 +31,7 @@ run.
 A push made with the workflow token does not start pull-request CI, so after committing new baselines the workflow starts `ci.yml` on that branch with `workflow_dispatch` (`ci.yml` accepts this trigger for exactly this purpose). The resulting run reports the required `Checks` on the baseline commit; no manual re-run is needed.
 
 **Manual fallback** (only if you can't use the workflow above): from `apps/e2e`,
-on a machine as close to `ubuntu-latest` as possible with the exact Chromium
-build CI installs (`pnpm exec playwright install --with-deps chromium`), run:
+inside the same image (for example `docker run --rm -it -v "$PWD":/work -w /work mcr.microsoft.com/playwright:v<version>-noble bash`, then `corepack enable && pnpm install --frozen-lockfile`), run:
 
 ```bash
 pnpm exec playwright test --config playwright.visual.config.ts --update-snapshots
@@ -76,7 +75,7 @@ animations and the caret disabled.
 
 This was discovered the hard way: PR 264's initial baselines were generated in a
 sandbox with a stale pre-installed Chromium, one revision behind what
-`playwright install --with-deps chromium` fetches fresh on the `ubuntu-latest` CI
+the browser build of the pinned Playwright image on the CI
 runner. CI failed with diffs of roughly 5k-29k pixels per page — but that count
 stayed roughly constant across every viewport width (320px-1440px), which a real
 layout regression would not do (a layout break grows with the viewport). That
