@@ -80,3 +80,10 @@
 - Части: E2E 4,5 / 4,9 / 4,1 мин, Visual 3,6 / 4,0 мин, Accessibility 3,4, Tests 3,9, Database tests 2,0, Container security 2,8 (параллельно), Quality 2,0.
 - Предыдущий запуск того же PR (без повторов apt): две части стояли 9+ минут на шаге установки системных пакетов; это зависание apt, отдельное от разбиения.
 - Один замер не доказывает стабильность: повторять на следующих PR и записывать сюда.
+
+## 9. Playwright в закреплённом образе (PR 471, 2026-11-18)
+
+- E2E, Accessibility, Visual и workflow эталонов работают в `mcr.microsoft.com/playwright:v1.65.0-noble`: шаги `Resolve Playwright version`, кэш браузера и `scripts/install-playwright-deps.sh` (повторы и смена зеркала apt) убраны, скрипт удалён (откат через историю git). Версия `@playwright/test` закреплена точно, тег образа сверяет `scripts/check-playwright-image.mjs` в `Quality & security`.
+- Postgres в контейнерных задачах доступен по имени сервиса (`postgres:5432`).
+- Все визуальные эталоны пересозданы в образе workflow `update-visual-baselines.yml` (он тоже работает в образе: генерация в контейнере, коммит отдельной задачей на обычном раннере).
+- Замеры времени CI до и после: см. описание PR 471 и записи ниже.
