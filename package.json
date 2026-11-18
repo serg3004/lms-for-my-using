@@ -38,7 +38,7 @@
     "docs:consistency:test": "node --test scripts/docs-consistency.test.mjs && pnpm docs:integrity:test && pnpm docs:prototype:test && pnpm docs:impact:test"
   },
   "devDependencies": {
-    "@playwright/test": "1.65.0",
+    "@playwright/test": "1.65.1",
     "@eslint/js": "^10.0.1",
     "globals": "^17.14.0",
     "turbo": "^2.11.11",

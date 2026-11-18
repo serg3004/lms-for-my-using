@@ -307,7 +307,7 @@ jobs:
     # Pinned official Playwright image (browser and system fonts included); keep the tag equal to
     # the exact @playwright/test version, scripts/check-playwright-image.mjs enforces it.
     container:
-      image: mcr.microsoft.com/playwright:v1.65.0-noble
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
     strategy:
       fail-fast: false
       matrix:
@@ -403,7 +403,7 @@ jobs:
     # Pinned official Playwright image (browser and system fonts included); keep the tag equal to
     # the exact @playwright/test version, scripts/check-playwright-image.mjs enforces it.
     container:
-      image: mcr.microsoft.com/playwright:v1.65.0-noble
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
 
     services:
       postgres:
@@ -481,7 +481,7 @@ jobs:
     # Pinned official Playwright image (browser and system fonts included); keep the tag equal to
     # the exact @playwright/test version, scripts/check-playwright-image.mjs enforces it.
     container:
-      image: mcr.microsoft.com/playwright:v1.65.0-noble
+      image: mcr.microsoft.com/playwright:v1.65.1-noble
     strategy:
       fail-fast: false
       matrix:
