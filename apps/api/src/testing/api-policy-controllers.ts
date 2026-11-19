@@ -10,6 +10,8 @@ import { ChecklistPublicController } from '../modules/checklists/checklist-publi
 import { ChecklistsController } from '../modules/checklists/checklists.controller.js';
 import { CourseMaterialsController } from '../modules/course-materials/course-materials.controller.js';
 import { CoursesController } from '../modules/courses/courses.controller.js';
+import { CustomRolesController } from '../modules/custom-roles/custom-roles.controller.js';
+import { MePermissionsController } from '../modules/custom-roles/me-permissions.controller.js';
 import { DepartmentManagersController } from '../modules/department-managers/department-managers.controller.js';
 import { DepartmentMembershipsController } from '../modules/department-memberships/department-memberships.controller.js';
 import { DepartmentsController } from '../modules/departments/departments.controller.js';
@@ -52,6 +54,8 @@ export const controllerEntries: ControllerEntry[] = [
   { file: 'course-materials/course-materials.controller.ts', Controller: CourseMaterialsController },
   { file: 'course-materials/material-malware-scan.controller.ts', Controller: MaterialMalwareScanController },
   { file: 'courses/courses.controller.ts', Controller: CoursesController },
+  { file: 'custom-roles/custom-roles.controller.ts', Controller: CustomRolesController },
+  { file: 'custom-roles/me-permissions.controller.ts', Controller: MePermissionsController },
   { file: 'department-managers/department-managers.controller.ts', Controller: DepartmentManagersController },
   { file: 'department-memberships/department-memberships.controller.ts', Controller: DepartmentMembershipsController },
   { file: 'departments/departments.controller.ts', Controller: DepartmentsController },

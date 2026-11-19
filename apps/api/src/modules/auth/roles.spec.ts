@@ -103,6 +103,7 @@ describe('rolePolicies', () => {
     usersUpdate: ['admin', 'manager'],
     usersDeactivate: ['admin', 'manager'],
     usersResetPassword: ['admin', 'manager'],
+    customRolesManage: ['admin'],
     membershipsRead: ['admin', 'manager'],
     membershipsCreate: ['admin'],
     groupsRead: ['admin', 'manager'],

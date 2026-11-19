@@ -1825,8 +1825,29 @@ Existing longread data is kept when the flag is switched off.
 `GET` returns `{ "longreadEnabled": boolean, "customRolesEnabled": boolean }`; `PATCH` accepts `customRolesEnabled`
 as an optional boolean beside `longreadEnabled` (admin only, audit `organization.features_updated` with a summary
 for each value that changed). While the switch is off the effective rights of every user are the built-in role
-policies only; stored custom roles and assignments change nothing. Nothing reads the switch for enforcement yet
-(PR 481-483); there are no role endpoints before PR 484.
+policies only; stored custom roles and assignments change nothing.
+
+**Custom roles API (PR 484).** Administrator of the organization only (others `403`); every role, user and grant is
+looked up inside the caller's organization, so another organization's ids answer `404`.
+- `GET /custom-roles[?state=active|archived]` lists roles with `permissions`, `version`, `state` and `userCount`;
+  `GET /custom-roles/{id}` returns one.
+- `POST /custom-roles` `{ name, description?, permissions?: [{ action, scope }], basedOnRoleId? }` creates a role;
+  `basedOnRoleId` ("create based on") copies the description and grants of a role of the same organization, explicit
+  `permissions` win. Duplicate name in the organization: `409`.
+- `PATCH /custom-roles/{id}` `{ version, name?, description?, permissions? }` changes the role in one step; `permissions`
+  replaces the whole set. A stale `version` (or an archived role) answers `409`.
+- `POST /custom-roles/{id}/archive` `{ version }` archives the role: its assignments stop working from the next request,
+  the history stays. An archived role cannot be assigned (`422`).
+- `GET /custom-roles/{id}/assignments`, `PUT /custom-roles/{id}/assignments/{userId}` (assign, idempotent),
+  `DELETE /custom-roles/{id}/assignments/{userId}` (`204`, `404` when not assigned). The user must be a member of the
+  organization.
+- `GET /custom-roles/users/{userId}/permissions` (administrator) and `GET /me/permissions` (any signed-in user, for
+  display only) return `{ customRolesEnabled, customRoles: [{ id, name }], permissions: [{ action, builtIn, scopes }] }`.
+  The decision is always made again on the server.
+A grant set is checked on every save with the shared catalog: unknown action, action that is not delegable, scope the
+action does not allow and a missing dependency answer `422` with `problems`. Audit actions: `custom_role.created`
+(with `basedOn`), `custom_role.updated` (`added` and `removed` grants, `renamedFrom`), `custom_role.archived`,
+`custom_role.assigned`, `custom_role.revoked` (user as target, `roleId`), each with the acting administrator.
 
 **Lessons.** `POST /courses/:courseId/lessons` with `type: "longread"` creates the lesson, its document and one empty
 chapter in one transaction. The type cannot be changed to or from `longread` (`PATCH /lessons/:id` answers 400).

@@ -21,6 +21,8 @@ export const rolePolicies = {
   usersUpdate: ['admin', 'manager'],
   usersDeactivate: ['admin', 'manager'],
   usersResetPassword: ['admin', 'manager'],
+  /** PR 484: role management is the administrator's alone (the `role.manage` capability is never delegable). */
+  customRolesManage: ['admin'],
   membershipsRead: ['admin', 'manager'],
   membershipsCreate: ['admin'],
   groupsRead: ['admin', 'manager'],

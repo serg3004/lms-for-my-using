@@ -57,6 +57,10 @@ describe('getOpenApiDocument', () => {
     expect(document.paths['/users/{id}']).toBeDefined();
     expect(document.paths['/users/bulk']).toBeDefined();
     expect(document.paths['/users/import']).toBeDefined();
+    expect(document.paths['/users/{id}/reset-password']).toBeDefined();
+    expect(document.paths['/custom-roles']).toBeDefined();
+    expect(document.paths['/custom-roles/{id}/assignments/{userId}']).toBeDefined();
+    expect(document.paths['/me/permissions']).toBeDefined();
     expect(document.paths['/groups']).toBeDefined();
     expect(document.paths['/groups/{id}']).toBeDefined();
     expect(document.paths['/memberships']).toBeDefined();
