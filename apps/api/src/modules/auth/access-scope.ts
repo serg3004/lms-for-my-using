@@ -8,6 +8,8 @@ export type RequestScopeFlags = {
   readonly orgWide: boolean;
   /** Only a custom grant of "own" opened the route: rows are narrowed to the user's own. */
   readonly ownOnly: boolean;
+  /** Only a custom role opened a user route: the width of that grant. Built-in roles never carry it. */
+  readonly userScope?: 'department' | 'organization';
 };
 
 const flagsByUser = new WeakMap<object, RequestScopeFlags>();
@@ -24,4 +26,9 @@ export function isOrgWideGrant(user: object): boolean {
 /** True when only a custom "own" grant opened this request. */
 export function isOwnOnlyGrant(user: object): boolean {
   return flagsByUser.get(user)?.ownOnly === true;
+}
+
+/** The scope of a delegated user-management grant on this request, or undefined for built-in roles. */
+export function customUserScope(user: object): 'department' | 'organization' | undefined {
+  return flagsByUser.get(user)?.userScope;
 }

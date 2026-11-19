@@ -30,6 +30,7 @@ module.exports = {
     '/src/integration/custom-roles\\.database\\.spec\\.ts$',
     '/src/integration/custom-roles-checklists\\.database\\.spec\\.ts$',
     '/src/integration/custom-roles-learning\\.database\\.spec\\.ts$',
+    '/src/integration/custom-roles-users\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-history\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-delete-message\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-notifications\\.database\\.spec\\.ts$',

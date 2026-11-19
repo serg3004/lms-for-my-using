@@ -9,8 +9,8 @@ import { RolesGuard } from '../auth/public.js';
 import {
   createBulkUsersSchema,
   CreateBulkUsersInput,
-  createUserSchema,
-  CreateUserInput,
+  createUserRequestSchema,
+  CreateUserRequestInput,
   importUsersSchema,
   ImportUsersInput,
   listUsersQuerySchema,
@@ -43,20 +43,20 @@ export class UsersController {
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
   @Roles(...rolePolicies.usersCreate)
   @OrganizationScope('body', 'organizationId')
-  createBulkUsers(@Body() body: unknown) {
+  createBulkUsers(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: CreateBulkUsersInput = createBulkUsersSchema.parse(body);
 
-    return this.usersService.createBulkUsers(input);
+    return this.usersService.createBulkUsers(input, request.currentUser);
   }
 
   @Post('import')
   @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
-  @Roles(...rolePolicies.usersCreate)
+  @Roles(...rolePolicies.usersImport)
   @OrganizationScope('body', 'organizationId')
-  importUsers(@Body() body: unknown) {
+  importUsers(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: ImportUsersInput = importUsersSchema.parse(body);
 
-    return this.usersService.importUsers(input);
+    return this.usersService.importUsers(input, request.currentUser);
   }
 
   @Post()
@@ -64,14 +64,14 @@ export class UsersController {
   @Roles(...rolePolicies.usersCreate)
   @OrganizationScope('body', 'organizationId')
   createUser(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
-    const input: CreateUserInput = createUserSchema.parse(body);
+    const input: CreateUserRequestInput = createUserRequestSchema.parse(body);
 
-    return this.usersService.createUser(input, request.currentUser?.id ?? null);
+    return this.usersService.createUser(input, request.currentUser?.id ?? null, request.currentUser);
   }
 
   @Patch(':id')
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(...rolePolicies.usersCreate)
+  @Roles(...rolePolicies.usersUpdate)
   updateUser(@Param('id') userId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: UpdateUserInput = updateUserSchema.parse(body);
 
@@ -80,14 +80,21 @@ export class UsersController {
 
   @Get(':id/status-impact')
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(...rolePolicies.usersCreate)
+  @Roles(...rolePolicies.usersDeactivate)
   getStatusImpact(@Param('id') userId: string, @Req() request: AuthenticatedRequest) {
     return this.usersService.getObserverSessionImpact(userId, request.currentUser!);
   }
 
+  @Post(':id/reset-password')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersResetPassword)
+  resetUserPassword(@Param('id') userId: string, @Req() request: AuthenticatedRequest) {
+    return this.usersService.resetUserPassword(userId, request.currentUser!);
+  }
+
   @Patch(':id/status')
   @UseGuards(AuthGuard, RolesGuard)
-  @Roles(...rolePolicies.usersCreate)
+  @Roles(...rolePolicies.usersDeactivate)
   updateUserStatus(@Param('id') userId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateUserStatusSchema.parse(body);
 

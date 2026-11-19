@@ -345,5 +345,6 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/users/{id}/department-transfer` | `DepartmentMemberships` | `bearer` |
 | `GET` | `/api/v1/users/{id}/effective-manager` | `ReportingLines` | `bearer` |
 | `GET` | `/api/v1/users/{id}/reporting-lines` | `ReportingLines` | `bearer` |
+| `POST` | `/api/v1/users/{id}/reset-password` | `Users` | `bearer` |
 | `PATCH` | `/api/v1/users/{id}/status` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}/status-impact` | `Users` | `bearer` |

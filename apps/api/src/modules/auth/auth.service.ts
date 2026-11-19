@@ -156,6 +156,26 @@ export class AuthService {
     return logoutAccepted;
   }
 
+  /**
+   * Administrator-initiated reset: the same one-hour single-use link as "forgot password", issued for an
+   * already-checked user. The link goes to the user's email when mail is set up; otherwise (or if sending
+   * fails) the caller gets it once to hand over, because nobody else can read it afterwards.
+   */
+  async issuePasswordResetFor(user: { id: string; organizationId: string; email: string }) {
+    const reset = createPasswordResetToken();
+    const expiresAt = new Date(Date.now() + passwordResetLifetimeMs);
+    await this.prisma.$transaction([
+      this.prisma.passwordResetToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: new Date() } }),
+      this.prisma.passwordResetToken.create({ data: { userId: user.id, organizationId: user.organizationId, tokenHash: reset.hash, expiresAt } }),
+    ]);
+    let delivered = false;
+    if (this.passwordResetDelivery?.checkReadiness() === 'ok') {
+      delivered = await this.passwordResetDelivery.send({ ...user, token: reset.token, expiresAt }).then(() => true, () => false);
+    }
+    const frontend = (process.env['FRONTEND_URL'] ?? '').replace(/\/+$/, '');
+    return { delivered, expiresAt, ...(delivered ? {} : { resetUrl: `${frontend}/password-reset?token=${reset.token}` }) };
+  }
+
   async confirmPasswordReset(input: PasswordResetConfirmInput) {
     const now = new Date();
     const tokenHash = hashPasswordResetToken(input.token);

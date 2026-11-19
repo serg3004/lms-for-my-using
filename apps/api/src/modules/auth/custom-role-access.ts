@@ -1,4 +1,4 @@
-import type { PermissionActionKey, PermissionScope } from '@lms/shared/permission-catalog';
+import { isPermissionActionKey, type PermissionActionKey, type PermissionScope } from '@lms/shared/permission-catalog';
 
 import { builtInRolesFor } from './permission-catalog.adapter.js';
 import type { EffectivePermissions } from './effective-permissions.js';
@@ -7,22 +7,24 @@ import type { UserRole } from './roles.js';
 
 /**
  * Catalog actions whose routes honour custom roles: checklists (PR 481), courses, lessons, materials, longreads, tests,
- * attempts and reports (PR 482). User management joins in PR 483; until then a custom grant of `user.*` opens nothing.
+ * attempts and reports (PR 482), user management (PR 483). Every catalog action is connected; the guard stays a function so
+ * that a future area can be added behind it before its services are ready.
  */
-export const customRoleEnforcedAction = (key: string): boolean => !key.startsWith('user.');
+export const customRoleEnforcedAction = (key: string): boolean => isPermissionActionKey(key);
 
 /** The catalog actions a route needs, limited to the connected ones. Empty: the route does not look at custom roles. */
 export function enforcedActionsForRoute(controllerName: string, handlerName: string): readonly PermissionActionKey[] {
   return (permissionRouteMap[`${controllerName}.${handlerName}`] ?? []).filter(customRoleEnforcedAction);
 }
 
-type Domain = 'checklist' | 'course' | 'attempt' | 'report';
+type Domain = 'checklist' | 'course' | 'attempt' | 'report' | 'user';
 
 /** Which family of services sizes the request, and so how a granted scope has to be carried into it. */
 function domainOf(key: string): Domain {
   if (key.startsWith('checklist.')) return 'checklist';
   if (key === 'assessment.attempt.read' || key === 'assessment.attempt.result.read') return 'attempt';
   if (key.startsWith('report.')) return 'report';
+  if (key.startsWith('user.')) return 'user';
   return 'course';
 }
 
@@ -33,6 +35,8 @@ export type CustomAccess = {
   roles: UserRole[];
   orgWide: boolean;
   ownOnly: boolean;
+  /** Only a custom role opened a user route: how wide the delegated registrar may act. */
+  userScope?: 'department' | 'organization';
 };
 
 const CHECKLIST_RANK: Record<UserRole, number> = { admin: 4, instructor: 3, mentor: 3, manager: 2, learner: 1 };
@@ -112,5 +116,15 @@ export function resolveCustomAccess(input: {
     add('manager');
   }
 
-  return { opens, roles, orgWide, ownOnly };
+  // Users: a built-in manager or administrator keeps the built-in behaviour; a user who reaches the route only through a
+  // custom role is a delegated registrar, limited to the granted department or the organization by the users service.
+  const userScopes = scopesOf(permissions, actions, 'user');
+  let userScope: 'department' | 'organization' | undefined;
+  if (userScopes.size > 0 && !viaBuiltIn) {
+    if (userScopes.has('organization')) userScope = 'organization';
+    else if (userScopes.has('department')) userScope = 'department';
+    else if (userScopes.has('team')) add('manager');
+  }
+
+  return { opens, roles, orgWide, ownOnly, ...(userScope ? { userScope } : {}) };
 }
