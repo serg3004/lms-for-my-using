@@ -9,7 +9,8 @@ import { SmtpRejectedError } from '../../common/mail/smtp.js';
 import { checklistSessionReminderDeliveryErrors } from '../../common/observability/metrics.js';
 
 import { CHECKLIST_SESSION_CHANGE_TYPES, type ChecklistSessionChangeType } from './checklist-session-notifications.js';
-import { observerDeactivatedText, sessionChangeText } from './checklist-session-notification-text.js';
+import { instanceTransferText, observerDeactivatedText, sessionChangeText } from './checklist-session-notification-text.js';
+import { CHECKLIST_INSTANCE_TRANSFER_TYPE } from './checklist-instance-transfer.js';
 import { CHECKLIST_OBSERVER_DEACTIVATED_TYPE } from './checklist-observer-deactivation.js';
 
 export type ChecklistSessionReminderMessage = {
@@ -156,6 +157,36 @@ export class ChecklistSessionReminderDelivery {
       return;
     }
     await this.post({ kind: 'observer_deactivated', organizationId: message.organizationId, recipientId: notification.userId, link, locale: recipient.locale }, 'observer deactivated');
+  }
+
+  /** PR 477: tells the new executor that a check was handed over; rechecked at delivery, so a check that has moved on again sends nothing stale. */
+  async sendInstanceTransferred(message: { organizationId: string; notificationId: string }): Promise<void> {
+    if (this.checkReadiness() === 'disabled') return;
+    const notification = await this.prisma.notification.findFirst({
+      where: { id: message.notificationId, organizationId: message.organizationId, type: CHECKLIST_INSTANCE_TRANSFER_TYPE },
+      select: { userId: true, data: true, link: true },
+    });
+    const data = notification?.data;
+    if (!notification || !data || typeof data !== 'object' || Array.isArray(data) || typeof data['instanceId'] !== 'string') return;
+    const current = await this.prisma.checklistInstance.findFirst({
+      where: { id: data['instanceId'], organizationId: message.organizationId, userId: notification.userId, deletedAt: null, status: { in: ['assigned', 'in_progress'] } },
+      select: { id: true },
+    });
+    if (!current) return;
+    const recipient = await this.prisma.user.findFirst({
+      where: { id: notification.userId, organizationId: message.organizationId, deletedAt: null, status: 'active' }, select: { locale: true },
+    });
+    if (!recipient) return;
+    // Only the server-authored relative link to the check is allowed, never a job-supplied URL.
+    const link = notification.link;
+    if (!link || !/^\/learn\/checklists\?open=[0-9a-fA-F-]{36}$/.test(link)) return;
+    if (isMailConfigured()) {
+      const text = instanceTransferText(recipient.locale);
+      const frontend = (process.env['FRONTEND_URL'] ?? '').replace(/\/+$/, '');
+      await this.email(notification.userId, message.organizationId, text.title, `${text.message}\n${frontend}${link}`);
+      return;
+    }
+    await this.post({ kind: 'instance_transferred', organizationId: message.organizationId, recipientId: notification.userId, link, locale: recipient.locale }, 'instance transfer');
   }
 
   /** Resolves the recipient inside the organization; a user without an address is skipped, never a failure. */

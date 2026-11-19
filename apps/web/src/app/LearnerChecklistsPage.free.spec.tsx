@@ -8,6 +8,10 @@ import i18n from 'i18next';
 
 const api = vi.hoisted(() => ({
   listMyChecklistInstances: vi.fn(),
+  listChecklistsTransferredFromMe: vi.fn(async (): Promise<unknown[]> => []),
+  listChecklistTransferHistory: vi.fn(async () => []),
+  listChecklistTransferCandidates: vi.fn(async () => []),
+  transferChecklistInstance: vi.fn(),
   listFreeChecklists: vi.fn(),
   startFreeChecklist: vi.fn(),
   submitChecklistItemResult: vi.fn(),
@@ -126,5 +130,32 @@ describe('LearnerChecklistsPage: free-access catalog (PR 353)', () => {
     expect(container.querySelector('#all-checklists-title')).not.toBeNull();
     expect(container.textContent).toContain('Назначенный лист');
     expect(container.textContent).not.toContain('Свободное прохождение');
+  });
+  it('lists the checks handed over to a colleague as read-only "Передано" rows, and nothing when there are none (PR 477)', async () => {
+    api.listMyChecklistInstances.mockResolvedValue([instance('inst-1', 'Назначенный лист')]);
+    api.listFreeChecklists.mockResolvedValue([]);
+    api.listChecklistsTransferredFromMe.mockResolvedValue([
+      { id: 'inst-7', checklistId: 'c7', title: 'Приёмка товара', status: 'in_progress', transferredAt: '2026-11-19T05:00:00.000Z', toUser: { id: 'u2', firstName: 'Анна', lastName: 'Иванова' } },
+    ]);
+    await render();
+    const section = container.querySelector('[aria-labelledby="transferred-title"]');
+    expect(section?.textContent).toContain('Передано коллегам');
+    expect(section?.textContent).toContain('Приёмка товара');
+    expect(section?.textContent).toContain('Передано: Иванова Анна');
+    expect(section?.querySelector('button, a')).toBeNull();
+    await act(async () => { root?.unmount(); });
+    document.body.innerHTML = '';
+    api.listChecklistsTransferredFromMe.mockResolvedValue([]);
+    await render();
+    expect(container.querySelector('[aria-labelledby="transferred-title"]')).toBeNull();
+  });
+
+  it('keeps the page working when the list of handed-over checks cannot be loaded (PR 477)', async () => {
+    api.listMyChecklistInstances.mockResolvedValue([instance('inst-1', 'Назначенный лист')]);
+    api.listFreeChecklists.mockResolvedValue([]);
+    api.listChecklistsTransferredFromMe.mockRejectedValue(new Error('boom'));
+    await render();
+    expect(container.textContent).toContain('Назначенный лист');
+    expect(container.querySelector('[aria-labelledby="transferred-title"]')).toBeNull();
   });
 });

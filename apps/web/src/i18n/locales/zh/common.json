@@ -2917,6 +2917,10 @@
       "checklist_session_observer_deactivated": {
         "title": "观察员已被停用",
         "message": "已停用的观察员仍有未完成的场次。请打开列表并指派其他观察员。"
+      },
+      "checklist_instance_transferred": {
+        "title": "有一项检查已转交给您",
+        "message": "同事把一项未完成的检查转交给了您。请打开它继续完成。"
       }
     },
     "centerTitle": "通知中心",
@@ -3066,6 +3070,30 @@
     "finishConfirmReview": "答案将提交给讲师，之后无法更改。",
     "finishError": "无法完成检查。",
     "finishCancel": "取消",
+    "transfer": {
+      "open": "转交检查…",
+      "title": "将检查转交给同事",
+      "intro": "未完成的检查将连同答案和照片一起转交给同事。转交后您将无法再编辑。",
+      "recipient": "转交给",
+      "choose": "请选择同事",
+      "note": "给同事的备注（可选）",
+      "noteCount": "{{count}} / {{max}}",
+      "loading": "正在加载同事…",
+      "loadError": "无法加载同事列表。",
+      "empty": "没有可选的同事：检查只能转交给同一部门的员工。",
+      "submit": "转交",
+      "cancel": "取消",
+      "conflict": "检查已发生变化。请刷新页面后重试。",
+      "error": "无法转交检查。",
+      "reload": "刷新",
+      "handedOver": "已转交",
+      "handedOverTo": "已转交：{{name}}",
+      "handedOverTitle": "已转交给同事",
+      "historyTitle": "转交记录",
+      "historyLine": "{{from}} → {{to}}，{{date}}",
+      "historyNote": "备注：{{note}}",
+      "unknownUser": "员工"
+    },
     "itemDescription": "说明",
     "noteRequired": "解释（必填）",
     "note": "解释",

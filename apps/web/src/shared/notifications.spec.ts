@@ -61,6 +61,7 @@ describe('checklist session notification types resolve in every supported locale
     'checklist_session_deleted',
     'checklist_session_completed',
     'checklist_session_observer_deactivated',
+    'checklist_instance_transferred',
   ] as const;
 
   for (const locale of supportedLocales) {

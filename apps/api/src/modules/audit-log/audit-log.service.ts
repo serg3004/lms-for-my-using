@@ -92,7 +92,8 @@ export type AuditLogAction =
   | 'checklist_location.accessed'
   | 'checklist_evidence.accessed'
   | 'checklist_evidence.removed'
-  | 'checklist_instance.finished';
+  | 'checklist_instance.finished'
+  | 'checklist_instance.transferred';
 
 export type RecordAuditLogInput = {
   organizationId: string;

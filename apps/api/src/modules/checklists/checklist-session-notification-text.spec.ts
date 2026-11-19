@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 
 import { CHECKLIST_SESSION_CHANGE_TYPES } from './checklist-session-notifications.js';
-import { observerDeactivatedText, sessionChangeText } from './checklist-session-notification-text.js';
+import { instanceTransferText, observerDeactivatedText, sessionChangeText } from './checklist-session-notification-text.js';
 
 // PR 469: the email copy and the portal copy (`notifications.types` in the web locale files) are
 // two sources for the same wording. This guard fails CI when they diverge, when an email is not
@@ -31,6 +31,7 @@ function portalTypes(locale: Locale): Record<string, Entry> {
 const PAIRS: Array<{ key: string; email: (locale: string) => Entry }> = [
   ...CHECKLIST_SESSION_CHANGE_TYPES.map((type) => ({ key: type, email: (locale: string) => sessionChangeText(type, locale) })),
   { key: 'checklist_session_observer_deactivated', email: (locale: string) => observerDeactivatedText(locale) },
+  { key: 'checklist_instance_transferred', email: (locale: string) => instanceTransferText(locale) },
 ];
 
 describe('checklist session email copy', () => {

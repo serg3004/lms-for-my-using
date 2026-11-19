@@ -18,10 +18,19 @@ import { installManagerReportMocks, reportManagerA } from '../fixtures/checklist
 import { installSheetAnalyticsMocks, sheetA } from '../fixtures/checklist-sheet-analytics.js';
 import { installCourseAnalyticsMocks, courseA, userA } from '../fixtures/course-analytics.js';
 import { GOOD_CODE, openPublicPage } from '../fixtures/checklist-public-page.js';
+import { freshTransferState, installTransferMocks, openTransferDialog } from '../fixtures/checklist-transfer.js';
 import { expect, test, type Page } from '@playwright/test';
 
 const widths = [320, 375, 768, 1024, 1280, 1440] as const;
 const height = 900;
+
+for (const width of [390, 1280]) test(`hand-over of a check dialog is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installTransferMocks(page, 'executor', freshTransferState());
+  await openTransferDialog(page);
+  await page.getByRole('dialog').getByLabel('Кому передать').selectOption('anna');
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `check-transfer-dialog-${width}`, false, { maxDiffPixels: 3000 });
+});
 
 for (const width of [390, 1280]) for (const [screen, path] of [
   ['list', '/admin/results/courses'], ['course', `/admin/results/courses/course/${courseA}`], ['user', `/admin/results/courses/user/${userA}`],

@@ -317,4 +317,62 @@ describe('ChecklistsController — inline learner-ownership enforcement (RBAC)',
     expect(assertReviewerCanAccess).not.toHaveBeenCalled();
   });
 
+  describe('hand-over of a check (PR 477)', () => {
+    const colleagueId = '77777777-7777-7777-7777-777777777777';
+    function transferController() {
+      const transferInstance = jest.fn(async () => ({ id: instanceId, userId: colleagueId }));
+      const transferInstanceCandidates = jest.fn(async () => []);
+      const listTransferHistory = jest.fn(async () => []);
+      const getInstance = jest.fn(async () => ({ userId: learnerId }));
+      const assertReviewerCanAccess = jest.fn(async () => undefined);
+      const controller = makeController({
+        checklistsService: {
+          transferInstance: transferInstance as unknown as ChecklistsService['transferInstance'],
+          transferInstanceCandidates: transferInstanceCandidates as unknown as ChecklistsService['transferInstanceCandidates'],
+          listTransferHistory: listTransferHistory as unknown as ChecklistsService['listTransferHistory'],
+          getInstance: getInstance as unknown as ChecklistsService['getInstance'],
+        },
+        reviewAccess: { assertReviewerCanAccess: assertReviewerCanAccess as unknown as ChecklistReviewAccessService['assertReviewerCanAccess'] },
+      });
+      return { controller, transferInstance, transferInstanceCandidates, listTransferHistory, assertReviewerCanAccess };
+    }
+
+    it('passes the learner straight to the service, which checks that they are the executor', async () => {
+      const { controller, transferInstance, assertReviewerCanAccess } = transferController();
+      await controller.transferInstance(instanceId, { toUserId: colleagueId, note: 'Hi' }, makeRequest(learnerId, ['learner']));
+      expect(transferInstance).toHaveBeenCalledWith(instanceId, expect.objectContaining({ id: learnerId, organizationId }), { toUserId: colleagueId, note: 'Hi' });
+      expect(assertReviewerCanAccess).not.toHaveBeenCalled();
+    });
+
+    it('limits a manager to their team before the service is called, but does not limit an administrator', async () => {
+      const manager = transferController();
+      await manager.controller.transferInstance(instanceId, { toUserId: colleagueId }, makeRequest(reviewerId, ['manager']));
+      expect(manager.assertReviewerCanAccess).toHaveBeenCalledWith(expect.objectContaining({ id: reviewerId }), instanceId);
+      await manager.controller.transferCandidates(instanceId, makeRequest(reviewerId, ['manager']));
+      expect(manager.assertReviewerCanAccess).toHaveBeenCalledTimes(2);
+      const admin = transferController();
+      await admin.controller.transferInstance(instanceId, { toUserId: colleagueId }, makeRequest(reviewerId, ['admin']));
+      expect(admin.assertReviewerCanAccess).not.toHaveBeenCalled();
+    });
+
+    it('rejects a body with an unknown field, a bad id or a note that is too long, before anything is read', async () => {
+      const { controller, transferInstance } = transferController();
+      const request = makeRequest(learnerId, ['learner']);
+      await expect(controller.transferInstance(instanceId, { toUserId: 'not-an-id' }, request)).rejects.toBeDefined();
+      await expect(controller.transferInstance(instanceId, { toUserId: colleagueId, userId: learnerId }, request)).rejects.toBeDefined();
+      await expect(controller.transferInstance(instanceId, { toUserId: colleagueId, note: 'x'.repeat(501) }, request)).rejects.toBeDefined();
+      expect(transferInstance).not.toHaveBeenCalled();
+    });
+
+    it('shows the history only to the executor among learners, and to reviewers inside their scope', async () => {
+      const { controller, listTransferHistory, assertReviewerCanAccess } = transferController();
+      await expect(controller.listTransferHistory(instanceId, makeRequest(otherLearnerId, ['learner']))).rejects.toBeInstanceOf(ForbiddenException);
+      expect(listTransferHistory).not.toHaveBeenCalled();
+      await controller.listTransferHistory(instanceId, makeRequest(learnerId, ['learner']));
+      await controller.listTransferHistory(instanceId, makeRequest(reviewerId, ['instructor']));
+      expect(assertReviewerCanAccess).toHaveBeenCalledTimes(1);
+      expect(listTransferHistory).toHaveBeenCalledTimes(2);
+    });
+  });
+
 });

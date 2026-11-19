@@ -329,6 +329,12 @@ export type ReviewChecklistItemResultInput = z.infer<typeof reviewChecklistItemR
 export const skipChecklistItemSchema = z.object({ comment: z.string().trim().max(1000).optional() }).strict();
 export type SkipChecklistItemInput = z.infer<typeof skipChecklistItemSchema>;
 
+// PR 477: hand an unfinished self-filled check over to a colleague; `expectedUpdatedAt` is the version the screen has seen.
+export const transferChecklistInstanceSchema = z.object({
+  toUserId: z.guid(),
+  note: z.string().trim().max(500).optional(),
+  expectedUpdatedAt: z.string().datetime().optional(),
+}).strict();
 export const assignChecklistReviewerSchema = z.object({ reviewerId: z.guid().nullable() }).strict();
 export const checklistQueueQuerySchema = z.object({
   assignment: z.enum(['mine', 'unassigned', 'all']).default('mine'),

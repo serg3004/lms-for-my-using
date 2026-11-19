@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 import type { PrismaService } from '../../database/prisma.service.js';
-import { observerDeactivatedText, sessionChangeText } from './checklist-session-notification-text.js';
+import { instanceTransferText, observerDeactivatedText, sessionChangeText } from './checklist-session-notification-text.js';
 import { CHECKLIST_SESSION_CHANGE_TYPES } from './checklist-session-notifications.js';
 
 const configured = jest.fn(() => false);
@@ -114,5 +114,42 @@ describe('session change delivery', () => {
       expect(text.title.length).toBeGreaterThan(0); expect(text.message.length).toBeGreaterThan(0);
       expect(JSON.stringify(text)).not.toMatch(/@/);
     });
+  });
+});
+
+describe('instance transfer delivery (PR 477)', () => {
+  const instanceId = '22222222-2222-2222-2222-222222222222';
+  function transferHarness() {
+    const prisma = {
+      notification: { findFirst: jest.fn(async () => ({ userId: 'colleague', data: { instanceId }, link: `/learn/checklists?open=${instanceId}` })) },
+      checklistInstance: { findFirst: jest.fn(async () => ({ id: instanceId })) },
+      user: { findFirst: jest.fn(async () => ({ locale: 'kk', email: 'colleague@example.invalid' })) },
+    };
+    return { prisma, delivery: new ChecklistSessionReminderDelivery(prisma as unknown as PrismaService) };
+  }
+  it('is a no-op without mail', async () => {
+    const { delivery, prisma } = transferHarness();
+    await delivery.sendInstanceTransferred({ organizationId: 'org', notificationId: 'notice' });
+    expect(prisma.notification.findFirst).not.toHaveBeenCalled();
+  });
+  it('mails the new executor in their language with only a generic text and a relative link', async () => {
+    configured.mockReturnValue(true);
+    const { delivery, prisma } = transferHarness();
+    await delivery.sendInstanceTransferred({ organizationId: 'org', notificationId: 'notice' });
+    expect(prisma.checklistInstance.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: instanceId, organizationId: 'org', userId: 'colleague', status: { in: ['assigned', 'in_progress'] } }) }));
+    expect(sendMail).toHaveBeenCalledWith({
+      to: 'colleague@example.invalid', subject: instanceTransferText('kk').title,
+      text: `${instanceTransferText('kk').message}\nhttps://lms.example.invalid/learn/checklists?open=${instanceId}`,
+    });
+  });
+  it('sends nothing when the check has moved on or finished, or the link is not the server-authored one', async () => {
+    configured.mockReturnValue(true);
+    const gone = transferHarness();
+    gone.prisma.checklistInstance.findFirst.mockResolvedValue(null as never);
+    await gone.delivery.sendInstanceTransferred({ organizationId: 'org', notificationId: 'notice' });
+    const forged = transferHarness();
+    forged.prisma.notification.findFirst.mockResolvedValue({ userId: 'colleague', data: { instanceId }, link: 'https://evil.invalid/x' } as never);
+    await forged.delivery.sendInstanceTransferred({ organizationId: 'org', notificationId: 'notice' });
+    expect(sendMail).not.toHaveBeenCalled();
   });
 });

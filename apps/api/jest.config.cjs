@@ -29,6 +29,7 @@ module.exports = {
     '/src/integration/checklist-session-delete-message\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-notifications\\.database\\.spec\\.ts$',
     '/src/integration/checklist-observer-deactivation\\.database\\.spec\\.ts$',
+    '/src/integration/checklist-instance-transfer\\.database\\.spec\\.ts$',
     '/src/integration/checklist-report-export\\.database\\.spec\\.ts$',
     '/src/integration/checklist-finish-incomplete\\.database\\.spec\\.ts$',
     '/src/integration/checklist-sheet-settings\\.database\\.spec\\.ts$',

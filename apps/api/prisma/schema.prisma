@@ -202,6 +202,8 @@ enum ChecklistInstanceEventType {
   completed
   expired
   guest_link_disabled
+  // PR 477: a self-filled check was handed over to a colleague (metadata: fromUserId, toUserId, note).
+  transferred
 }
 
 enum ChecklistGeolocationPolicy {
