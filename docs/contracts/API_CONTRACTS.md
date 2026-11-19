@@ -2254,3 +2254,27 @@ explicit Finish action from PR 424. Afterwards a scored sheet shows percentage a
 in adds earned/maximum points. A sheet without points still shows only Completed. Observer conduct
 is an authorized staff view and retains points. Stored scores, scoring formulas and access scopes
 are unchanged.
+
+## Course and user analytics (PR 473)
+
+Read-only, available to `admin`, `manager` and `instructor`; the counting rules live in one module,
+`apps/api/src/modules/reports/course-analytics.ts`.
+
+- `GET /reports/course-analytics` is one row per course; `GET /reports/course-analytics/courses/:courseId` is the course
+  report (a summary and a row per assigned user); `GET /reports/course-analytics/users/:userId` is the user report
+  (a summary and a row per assigned course with the certificate).
+- Query filters: `from`/`to` (by the date an assignment was made), `departmentId` with `includeDescendants`, `groupId`,
+  `managerId` (users in groups that manager leads), `courseIds` (comma-separated). An invalid or reversed period is a
+  validation error.
+- Scope: an admin sees the whole organization; a manager only users of their team (the same
+  `OrganizationAccessScopeService` scope as `/reports/summary`); an instructor only the courses they teach. A course or user
+  outside the scope answers 404 with no title or numbers.
+- Population: every user a course is assigned to directly, through a group or a department (with descendants when set);
+  cancelled and deleted assignments are ignored; a user with progress but no assignment is not counted. Position
+  requirements and self-enrollment are not counted.
+- Completed means every published lesson is completed or the assignment is marked completed. Test result is by the best
+  completed attempt (highest percentage) of each published test, only attempts with `countsTowardResults`:
+  `passed` (all tests passed), `failed` (some tried test not passed), `pending` (not tried), `no_test`.
+- Time (`durationMinutes`) is calendar time from the first action to completion, not active reading time; the answer says
+  `durationBasis: "calendar"`.
+- The read is capped at 5000 (course, user) rows; `truncated: true` says the cap was hit.

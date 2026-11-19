@@ -336,3 +336,7 @@ read permissions and team/course filters apply to the server-written version/cha
 ### Longread acceptance guard (PR 391)
 
 `apps/e2e/tests/longread-acceptance.spec.ts` exercises the real HTTP guards and PostgreSQL: learners cannot read the draft, a foreign organization receives 404, and a disabled `longreadEnabled` hides the document. Publication rejects an unready attachment; invalid content and stale draft revisions do not modify the saved draft. The versioned learner result is checked after a second publication. The automated/owner acceptance boundary is documented in [LONGREAD_ACCEPTANCE.md](../quality/LONGREAD_ACCEPTANCE.md). No permissions are added by this test-only change.
+
+## Course and user analytics (PR 473)
+
+`GET /reports/course-analytics`, `GET /reports/course-analytics/courses/:courseId` and `GET /reports/course-analytics/users/:userId` are allowed for `admin`, `manager` and `instructor`. The object scope is narrower than the role: admin, the whole organization; manager, only users of their team (`OrganizationAccessScopeService`); instructor, only courses they teach (`CourseInstructor`). A course or user outside the scope answers 404 and discloses neither a title nor numbers.
