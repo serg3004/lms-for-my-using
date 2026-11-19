@@ -41,6 +41,36 @@ export class CourseAnalyticsService {
       durationBasis: 'calendar' as const,
       truncated: data.truncated,
       courses: summaries.map((summary) => ({ ...summary, title: titles.get(summary.courseId) ?? '' })),
+      filterOptions: await this.filterOptions(actor),
+      courseOptions: data.courses.map((course) => ({ id: course.id, title: course.title })),
+    };
+  }
+
+  /** Choices for the department, group and manager filters; an instructor has none (they see only their courses). */
+  private async filterOptions(actor: TeamScopeActor) {
+    const organizationId = actor.organizationId;
+    const isAdmin = actor.roles.includes('admin');
+    const isManager = !isAdmin && actor.roles.includes('manager');
+    if (!isAdmin && !isManager) return { departments: [], groups: [], managers: [] };
+    const [departments, groups] = await Promise.all([
+      isAdmin
+        ? this.prisma.department.findMany({ where: { organizationId, status: 'active' }, select: { id: true, name: true }, orderBy: [{ name: 'asc' }, { id: 'asc' }], take: 500 })
+        : Promise.resolve([]),
+      this.prisma.group.findMany({
+        where: { organizationId, deletedAt: null, status: 'active', ...this.teamScope.group(actor) },
+        select: { id: true, name: true, managers: { where: { deletedAt: null }, select: { manager: { select: { id: true, firstName: true, lastName: true } } } } },
+        orderBy: [{ name: 'asc' }, { id: 'asc' }],
+        take: 500,
+      }),
+    ]);
+    const managers = new Map<string, string>();
+    for (const group of groups) {
+      for (const { manager } of group.managers) managers.set(manager.id, [manager.lastName, manager.firstName].filter(Boolean).join(' '));
+    }
+    return {
+      departments,
+      groups: groups.map((group) => ({ id: group.id, name: group.name })),
+      managers: [...managers].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name, 'ru')),
     };
   }
 

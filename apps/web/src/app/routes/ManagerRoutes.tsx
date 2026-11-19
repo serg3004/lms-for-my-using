@@ -4,6 +4,7 @@ import { Navigate, Outlet, Route } from 'react-router-dom';
 const ManagerDashboardPage = lazy(() => import('../ManagerDashboardPage.js').then((m) => ({ default: m.ManagerDashboardPage })));
 const ManagerTeamPage = lazy(() => import('../ManagerTeamPage.js').then((m) => ({ default: m.ManagerTeamPage })));
 const ManagerOverduePage = lazy(() => import('../ManagerOverduePage.js').then((m) => ({ default: m.ManagerOverduePage })));
+const ManagerCourseAnalyticsPage = lazy(() => import('../CourseAnalyticsPages.js').then((m) => ({ default: m.ManagerCourseAnalyticsPage })));
 const ManagerReportsPage = lazy(() => import('../ManagerReportsPage.js').then((m) => ({ default: m.ManagerReportsPage })));
 const ManagerSheetAnalyticsPage = lazy(() => import('../SheetAnalyticsPage.js').then((m) => ({ default: m.ManagerSheetAnalyticsPage })));
 const ManagerChecklistsPage = lazy(() => import('../ManagerChecklistsPage.js').then((m) => ({ default: m.ManagerChecklistsPage })));
@@ -15,6 +16,7 @@ export function ManagerRoutes() {
       <Route path="dashboard" element={<ManagerDashboardPage />} />
       <Route path="team" element={<ManagerTeamPage />} />
       <Route path="overdue" element={<ManagerOverduePage />} />
+      <Route path="reports/courses/*" element={<ManagerCourseAnalyticsPage />} />
       <Route path="reports" element={<ManagerReportsPage />} />
       <Route path="checklists" element={<ManagerChecklistsPage />} />
       <Route path="checklists/sheets" element={<ManagerSheetAnalyticsPage />} />

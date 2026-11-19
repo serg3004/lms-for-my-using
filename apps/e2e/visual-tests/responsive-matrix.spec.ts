@@ -16,11 +16,22 @@ import { openManagementEdit, openManagementList, openManagementReport, openManag
 import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 import { installManagerReportMocks, reportManagerA } from '../fixtures/checklist-manager-report.js';
 import { installSheetAnalyticsMocks, sheetA } from '../fixtures/checklist-sheet-analytics.js';
+import { installCourseAnalyticsMocks, courseA, userA } from '../fixtures/course-analytics.js';
 import { GOOD_CODE, openPublicPage } from '../fixtures/checklist-public-page.js';
 import { expect, test, type Page } from '@playwright/test';
 
 const widths = [320, 375, 768, 1024, 1280, 1440] as const;
 const height = 900;
+
+for (const width of [390, 1280]) for (const [screen, path] of [
+  ['list', '/admin/results/courses'], ['course', `/admin/results/courses/course/${courseA}`], ['user', `/admin/results/courses/user/${userA}`],
+] as const) test(`course analytics ${screen} is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installCourseAnalyticsMocks(page, 'admin');
+  await page.goto(path);
+  await page.getByRole('table').first().waitFor();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `course-analytics-${screen}-${width}`, false, { maxDiffPixels: 3000 });
+});
 
 for (const width of [375, 1440]) test(`checklist analytics tab is responsive at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height }); await installSheetAnalyticsMocks(page, 'admin');
