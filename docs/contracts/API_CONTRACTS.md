@@ -1753,6 +1753,13 @@ outside their department tree), the new users are `learner` members with a prima
 or manager may send it too and then gets the department membership (and no role) for the new users. Such callers also get 403 for
 a `role` field in `PATCH /users/{id}` and 404 for users outside their department or holding a role above `learner`.
 
+`POST /users/{id}/reset-password` (administrator, manager of the team, or a custom role with `user.reset-password`)
+issues a one-hour single-use reset link for an active user in the caller's scope (`404` outside it, `409` for an inactive
+user) and revokes any earlier unused link. The link is emailed to the user when mail is configured and delivery succeeds
+(`{ delivered: true, expiresAt }`); otherwise the response carries it once as `resetUrl` for the caller to hand over
+(`delivered: false`). The user sets a new password on `/password-reset`, which also ends their sessions. Audit:
+`user.password_reset_issued` (actor, target, `delivered`, `delegated`).
+
 `PATCH /users/{id}/status` returns `observerSessions` (the user's unfinished sessions as observer:
 `scheduled`, `in_progress` or `paused`, not deleted) next to `orphanedCourses`. `GET /users/{id}/status-impact`
 returns `{ observerSessions }` for the same user before the change is confirmed; it uses the same

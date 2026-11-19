@@ -59,6 +59,7 @@ export const actionPolicies: Readonly<Record<PermissionActionKey, PolicyName>> =
   'user.import': 'usersImport',
   'user.update': 'usersUpdate',
   'user.deactivate': 'usersDeactivate',
+  'user.reset-password': 'usersResetPassword',
 };
 
 /** The built-in roles that hold the action. */

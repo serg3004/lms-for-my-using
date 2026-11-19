@@ -85,6 +85,13 @@ export class UsersController {
     return this.usersService.getObserverSessionImpact(userId, request.currentUser!);
   }
 
+  @Post(':id/reset-password')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersResetPassword)
+  resetUserPassword(@Param('id') userId: string, @Req() request: AuthenticatedRequest) {
+    return this.usersService.resetUserPassword(userId, request.currentUser!);
+  }
+
   @Patch(':id/status')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(...rolePolicies.usersDeactivate)

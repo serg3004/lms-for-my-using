@@ -101,6 +101,7 @@ Permissions owner: `apps/api/src/modules/auth/roles.ts` (`rolePolicies`). Role e
 | `usersDeactivate` | `admin`, `manager` |
 | `usersImport` | `admin`, `manager` |
 | `usersRead` | `admin`, `manager` |
+| `usersResetPassword` | `admin`, `manager` |
 | `usersUpdate` | `admin`, `manager` |
 
 ## Permission catalog (custom roles)
@@ -154,4 +155,5 @@ Owner: `packages/shared/src/permission-catalog.ts`; the route table is `apps/api
 | `user.import` | users | `department`, `organization` | yes | `user.read` | `usersImport` | `admin`, `manager` | 1 |
 | `user.update` | users | `department`, `organization` | yes | `user.read` | `usersUpdate` | `admin`, `manager` | 1 |
 | `user.deactivate` | users | `department`, `organization` | yes | `user.read` | `usersDeactivate` | `admin`, `manager` | 2 |
+| `user.reset-password` | users | `department`, `organization` | yes | `user.read` | `usersResetPassword` | `admin`, `manager` | 1 |
 | `checklist.access.settings` | checklists | `organization` | no | - | `checklistAccessSettingsWrite` | `admin` | 2 |

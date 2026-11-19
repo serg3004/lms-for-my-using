@@ -2,7 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
-import { hashPassword } from '../auth/public.js';
+import { AuthService, hashPassword } from '../auth/public.js';
 import { countOpenObserverSessions, notifyObserverDeactivated } from '../checklists/public.js';
 import { ManagerTeamScope } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
@@ -65,6 +65,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly auditLog: AuditLogService = new AuditLogService(prisma),
     private readonly teamScope: ManagerTeamScope = new ManagerTeamScope(),
+    private readonly authService?: AuthService,
   ) {
     this.registrars = new UserRegistrarAccess(prisma);
   }
@@ -449,6 +450,31 @@ export class UsersService {
     });
 
     return { ...updatedUser, orphanedCourses, observerSessions };
+  }
+
+  /** Administrator (or a holder of `user.reset-password`) issues a one-time reset link for a user in their scope. */
+  async resetUserPassword(userId: string, actor: TeamScopeActor) {
+    const organizationId = actor.organizationId;
+    const registrar = await this.registrars.resolve(actor);
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, organizationId, ...this.teamScope.user(actor), ...this.registrars.writeWhere(registrar, actor), deletedAt: null },
+      select: { id: true, organizationId: true, email: true, status: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.status !== 'active') throw new ConflictException('Password can be reset only for an active user');
+    if (!this.authService) throw new ConflictException('Password reset is not available');
+
+    const issued = await this.authService.issuePasswordResetFor(user);
+    await this.auditLog.record({
+      organizationId,
+      actorId: actor.id,
+      action: 'user.password_reset_issued',
+      targetType: 'user',
+      targetId: userId,
+      summary: `Issued a password reset for ${user.email}`,
+      metadata: { delivered: issued.delivered, ...(registrar ? { delegated: registrar.scope } : {}) },
+    });
+    return issued;
   }
 
   /** PR 346: number of unfinished sessions the user observes, shown before the deactivation is confirmed. */

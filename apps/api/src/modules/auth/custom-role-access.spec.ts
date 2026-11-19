@@ -83,6 +83,7 @@ describe('custom roles on checklist routes (PR 481)', () => {
     expect(await open('UsersController.importUsers')).toBe(false);
     expect(await open('UsersController.updateUser')).toBe(false);
     expect(await open('UsersController.updateUserStatus')).toBe(false);
+    expect(await open('UsersController.resetUserPassword')).toBe(false);
     expect(await open('MembershipsController.createMembership')).toBe(false);
   });
 

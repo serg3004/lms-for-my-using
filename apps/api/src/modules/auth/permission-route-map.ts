@@ -229,5 +229,6 @@ export const permissionRouteMap: Readonly<Record<string, readonly PermissionActi
   'UsersController.importUsers': ['user.import'],
   'UsersController.listUsers': ['user.read'],
   'UsersController.updateUser': ['user.update'],
+  'UsersController.resetUserPassword': ['user.reset-password'],
   'UsersController.updateUserStatus': ['user.deactivate'],
 };

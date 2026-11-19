@@ -64,7 +64,7 @@ describe('custom roles on user routes — database', () => {
   async function registrar(label: string, scope: PermissionScope, departmentId?: string) {
     const userId = await createUser(label, 'learner', departmentId);
     const role = await roles.createRole(organizationId, { name: `registrar-${randomUUID()}` });
-    await roles.replacePermissions(organizationId, role.id, role.version, withDependencies(['user.read', 'user.create', 'user.import', 'user.update', 'user.deactivate'], scope));
+    await roles.replacePermissions(organizationId, role.id, role.version, withDependencies(['user.read', 'user.create', 'user.import', 'user.update', 'user.deactivate', 'user.reset-password'], scope));
     await roles.assignRole(organizationId, userId, role.id);
     return { userId, headers: await headersFor(userId) };
   }
@@ -174,6 +174,18 @@ describe('custom roles on user routes — database', () => {
     expect((await patch(headers, `/users/${registrarId}`, { email: `r-${randomUUID()}@example.test`, firstName: 'Me', lastName: 'Self' })).status).toBe(404);
     expect((await patch(headers, `/users/${inside}`, { email: `inside-${randomUUID()}@example.test`, firstName: 'Changed', lastName: 'User', role: 'admin' })).status).toBe(403);
     expect((await prisma.membership.findMany({ where: { organizationId, userId: inside } })).map((membership) => membership.role)).toEqual(['learner']);
+
+    const reset = await post(headers, `/users/${inside}/reset-password`, {});
+    expect(reset.status).toBe(201);
+    const issued = await json<{ delivered: boolean; resetUrl?: string }>(reset);
+    expect(issued.delivered).toBe(false);
+    expect(issued.resetUrl).toContain('/password-reset?token=');
+    expect(await prisma.passwordResetToken.count({ where: { userId: inside, usedAt: null } })).toBe(1);
+    expect((await post(headers, `/users/${outside}/reset-password`, {})).status).toBe(404);
+    expect((await post(headers, `/users/${admin}/reset-password`, {})).status).toBe(404);
+    expect((await post(headers, `/users/${registrarId}/reset-password`, {})).status).toBe(404);
+    const resetAudit = await prisma.auditLog.findFirst({ where: { organizationId, action: 'user.password_reset_issued', targetId: inside } });
+    expect(resetAudit?.actorId).toBe(registrarId);
 
     expect((await patch(headers, `/users/${inside}/status`, { status: 'suspended' })).status).toBe(200);
     expect((await patch(headers, `/users/${outside}/status`, { status: 'suspended' })).status).toBe(404);

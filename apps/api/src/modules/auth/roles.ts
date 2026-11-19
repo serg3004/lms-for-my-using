@@ -20,6 +20,7 @@ export const rolePolicies = {
   usersImport: ['admin', 'manager'],
   usersUpdate: ['admin', 'manager'],
   usersDeactivate: ['admin', 'manager'],
+  usersResetPassword: ['admin', 'manager'],
   membershipsRead: ['admin', 'manager'],
   membershipsCreate: ['admin'],
   groupsRead: ['admin', 'manager'],

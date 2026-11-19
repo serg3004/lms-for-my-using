@@ -3,6 +3,7 @@ export type { AuthenticatedRequest } from './auth.guard.js';
 export type { CurrentUser } from './auth.schemas.js';
 export { OrganizationScope, organizationScopeMetadataKey } from './organization-scope.js';
 export { OrganizationScopeGuard } from './organization-scope.guard.js';
+export { AuthService } from './auth.service.js';
 export { hashPassword } from './passwords.js';
 export {
   AuthenticatedAccess,
