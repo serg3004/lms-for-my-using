@@ -253,7 +253,14 @@
       "deactivateTitle": "停用用户",
       "deactivateConfirm": "停用 {{name}}？该用户将无法访问系统。",
       "deactivateSessionsWarning": "该用户有未完成的观察场次：{{sessions}}。停用后请为这些场次指派其他观察员。",
-      "deactivateSessionsUnknown": "无法检查该用户未完成的观察场次。"
+      "deactivateSessionsUnknown": "无法检查该用户未完成的观察场次。",
+      "resetPassword": "重置密码",
+      "resetPasswordTitle": "重置密码",
+      "resetPasswordConfirm": "重置 {{name}} 的密码？系统将生成一次性链接用于设置新密码。",
+      "resetPasswordSent": "设置新密码的链接已发送到 {{email}}，一小时内有效。",
+      "resetPasswordLink": "未配置邮件，请把这个一次性链接交给 {{name}}（一小时内有效，仅显示一次）：{{url}}",
+      "resetPasswordFailed": "无法重置密码，请重试。",
+      "close": "关闭"
     },
     "lessons": {
       "eyebrow": "学习内容",

@@ -49,6 +49,11 @@ export function useAdminUserMutations(reload: () => Promise<void>) {
     }
   }
 
+  /** Issues a one-time reset link: emailed when mail works, otherwise returned once for the administrator to hand over. */
+  async function resetPassword(user: AdminUserSummary) {
+    return apiRequest<{ delivered: boolean; resetUrl?: string }>(`/users/${user.id}/reset-password`, { method: 'POST', body: JSON.stringify({}) });
+  }
+
   /** PR 346: unfinished observer sessions of the user; `null` when the check itself fails. */
   async function loadObserverSessions(user: AdminUserSummary): Promise<number | null> {
     try {
@@ -58,5 +63,5 @@ export function useAdminUserMutations(reload: () => Promise<void>) {
     }
   }
 
-  return { isSaving, saveUser, toggleStatus, loadObserverSessions };
+  return { isSaving, saveUser, toggleStatus, loadObserverSessions, resetPassword };
 }

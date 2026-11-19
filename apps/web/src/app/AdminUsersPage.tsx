@@ -4,8 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 import type { FormValidationErrors } from '../shared/formValidation.js';
 import { hasValidationErrors } from '../shared/formValidation.js';
+import { ApiClientError } from '../shared/apiClient.js';
 import { PageState, Pagination } from '../shared/ui.js';
 import { DeactivateUserDialog, type PendingDeactivation } from '../features/admin-users/DeactivateUserDialog.js';
+import { ResetPasswordDialogs, type PasswordResetResult } from '../features/admin-users/ResetPasswordDialogs.js';
 import { AdminUserDialog } from '../features/admin-users/AdminUserDialog.js';
 import { AdminUsersFilters } from '../features/admin-users/AdminUsersFilters.js';
 import { AdminUsersTable } from '../features/admin-users/AdminUsersTable.js';
@@ -27,6 +29,20 @@ export function AdminUsersPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<FormValidationErrors<UserFormField>>({});
   const [pendingDeactivation, setPendingDeactivation] = useState<PendingDeactivation | null>(null);
+
+  const [pendingReset, setPendingReset] = useState<AdminUserSummary | null>(null);
+  const [resetResult, setResetResult] = useState<PasswordResetResult | null>(null);
+
+  async function confirmReset() {
+    const user = pendingReset;
+    setPendingReset(null);
+    if (!user) return;
+    try {
+      setResetResult({ user, ...(await mutations.resetPassword(user)) });
+    } catch (error) {
+      setResetResult({ user, error: error instanceof ApiClientError ? error.message : t('admin.users.resetPasswordFailed', 'Could not reset the password. Try again.') });
+    }
+  }
 
   function open(mode: UserFormMode, user?: AdminUserSummary) {
     setForm(user ? toEditUserForm(user) : { ...EMPTY_USER_FORM });
@@ -74,7 +90,8 @@ export function AdminUsersPage() {
       action={<button className="admin-btn admin-btn--primary" onClick={() => open('create')} type="button">{t('admin.users.createButton', 'Create user')}</button>}
     />
     <AdminUsersFilters filters={usersQuery.filters} onChange={usersQuery.setFilters} />
-    <AdminUsersTable users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} />
+    <AdminUsersTable users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} onResetPassword={setPendingReset} />
+    <ResetPasswordDialogs pending={pendingReset} result={resetResult} onConfirm={() => void confirmReset()} onCancel={() => setPendingReset(null)} onClose={() => setResetResult(null)} />
     <DeactivateUserDialog pending={pendingDeactivation} onCancel={() => setPendingDeactivation(null)} onConfirm={() => void confirmDeactivation()} />
     <Pagination page={usersQuery.page} pageSize={loadedState.pageSize} total={loadedState.total} onPage={usersQuery.setPage} />
     <AdminUserDialog open={mode !== null} mode={mode ?? 'create'} form={form} errors={errors} message={message} isSaving={mutations.isSaving} onChange={setForm} onErrorsChange={setErrors} onSubmit={(event) => void submit(event)} onClose={close} />
