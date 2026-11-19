@@ -21,6 +21,8 @@ function build(options: { courses?: unknown[]; users?: unknown[] } = {}) {
     progress: { findMany: rec('progress', []) },
     assessmentAttempt: { findMany: rec('assessmentAttempt', []) },
     certificate: { findMany: rec('certificate', []) },
+    department: { findMany: rec('department', [{ id: 'd1', name: 'Цех' }]), findFirst: async () => ({ id: 'd1' }) },
+    group: { findMany: rec('group', [{ id: 'g1', name: 'Смена А', managers: [{ manager: { id: 'm1', firstName: 'Олег', lastName: 'Петров' } }] }]) },
   } as unknown as PrismaService;
   const scope = { user: async () => ({ id: 'team-scope-marker' }) };
   const service = new CourseAnalyticsService(prisma, undefined, scope as never);
@@ -50,6 +52,15 @@ describe('CourseAnalyticsService scope', () => {
     const { service, calls } = build();
     await service.getCourses(instructor, {} as never);
     expect(JSON.stringify(calls.find((call) => call.resource === 'course')?.args.where)).toContain('"instructorId":"i"');
+  });
+
+  it('offers department, group and manager filters to an admin, groups and managers to a manager, none to an instructor', async () => {
+    const asAdmin = await build().service.getCourses(admin, {} as never);
+    expect(asAdmin.filterOptions).toEqual({ departments: [{ id: 'd1', name: 'Цех' }], groups: [{ id: 'g1', name: 'Смена А' }], managers: [{ id: 'm1', name: 'Петров Олег' }] });
+    const asManager = await build().service.getCourses(manager, {} as never);
+    expect(asManager.filterOptions.departments).toEqual([]);
+    expect(asManager.filterOptions.groups).toHaveLength(1);
+    expect((await build().service.getCourses(instructor, {} as never)).filterOptions).toEqual({ departments: [], groups: [], managers: [] });
   });
 
   it('counts only attempts that count toward results', async () => {

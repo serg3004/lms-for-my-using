@@ -2278,3 +2278,17 @@ Read-only, available to `admin`, `manager` and `instructor`; the counting rules 
 - Time (`durationMinutes`) is calendar time from the first action to completion, not active reading time; the answer says
   `durationBasis: "calendar"`.
 - The read is capped at 5000 (course, user) rows; `truncated: true` says the cap was hit.
+
+The course list answer (`GET /reports/course-analytics`) also carries `filterOptions` (departments for an admin; groups and
+their managers inside the viewer's scope; none for an instructor) and `courseOptions` (the courses the viewer may read),
+so the screen can fill its filters without reading the department or group lists, which a manager or instructor may not.
+
+### Screens (PR 474)
+
+«Аналитика курсов» is one screen per role over this API: administrator `/admin/results/courses` (under «Результаты»),
+manager `/manager/reports/courses`, instructor `/instructor/courses/analytics`. Each has the course table, a course report
+at `…/course/:courseId` and an employee report at `…/user/:userId`; the employee report is also linked from the
+administrator's user list. Filters live in the address (`from`, `to`, `course`, `departmentId`, `groupId`, `managerId`).
+A reversed period is shown as a validation message and no request is sent; 403 and 404 answers are shown as «нет доступа» and
+«не найден». On a phone the secondary columns open under the row's «Подробнее» button.
+

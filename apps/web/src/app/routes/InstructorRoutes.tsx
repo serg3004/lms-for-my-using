@@ -9,6 +9,7 @@ const ChecklistScalesPage = lazy(() => import('../ChecklistScalesPage.js').then(
 
 const LongreadEditorPage = lazy(() => import('../LongreadEditorPage.js').then((m) => ({ default: m.LongreadEditorPage })));
 
+const InstructorCourseAnalyticsPage = lazy(() => import('../CourseAnalyticsPages.js').then((m) => ({ default: m.InstructorCourseAnalyticsPage })));
 const InstructorDashboardPage = lazy(() => import('../InstructorDashboardPage.js').then((m) => ({ default: m.InstructorDashboardPage })));
 const InstructorCoursesPage = lazy(() => import('../InstructorCoursesPage.js').then((m) => ({ default: m.InstructorCoursesPage })));
 const InstructorCourseFormPage = lazy(() => import('../InstructorCourseFormPage.js').then((m) => ({ default: m.InstructorCourseFormPage })));
@@ -37,6 +38,7 @@ export function InstructorRoutes() {
       <Route path="dashboard" element={<InstructorDashboardPage />} />
       <Route path="lessons/:id/longread" element={<LongreadEditorPage />} />
       <Route path="courses" element={<InstructorCoursesPage />} />
+      <Route path="courses/analytics/*" element={<InstructorCourseAnalyticsPage />} />
       <Route path="courses/new" element={<InstructorCourseFormPage mode="create" />} />
       <Route path="courses/:courseId/edit" element={<CourseEditRoute />} />
       <Route path="courses/:courseId/students" element={<CourseStudentsRoute />} />

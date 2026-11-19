@@ -279,14 +279,17 @@ export function AdminResultsCertificatesPage() {
         title={t('admin.results.title', 'Results')}
         subtitle={t('admin.results.subtitle', 'Review learner progress, assessment results, and issue certificates.')}
         action={
-          <button
-            className="admin-btn admin-btn--primary"
-            disabled={loadState.data.progressItems.length === 0}
-            onClick={() => downloadResultsCsv(loadState.data.courses, loadState.data.users, loadState.data.progressItems, t)}
-            type="button"
-          >
-            {t('admin.results.export', 'Export CSV')}
-          </button>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <a className="admin-btn admin-btn--secondary" href="/admin/results/courses">{t('courseAnalytics.title', 'Course analytics')}</a>
+            <button
+              className="admin-btn admin-btn--primary"
+              disabled={loadState.data.progressItems.length === 0}
+              onClick={() => downloadResultsCsv(loadState.data.courses, loadState.data.users, loadState.data.progressItems, t)}
+              type="button"
+            >
+              {t('admin.results.export', 'Export CSV')}
+            </button>
+          </div>
         }
       />
 

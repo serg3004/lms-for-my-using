@@ -71,9 +71,12 @@ export function InstructorCoursesPage() {
     <InstructorPageLayout firstName={user.firstName} lastName={user.lastName ?? undefined}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1 style={{ margin: 0 }}>{t('instructor.courses.title')}</h1>
-        <Link to="/instructor/courses/new" className="admin-btn admin-btn--primary">
-          {t('instructor.courses.createCourse')}
-        </Link>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <Link to="/instructor/courses/analytics" className="admin-btn admin-btn--secondary">{t('courseAnalytics.title')}</Link>
+          <Link to="/instructor/courses/new" className="admin-btn admin-btn--primary">
+            {t('instructor.courses.createCourse')}
+          </Link>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '18px' }}>

@@ -14,6 +14,7 @@ import { previewSessionImportPage } from '../fixtures/session-employee-import.js
 import { managementCriterion, openManagementEdit, openManagementList, openManagementReport, openManagementWizard } from '../fixtures/session-management.js';
 import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 import { installManagerReportMocks } from '../fixtures/checklist-manager-report.js';
+import { courseA, installCourseAnalyticsMocks, userA } from '../fixtures/course-analytics.js';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
@@ -365,6 +366,18 @@ test.describe('WCAG AA browser baseline', () => {
       await auditAccessibility(page, testInfo);
       await page.getByLabel('Руководитель', { exact: true }).selectOption('unassigned');
       await expect(section.getByText('—', { exact: true })).toBeVisible();
+      await auditAccessibility(page, testInfo);
+    });
+  }
+
+  for (const [screen, path] of [
+    ['list', '/admin/results/courses'], ['course', `/admin/results/courses/course/${courseA}`], ['employee', `/admin/results/courses/user/${userA}`],
+  ] as const) {
+    test(`course analytics ${screen} screen is accessible on a phone`, async ({ page }, testInfo) => {
+      await installCourseAnalyticsMocks(page, 'admin');
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto(path);
+      await expect(page.getByRole('table').first()).toBeVisible();
       await auditAccessibility(page, testInfo);
     });
   }
