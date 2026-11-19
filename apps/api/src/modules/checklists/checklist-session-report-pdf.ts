@@ -8,6 +8,7 @@ import { alignLine } from './checklist-pdf-align.js';
 import { PdfFontBook, type PdfFontWeight } from './checklist-report-pdf-fonts.js';
 import { PDF_LABELS, type PdfLabels, type PdfLocale } from './checklist-session-report-pdf-labels.js';
 import type { ChecklistSessionReport } from './checklist-session-report.js';
+import type { PdfSourceReport } from './checklist-session-report-pdf-export.js';
 
 export type ReportPdfPhoto = { criterionId: string; buffer: Buffer; mimeType: string } | { criterionId: string; buffer: null; mimeType: null };
 
@@ -52,12 +53,14 @@ const formatNumber = (value: number) => String(Math.round(value * 100) / 100);
  * screen. Status icons are drawn as vectors, not typed as glyphs, so they never depend on a font and
  * stay readable in black and white (a tick, a triangle, a cross, a dash and a dot differ by shape).
  */
-export function renderSessionReportPdf(report: ChecklistSessionReport, options: ReportPdfOptions): Promise<Buffer> {
+const reportTitle = (report: PdfSourceReport, labels: PdfLabels) => (report.sessionId === null ? labels.titleInstance : labels.title);
+
+export function renderSessionReportPdf(report: PdfSourceReport, options: ReportPdfOptions): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const labels = PDF_LABELS[options.locale];
     const document = new PDFDocument({
       size: 'A4', margin: PAGE.margin, bufferPages: true, compress: options.compress ?? true,
-      info: { Title: `${labels.title}: ${report.checklist.title}`, Author: 'LMS', Subject: labels.title },
+      info: { Title: `${reportTitle(report, labels)}: ${report.checklist.title}`, Author: 'LMS', Subject: reportTitle(report, labels) },
     });
     const chunks: Buffer[] = [];
     document.on('data', (chunk: Buffer) => chunks.push(chunk));
@@ -79,7 +82,7 @@ class ReportPainter {
 
   constructor(
     private readonly doc: InstanceType<typeof PDFDocument>,
-    private readonly report: ChecklistSessionReport,
+    private readonly report: PdfSourceReport,
     private readonly labels: PdfLabels,
     private readonly options: ReportPdfOptions,
   ) {
@@ -98,6 +101,7 @@ class ReportPainter {
       this.descriptions();
       this.omittedPhotosNote();
       this.feedback();
+      this.transfers();
     }
     this.footers();
   }
@@ -190,7 +194,7 @@ class ReportPainter {
   // ---- blocks ----
   private header() {
     const { header, checklist } = this.report;
-    this.text(this.labels.title.toUpperCase(), PAGE.margin, CONTENT_WIDTH, { weight: 700, size: 9, color: MUTED });
+    this.text(reportTitle(this.report, this.labels).toUpperCase(), PAGE.margin, CONTENT_WIDTH, { weight: 700, size: 9, color: MUTED });
     this.y += 14;
     const titleHeight = this.measure(checklist.title, CONTENT_WIDTH, { rich: true, weight: 700, size: 20 });
     this.text(checklist.title, PAGE.margin, CONTENT_WIDTH, { rich: true, weight: 700, size: 20 });
@@ -199,9 +203,9 @@ class ReportPainter {
     const rows: Array<[string, string]> = [
       [this.labels.learner, this.person(header.learner)],
       [this.labels.department, header.learner.department?.name ?? this.labels.empty],
-      [this.labels.observer, this.person(header.observer)],
+      ...(header.observer ? [[this.labels.observer, this.person(header.observer)] as [string, string]] : []),
       [this.labels.status, this.labels.statuses[header.status] ?? header.status],
-      [this.labels.scheduled, this.date(header.scheduledStart)],
+      ...(this.report.sessionId === null ? [] : [[this.labels.scheduled, this.date(header.scheduledStart)] as [string, string]]),
       [this.labels.started, this.date(header.startedAt)],
       [this.labels.completed, this.date(header.completedAt)],
       [this.labels.timezone, header.timezone],
@@ -441,6 +445,18 @@ class ReportPainter {
     if (!descriptions.length) return;
     this.section({ ru: 'Описание', en: 'Description', kk: 'Сипаттама', zh: '描述' }[this.options.locale]);
     for (const description of descriptions) { this.paragraph(description.title, { rich: true, weight: 700, size: 10 }); this.richParagraph(description.value); }
+  }
+
+  /** PR 478: who handed the check to whom, in order. */
+  private transfers() {
+    const transfers = 'transfers' in this.report ? this.report.transfers : [];
+    if (transfers.length === 0) return;
+    this.section(this.labels.transfers);
+    for (const transfer of transfers) {
+      const line = `${this.date(transfer.at)}: ${transfer.from ?? this.labels.someone} → ${transfer.to ?? this.labels.someone}`;
+      this.paragraph(line, { size: 10 });
+      if (transfer.note) this.paragraph(`${this.labels.transferNote}: ${transfer.note}`, { size: 9, color: MUTED });
+    }
   }
 
   private feedback() {

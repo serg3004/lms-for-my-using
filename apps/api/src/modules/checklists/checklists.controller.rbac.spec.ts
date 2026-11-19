@@ -375,4 +375,50 @@ describe('ChecklistsController — inline learner-ownership enforcement (RBAC)',
     });
   });
 
+  describe('report of a filled-in check (PR 478)', () => {
+    function reportController() {
+      const getInstanceReport = jest.fn(async () => ({ visible: true }));
+      const getInstanceReportPdf = jest.fn(async () => ({ filename: 'checklist-x.pdf', pdf: Buffer.from('%PDF-') }));
+      const getInstance = jest.fn(async () => ({ userId: learnerId }));
+      const assertReviewerCanAccess = jest.fn(async () => undefined);
+      const controller = makeController({
+        checklistsService: {
+          getInstanceReport: getInstanceReport as unknown as ChecklistsService['getInstanceReport'],
+          getInstanceReportPdf: getInstanceReportPdf as unknown as ChecklistsService['getInstanceReportPdf'],
+          getInstance: getInstance as unknown as ChecklistsService['getInstance'],
+        },
+        reviewAccess: { assertReviewerCanAccess: assertReviewerCanAccess as unknown as ChecklistReviewAccessService['assertReviewerCanAccess'] },
+      });
+      return { controller, getInstanceReport, getInstanceReportPdf, assertReviewerCanAccess };
+    }
+
+    it('lets the executor read it as a learner (points follow the sheet) and refuses another learner', async () => {
+      const { controller, getInstanceReport } = reportController();
+      await controller.getInstanceReport(instanceId, makeRequest(learnerId, ['learner']));
+      expect(getInstanceReport).toHaveBeenCalledWith(instanceId, expect.objectContaining({ id: learnerId, organizationId, privileged: false }));
+      await expect(controller.getInstanceReport(instanceId, makeRequest(otherLearnerId, ['learner']))).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(controller.downloadInstanceReportPdf(instanceId, makeRequest(otherLearnerId, ['learner']), {} as never)).rejects.toBeInstanceOf(ForbiddenException);
+      expect(getInstanceReport).toHaveBeenCalledTimes(1);
+    });
+
+    it('limits staff to their area and gives them the points, but does not limit an administrator', async () => {
+      const staff = reportController();
+      await staff.controller.getInstanceReport(instanceId, makeRequest(reviewerId, ['manager']));
+      expect(staff.assertReviewerCanAccess).toHaveBeenCalledWith(expect.objectContaining({ id: reviewerId }), instanceId);
+      expect(staff.getInstanceReport).toHaveBeenCalledWith(instanceId, expect.objectContaining({ privileged: true }));
+      const admin = reportController();
+      await admin.controller.getInstanceReport(instanceId, makeRequest(reviewerId, ['admin']));
+      expect(admin.assertReviewerCanAccess).toHaveBeenCalledTimes(1);
+    });
+
+    it('sends the PDF as an attachment that is never cached', async () => {
+      const { controller } = reportController();
+      const set = jest.fn();
+      const send = jest.fn();
+      await controller.downloadInstanceReportPdf(instanceId, makeRequest(learnerId, ['learner']), { set, send } as never);
+      expect(set).toHaveBeenCalledWith(expect.objectContaining({ 'Content-Type': 'application/pdf', 'Cache-Control': 'private, no-store', 'Content-Disposition': 'attachment; filename="checklist-x.pdf"' }));
+      expect(send).toHaveBeenCalledTimes(1);
+    });
+  });
+
 });

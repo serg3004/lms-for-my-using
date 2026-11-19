@@ -8,7 +8,7 @@ import type { TFunction } from 'i18next';
 
 import { useProtectedImage } from '../../shared/useProtectedImage.js';
 import { getChecklistItemPhotoBlob } from '../../shared/api/checklists.js';
-import type { ChecklistReportHighlight, ChecklistReportPerson, ChecklistSessionReport } from '../../shared/api/types.js';
+import type { ChecklistInstanceReport, ChecklistReportHighlight, ChecklistReportPerson, ChecklistSessionReport } from '../../shared/api/types.js';
 import { formatDate } from '../../shared/formatDate.js';
 import { formatParticipantName } from './domain.js';
 
@@ -19,7 +19,8 @@ import { formatParticipantName } from './domain.js';
  * row also carries a symbol and a text label. Colours are applied as inline values, not CSS classes.
  */
 
-type Report = ChecklistSessionReport;
+/** PR 478: the report of a self-filled check has no session and no observer, but is otherwise the same object. */
+type Report = ChecklistSessionReport | ChecklistInstanceReport;
 type ReportCriterion = Report['criteria'][number];
 
 const muted = { color: '#6b7280', fontSize: 13 } as const;
@@ -98,7 +99,7 @@ function ResultArc({ percentage, color }: { percentage: number | null; color: Ch
   );
 }
 
-function ReportHeader({ report, t }: { report: Report; t: TFunction }) {
+export function ReportHeader({ report, t }: { report: Report; t: TFunction }) {
   const { header } = report;
   return (
     <Card>
@@ -107,18 +108,22 @@ function ReportHeader({ report, t }: { report: Report; t: TFunction }) {
           <dt style={muted}>{t('admin.checklists.report.periodActual', 'Actual period')}</dt>
           <dd style={{ margin: '4px 0 0', fontWeight: 600 }}>{formatPeriod(header.startedAt, header.completedAt, header.timezone)}</dd>
         </div>
-        <div>
-          <dt style={muted}>{t('admin.checklists.report.periodPlanned', 'Planned period')}</dt>
-          <dd style={{ margin: '4px 0 0', fontWeight: 600 }}>{formatPeriod(header.scheduledStart, header.scheduledEnd, header.timezone)}</dd>
-        </div>
+        {report.sessionId !== null && (
+          <div>
+            <dt style={muted}>{t('admin.checklists.report.periodPlanned', 'Planned period')}</dt>
+            <dd style={{ margin: '4px 0 0', fontWeight: 600 }}>{formatPeriod(header.scheduledStart, header.scheduledEnd, header.timezone)}</dd>
+          </div>
+        )}
         <div>
           <dt style={muted}>{t('admin.checklists.sessions.columns.learner', 'Employee')}</dt>
           <dd style={{ margin: '4px 0 0', fontWeight: 600 }}>{personLine(header.learner)}</dd>
         </div>
-        <div>
-          <dt style={muted}>{t('admin.checklists.sessions.columns.observer', 'Observer')}</dt>
-          <dd style={{ margin: '4px 0 0', fontWeight: 600 }}>{personLine(header.observer)}</dd>
-        </div>
+        {header.observer && (
+          <div>
+            <dt style={muted}>{t('admin.checklists.sessions.columns.observer', 'Observer')}</dt>
+            <dd style={{ margin: '4px 0 0', fontWeight: 600 }}>{personLine(header.observer)}</dd>
+          </div>
+        )}
         <div>
           <dt style={muted}>{t('admin.checklists.report.timezone', 'Time zone')}</dt>
           <dd style={{ margin: '4px 0 0', fontWeight: 600 }}>{header.timezone}</dd>
@@ -128,7 +133,7 @@ function ReportHeader({ report, t }: { report: Report; t: TFunction }) {
   );
 }
 
-function ReportTotal({ summary, t }: { summary: NonNullable<Report['summary']>; t: TFunction }) {
+export function ReportTotal({ summary, t }: { summary: NonNullable<Report['summary']>; t: TFunction }) {
   if (summary.scoringMode === 'none') {
     return (
       <Card>
@@ -187,7 +192,7 @@ function ReportFeedback({ feedback, t }: { feedback: NonNullable<Report['feedbac
   );
 }
 
-function ReportGroups({ groups, showNumbering, t }: { showNumbering?: boolean; groups: Report['groups']; t: TFunction }) {
+export function ReportGroups({ groups, showNumbering, t }: { showNumbering?: boolean; groups: Report['groups']; t: TFunction }) {
   if (groups.length === 0) return null;
   return (
     <Card title={t('admin.checklists.report.groupsTitle', 'Results by criteria group')}>
@@ -265,7 +270,8 @@ export function ReportCriteria({ report, t }: { report: Report; t: TFunction }) 
   }
   if (report.criteria.length === 0) return <p>{t('admin.checklists.report.criteriaEmpty', 'This checklist has no criteria.')}</p>;
 
-  const withoutPoints = report.summary?.scoringMode === 'none';
+  // PR 478: a report without a summary is a check that is not completed yet: answers only, no points.
+  const withoutPoints = report.summary === null || report.summary.scoringMode === 'none';
   const groupTitles = new Map(report.groups.map((group) => [group.id, checklistLabel(group.title, group.number ? `${group.number}.` : '', report.checklist.showNumbering)]));
   let previousGroup: string | null | undefined;
   const rows: ReactNode[] = [];

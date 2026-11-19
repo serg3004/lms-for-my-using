@@ -19,6 +19,7 @@ import { installSheetAnalyticsMocks, sheetA } from '../fixtures/checklist-sheet-
 import { installCourseAnalyticsMocks, courseA, userA } from '../fixtures/course-analytics.js';
 import { GOOD_CODE, openPublicPage } from '../fixtures/checklist-public-page.js';
 import { freshTransferState, installTransferMocks, openTransferDialog } from '../fixtures/checklist-transfer.js';
+import { freshReportState, installReportMocks } from '../fixtures/checklist-instance-report.js';
 import { expect, test, type Page } from '@playwright/test';
 
 const widths = [320, 375, 768, 1024, 1280, 1440] as const;
@@ -30,6 +31,16 @@ for (const width of [390, 1280]) test(`hand-over of a check dialog is responsive
   await page.getByRole('dialog').getByLabel('Кому передать').selectOption('anna');
   await expectNoPageOverflow(page);
   await expectVisualMatch(page, `check-transfer-dialog-${width}`, false, { maxDiffPixels: 3000 });
+});
+
+for (const width of [390, 1280]) for (const status of ['in_progress', 'completed'] as const) test(`filled-in sheet report (${status}) is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installReportMocks(page, freshReportState(status));
+  await page.goto(status === 'completed' ? '/learn/checklists#completed' : '/learn/checklists');
+  await page.getByText('Приёмка товара').click();
+  await page.getByRole('button', { name: 'Предпросмотр', exact: true }).click();
+  await page.getByRole('button', { name: 'Скачать PDF' }).waitFor();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `check-report-${status}-${width}`, false, { maxDiffPixels: 3000 });
 });
 
 for (const width of [390, 1280]) for (const [screen, path] of [

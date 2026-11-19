@@ -12,6 +12,8 @@ export type PdfLabels = {
   finished: string; ofCriteria: (answered: number, total: number) => string;
   hidden: string; page: (page: number, pages: number) => string; empty: string;
   statuses: Record<string, string>; review: Record<string, string>;
+  /** PR 478: the report of a self-filled check. */
+  titleInstance: string; transfers: string; transferNote: string; someone: string;
 };
 
 export const PDF_LABELS: Record<PdfLocale, PdfLabels> = {
@@ -25,8 +27,9 @@ export const PDF_LABELS: Record<PdfLocale, PdfLabels> = {
     feedback: 'Обратная связь', strengths: 'Сильные стороны', developmentAreas: 'Зоны роста', nextSteps: 'Комментарий',
     finished: 'Завершено', ofCriteria: (a, t) => `${a} из ${t} критериев`,
     hidden: 'Результат пока скрыт от сотрудника.', page: (page, pages) => `Стр. ${page} из ${pages}`, empty: 'нет данных',
-    statuses: { scheduled: 'Запланирована', in_progress: 'В процессе', paused: 'На паузе', completed: 'Завершена', cancelled: 'Отменена' },
+    statuses: { scheduled: 'Запланирована', in_progress: 'В процессе', paused: 'На паузе', completed: 'Завершена', cancelled: 'Отменена', assigned: 'Назначена', submitted: 'Отправлена', expired: 'Просрочена' },
     review: { pending: 'На проверке', approved: 'Принято', rejected: 'Отклонено' },
+    titleInstance: 'Отчёт по проверке', transfers: 'История передач', transferNote: 'Заметка', someone: 'Сотрудник',
   },
   en: {
     title: 'Session report', checklist: 'Checklist', learner: 'Employee', observer: 'Observer', department: 'Department', status: 'Status',
@@ -38,8 +41,9 @@ export const PDF_LABELS: Record<PdfLocale, PdfLabels> = {
     feedback: 'Feedback', strengths: 'Strengths', developmentAreas: 'Development areas', nextSteps: 'Comment',
     finished: 'Completed', ofCriteria: (a, t) => `${a} of ${t} criteria`,
     hidden: 'The result is still hidden from the employee.', page: (page, pages) => `Page ${page} of ${pages}`, empty: 'no data',
-    statuses: { scheduled: 'Scheduled', in_progress: 'In progress', paused: 'Paused', completed: 'Completed', cancelled: 'Cancelled' },
+    statuses: { scheduled: 'Scheduled', in_progress: 'In progress', paused: 'Paused', completed: 'Completed', cancelled: 'Cancelled', assigned: 'Assigned', submitted: 'Submitted', expired: 'Expired' },
     review: { pending: 'Pending review', approved: 'Approved', rejected: 'Rejected' },
+    titleInstance: 'Check report', transfers: 'Hand-over history', transferNote: 'Note', someone: 'Employee',
   },
   kk: {
     title: 'Сессия есебі', checklist: 'Чек-лист', learner: 'Қызметкер', observer: 'Бақылаушы', department: 'Бөлім', status: 'Мәртебе',
@@ -51,8 +55,9 @@ export const PDF_LABELS: Record<PdfLocale, PdfLabels> = {
     feedback: 'Кері байланыс', strengths: 'Күшті жақтары', developmentAreas: 'Даму аймақтары', nextSteps: 'Пікір',
     finished: 'Аяқталды', ofCriteria: (a, t) => `${t} өлшемнің ${a}-і`,
     hidden: 'Нәтиже қызметкерден әзірге жасырылған.', page: (page, pages) => `${page} / ${pages} бет`, empty: 'дерек жоқ',
-    statuses: { scheduled: 'Жоспарланған', in_progress: 'Жүріп жатыр', paused: 'Тоқтатылған', completed: 'Аяқталған', cancelled: 'Бас тартылған' },
+    statuses: { scheduled: 'Жоспарланған', in_progress: 'Жүріп жатыр', paused: 'Тоқтатылған', completed: 'Аяқталған', cancelled: 'Бас тартылған', assigned: 'Тағайындалған', submitted: 'Жіберілген', expired: 'Мерзімі өткен' },
     review: { pending: 'Тексерілуде', approved: 'Қабылданды', rejected: 'Қабылданбады' },
+    titleInstance: 'Тексеру есебі', transfers: 'Тапсыру тарихы', transferNote: 'Ескертпе', someone: 'Қызметкер',
   },
   zh: {
     title: '会话报告', checklist: '清单', learner: '员工', observer: '观察员', department: '部门', status: '状态',
@@ -64,7 +69,8 @@ export const PDF_LABELS: Record<PdfLocale, PdfLabels> = {
     feedback: '反馈', strengths: '优势', developmentAreas: '改进方向', nextSteps: '备注',
     finished: '已完成', ofCriteria: (a, t) => `${t} 项标准中的 ${a} 项`,
     hidden: '结果暂未向员工公开。', page: (page, pages) => `第 ${page} 页，共 ${pages} 页`, empty: '无数据',
-    statuses: { scheduled: '已计划', in_progress: '进行中', paused: '已暂停', completed: '已完成', cancelled: '已取消' },
+    statuses: { scheduled: '已计划', in_progress: '进行中', paused: '已暂停', completed: '已完成', cancelled: '已取消', assigned: '已分配', submitted: '已提交', expired: '已过期' },
     review: { pending: '待审核', approved: '已通过', rejected: '已驳回' },
+    titleInstance: '检查报告', transfers: '交接记录', transferNote: '备注', someone: '员工',
   },
 };

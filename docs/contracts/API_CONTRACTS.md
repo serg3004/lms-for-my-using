@@ -915,7 +915,26 @@ hand-over moves that id; answers and photos stay on the instance.
   `[{ id, checklistId, title, status, transferredAt, toUser }]`, newest first, at most 100, each check once; the
   employee sees them as read-only "Handed over" rows, they cannot open or edit them.
 
-**Who may edit a checklist (PR 362в)** (same create/update routes): `allowEditByAll` (boolean; `false` by
+**PR 478: the filled-in sheet of a self-filled check as a report with a PDF; it is the session report object
+(PR 370) without a session and an observer, built by the same `buildSessionReport` and rendered by the same PDF
+renderer, so scores, percentages and colours have one set of rules.
+- `GET /checklist-instances/:id/report` answers the report: `sessionId: null`, `header.observer: null`, no
+  planned period, `location` off, `feedback` null and `transfers: [{ id, at, note, from, to }]` (the hand-over
+  history of PR 477, names only). Before the check is `completed` (assigned, in progress, submitted, expired) the
+  report holds the answers, comments and photos but `summary: null` and no points, percentage, verdict or colour
+  (the rule of PR 406а); after completion it is the session report. The executor sees points only when the sheet
+  shows them to the employee (`showPointsToLearner`, not for a sheet without points); `admin`, `manager`,
+  `instructor` and an observer see them in their area. A session instance is 400 (use the session report), a guest
+  pass is 400, another organization or a deleted check is 404.
+- `GET /checklist-instances/:id/report.pdf` is the same report as a PDF attachment (`Cache-Control: private,
+  no-store`, file `checklist-<id>.pdf`), in the interface language of the downloader, with the photo, size and time
+  limits of the session PDF (413 over 25 MB, 504 over 30 s). Audit action `checklist_instance.report_pdf_downloaded`
+  with locale, bytes and photo counts only.
+- The web "Preview" button opens the report with "Download PDF" and "Print" (`window.print`).
+Answering a criterion refreshes the list in the background (`useAsyncData().refresh`): the screen is not replaced
+by the loading state, so it neither blinks nor jumps to the start of the sheet.
+
+Who may edit a checklist (PR 362в)** (same create/update routes): `allowEditByAll` (boolean; `false` by
 default for a new checklist, `true` for every checklist that existed before). When it is `false`, only the
 creator and an `admin` may `PATCH`/`DELETE` the checklist, upload or remove its cover, and create, change or
 delete its criteria and groups; anyone else with `checklistsCreate` gets 403. Reading, assigning and

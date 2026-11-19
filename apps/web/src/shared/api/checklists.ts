@@ -1,5 +1,5 @@
 import type { FeedbackAnswerOption } from '@lms/shared/checklist-feedback';
-import type { ChecklistAnswerSet } from './types.js';
+import type { ChecklistAnswerSet, ChecklistInstanceReport } from './types.js';
 import { apiDownloadRequest, apiRequest, uploadChecklistItemPhotoWithProgress } from '../apiClient.js';
 
 import type {
@@ -489,3 +489,12 @@ export const saveChecklistAnswerSet = (id: string | null, value: { name: string;
 export const copyChecklistAnswerSet = (id: string, name: string) => apiRequest<ChecklistAnswerSet>(`/checklist-answer-sets/${encodeURIComponent(id)}/copy`, { method: 'POST', body: JSON.stringify({ name }) });
 export const archiveChecklistAnswerSet = (id: string) => apiRequest<ChecklistAnswerSet>(`/checklist-answer-sets/${encodeURIComponent(id)}/archive`, { method: 'POST' });
 export const deleteChecklistAnswerSet = (id: string) => apiRequest<void>(`/checklist-answer-sets/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
+/** PR 478: the filled-in sheet as a report (before completion without points) and its PDF. */
+export function getChecklistInstanceReport(instanceId: string) {
+  return apiRequest<ChecklistInstanceReport>(`/checklist-instances/${encodeURIComponent(instanceId)}/report`);
+}
+
+export function downloadChecklistInstanceReportPdf(instanceId: string) {
+  return apiDownloadRequest(`/checklist-instances/${encodeURIComponent(instanceId)}/report.pdf`, 60_000);
+}

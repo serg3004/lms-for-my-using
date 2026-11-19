@@ -196,4 +196,53 @@ describe('checklist instance hand-over — database', () => {
     await service.submitItemResult(instance.id, itemId, organizationId, executor.id, false, { checked: true });
     await expect(service.transferInstance(instance.id, actor(executor), { toUserId: colleague.id, expectedUpdatedAt: seen })).rejects.toBeInstanceOf(ConflictException);
   });
+  // PR 478: the filled-in sheet as a report, on real data.
+  describe('report of the filled-in check (PR 478)', () => {
+    const viewer = (person: CurrentUser, privileged: boolean) => ({ id: person.id, organizationId: person.organizationId, locale: 'ru', privileged });
+
+    it('holds the answers and the hand-over history but no points or result until the check is completed', async () => {
+      const instance = await assign();
+      await service.submitItemResult(instance.id, itemId, organizationId, executor.id, false, { checked: true, comment: 'Counted twice' });
+      await service.transferInstance(instance.id, actor(executor), { toUserId: colleague.id, note: 'Over to you' });
+
+      for (const who of [viewer(colleague, false), viewer(admin, true)]) {
+        const report = await service.getInstanceReport(instance.id, who);
+        if (!report.visible) throw new Error('unreachable');
+        expect(report.summary).toBeNull();
+        expect(report.criteria).toHaveLength(1);
+        expect(report.criteria[0]).toMatchObject({ comment: 'Counted twice' });
+        expect(report.criteria[0]?.score ?? null).toBeNull(); // null for staff, absent for the executor (points are removed from the wire)
+        expect(report.transfers).toHaveLength(1);
+        expect(report.transfers[0]).toMatchObject({ note: 'Over to you' });
+        expect(report.header).toMatchObject({ observer: null, status: 'in_progress' });
+      }
+    });
+
+    it('gives the result after completion, and a PDF that is audited without content', async () => {
+      const instance = await assign();
+      await service.submitItemResult(instance.id, itemId, organizationId, executor.id, false, { checked: true });
+      await prisma.checklistItemResult.updateMany({ where: { instanceId: instance.id, itemId }, data: { photoObjectKey: 'photos/proof.jpg' } });
+      await service.finishInstance(instance.id, organizationId, executor.id, false);
+
+      const report = await service.getInstanceReport(instance.id, viewer(admin, true));
+      if (!report.visible) throw new Error('unreachable');
+      expect(report.summary).toMatchObject({ scored: true });
+      expect(report.header.status).toBe('completed');
+      const { pdf, filename } = await service.getInstanceReportPdf(instance.id, viewer(admin, true));
+      expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
+      expect(filename).toBe(`checklist-${instance.id}.pdf`);
+      const audit = await prisma.auditLog.findFirstOrThrow({ where: { organizationId, action: 'checklist_instance.report_pdf_downloaded' } });
+      expect(audit).toMatchObject({ targetType: 'checklist_instance', targetId: instance.id });
+      expect(JSON.stringify(audit)).not.toMatch(/Private|Person|Hand-over sheet/);
+    });
+
+    it('does not cross organizations and refuses a learner who is not the executor', async () => {
+      const instance = await assign();
+      await expect(service.getInstanceReport(instance.id, viewer(foreignAdmin, true))).rejects.toBeInstanceOf(NotFoundException);
+      await expect(controller.getInstanceReport(instance.id, request(colleague))).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(controller.getInstanceReport(instance.id, request(executor))).resolves.toBeDefined();
+      await expect(controller.getInstanceReport(instance.id, request(admin))).resolves.toBeDefined();
+    });
+  });
+
 });

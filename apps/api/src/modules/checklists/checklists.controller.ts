@@ -728,6 +728,36 @@ export class ChecklistsController {
     }
     return this.checklistsService.listTransferHistory(instanceId, user.organizationId);
   }
+  // PR 478: the filled-in sheet of a self-filled check as a report; access as for the check itself.
+  private async instanceReportViewer(instanceId: string, user: NonNullable<AuthenticatedRequest['currentUser']>) {
+    const learnerOnly = isLearnerOnly(user.roles);
+    const isObserver = await this.reviewAccess.isAssignedObserver(user, instanceId);
+    if (learnerOnly && !isObserver) {
+      const instance = await this.checklistsService.getInstance(instanceId, user.organizationId);
+      if (instance.userId !== user.id) throw new ForbiddenException('You can only view your own checklist assignment');
+    }
+    if (!learnerOnly && !isObserver) await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
+    return { id: user.id, organizationId: user.organizationId, locale: user.locale, privileged: isObserver || !learnerOnly };
+  }
+  @Get('checklist-instances/:id/report')
+  @Roles(...rolePolicies.checklistInstancesRead)
+  async getInstanceReport(@Param('id', ParseUUIDPipe) instanceId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.getInstanceReport(instanceId, await this.instanceReportViewer(instanceId, user));
+  }
+  @Get('checklist-instances/:id/report.pdf')
+  @Roles(...rolePolicies.checklistInstancesRead)
+  async downloadInstanceReportPdf(@Param('id', ParseUUIDPipe) instanceId: string, @Req() request: AuthenticatedRequest, @Res() response: PdfDownloadResponse) {
+    const user = request.currentUser!;
+    const { filename, pdf } = await this.checklistsService.getInstanceReportPdf(instanceId, await this.instanceReportViewer(instanceId, user));
+    response.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': String(pdf.length),
+      'Cache-Control': 'private, no-store',
+    });
+    response.send(pdf);
+  }
   @Get('checklist-instances/:id')
   @Roles(...rolePolicies.checklistInstancesRead)
   async getInstance(@Param('id') instanceId: string, @Req() request: AuthenticatedRequest) {

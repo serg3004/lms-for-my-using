@@ -143,6 +143,20 @@ describe('useAsyncData', () => {
     expect(setState).toHaveBeenLastCalledWith({ status: 'loaded', data: { items: [2] } });
   });
 
+  it('refresh() reloads without the loading state and keeps the screen when it fails (PR 478)', async () => {
+    const { setState } = setup();
+    const load = vi.fn().mockResolvedValueOnce({ items: [1] }).mockRejectedValueOnce(new Error('boom'));
+
+    const { refresh } = useAsyncData(load, [], messages);
+    await refresh();
+    expect(setState).toHaveBeenCalledTimes(1);
+    expect(setState).toHaveBeenLastCalledWith({ status: 'loaded', data: { items: [1] } });
+    expect(setState).not.toHaveBeenCalledWith({ status: 'loading' });
+
+    await refresh();
+    expect(setState).toHaveBeenCalledTimes(1);
+  });
+
   it('mutate() patches already-loaded data without touching other statuses', () => {
     const { setState } = setup();
     const load = vi.fn().mockResolvedValue({ items: [1] });

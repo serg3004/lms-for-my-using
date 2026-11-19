@@ -3070,6 +3070,18 @@
     "finishConfirmReview": "答案将提交给讲师，之后无法更改。",
     "finishError": "无法完成检查。",
     "finishCancel": "取消",
+    "instanceReport": {
+      "open": "预览",
+      "back": "返回检查",
+      "title": "已填写表单预览",
+      "print": "打印",
+      "pdf": "下载 PDF",
+      "pdfLoading": "正在生成 PDF…",
+      "pdfError": "无法下载 PDF。",
+      "loadError": "无法加载报告。",
+      "notFinished": "检查尚未完成：得分和结果将在完成后显示。",
+      "empty": "暂无回答。"
+    },
     "transfer": {
       "open": "转交检查…",
       "title": "将检查转交给同事",
