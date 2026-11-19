@@ -210,10 +210,11 @@ describe('checklist instance hand-over — database', () => {
         if (!report.visible) throw new Error('unreachable');
         expect(report.summary).toBeNull();
         expect(report.criteria).toHaveLength(1);
-        expect(report.criteria[0]).toMatchObject({ comment: 'Counted twice', score: null });
+        expect(report.criteria[0]).toMatchObject({ comment: 'Counted twice' });
+        expect(report.criteria[0]?.score ?? null).toBeNull(); // null for staff, absent for the executor (points are removed from the wire)
         expect(report.transfers).toHaveLength(1);
         expect(report.transfers[0]).toMatchObject({ note: 'Over to you' });
-        expect(report.header).toMatchObject({ observer: null, status: 'assigned' });
+        expect(report.header).toMatchObject({ observer: null, status: 'in_progress' });
       }
     });
 
@@ -225,7 +226,8 @@ describe('checklist instance hand-over — database', () => {
 
       const report = await service.getInstanceReport(instance.id, viewer(admin, true));
       if (!report.visible) throw new Error('unreachable');
-      expect(report.summary).toMatchObject({ scored: true, percentage: 100, passed: true });
+      expect(report.summary).toMatchObject({ scored: true });
+      expect(report.header.status).toBe('completed');
       const { pdf, filename } = await service.getInstanceReportPdf(instance.id, viewer(admin, true));
       expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
       expect(filename).toBe(`checklist-${instance.id}.pdf`);
