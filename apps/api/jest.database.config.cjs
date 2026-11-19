@@ -17,6 +17,7 @@ module.exports = {
     '<rootDir>/src/integration/custom-roles-checklists.database.spec.ts',
     '<rootDir>/src/integration/custom-roles-learning.database.spec.ts',
     '<rootDir>/src/integration/custom-roles-users.database.spec.ts',
+    '<rootDir>/src/integration/custom-roles-api.database.spec.ts',
     '<rootDir>/src/integration/checklist-session-history.database.spec.ts',
     '<rootDir>/src/integration/checklist-session-delete-message.database.spec.ts',
     '<rootDir>/src/integration/checklist-session-notifications.database.spec.ts',

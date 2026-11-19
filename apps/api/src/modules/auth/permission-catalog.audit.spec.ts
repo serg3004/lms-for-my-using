@@ -26,6 +26,7 @@ const outsideCatalog: Record<string, string> = {
   'assignments/': 'assignments are a separate area; not part of the first version',
   'audit-log/': 'security: the audit journal stays with the administrator',
   'certificates/': 'certificates are a separate area; not part of the first version',
+  'custom-roles/': 'managing roles and granting them is never delegated (role.manage)',
   'department-managers/': 'organization structure stays with the administrator',
   'department-memberships/': 'organization structure stays with the administrator',
   'departments/': 'organization structure stays with the administrator',

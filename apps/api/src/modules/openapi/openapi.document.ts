@@ -82,6 +82,7 @@ export function getOpenApiDocument(): OpenApiDocument {
       { name: 'Auth', description: 'Authentication endpoints' },
       { name: 'Organizations', description: 'Organization and tenant bootstrap endpoints' },
       { name: 'Users', description: 'User management endpoints' },
+      { name: 'Custom roles', description: 'Custom roles, their assignments and effective permissions (administrator)' },
       { name: 'Groups', description: 'Group management endpoints' },
       { name: 'Memberships', description: 'User membership endpoints' },
       { name: 'Courses', description: 'Course endpoints' },
@@ -144,6 +145,33 @@ export function getOpenApiDocument(): OpenApiDocument {
       },
       '/users/bulk': {
         post: operation('Create users in bulk', ['Users'], true),
+      },
+      '/users/{id}/reset-password': {
+        post: operation('Issue a one-time password reset link for a user', ['Users'], true),
+      },
+      '/custom-roles': {
+        get: operation('List custom roles', ['Custom roles'], true),
+        post: operation('Create a custom role (optionally based on another)', ['Custom roles'], true),
+      },
+      '/custom-roles/{id}': {
+        get: operation('Get a custom role', ['Custom roles'], true),
+        patch: operation('Change a custom role (version check, 409 when stale)', ['Custom roles'], true),
+      },
+      '/custom-roles/{id}/archive': {
+        post: operation('Archive a custom role', ['Custom roles'], true),
+      },
+      '/custom-roles/{id}/assignments': {
+        get: operation('List users holding a custom role', ['Custom roles'], true),
+      },
+      '/custom-roles/{id}/assignments/{userId}': {
+        put: operation('Assign a custom role to a user', ['Custom roles'], true),
+        delete: operation('Revoke a custom role from a user', ['Custom roles'], true),
+      },
+      '/custom-roles/users/{userId}/permissions': {
+        get: operation('Effective permissions of a user', ['Custom roles'], true),
+      },
+      '/me/permissions': {
+        get: operation('Effective permissions of the signed-in user (display only)', ['Custom roles'], true),
       },
       '/users/import': {
         post: operation('Import users', ['Users'], true),

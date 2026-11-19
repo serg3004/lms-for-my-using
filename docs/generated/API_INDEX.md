@@ -184,6 +184,15 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/courses/{id}/instructors` | `Courses` | `bearer` |
 | `DELETE` | `/api/v1/courses/{id}/instructors/{instructorId}` | `Courses` | `bearer` |
 | `PATCH` | `/api/v1/courses/{id}/status` | `Courses` | `bearer` |
+| `GET` | `/api/v1/custom-roles` | `CustomRoles` | `bearer` |
+| `POST` | `/api/v1/custom-roles` | `CustomRoles` | `bearer` |
+| `GET` | `/api/v1/custom-roles/users/{userId}/permissions` | `CustomRoles` | `bearer` |
+| `GET` | `/api/v1/custom-roles/{id}` | `CustomRoles` | `bearer` |
+| `PATCH` | `/api/v1/custom-roles/{id}` | `CustomRoles` | `bearer` |
+| `POST` | `/api/v1/custom-roles/{id}/archive` | `CustomRoles` | `bearer` |
+| `GET` | `/api/v1/custom-roles/{id}/assignments` | `CustomRoles` | `bearer` |
+| `PUT` | `/api/v1/custom-roles/{id}/assignments/{userId}` | `CustomRoles` | `bearer` |
+| `DELETE` | `/api/v1/custom-roles/{id}/assignments/{userId}` | `CustomRoles` | `bearer` |
 | `POST` | `/api/v1/department-managers` | `DepartmentManagers` | `bearer` |
 | `POST` | `/api/v1/department-managers/{id}/close` | `DepartmentManagers` | `bearer` |
 | `POST` | `/api/v1/department-memberships` | `DepartmentMemberships` | `bearer` |
@@ -266,6 +275,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `DELETE` | `/api/v1/materials/{id}/file/multipart/{uploadId}` | `CourseMaterials` | `bearer` |
 | `POST` | `/api/v1/materials/{id}/file/multipart/{uploadId}/complete` | `CourseMaterials` | `bearer` |
 | `PATCH` | `/api/v1/materials/{id}/status` | `CourseMaterials` | `bearer` |
+| `GET` | `/api/v1/me/permissions` | `MePermissions` | `bearer` |
 | `GET` | `/api/v1/memberships` | `Memberships` | `bearer` |
 | `POST` | `/api/v1/memberships` | `Memberships` | `bearer` |
 | `GET` | `/api/v1/memberships/{id}` | `Memberships` | `bearer` |

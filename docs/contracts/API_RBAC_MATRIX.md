@@ -52,6 +52,8 @@ Services size a request by `currentUser.roles`, so `resolveCustomAccess` (`auth/
 
 Tests: `custom-role-access.spec.ts` runs the real guard over every role-protected route for every connected action and scope (a grant opens exactly the routes of its action, never a route of a not connected area, built-in roles unchanged) and checks `resolveCustomAccess` for all four areas; `custom-roles-checklists.database.spec.ts` and `custom-roles-learning.database.spec.ts` run over HTTP and PostgreSQL (switch on and off, revoke, archive, own and organization scope of courses, a longread author who does not edit courses, own, team and organization attempts, course reports).
 
+**Role management (PR 484).** `rolePolicies.customRolesManage` is `['admin']`: every `/custom-roles` route is open to the administrator only, and managing or granting roles is not a catalog action (`role.manage` is never delegable), so a custom role cannot open these routes. `GET /me/permissions` is open to any signed-in user and reveals only their own rights. Tests: `custom-roles-api.database.spec.ts` (HTTP and PostgreSQL: 403 for other roles, validation 422, 409 on a stale version, isolation of two organizations, assignment, revocation and archiving effective on the next request, audit with the grant difference).
+
 ## Role policy vs object scope
 
 A role policy answers whether a role may call a class of operation. It does **not** automatically authorize every object instance.
