@@ -2292,3 +2292,15 @@ administrator's user list. Filters live in the address (`from`, `to`, `course`, 
 A reversed period is shown as a validation message and no request is sent; 403 and 404 answers are shown as «нет доступа» and
 «не найден». On a phone the secondary columns open under the row's «Подробнее» button.
 
+### Export of course analytics (PR 475)
+
+`GET /reports/course-analytics/export?view=courses|course|user&format=csv|xlsx` (plus `courseId` for `course`, `userId`
+for `user`, and the same filters as the screen) returns `{ filename, sheetName, csv, rows, rowCount }`. Roles and scope are
+those of the reads: the export calls the same operations, so a file never holds what the viewer cannot see, and a course
+or user outside the scope answers 404 with no audit entry. Headers, result words (`Сдал` / `Не сдал`), sheet name and
+the note on how time is counted are in the language of the user (ru, en, kk, zh); time is `hh:mm`, dates are in the
+user's time zone. CSV cells starting with `=`, `+`, `-` or `@` get a leading apostrophe. The `xlsx` file is built in the
+browser from the same rows (grey header, frozen first row, widths; text stays text, no formulas). More than 5000 rows, or a
+read cut by the row limit, is a 400 asking to narrow the filters. Every export writes one `course_report.exported` audit
+entry with the kind, format, row count and filter ids, never names or results.
+

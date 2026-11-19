@@ -340,3 +340,6 @@ read permissions and team/course filters apply to the server-written version/cha
 ## Course and user analytics (PR 473)
 
 `GET /reports/course-analytics`, `GET /reports/course-analytics/courses/:courseId` and `GET /reports/course-analytics/users/:userId` are allowed for `admin`, `manager` and `instructor`. The object scope is narrower than the role: admin, the whole organization; manager, only users of their team (`OrganizationAccessScopeService`); instructor, only courses they teach (`CourseInstructor`). A course or user outside the scope answers 404 and discloses neither a title nor numbers.
+
+`GET /reports/course-analytics/export` (PR 475) has the same roles (`admin`, `manager`, `instructor`) and the same object scope as the three reads it repeats; it adds the `course_report.exported` audit entry and refuses an unreadable course or user with 404 before anything is exported.
+

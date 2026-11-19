@@ -39,6 +39,13 @@ export const userReportFixture: UserReport = {
   rows: [{ courseId: courseA, courseTitle: 'Охрана труда', userId: userA, ...rowDone }, { courseId: courseB, courseTitle: 'Складская приёмка', userId: userA, status: 'not_started', lessonsTotal: 3, lessonsCompleted: 0, lessonsPercent: 0, testPercent: null, testScore: null, attempts: 0, testResult: 'pending', startedAt: null, completedAt: null, durationMinutes: null, dueAt: null, overdue: false, certificate: null }],
 };
 
+const exportRows = {
+  courses: [['Курс', 'Назначено', 'Начали', 'Завершили'], ['Охрана труда', 10, 8, 6], ['Складская приёмка', 4, 1, 0]],
+  course: [['Сотрудник', 'Email', 'Статус', 'Тест (сдал / не сдал)'], ['=Иванова Анна', 'anna@example.invalid', 'Завершён', 'Сдал'], ['Петров Олег', 'oleg@example.invalid', 'В процессе', 'Не сдал']],
+  user: [['Курс', 'Статус', 'Тест (сдал / не сдал)'], ['Охрана труда', 'Завершён', 'Сдал'], ['Складская приёмка', 'Не начат', 'Тест не проходил']],
+} as const;
+const exportSheet = { courses: 'Сводка по курсам', course: 'По курсу', user: 'По пользователю' } as const;
+
 export async function installCourseAnalyticsMocks(page: Page, role: 'admin' | 'manager' | 'instructor') {
   const requests: URL[] = [];
   await page.route('**/api/v1/**', (route) => {
@@ -47,6 +54,13 @@ export async function installCourseAnalyticsMocks(page: Page, role: 'admin' | 'm
     if (path === '/auth/me') return route.fulfill({ json: { id: 'ffffffff-ffff-4fff-8fff-ffffffffffff', organizationId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee', firstName: 'Course', lastName: 'Viewer', email: 'viewer@example.invalid', roles: [role], locale: 'ru', timezone: 'UTC', status: 'active' } });
     if (path.endsWith('/theme')) return route.fulfill({ json: { themeSettings: {} } });
     if (path === '/notifications/unread-count') return route.fulfill({ json: { count: 0 } });
+    if (path === '/reports/course-analytics/export') {
+      requests.push(url);
+      const view = (url.searchParams.get('view') ?? 'courses') as keyof typeof exportRows;
+      const rows = exportRows[view];
+      const csv = `\uFEFF${rows.map((row) => row.map((cell) => `"${String(cell).startsWith('=') ? `'${cell}` : cell}"`).join(',')).join('\r\n')}\r\n`;
+      return route.fulfill({ json: { filename: `course-analytics-${view}-2026-11-19.csv`, sheetName: exportSheet[view], csv, rows, rowCount: rows.length - 1 } });
+    }
     if (path === '/reports/course-analytics') { requests.push(url); return route.fulfill({ json: listFixture }); }
     const course = /^\/reports\/course-analytics\/courses\/([^/]+)$/.exec(path);
     if (course) {

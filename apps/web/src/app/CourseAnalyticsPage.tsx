@@ -1,12 +1,14 @@
-import { useMemo, useRef, type ComponentType, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
 import type { TFunction } from 'i18next';
 
 import {
   getCourseAnalytics,
+  exportCourseAnalytics,
   getCourseReport,
   getUserReport,
+  type CourseAnalyticsExportView,
   type CourseAnalyticsList,
   type CourseAnalyticsQuery,
   type CourseAnalyticsUserRow,
@@ -16,6 +18,7 @@ import {
   type UserReport,
 } from '../shared/api/courseAnalytics.js';
 import { ApiClientError } from '../shared/apiClient.js';
+import { downloadCsvFile, downloadXlsxFile } from '../shared/downloadCsv.js';
 import { formatNullableDate } from '../shared/formatDate.js';
 import { Card, DataTable, PageState, StatCard, StatsGrid, type Column } from '../shared/ui.js';
 import type { AsyncDataState } from '../shared/asyncData.js';
@@ -86,14 +89,44 @@ function useFilters() {
 
 const labelStyle = { display: 'grid', gap: 6, fontWeight: 600 } as const;
 
-function Header({ title, subtitle, back }: { title: string; subtitle?: string; back?: ReactNode }) {
+function Header({ title, subtitle, back, actions }: { title: string; subtitle?: string; back?: ReactNode; actions?: ReactNode }) {
   const { t } = useTranslation();
-  return <header style={{ marginBottom: 20 }}>
-    {back}
-    <div style={{ color: 'var(--color-primary)', fontSize: 12, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', margin: '8px 0' }}>{t('courseAnalytics.eyebrow')}</div>
-    <h1 style={{ margin: 0, fontSize: 'clamp(26px,4vw,34px)' }}>{title}</h1>
-    {subtitle ? <p style={{ margin: '8px 0 0', color: 'var(--color-text-muted)' }}>{subtitle}</p> : null}
+  return <header style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+    <div style={{ minWidth: 0 }}>
+      {back}
+      <div style={{ color: 'var(--color-primary)', fontSize: 12, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', margin: '8px 0' }}>{t('courseAnalytics.eyebrow')}</div>
+      <h1 style={{ margin: 0, fontSize: 'clamp(26px,4vw,34px)' }}>{title}</h1>
+      {subtitle ? <p style={{ margin: '8px 0 0', color: 'var(--color-text-muted)' }}>{subtitle}</p> : null}
+    </div>
+    {actions}
   </header>;
+}
+
+/** PR 475: "Download Excel / CSV" of the current view: the server returns the audited rows, the file is built here. */
+function ExportButtons({ view, ids, query, disabled }: { view: CourseAnalyticsExportView; ids: { courseId?: string; userId?: string }; query: CourseAnalyticsQuery; disabled: boolean }) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function run(format: 'csv' | 'xlsx') {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await exportCourseAnalytics(view, ids, query, format);
+      if (format === 'csv') downloadCsvFile(result.filename, result.csv);
+      else await downloadXlsxFile(result.filename, result.rows, result.sheetName, { styled: true });
+    } catch (failure) {
+      setError(failure instanceof ApiClientError && failure.status === 400 ? t('courseAnalytics.exportTooLarge') : t('courseAnalytics.exportError'));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return <div style={{ display: 'grid', gap: 8, justifyItems: 'end' }}>
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <button className="ds-button ds-button--primary ds-button--md" disabled={disabled || busy} onClick={() => { void run('xlsx'); }} type="button">{busy ? t('courseAnalytics.exporting') : t('courseAnalytics.exportXlsx')}</button>
+      <button className="ds-button ds-button--secondary ds-button--md" disabled={disabled || busy} onClick={() => { void run('csv'); }} type="button">{t('courseAnalytics.exportCsv')}</button>
+    </div>
+    {error ? <span role="alert" style={{ color: 'var(--color-danger, #c0392b)', fontSize: 13 }}>{error}</span> : null}
+  </div>;
 }
 
 function Notes({ truncated }: { truncated: boolean }) {
@@ -203,7 +236,7 @@ function CoursesView({ Layout, basePath }: { Layout: CourseAnalyticsLayout; base
       { key: 'overdue', label: t('courseAnalytics.overdue'), priority: 'secondary', align: 'end', render: (row) => row.overdue },
     ];
     return <>
-      <Header title={t('courseAnalytics.title')} subtitle={t('courseAnalytics.subtitle')} />
+      <Header title={t('courseAnalytics.title')} subtitle={t('courseAnalytics.subtitle')} actions={<ExportButtons view="courses" ids={{}} query={filters.query} disabled={data.courses.length === 0} />} />
       {filterBar}
       <StatsGrid>
         <StatCard label={t('courseAnalytics.assigned')} value={totals.assigned} />
@@ -249,7 +282,7 @@ function CourseView({ Layout, basePath }: { Layout: CourseAnalyticsLayout; baseP
     ];
     const summary = data.summary;
     return <>
-      <Header title={data.course.title} subtitle={t('courseAnalytics.courseReport')} back={<BackLink to={`${basePath}${search}`} label={t('courseAnalytics.backToCourses')} />} />
+      <Header title={data.course.title} subtitle={t('courseAnalytics.courseReport')} back={<BackLink to={`${basePath}${search}`} label={t('courseAnalytics.backToCourses')} />} actions={<ExportButtons view="course" ids={{ courseId }} query={filters.query} disabled={data.rows.length === 0} />} />
       {summary ? <StatsGrid>
         <StatCard label={t('courseAnalytics.assigned')} value={summary.assigned} />
         <StatCard label={t('courseAnalytics.completed')} value={`${summary.completed} (${summary.completedPercent}%)`} />
@@ -291,7 +324,7 @@ function UserView({ Layout, basePath }: { Layout: CourseAnalyticsLayout; basePat
       { key: 'certificate', label: t('courseAnalytics.certificate'), priority: 'tertiary', render: (row) => certificateLabel(t, row) },
     ];
     return <>
-      <Header title={personName(data.user)} subtitle={t('courseAnalytics.userReport')} back={<BackLink to={`${basePath}${search}`} label={t('courseAnalytics.backToCourses')} />} />
+      <Header title={personName(data.user)} subtitle={t('courseAnalytics.userReport')} back={<BackLink to={`${basePath}${search}`} label={t('courseAnalytics.backToCourses')} />} actions={<ExportButtons view="user" ids={{ userId }} query={filters.query} disabled={data.rows.length === 0} />} />
       <StatsGrid>
         <StatCard label={t('courseAnalytics.assignedCourses')} value={data.summary.assigned} />
         <StatCard label={t('courseAnalytics.completed')} value={data.summary.completed} />

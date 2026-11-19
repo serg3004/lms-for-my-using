@@ -3,7 +3,7 @@ import { Controller, Get, Param, ParseUUIDPipe, Query, Req, UseGuards } from '@n
 import { AuthGuard, Roles, RolesGuard, rolePolicies } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
 import { CourseAnalyticsService } from './course-analytics.service.js';
-import { courseAnalyticsQuerySchema, reportsSummaryQuerySchema } from './reports.schemas.js';
+import { courseAnalyticsExportQuerySchema, courseAnalyticsQuerySchema, reportsSummaryQuerySchema } from './reports.schemas.js';
 import { ReportsService } from './reports.service.js';
 
 @Controller('reports')
@@ -34,6 +34,13 @@ export class ReportsController {
   @Roles('admin', 'manager', 'instructor')
   getCourseAnalytics(@Query() query: unknown, @Req() request: AuthenticatedRequest) {
     return this.courseAnalytics.getCourses(request.currentUser!, courseAnalyticsQuerySchema.parse(query));
+  }
+
+  /** PR 475: the current view as CSV/XLSX rows, with the same scope and filters as the reads. */
+  @Get('course-analytics/export')
+  @Roles('admin', 'manager', 'instructor')
+  exportCourseAnalytics(@Query() query: unknown, @Req() request: AuthenticatedRequest) {
+    return this.courseAnalytics.export(request.currentUser!, courseAnalyticsExportQuerySchema.parse(query));
   }
 
   @Get('course-analytics/courses/:courseId')
