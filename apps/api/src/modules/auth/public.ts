@@ -14,3 +14,4 @@ export {
 } from './roles.js';
 export type { UserRole } from './roles.js';
 export { RolesGuard } from './roles.guard.js';
+export { builtInActionsForRole, builtInRolesFor } from './permission-catalog.adapter.js';

@@ -35,6 +35,26 @@ enum UserRole {
   admin
 }
 
+/// PR 480: an archived custom role stays on record but grants nothing.
+enum CustomRoleState {
+  active
+  archived
+}
+
+/// PR 480: where a custom-role grant applies; the catalog (packages/shared permission-catalog) says which scopes each action allows.
+enum PermissionScope {
+  own
+  assigned
+  team
+  department
+  organization
+}
+
+enum CustomRoleAssignmentState {
+  active
+  revoked
+}
+
 enum GroupStatus {
   active
   archived
@@ -332,6 +352,8 @@ model Organization {
   plan                       OrganizationPlan            @default(trial)
   /// PR 381: longread lessons are off until an administrator enables them for the organization.
   longreadEnabled            Boolean                     @default(false) @map("longread_enabled")
+  /// PR 480: custom roles grant rights only while an administrator has switched them on for the organization; off by default.
+  customRolesEnabled         Boolean                     @default(false) @map("custom_roles_enabled")
   createdAt                  DateTime                    @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                  DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                  DateTime?                   @map("deleted_at") @db.Timestamptz
@@ -388,6 +410,9 @@ model Organization {
   longreadChapters           LongreadChapter[]
   longreadRevisions          LongreadRevision[]
   longreadBlocks             LongreadBlock[]
+  customRoles                CustomRole[]
+  customRolePermissions      CustomRolePermission[]
+  userCustomRoleAssignments  UserCustomRoleAssignment[]
 
   @@map("organizations")
 }
@@ -426,6 +451,9 @@ model User {
   organization               Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   memberships                Membership[]               @relation("UserMemberships")
   assignedMemberships        Membership[]               @relation("MembershipAssignedBy")
+  createdCustomRoles         CustomRole[]               @relation("CustomRoleCreatedBy")
+  customRoleAssignments      UserCustomRoleAssignment[] @relation("UserCustomRoleAssignee")
+  assignedCustomRoles        UserCustomRoleAssignment[] @relation("UserCustomRoleAssignedBy")
   assignments                Assignment[]
   progress                   Progress[]
   assessmentAttempts         AssessmentAttempt[]
@@ -1059,40 +1087,39 @@ model AssessmentAnswerOption {
 }
 
 model AssessmentAttempt {
-  id             String                    @id @default(uuid()) @db.Uuid
-  organizationId String                    @map("organization_id") @db.Uuid
-  assessmentId   String                    @map("assessment_id") @db.Uuid
-  userId         String                    @map("user_id") @db.Uuid
-  status         AssessmentAttemptStatus   @default(completed)
-  score          Int                       @default(0)
-  maxScore       Int                       @default(0) @map("max_score")
-  percentage     Int                       @default(0)
-  passed         Boolean                   @default(false)
-  startedAt      DateTime                  @default(now()) @map("started_at") @db.Timestamptz
-  completedAt    DateTime?                 @map("completed_at") @db.Timestamptz
-  createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime                  @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt      DateTime?                 @map("deleted_at") @db.Timestamptz
-  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  assessment     Assessment                @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  user           User                      @relation(fields: [userId], references: [id], onDelete: Restrict)
-  answers        AssessmentAttemptAnswer[]
-  certificates   Certificate[]
-  countsTowardResults Boolean @default(true) @map("counts_toward_results")
-  longreadRevisionId String? @map("longread_revision_id") @db.Uuid
-  longreadRevision LongreadRevision? @relation(fields: [longreadRevisionId], references: [id], onDelete: Restrict)
-  longreadBlockId String? @map("longread_block_id") @db.Uuid
-  longreadSequence Int? @map("longread_sequence")
-  longreadRequestId String? @map("longread_request_id") @db.Uuid
-  longreadRequestHash String? @map("longread_request_hash")
-  longreadResultKey String? @map("longread_result_key")
-  longreadMetadata Json? @map("longread_metadata")
+  id                  String                    @id @default(uuid()) @db.Uuid
+  organizationId      String                    @map("organization_id") @db.Uuid
+  assessmentId        String                    @map("assessment_id") @db.Uuid
+  userId              String                    @map("user_id") @db.Uuid
+  status              AssessmentAttemptStatus   @default(completed)
+  score               Int                       @default(0)
+  maxScore            Int                       @default(0) @map("max_score")
+  percentage          Int                       @default(0)
+  passed              Boolean                   @default(false)
+  startedAt           DateTime                  @default(now()) @map("started_at") @db.Timestamptz
+  completedAt         DateTime?                 @map("completed_at") @db.Timestamptz
+  createdAt           DateTime                  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime                  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt           DateTime?                 @map("deleted_at") @db.Timestamptz
+  organization        Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assessment          Assessment                @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  user                User                      @relation(fields: [userId], references: [id], onDelete: Restrict)
+  answers             AssessmentAttemptAnswer[]
+  certificates        Certificate[]
+  countsTowardResults Boolean                   @default(true) @map("counts_toward_results")
+  longreadRevisionId  String?                   @map("longread_revision_id") @db.Uuid
+  longreadRevision    LongreadRevision?         @relation(fields: [longreadRevisionId], references: [id], onDelete: Restrict)
+  longreadBlockId     String?                   @map("longread_block_id") @db.Uuid
+  longreadSequence    Int?                      @map("longread_sequence")
+  longreadRequestId   String?                   @map("longread_request_id") @db.Uuid
+  longreadRequestHash String?                   @map("longread_request_hash")
+  longreadResultKey   String?                   @map("longread_result_key")
+  longreadMetadata    Json?                     @map("longread_metadata")
 
   @@unique([userId, longreadRevisionId, longreadBlockId, longreadSequence], map: "assessment_lr_sequence_key")
   @@unique([userId, longreadRevisionId, longreadBlockId, longreadRequestId], map: "assessment_lr_request_key")
   @@unique([userId, longreadRevisionId, assessmentId, longreadResultKey], map: "assessment_lr_result_key")
   @@index([longreadRevisionId, userId, longreadBlockId], map: "assessment_attempts_lr_scope_idx")
-
   @@index([organizationId, status])
   @@index([assessmentId, status])
   @@index([userId])
@@ -1107,7 +1134,7 @@ model AssessmentAttemptAnswer {
   questionId        String                  @map("question_id") @db.Uuid
   selectedOptionId  String?                 @map("selected_option_id") @db.Uuid
   /// Immutable question key and feedback policy for longread result history.
-  frozenQuestion    Json? @map("frozen_question")
+  frozenQuestion    Json?                   @map("frozen_question")
   /// Exactly one response format is enforced by the selection CHECK in migration SQL.
   response          Json?
   selectedOptionIds Json?                   @map("selected_option_ids")
@@ -1770,6 +1797,71 @@ model Membership {
   @@map("memberships")
 }
 
+/// PR 480: an organization's own role: a named set of catalog grants (union only, no denials).
+model CustomRole {
+  id             String                     @id @default(uuid()) @db.Uuid
+  organizationId String                     @map("organization_id") @db.Uuid
+  name           String
+  description    String?
+  state          CustomRoleState            @default(active)
+  /// Bumped on every change; an edit made against an older version is refused with 409.
+  version        Int                        @default(1)
+  createdBy      String?                    @map("created_by") @db.Uuid
+  createdAt      DateTime                   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
+  archivedAt     DateTime?                  @map("archived_at") @db.Timestamptz
+  organization   Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdByUser  User?                      @relation("CustomRoleCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  permissions    CustomRolePermission[]
+  assignments    UserCustomRoleAssignment[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, name])
+  @@index([organizationId, state])
+  @@index([createdBy])
+  @@map("custom_roles")
+}
+
+/// PR 480: one grant of a role: a catalog action at a scope. The same action may be granted at several scopes.
+model CustomRolePermission {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  roleId         String          @map("role_id") @db.Uuid
+  /// A key of the permission catalog; the API refuses anything else.
+  action         String
+  scope          PermissionScope
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role           CustomRole      @relation(fields: [roleId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@unique([roleId, action, scope])
+  @@index([organizationId, action])
+  @@index([roleId])
+  @@map("custom_role_permissions")
+}
+
+/// PR 480: a role given to a user. Role, user and organization must be the same organization (composite keys).
+model UserCustomRoleAssignment {
+  id             String                    @id @default(uuid()) @db.Uuid
+  organizationId String                    @map("organization_id") @db.Uuid
+  userId         String                    @map("user_id") @db.Uuid
+  roleId         String                    @map("role_id") @db.Uuid
+  state          CustomRoleAssignmentState @default(active)
+  assignedBy     String?                   @map("assigned_by") @db.Uuid
+  createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime                  @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User                      @relation("UserCustomRoleAssignee", fields: [userId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  role           CustomRole                @relation(fields: [roleId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  assignedByUser User?                     @relation("UserCustomRoleAssignedBy", fields: [assignedBy], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, userId, roleId])
+  @@index([organizationId, roleId])
+  @@index([userId])
+  @@index([assignedBy])
+  @@map("user_custom_role_assignments")
+}
+
 model Session {
   id               String       @id @default(uuid()) @db.Uuid
   jti              String       @unique
@@ -1921,22 +2013,22 @@ model LongreadBlock {
 
 /// PR 382: immutable snapshot of a longread draft (settings, chapters, blocks) taken when it is published.
 model LongreadRevision {
-  id                  String            @id @default(uuid()) @db.Uuid
-  organizationId      String            @map("organization_id") @db.Uuid
-  documentId          String            @map("document_id") @db.Uuid
+  id                  String              @id @default(uuid()) @db.Uuid
+  organizationId      String              @map("organization_id") @db.Uuid
+  documentId          String              @map("document_id") @db.Uuid
   number              Int
-  schemaVersion       Int               @default(1) @map("schema_version")
+  schemaVersion       Int                 @default(1) @map("schema_version")
   /// Draft revision this version was cut from; lets "publish" detect that nothing changed.
-  sourceDraftRevision Int               @map("source_draft_revision")
+  sourceDraftRevision Int                 @map("source_draft_revision")
   settings            Json
   /// `[{ title, anchor, hidden, blocks: [{ type, schemaVersion, content }] }]`, never updated after insert.
   snapshot            Json
-  createdById         String?           @map("created_by_id") @db.Uuid
-  createdAt           DateTime          @default(now()) @map("created_at") @db.Timestamptz
-  organization        Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  document            LongreadDocument  @relation("RevisionDocument", fields: [documentId], references: [id], onDelete: Cascade)
-  createdBy           User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)
-  publishedFor        LongreadDocument? @relation("PublishedRevision")
+  createdById         String?             @map("created_by_id") @db.Uuid
+  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  organization        Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  document            LongreadDocument    @relation("RevisionDocument", fields: [documentId], references: [id], onDelete: Cascade)
+  createdBy           User?               @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  publishedFor        LongreadDocument?   @relation("PublishedRevision")
   progress            Progress[]
   assessmentAttempts  AssessmentAttempt[]
 

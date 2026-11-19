@@ -27,6 +27,7 @@ module.exports = {
     '/src/integration/checklist-session-reminders\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-admin-api\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-observer-create\\.database\\.spec\\.ts$',
+    '/src/integration/custom-roles\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-history\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-delete-message\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-notifications\\.database\\.spec\\.ts$',

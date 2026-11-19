@@ -60,5 +60,6 @@ export type ThemeSettingsInput = z.infer<typeof themeSettingsSchema>;
 /** PR 381: organization feature switches; each one defaults to off and is changed only by an admin. */
 export const organizationFeaturesSchema = z.object({
   longreadEnabled: z.boolean(),
+  customRolesEnabled: z.boolean().optional(),
 }).strict();
 export type OrganizationFeaturesInput = z.infer<typeof organizationFeaturesSchema>;

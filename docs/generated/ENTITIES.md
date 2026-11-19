@@ -38,6 +38,8 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `Course` |
 | `CourseInstructor` |
 | `CourseMaterial` |
+| `CustomRole` |
+| `CustomRolePermission` |
 | `Department` |
 | `DepartmentManager` |
 | `DepartmentMembership` |
@@ -67,6 +69,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `ReportingLine` |
 | `Session` |
 | `User` |
+| `UserCustomRoleAssignment` |
 
 ## Enums
 
@@ -102,6 +105,8 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `CourseMaterialKind` | `file`, `link` |
 | `CourseMaterialStatus` | `active`, `archived` |
 | `CourseStatus` | `draft`, `published`, `archived` |
+| `CustomRoleAssignmentState` | `active`, `revoked` |
+| `CustomRoleState` | `active`, `archived` |
 | `DepartmentManagerMode` | `LOCAL`, `INHERIT`, `MERGE` |
 | `DepartmentManagerType` | `DIRECT`, `FUNCTIONAL` |
 | `DepartmentStatus` | `active`, `archived` |
@@ -112,6 +117,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `OrgExternalReferenceEntityType` | `DEPARTMENT`, `DEPARTMENT_TYPE`, `POSITION` |
 | `OrganizationPlan` | `trial`, `standard`, `enterprise` |
 | `OrganizationStatus` | `active`, `suspended`, `archived` |
+| `PermissionScope` | `own`, `assigned`, `team`, `department`, `organization` |
 | `PositionCourseRequirement` | `REQUIRED`, `OPTIONAL` |
 | `PositionStatus` | `active`, `archived` |
 | `ProgressStatus` | `not_started`, `in_progress`, `completed` |
