@@ -3977,6 +3977,11 @@
     "assignedCourses": "已分配课程",
     "certificates": "证书",
     "certificate": "证书",
-    "userLink": "课程报告"
+    "userLink": "课程报告",
+    "exportXlsx": "下载 Excel",
+    "exportCsv": "下载 CSV",
+    "exporting": "正在准备文件…",
+    "exportError": "无法导出文件，请重试。",
+    "exportTooLarge": "行数过多，无法导出（上限 5000）。请缩小时间范围或选择课程。"
   }
 }

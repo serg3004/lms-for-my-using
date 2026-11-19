@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { AuditLogService } from '../audit-log/public.js';
+import { MAX_EXPORT_ROWS, serializeReportCsv } from '../checklists/public.js';
 import { getSubtreeDepartmentIds } from '../departments/public.js';
 import { ManagerTeamScope } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
@@ -13,7 +15,8 @@ import {
   type CourseAnalyticsInput,
   type CourseUserRow,
 } from './course-analytics.js';
-import type { CourseAnalyticsQuery } from './reports.schemas.js';
+import { coursesExportRows, courseExportRows, exportLocale, SHEET_NAMES, userExportRows } from './course-analytics-export.js';
+import type { CourseAnalyticsExportQuery, CourseAnalyticsQuery } from './reports.schemas.js';
 
 /** Upper bound of (course, user) rows read in one request; the answer says `truncated` when it was hit. */
 export const COURSE_ANALYTICS_MAX_ROWS = 5000;
@@ -30,6 +33,7 @@ export class CourseAnalyticsService {
     private readonly prisma: PrismaService,
     private readonly teamScope: ManagerTeamScope = new ManagerTeamScope(),
     private readonly orgAccessScope: OrganizationAccessScopeService = new OrganizationAccessScopeService(prisma, teamScope),
+    private readonly auditLog: AuditLogService = new AuditLogService(prisma),
   ) {}
 
   async getCourses(actor: TeamScopeActor, query: CourseAnalyticsQuery) {
@@ -44,6 +48,46 @@ export class CourseAnalyticsService {
       filterOptions: await this.filterOptions(actor),
       courseOptions: data.courses.map((course) => ({ id: course.id, title: course.title })),
     };
+  }
+
+  /**
+   * PR 475: the current view of the screen as a table for CSV/XLSX. The rows come from the same read operations as the
+   * screen (same scope, same filters), so the file never holds what the viewer cannot see; a read cut by the row
+   * limit is refused instead of exported half-empty.
+   */
+  async export(actor: TeamScopeActor & { locale?: string | null; timezone?: string | null }, query: CourseAnalyticsExportQuery) {
+    const locale = exportLocale(actor.locale);
+    const filters = { ...query };
+    let table: Array<Array<string | number>>;
+    let rowCount: number;
+    let truncated: boolean;
+    if (query.view === 'courses') {
+      const data = await this.getCourses(actor, filters);
+      table = coursesExportRows(data.courses, locale);
+      rowCount = data.courses.length;
+      truncated = data.truncated;
+    } else if (query.view === 'course') {
+      const data = await this.getCourseReport(actor, query.courseId!, filters);
+      table = courseExportRows(data.rows, locale, actor.timezone);
+      rowCount = data.rows.length;
+      truncated = data.truncated;
+    } else {
+      const data = await this.getUserReport(actor, query.userId!, filters);
+      table = userExportRows(data.rows, locale, actor.timezone);
+      rowCount = data.rows.length;
+      truncated = data.truncated;
+    }
+    if (truncated || rowCount > MAX_EXPORT_ROWS) throw new BadRequestException(`The export is limited to ${MAX_EXPORT_ROWS} rows. Narrow the filters.`);
+    await this.auditLog.record({
+      organizationId: actor.organizationId,
+      actorId: actor.id,
+      action: 'course_report.exported',
+      targetType: 'course_report',
+      summary: `Exported ${rowCount} rows of the course analytics (${query.view}) to ${query.format.toUpperCase()}`,
+      // Counts and filter ids only: no names or results go into the log.
+      metadata: { kind: `course_analytics_${query.view}`, format: query.format, rowCount, filters: { from: query.from, to: query.to, departmentId: query.departmentId, groupId: query.groupId, managerId: query.managerId, courseIds: query.courseIds, courseId: query.courseId, userId: query.userId } },
+    });
+    return { filename: `course-analytics-${query.view}-${new Date().toISOString().slice(0, 10)}.csv`, sheetName: SHEET_NAMES[query.view][locale], csv: serializeReportCsv(table), rows: table, rowCount };
   }
 
   /** Choices for the department, group and manager filters; an instructor has none (they see only their courses). */

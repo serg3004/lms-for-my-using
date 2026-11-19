@@ -100,3 +100,16 @@ export function getCourseReport(courseId: string, query: CourseAnalyticsQuery) {
 export function getUserReport(userId: string, query: CourseAnalyticsQuery) {
   return apiRequest<UserReport>(`/reports/course-analytics/users/${encodeURIComponent(userId)}${queryString(query)}`);
 }
+
+export type CourseAnalyticsExportView = 'courses' | 'course' | 'user';
+export type CourseAnalyticsExport = { filename: string; sheetName: string; csv: string; rows: (string | number)[][]; rowCount: number };
+
+/** PR 475: the rows of the current view (same filters, scope and audit as the screen); the file itself is built in the browser. */
+export function exportCourseAnalytics(view: CourseAnalyticsExportView, ids: { courseId?: string; userId?: string }, query: CourseAnalyticsQuery, format: 'csv' | 'xlsx') {
+  const params = new URLSearchParams(queryString(query).replace(/^\?/, ''));
+  params.set('view', view);
+  params.set('format', format);
+  if (ids.courseId) params.set('courseId', ids.courseId);
+  if (ids.userId) params.set('userId', ids.userId);
+  return apiRequest<CourseAnalyticsExport>(`/reports/course-analytics/export?${params.toString()}`);
+}

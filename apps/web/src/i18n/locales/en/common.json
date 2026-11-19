@@ -3977,6 +3977,11 @@
     "assignedCourses": "Courses assigned",
     "certificates": "Certificates",
     "certificate": "Certificate",
-    "userLink": "Course report"
+    "userLink": "Course report",
+    "exportXlsx": "Download Excel",
+    "exportCsv": "Download CSV",
+    "exporting": "Preparing the file…",
+    "exportError": "Could not export the file. Try again.",
+    "exportTooLarge": "Too many rows to export (the limit is 5000). Narrow the period or pick a course."
   }
 }

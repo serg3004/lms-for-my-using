@@ -1,3 +1,6 @@
+import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+
 import { expect, test } from '@playwright/test';
 
 import { courseA, forbiddenUser, installCourseAnalyticsMocks, missingCourse, userA } from '../fixtures/course-analytics.js';
@@ -59,4 +62,42 @@ test('the course table is reachable by keyboard', async ({ page }) => {
   await link.focus();
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(new RegExp(`/course/${courseA}`));
+});
+
+test('each view downloads Excel and CSV with the filters of the screen, a grey header and formulas kept as text', async ({ page }) => {
+  const requests = await installCourseAnalyticsMocks(page, 'admin');
+  const { Workbook } = createRequire(new URL('../../web/package.json', import.meta.url))('exceljs');
+  const open = async (download: { path(): Promise<string | null> }, sheetName: string) => {
+    const workbook = new Workbook();
+    await workbook.xlsx.readFile((await download.path())!);
+    return workbook.getWorksheet(sheetName);
+  };
+
+  await page.goto('/admin/results/courses?from=2026-11-01');
+  const [summary] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Скачать Excel' }).click()]);
+  expect(summary.suggestedFilename()).toBe('course-analytics-courses-2026-11-19.xlsx');
+  const sheet = await open(summary, 'Сводка по курсам');
+  expect(sheet.getCell('A2').value).toBe('Охрана труда');
+  expect(sheet.getCell('B2').value).toBe(10);
+  expect(sheet.getCell('A1').fill.fgColor.argb).toBe('FFE0E0E0');
+  expect(sheet.views[0].state).toBe('frozen');
+  const exportRequest = requests.filter((url) => url.pathname.endsWith('/export')).at(-1)!;
+  expect(exportRequest.searchParams.get('view')).toBe('courses');
+  expect(exportRequest.searchParams.get('format')).toBe('xlsx');
+  expect(exportRequest.searchParams.get('from')).not.toBeNull();
+
+  const [csv] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Скачать CSV' }).click()]);
+  expect(await readFile((await csv.path())!, 'utf8')).toContain('"Охрана труда"');
+
+  await page.goto(`/admin/results/courses/course/${courseA}`);
+  const [report] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Скачать Excel' }).click()]);
+  const courseSheet = await open(report, 'По курсу');
+  expect(courseSheet.getCell('A2').value).toBe('=Иванова Анна');
+  expect(courseSheet.getCell('D3').value).toBe('Не сдал');
+  expect(requests.filter((url) => url.pathname.endsWith('/export')).at(-1)?.searchParams.get('courseId')).toBe(courseA);
+
+  await page.goto(`/admin/results/courses/user/${userA}`);
+  const [person] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Скачать Excel' }).click()]);
+  expect((await open(person, 'По пользователю')).getCell('C3').value).toBe('Тест не проходил');
+  expect(requests.filter((url) => url.pathname.endsWith('/export')).at(-1)?.searchParams.get('userId')).toBe(userA);
 });
