@@ -6,7 +6,7 @@ import { ConflictException, UnprocessableEntityException } from '@nestjs/common'
 
 import { PrismaService } from '../database/prisma.service.js';
 import { CustomRolesService } from '../modules/custom-roles/custom-roles.service.js';
-import { hasPermission } from '../modules/custom-roles/effective-permissions.js';
+import { hasPermission } from '../modules/auth/effective-permissions.js';
 import { assertSafeTestDatabase } from './database-test-safety.js';
 
 // PR 480 acceptance criteria against real Postgres: storage, uniqueness, organization isolation,

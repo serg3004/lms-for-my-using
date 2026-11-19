@@ -4,7 +4,8 @@ import {
   type PermissionScope,
 } from '@lms/shared/permission-catalog';
 
-import { builtInActionsForRole, builtInRolesFor, type UserRole } from '../auth/public.js';
+import { builtInActionsForRole, builtInRolesFor } from './permission-catalog.adapter.js';
+import type { UserRole } from './roles.js';
 
 export type CustomRoleGrant = { action: string; scope: PermissionScope };
 export type CustomRoleInput = { state: 'active' | 'archived'; permissions: readonly CustomRoleGrant[] };

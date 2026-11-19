@@ -15,3 +15,11 @@ export {
 export type { UserRole } from './roles.js';
 export { RolesGuard } from './roles.guard.js';
 export { builtInActionsForRole, builtInRolesFor } from './permission-catalog.adapter.js';
+export {
+  computeEffectivePermissions,
+  diffBuiltInDecisions,
+  hasPermission,
+  scopeFilter,
+} from './effective-permissions.js';
+export type { EffectivePermissions, ScopeFilter } from './effective-permissions.js';
+export { EffectivePermissionsLookup, loadEffectivePermissions } from './effective-permissions.loader.js';

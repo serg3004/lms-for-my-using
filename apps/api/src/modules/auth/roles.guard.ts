@@ -1,9 +1,11 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable, Optional, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import type { AuthenticatedRequest } from './auth.guard.js';
 import { CurrentUser } from './auth.schemas.js';
+import { customRoleOpensRoute, enforcedActionsForRoute, syntheticRolesFor } from './custom-role-access.js';
+import { EffectivePermissionsLookup } from './effective-permissions.loader.js';
 import { rolesMetadataKey, UserRole } from './roles.js';
 
 const membershipRolesCacheKey: unique symbol = Symbol('membershipRoles');
@@ -17,6 +19,7 @@ export class RolesGuard implements CanActivate {
   constructor(
     private readonly prisma: PrismaService,
     private readonly reflector: Reflector,
+    @Optional() private readonly effectivePermissions?: EffectivePermissionsLookup,
   ) {}
 
   async canActivate(context: ExecutionContext) {
@@ -40,8 +43,23 @@ export class RolesGuard implements CanActivate {
     const allowedRoleSet = new Set(allowedRoles);
     const hasAllowedRole = membershipRoles.some((role) => allowedRoleSet.has(role));
 
-    if (!hasAllowedRole) {
+    const actions = this.effectivePermissions
+      ? enforcedActionsForRoute(context.getClass().name, context.getHandler().name)
+      : [];
+    if (actions.length === 0) {
+      if (!hasAllowedRole) throw new ForbiddenException('Insufficient role');
+      return true;
+    }
+
+    // PR 481: union with the active custom roles of the organization (empty while the organization switch is off).
+    const permissions = await this.effectivePermissions!.forUser(currentUser);
+    const opensRoute = customRoleOpensRoute(permissions, actions);
+    if (!hasAllowedRole && !opensRoute) {
       throw new ForbiddenException('Insufficient role');
+    }
+    if (opensRoute) {
+      const extra = syntheticRolesFor(permissions, actions).filter((role) => !currentUser.roles.includes(role));
+      if (extra.length > 0) request.currentUser = { ...currentUser, roles: [...currentUser.roles, ...extra] };
     }
 
     return true;

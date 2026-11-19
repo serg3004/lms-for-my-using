@@ -3,8 +3,7 @@ import type { Prisma } from '@prisma/client';
 import { validatePermissionGrants, type PermissionScope } from '@lms/shared/permission-catalog';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import type { UserRole } from '../auth/public.js';
-import { computeEffectivePermissions, type EffectivePermissions } from './effective-permissions.js';
+import { loadEffectivePermissions, type EffectivePermissions } from '../auth/public.js';
 
 const roleSelect = {
   id: true,
@@ -110,20 +109,8 @@ export class CustomRolesService {
   }
 
   /** Effective rights of one user: built-in roles plus active custom roles, custom roles only while the switch is on. */
-  async effectivePermissions(organizationId: string, userId: string): Promise<EffectivePermissions> {
-    const [organization, memberships, assignments] = await Promise.all([
-      this.prisma.organization.findFirst({ where: { id: organizationId }, select: { customRolesEnabled: true } }),
-      this.prisma.membership.findMany({ where: { organizationId, userId }, select: { role: true } }),
-      this.prisma.userCustomRoleAssignment.findMany({
-        where: { organizationId, userId, state: 'active', role: { organizationId, state: 'active' } },
-        select: { role: { select: { state: true, permissions: { select: { action: true, scope: true } } } } },
-      }),
-    ]);
-    return computeEffectivePermissions({
-      builtInRoles: memberships.map((membership) => membership.role as UserRole),
-      customRoles: assignments.map((assignment) => assignment.role),
-      customRolesEnabled: organization?.customRolesEnabled ?? false,
-    });
+  effectivePermissions(organizationId: string, userId: string): Promise<EffectivePermissions> {
+    return loadEffectivePermissions(this.prisma, organizationId, userId);
   }
 }
 

@@ -1,7 +1,7 @@
 import { PERMISSION_ACTIONS } from '@lms/shared/permission-catalog';
 
 import { USER_ROLES } from '@lms/shared/constants/roles';
-import { builtInActionsForRole } from '../auth/permission-catalog.adapter.js';
+import { builtInActionsForRole } from './permission-catalog.adapter.js';
 import {
   computeEffectivePermissions,
   diffBuiltInDecisions,
