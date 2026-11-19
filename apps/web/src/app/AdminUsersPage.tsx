@@ -93,7 +93,7 @@ export function AdminUsersPage() {
     />
     <AdminUsersFilters filters={usersQuery.filters} onChange={usersQuery.setFilters} />
     <AdminUsersTable users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} onResetPassword={setPendingReset} onRights={setRightsUser} />
-    <UserRightsDialog user={rightsUser} onClose={() => setRightsUser(null)} />
+    {rightsUser ? <UserRightsDialog user={rightsUser} onClose={() => setRightsUser(null)} /> : null}
     <ResetPasswordDialogs pending={pendingReset} result={resetResult} onConfirm={() => void confirmReset()} onCancel={() => setPendingReset(null)} onClose={() => setResetResult(null)} />
     <DeactivateUserDialog pending={pendingDeactivation} onCancel={() => setPendingDeactivation(null)} onConfirm={() => void confirmDeactivation()} />
     <Pagination page={usersQuery.page} pageSize={loadedState.pageSize} total={loadedState.total} onPage={usersQuery.setPage} />
