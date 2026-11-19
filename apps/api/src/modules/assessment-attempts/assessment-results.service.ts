@@ -5,6 +5,8 @@ import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import type { UserRole } from '../auth/public.js';
+import { isOrgWideGrant } from '../auth/public.js';
+import { attemptScope } from './attempt-scope.js';
 import { ManagerTeamScope, isManagerTeamScoped, normalizeActor } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
 
@@ -159,7 +161,7 @@ export class AssessmentResultsService {
         assessmentId,
         organizationId,
         countsTowardResults: true,
-        ...this.teamScope.userOwnedResource(actor),
+        ...attemptScope(this.teamScope, actor),
         deletedAt: null,
       },
       orderBy: { completedAt: 'desc' },
@@ -179,7 +181,7 @@ export class AssessmentResultsService {
         id: attemptId,
         organizationId,
         countsTowardResults: true,
-        ...this.teamScope.userOwnedResource(actor),
+        ...attemptScope(this.teamScope, actor),
         deletedAt: null,
       },
       select: attemptResultDetailSelect,
@@ -203,7 +205,7 @@ export class AssessmentResultsService {
         assessmentId,
         organizationId,
         countsTowardResults: true,
-        ...this.teamScope.userOwnedResource(actor),
+        ...attemptScope(this.teamScope, actor),
         deletedAt: null,
       },
       select: {
@@ -272,7 +274,7 @@ export class AssessmentResultsService {
     if (attemptUserId === currentUserId) {
       return;
     }
-    if (isManagerTeamScoped(actor)) return;
+    if (isManagerTeamScoped(actor) || isOrgWideGrant(actor)) return;
 
     const membership = await this.prisma.membership.findFirst({
       where: {

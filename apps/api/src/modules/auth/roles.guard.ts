@@ -4,7 +4,8 @@ import { Reflector } from '@nestjs/core';
 import { PrismaService } from '../../database/prisma.service.js';
 import type { AuthenticatedRequest } from './auth.guard.js';
 import { CurrentUser } from './auth.schemas.js';
-import { customRoleOpensRoute, enforcedActionsForRoute, syntheticRolesFor } from './custom-role-access.js';
+import { markRequestScope } from './access-scope.js';
+import { enforcedActionsForRoute, resolveCustomAccess } from './custom-role-access.js';
 import { EffectivePermissionsLookup } from './effective-permissions.loader.js';
 import { rolesMetadataKey, UserRole } from './roles.js';
 
@@ -51,15 +52,17 @@ export class RolesGuard implements CanActivate {
       return true;
     }
 
-    // PR 481: union with the active custom roles of the organization (empty while the organization switch is off).
+    // PR 481/482: union with the active custom roles of the organization (empty while the organization switch is off).
     const permissions = await this.effectivePermissions!.forUser(currentUser);
-    const opensRoute = customRoleOpensRoute(permissions, actions);
-    if (!hasAllowedRole && !opensRoute) {
+    const access = resolveCustomAccess({ permissions, actions, userRoles: currentUser.roles, viaBuiltIn: hasAllowedRole });
+    if (!hasAllowedRole && !access.opens) {
       throw new ForbiddenException('Insufficient role');
     }
-    if (opensRoute) {
-      const extra = syntheticRolesFor(permissions, actions).filter((role) => !currentUser.roles.includes(role));
-      if (extra.length > 0) request.currentUser = { ...currentUser, roles: [...currentUser.roles, ...extra] };
+    if (access.opens) {
+      const widened = access.roles.length !== currentUser.roles.length || access.roles.some((role, index) => role !== currentUser.roles[index]);
+      const user = widened ? { ...currentUser, roles: access.roles } : currentUser;
+      if (widened) request.currentUser = user;
+      if (access.orgWide || access.ownOnly) markRequestScope(user, { orgWide: access.orgWide, ownOnly: access.ownOnly });
     }
 
     return true;

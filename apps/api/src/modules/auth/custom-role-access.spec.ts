@@ -5,7 +5,8 @@ import { Reflector } from '@nestjs/core';
 import { PERMISSION_ACTIONS, type PermissionScope } from '@lms/shared/permission-catalog';
 
 import { controllerEntries } from '../../testing/api-policy-controllers.js';
-import { customRoleEnforcedAction, syntheticRolesFor } from './custom-role-access.js';
+import { isOrgWideGrant, isOwnOnlyGrant } from './access-scope.js';
+import { customRoleEnforcedAction, resolveCustomAccess } from './custom-role-access.js';
 import { computeEffectivePermissions } from './effective-permissions.js';
 import { EffectivePermissionsLookup } from './effective-permissions.loader.js';
 import { permissionRouteMap } from './permission-route-map.js';
@@ -69,7 +70,7 @@ describe('custom roles on checklist routes (PR 481)', () => {
     }
   });
 
-  it('never opens a route of an area that is not connected yet', async () => {
+  it('never opens a route of an area that is not connected yet (user management)', async () => {
     const guard = guardWith(['learner'], [{
       state: 'active',
       permissions: PERMISSION_ACTIONS.filter((item) => item.delegable).map((item) => ({ action: item.key, scope: item.scopes[item.scopes.length - 1] as PermissionScope })),
@@ -80,6 +81,7 @@ describe('custom roles on checklist routes (PR 481)', () => {
       if (builtIn || connected) continue;
       expect({ route: route.id, open: await allowed(guard, route, ['learner']) }).toEqual({ route: route.id, open: false });
     }
+    expect(PERMISSION_ACTIONS.filter((item) => !customRoleEnforcedAction(item.key)).map((item) => item.key)).toEqual(['user.read', 'user.create']);
   });
 
   it('gives nothing with the switch off, with an archived role, and without the lookup', async () => {
@@ -100,7 +102,7 @@ describe('custom roles on checklist routes (PR 481)', () => {
     }
   });
 
-  it('carries a grant into the request as the built-in role of that scope, never admin', async () => {
+  it('carries a checklist grant into the request as the built-in role of that scope, never admin', async () => {
     const analytics = routes.find((candidate) => candidate.id === 'ChecklistsController.getManagerAnalytics')!;
     for (const [scope, expected] of [['team', 'manager'], ['organization', 'instructor']] as const) {
       const guard = guardWith(['learner'], [{ state: 'active', permissions: [{ action: 'checklist.analytics.read', scope }] }]);
@@ -108,14 +110,72 @@ describe('custom roles on checklist routes (PR 481)', () => {
       await guard.canActivate(context);
       expect(request.currentUser.roles).toEqual(['learner', expected]);
     }
-    for (const item of enforcedActions) {
+  });
+
+  it('marks the request when a custom grant widens it to the organization or narrows it to own rows', async () => {
+    const attempts = routes.find((candidate) => candidate.id === 'AssessmentAttemptsController.listAttempts')!;
+    const wide = guardWith(['learner'], [{ state: 'active', permissions: [{ action: 'assessment.attempt.read', scope: 'organization' }] }]);
+    const wideCall = contextFor(attempts, user(['learner']));
+    await wide.canActivate(wideCall.context);
+    expect(isOrgWideGrant(wideCall.request.currentUser)).toBe(true);
+
+    const own = guardWith(['learner'], [{ state: 'active', permissions: [{ action: 'assessment.attempt.read', scope: 'own' }] }]);
+    const ownCall = contextFor(attempts, user(['learner']));
+    await own.canActivate(ownCall.context);
+    expect(isOwnOnlyGrant(ownCall.request.currentUser)).toBe(true);
+    expect(isOrgWideGrant(ownCall.request.currentUser)).toBe(false);
+  });
+});
+
+describe('resolveCustomAccess (PR 481-482)', () => {
+  const grant = (action: string, scope: PermissionScope) => computeEffectivePermissions({
+    builtInRoles: [], customRoles: [{ state: 'active', permissions: [{ action, scope }] }], customRolesEnabled: true,
+  });
+  const resolve = (action: string, scope: PermissionScope, userRoles: UserRole[], viaBuiltIn: boolean) =>
+    resolveCustomAccess({ permissions: grant(action, scope), actions: [action as never], userRoles, viaBuiltIn });
+
+  it('courses: own narrows only a custom-only user to the instructor view, organization removes the course narrowing', () => {
+    expect(resolve('course.edit', 'own', ['learner'], false).roles).toEqual(['learner', 'instructor']);
+    expect(resolve('course.edit', 'own', ['instructor'], true).roles).toEqual(['instructor']);
+    expect(resolve('course.read', 'own', ['learner'], true).roles).toEqual(['learner']);
+    const wide = resolve('course.edit', 'organization', ['learner', 'instructor'], true);
+    expect(wide).toMatchObject({ roles: ['learner'], orgWide: true });
+    expect(resolve('longread.edit', 'organization', ['learner'], false)).toMatchObject({ roles: ['learner'], orgWide: true, opens: true });
+  });
+
+  it('attempts: team is the manager view, organization removes team and course narrowing, own filters own rows', () => {
+    expect(resolve('assessment.attempt.read', 'team', ['learner'], false).roles).toEqual(['learner', 'manager']);
+    expect(resolve('assessment.attempt.read', 'department', ['learner'], false).roles).toEqual(['learner', 'manager']);
+    expect(resolve('assessment.attempt.read', 'organization', ['manager', 'instructor'], true)).toMatchObject({ roles: [], orgWide: true });
+    expect(resolve('assessment.attempt.read', 'own', ['learner'], false)).toMatchObject({ ownOnly: true, orgWide: false });
+    expect(resolve('assessment.attempt.read', 'own', ['manager'], true).ownOnly).toBe(false);
+  });
+
+  it('reports: team is the manager view, organization is the unnarrowed view', () => {
+    expect(resolve('report.course.read', 'team', ['learner'], false).roles).toEqual(['learner', 'manager']);
+    expect(resolve('report.course.read', 'organization', ['manager'], true)).toMatchObject({ roles: [], orgWide: true });
+  });
+
+  it('checklists: adds a role only when it is wider than what the user already has', () => {
+    expect(resolve('checklist.analytics.read', 'team', ['instructor'], true).roles).toEqual(['instructor']);
+    expect(resolve('checklist.analytics.read', 'team', ['manager'], true).roles).toEqual(['manager']);
+    expect(resolve('checklist.analytics.read', 'organization', ['manager'], true).roles).toEqual(['manager', 'instructor']);
+    expect(resolve('checklist.analytics.read', 'organization', ['instructor'], true).roles).toEqual(['instructor']);
+  });
+
+  it('never adds admin and never takes anything but the narrowing roles away, whatever the grant', () => {
+    for (const item of PERMISSION_ACTIONS.filter((candidate) => candidate.delegable && customRoleEnforcedAction(candidate.key))) {
       for (const scope of item.scopes) {
-        const roles = syntheticRolesFor(
-          computeEffectivePermissions({ builtInRoles: ['learner'], customRoles: [{ state: 'active', permissions: [{ action: item.key, scope }] }], customRolesEnabled: true }),
-          [item.key],
-        );
-        expect(roles).not.toContain('admin');
-        expect(roles).not.toContain('learner');
+        for (const roles of [['learner'], ['manager'], ['instructor'], ['mentor'], ['admin'], ['learner', 'manager', 'instructor']] as UserRole[][]) {
+          for (const viaBuiltIn of [true, false]) {
+            const result = resolve(item.key, scope, roles, viaBuiltIn);
+            expect(result.roles.includes('admin')).toBe(roles.includes('admin'));
+            for (const role of roles) {
+              if (role === 'instructor' || role === 'manager') continue;
+              expect(result.roles).toContain(role);
+            }
+          }
+        }
       }
     }
   });

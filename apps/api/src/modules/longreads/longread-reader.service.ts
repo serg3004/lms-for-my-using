@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { completionState, completionView, chapterAccessible } from './longread-completion.js';
 import { captureExerciseQuestions, publicExerciseQuestion } from './longread-exercise-snapshot.js';
 import { BadRequestException, ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import { isLearnerOnly, type CurrentUser } from '../auth/public.js';
+import { isLearnerOnly, isOrgWideGrant, type CurrentUser } from '../auth/public.js';
 import { LearningTargetResolverService } from '../learning-targets/public.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { LongreadsService } from './longreads.service.js';
@@ -21,7 +21,7 @@ export class LongreadReaderService {
     const { organizationId, id: userId } = actor;
     const lesson = await this.prisma.lesson.findFirst({ where: { id: lessonId, organizationId, deletedAt: null, type: 'longread', course: { deletedAt: null } }, select: { courseId: true, course: { select: { status: true, selfEnrollmentEnabled: true } } } });
     if (!lesson) throw new NotFoundException('Longread not found');
-    if (isLearnerOnly(actor.roles)) {
+    if (isLearnerOnly(actor.roles) && !isOrgWideGrant(actor)) {
       const resolution = await this.learningTargets.resolveForUser(organizationId, userId, lesson.courseId, { course: lesson.course });
       if (lesson.course.status !== 'published' || !resolution.isEntitled) throw new NotFoundException('Longread not found');
     }

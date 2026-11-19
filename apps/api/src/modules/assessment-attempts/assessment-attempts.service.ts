@@ -5,6 +5,7 @@ import { createAssessmentAttemptSchema } from './assessment-attempts.schemas.js'
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { LEGACY_LIST_LIMIT } from '../../common/query-limits.js';
+import { attemptScope } from './attempt-scope.js';
 import { ManagerTeamScope, normalizeActor } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import {
@@ -60,7 +61,7 @@ export class AssessmentAttemptsService {
         assessmentId,
         organizationId,
         countsTowardResults: true,
-        ...this.teamScope.userOwnedResource(actor),
+        ...attemptScope(this.teamScope, actor),
         deletedAt: null,
       },
       orderBy: { createdAt: 'desc' },
@@ -78,7 +79,7 @@ export class AssessmentAttemptsService {
         id: attemptId,
         organizationId,
         countsTowardResults: true,
-        ...this.teamScope.userOwnedResource(actor),
+        ...attemptScope(this.teamScope, actor),
         deletedAt: null,
       },
       select: {

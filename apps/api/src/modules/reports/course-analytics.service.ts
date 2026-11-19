@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
+import { isOrgWideGrant } from '../auth/public.js';
 import { MAX_EXPORT_ROWS, serializeReportCsv } from '../checklists/public.js';
 import { getSubtreeDepartmentIds } from '../departments/public.js';
 import { ManagerTeamScope } from '../manager-team-scope/public.js';
@@ -93,7 +94,7 @@ export class CourseAnalyticsService {
   /** Choices for the department, group and manager filters; an instructor has none (they see only their courses). */
   private async filterOptions(actor: TeamScopeActor) {
     const organizationId = actor.organizationId;
-    const isAdmin = actor.roles.includes('admin');
+    const isAdmin = actor.roles.includes('admin') || isOrgWideGrant(actor);
     const isManager = !isAdmin && actor.roles.includes('manager');
     if (!isAdmin && !isManager) return { departments: [], groups: [], managers: [] };
     const [departments, groups] = await Promise.all([
@@ -134,7 +135,7 @@ export class CourseAnalyticsService {
   }
 
   async getUserReport(actor: TeamScopeActor, userId: string, query: CourseAnalyticsQuery) {
-    const isManager = !actor.roles.includes('admin') && actor.roles.includes('manager');
+    const isManager = !actor.roles.includes('admin') && !isOrgWideGrant(actor) && actor.roles.includes('manager');
     const user = await this.prisma.user.findFirst({
       where: { AND: [{ id: userId, organizationId: actor.organizationId, deletedAt: null }, ...(isManager ? [await this.orgAccessScope.user(actor)] : [])] },
       select: { id: true, firstName: true, lastName: true, email: true },
@@ -154,7 +155,7 @@ export class CourseAnalyticsService {
 
   private async load(actor: TeamScopeActor, query: CourseAnalyticsQuery, scope: Scope) {
     const organizationId = actor.organizationId;
-    const isAdmin = actor.roles.includes('admin');
+    const isAdmin = actor.roles.includes('admin') || isOrgWideGrant(actor);
     const isManager = !isAdmin && actor.roles.includes('manager');
     const instructorOnly = !isAdmin && !isManager;
 
