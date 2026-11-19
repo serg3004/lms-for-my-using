@@ -9,7 +9,7 @@ import { Reflector } from '@nestjs/core';
 import { RolesGuard } from './roles.guard.js';
 import { accessMetadataKey, rolesMetadataKey, type EndpointAccess, type UserRole } from './roles.js';
 
-import { controllerEntries, type ControllerClass, type EndpointHandler } from './api-policy.controllers.js';
+import { controllerEntries, type ControllerClass, type EndpointHandler } from '../../testing/api-policy-controllers.js';
 
 const allRoles: UserRole[] = ['admin', 'manager', 'instructor', 'mentor', 'learner'];
 

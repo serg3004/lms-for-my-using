@@ -10,7 +10,7 @@ import {
 } from '@lms/shared/permission-catalog';
 import { USER_ROLES } from '@lms/shared/constants/roles';
 
-import { controllerEntries } from './api-policy.controllers.js';
+import { controllerEntries } from '../../testing/api-policy-controllers.js';
 import { actionPolicies, builtInActionsForRole, builtInRolesFor } from './permission-catalog.adapter.js';
 import { permissionRouteMap } from './permission-route-map.js';
 import { rolePolicies, rolesMetadataKey, type UserRole } from './roles.js';
