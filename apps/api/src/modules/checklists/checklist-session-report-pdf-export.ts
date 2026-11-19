@@ -28,10 +28,10 @@ type Deps = {
   readPhotoBytes: (objectKey: string, maxBytes: number) => Promise<Buffer | null>;
 };
 
-async function withDeadline<T>(work: Promise<T>, deadline: number): Promise<T> {
+async function withDeadline<T>(work: Promise<T>, deadline: number, hint: string): Promise<T> {
   let timer: NodeJS.Timeout | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new GatewayTimeoutException('The PDF took too long to build. Try again or download the CSV summary.')), Math.max(1, deadline - Date.now()));
+    timer = setTimeout(() => reject(new GatewayTimeoutException('The PDF took too long to build. Try again' + hint)), Math.max(1, deadline - Date.now()));
   });
   try {
     return await Promise.race([work, timeout]);
@@ -83,15 +83,17 @@ export async function exportSessionReportPdf(
   target?: { action: 'checklist_instance.report_pdf_downloaded'; targetType: string; targetId: string; summary: string; filename: string },
 ) {
   const deadline = Date.now() + REPORT_PDF_LIMITS.timeoutMs;
+  // A session report has a CSV summary to fall back on; the report of a single check has none.
+  const hint = target ? '.' : ' or download the CSV summary.';
   const locale = exportLocale(actor.locale);
   const built = await withDeadline((async () => {
     const photoSet = report.visible ? await loadPhotos(deps, report, organizationId, deadline) : { photos: [], omitted: 0, loaded: 0 };
     const pdf = await renderSessionReportPdf(report, { locale, photos: photoSet.photos, omittedPhotos: photoSet.omitted });
     return { pdf, photoSet };
-  })(), deadline);
+  })(), deadline, hint);
 
   if (built.pdf.length > REPORT_PDF_LIMITS.maxBytes) {
-    throw new PayloadTooLargeException(`The PDF is larger than ${REPORT_PDF_LIMITS.maxBytes / 1024 / 1024} MB. Download the CSV summary instead.`);
+    throw new PayloadTooLargeException(`The PDF is larger than ${REPORT_PDF_LIMITS.maxBytes / 1024 / 1024} MB.${target ? '' : ' Download the CSV summary instead.'}`);
   }
   await deps.auditLog.record({
     organizationId,
