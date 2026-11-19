@@ -7,6 +7,7 @@ import { hasValidationErrors } from '../shared/formValidation.js';
 import { ApiClientError } from '../shared/apiClient.js';
 import { PageState, Pagination } from '../shared/ui.js';
 import { DeactivateUserDialog, type PendingDeactivation } from '../features/admin-users/DeactivateUserDialog.js';
+import { UserRightsDialog } from '../features/admin-users/UserRightsDialog.js';
 import { ResetPasswordDialogs, type PasswordResetResult } from '../features/admin-users/ResetPasswordDialogs.js';
 import { AdminUserDialog } from '../features/admin-users/AdminUserDialog.js';
 import { AdminUsersFilters } from '../features/admin-users/AdminUsersFilters.js';
@@ -30,6 +31,7 @@ export function AdminUsersPage() {
   const [errors, setErrors] = useState<FormValidationErrors<UserFormField>>({});
   const [pendingDeactivation, setPendingDeactivation] = useState<PendingDeactivation | null>(null);
 
+  const [rightsUser, setRightsUser] = useState<AdminUserSummary | null>(null);
   const [pendingReset, setPendingReset] = useState<AdminUserSummary | null>(null);
   const [resetResult, setResetResult] = useState<PasswordResetResult | null>(null);
 
@@ -90,7 +92,8 @@ export function AdminUsersPage() {
       action={<button className="admin-btn admin-btn--primary" onClick={() => open('create')} type="button">{t('admin.users.createButton', 'Create user')}</button>}
     />
     <AdminUsersFilters filters={usersQuery.filters} onChange={usersQuery.setFilters} />
-    <AdminUsersTable users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} onResetPassword={setPendingReset} />
+    <AdminUsersTable users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} onResetPassword={setPendingReset} onRights={setRightsUser} />
+    <UserRightsDialog user={rightsUser} onClose={() => setRightsUser(null)} />
     <ResetPasswordDialogs pending={pendingReset} result={resetResult} onConfirm={() => void confirmReset()} onCancel={() => setPendingReset(null)} onClose={() => setResetResult(null)} />
     <DeactivateUserDialog pending={pendingDeactivation} onCancel={() => setPendingDeactivation(null)} onConfirm={() => void confirmDeactivation()} />
     <Pagination page={usersQuery.page} pageSize={loadedState.pageSize} total={loadedState.total} onPage={usersQuery.setPage} />
