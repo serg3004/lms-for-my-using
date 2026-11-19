@@ -98,7 +98,10 @@ Permissions owner: `apps/api/src/modules/auth/roles.ts` (`rolePolicies`). Role e
 | `themeSettingsRead` | `admin`, `manager`, `instructor`, `learner` |
 | `themeSettingsWrite` | `admin` |
 | `usersCreate` | `admin`, `manager` |
+| `usersDeactivate` | `admin`, `manager` |
+| `usersImport` | `admin`, `manager` |
 | `usersRead` | `admin`, `manager` |
+| `usersUpdate` | `admin`, `manager` |
 
 ## Permission catalog (custom roles)
 
@@ -147,5 +150,8 @@ Owner: `packages/shared/src/permission-catalog.ts`; the route table is `apps/api
 | `report.course.read` | reports | `team`, `department`, `organization` | yes | - | `courseAnalyticsRead` | `admin`, `manager`, `instructor` | 4 |
 | `report.admin.dashboard.read` | reports | `organization` | yes | - | `adminDashboardRead` | `admin` | 1 |
 | `user.read` | users | `team`, `department`, `organization` | yes | - | `usersRead` | `admin`, `manager` | 2 |
-| `user.create` | users | `department`, `organization` | yes | `user.read` | `usersCreate` | `admin`, `manager` | 6 |
+| `user.create` | users | `department`, `organization` | yes | `user.read` | `usersCreate` | `admin`, `manager` | 2 |
+| `user.import` | users | `department`, `organization` | yes | `user.read` | `usersImport` | `admin`, `manager` | 1 |
+| `user.update` | users | `department`, `organization` | yes | `user.read` | `usersUpdate` | `admin`, `manager` | 1 |
+| `user.deactivate` | users | `department`, `organization` | yes | `user.read` | `usersDeactivate` | `admin`, `manager` | 2 |
 | `checklist.access.settings` | checklists | `organization` | no | - | `checklistAccessSettingsWrite` | `admin` | 2 |

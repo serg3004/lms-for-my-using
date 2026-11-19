@@ -1747,6 +1747,12 @@ while a provider request is already in flight cannot retract that request.
 
 ## Observer deactivation notices (PR 346)
 
+Delegated registration (PR 483): `POST /users` accepts an optional `departmentId`; `POST /users/bulk` and `POST /users/import`
+accept an optional top-level `departmentId`. A caller who reaches these routes only through a custom role must send it (403
+outside their department tree), the new users are `learner` members with a primary department membership; an administrator
+or manager may send it too and then gets the department membership (and no role) for the new users. Such callers also get 403 for
+a `role` field in `PATCH /users/{id}` and 404 for users outside their department or holding a role above `learner`.
+
 `PATCH /users/{id}/status` returns `observerSessions` (the user's unfinished sessions as observer:
 `scheduled`, `in_progress` or `paused`, not deleted) next to `orphanedCourses`. `GET /users/{id}/status-impact`
 returns `{ observerSessions }` for the same user before the change is confirmed; it uses the same

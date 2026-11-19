@@ -97,6 +97,9 @@ export const PERMISSION_ACTIONS = [
   // Users
   action('user.read', 'users', TEAM_UP, l('Видеть пользователей', 'See users', 'Пайдаланушыларды көру', '查看用户')),
   action('user.create', 'users', ['department', 'organization'], l('Регистрировать пользователей', 'Register users', 'Пайдаланушыларды тіркеу', '注册用户'), ['user.read']),
+  action('user.import', 'users', ['department', 'organization'], l('Загружать пользователей файлом', 'Import users from a file', 'Пайдаланушыларды файлмен жүктеу', '通过文件导入用户'), ['user.read']),
+  action('user.update', 'users', ['department', 'organization'], l('Менять данные пользователей', 'Edit user details', 'Пайдаланушы деректерін өзгерту', '修改用户资料'), ['user.read']),
+  action('user.deactivate', 'users', ['department', 'organization'], l('Блокировать и возвращать пользователей', 'Suspend and reactivate users', 'Пайдаланушыларды бұғаттау және қайтару', '停用和恢复用户'), ['user.read']),
   // Stays with the system role: it decides who may act as an observer, which is an access setting.
   action('checklist.access.settings', 'checklists', ORG, l('Менять, кто может быть наблюдателем', 'Change who may be an observer', 'Бақылаушы кім бола алатынын өзгерту', '更改谁可以担任观察员'), [], false),
 ] as const satisfies readonly PermissionAction[];

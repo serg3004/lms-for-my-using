@@ -70,18 +70,20 @@ describe('custom roles on checklist routes (PR 481)', () => {
     }
   });
 
-  it('never opens a route of an area that is not connected yet (user management)', async () => {
-    const guard = guardWith(['learner'], [{
-      state: 'active',
-      permissions: PERMISSION_ACTIONS.filter((item) => item.delegable).map((item) => ({ action: item.key, scope: item.scopes[item.scopes.length - 1] as PermissionScope })),
-    }]);
-    for (const route of routes) {
-      const builtIn = (Reflect.getMetadata(rolesMetadataKey, route.method) as UserRole[]).includes('learner');
-      const connected = (permissionRouteMap[route.id] ?? []).some(customRoleEnforcedAction);
-      if (builtIn || connected) continue;
-      expect({ route: route.id, open: await allowed(guard, route, ['learner']) }).toEqual({ route: route.id, open: false });
-    }
-    expect(PERMISSION_ACTIONS.filter((item) => !customRoleEnforcedAction(item.key)).map((item) => item.key)).toEqual(['user.read', 'user.create']);
+  it('connects every catalog action, so no grant is silently inert', () => {
+    expect(PERMISSION_ACTIONS.filter((item) => !customRoleEnforcedAction(item.key))).toEqual([]);
+  });
+
+  it('opens a user route only for the right grant: a registrar of departments cannot import or suspend', async () => {
+    const guard = guardWith(['learner'], [{ state: 'active', permissions: [{ action: 'user.create', scope: 'department' }, { action: 'user.read', scope: 'department' }] }]);
+    const open = async (id: string) => allowed(guard, routes.find((candidate) => candidate.id === id)!, ['learner']);
+    expect(await open('UsersController.createUser')).toBe(true);
+    expect(await open('UsersController.createBulkUsers')).toBe(true);
+    expect(await open('UsersController.listUsers')).toBe(true);
+    expect(await open('UsersController.importUsers')).toBe(false);
+    expect(await open('UsersController.updateUser')).toBe(false);
+    expect(await open('UsersController.updateUserStatus')).toBe(false);
+    expect(await open('MembershipsController.createMembership')).toBe(false);
   });
 
   it('gives nothing with the switch off, with an archived role, and without the lookup', async () => {
@@ -154,6 +156,15 @@ describe('resolveCustomAccess (PR 481-482)', () => {
   it('reports: team is the manager view, organization is the unnarrowed view', () => {
     expect(resolve('report.course.read', 'team', ['learner'], false).roles).toEqual(['learner', 'manager']);
     expect(resolve('report.course.read', 'organization', ['manager'], true)).toMatchObject({ roles: [], orgWide: true });
+  });
+
+  it('users: only a custom-only user becomes a delegated registrar, built-in managers keep their behaviour', () => {
+    expect(resolve('user.create', 'department', ['learner'], false)).toMatchObject({ userScope: 'department', roles: ['learner'] });
+    expect(resolve('user.update', 'organization', ['learner'], false)).toMatchObject({ userScope: 'organization' });
+    expect(resolve('user.create', 'organization', ['manager'], true).userScope).toBeUndefined();
+    expect(resolve('user.read', 'team', ['learner'], false)).toMatchObject({ roles: ['learner', 'manager'] });
+    expect(resolve('user.read', 'team', ['learner'], false).userScope).toBeUndefined();
+    expect(resolve('user.read', 'department', ['learner'], false).userScope).toBe('department');
   });
 
   it('checklists: adds a role only when it is wider than what the user already has', () => {

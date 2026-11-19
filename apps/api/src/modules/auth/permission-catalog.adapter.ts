@@ -56,6 +56,9 @@ export const actionPolicies: Readonly<Record<PermissionActionKey, PolicyName>> =
   'report.admin.dashboard.read': 'adminDashboardRead',
   'user.read': 'usersRead',
   'user.create': 'usersCreate',
+  'user.import': 'usersImport',
+  'user.update': 'usersUpdate',
+  'user.deactivate': 'usersDeactivate',
 };
 
 /** The built-in roles that hold the action. */

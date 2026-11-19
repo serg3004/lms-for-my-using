@@ -6,10 +6,12 @@ import { hashPassword } from '../auth/public.js';
 import { countOpenObserverSessions, notifyObserverDeactivated } from '../checklists/public.js';
 import { ManagerTeamScope } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
+import { assertNoRoleChange, UserRegistrarAccess, type Registrar } from './user-registrar-access.js';
 import {
   createBulkUserItemSchema,
   CreateBulkUsersInput,
   CreateUserInput,
+  CreateUserRequestInput,
   ImportUsersInput,
   ListUsersQuery,
   UpdateUserInput,
@@ -57,17 +59,23 @@ type ImportRow = {
 
 @Injectable()
 export class UsersService {
+  private readonly registrars: UserRegistrarAccess;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditLog: AuditLogService = new AuditLogService(prisma),
     private readonly teamScope: ManagerTeamScope = new ManagerTeamScope(),
-  ) {}
+  ) {
+    this.registrars = new UserRegistrarAccess(prisma);
+  }
 
   async listUsers(actor: TeamScopeActor, page: number, pageSize: number, search?: string, status?: ListUsersQuery['status']) {
     const skip = (page - 1) * pageSize;
+    const registrar = await this.registrars.resolve(actor);
     const where = {
       organizationId: actor.organizationId,
       ...this.teamScope.user(actor),
+      ...this.registrars.readWhere(registrar, actor.organizationId),
       deletedAt: null,
       ...(status ? { status } : {}),
       ...(search
@@ -88,11 +96,13 @@ export class UsersService {
   }
 
   async getUser(userId: string, actor: TeamScopeActor) {
+    const registrar = await this.registrars.resolve(actor);
     const user = await this.prisma.user.findFirst({
       where: {
         id: userId,
         organizationId: actor.organizationId,
         ...this.teamScope.user(actor),
+        ...this.registrars.readWhere(registrar, actor.organizationId),
         deletedAt: null,
       },
       select: userSelect,
@@ -108,11 +118,14 @@ export class UsersService {
 
   async updateUser(userId: string, actor: TeamScopeActor, input: UpdateUserInput) {
     const organizationId = actor.organizationId;
+    const registrar = await this.registrars.resolve(actor);
+    assertNoRoleChange(registrar, input.role);
     const user = await this.prisma.user.findFirst({
       where: {
         id: userId,
         organizationId,
         ...this.teamScope.user(actor),
+        ...this.registrars.writeWhere(registrar, actor),
         deletedAt: null,
       },
       select: { id: true, email: true },
@@ -189,14 +202,16 @@ export class UsersService {
       targetType: 'user',
       targetId: userId,
       summary: `Updated user ${updated.email}`,
-      metadata: { fields: changedFields },
+      metadata: { fields: changedFields, ...(registrar ? { delegated: registrar.scope } : {}) },
     });
 
     return updated;
   }
 
-  async createUser(input: CreateUserInput, actorId: string | null = null) {
+  async createUser(input: CreateUserRequestInput, actorId: string | null = null, actor?: TeamScopeActor) {
     await this.ensureOrganizationExists(input.organizationId);
+    const registrar = await this.registrars.resolve(actor);
+    const departmentId = await this.resolvePlacement(registrar, input.organizationId, input.departmentId);
     const existingEmails = await this.findExistingEmails(input.organizationId, [input.email]);
 
     if (existingEmails.size > 0) {
@@ -204,15 +219,16 @@ export class UsersService {
     }
 
     const { password, ...userData } = input;
+    delete userData.departmentId;
     const passwordHash = await hashPassword(password);
 
-    const created = await this.prisma.user.create({
-      data: {
-        ...userData,
-        passwordHash,
-      },
-      select: userSelect,
-    });
+    const created = registrar || departmentId
+      ? await this.prisma.$transaction(async (tx) => {
+          const user = await tx.user.create({ data: { ...userData, passwordHash }, select: { id: true } });
+          await this.placeNewUsers(tx, input.organizationId, [user.id], departmentId, registrar !== null, actorId);
+          return tx.user.findUniqueOrThrow({ where: { id: user.id, organizationId: input.organizationId }, select: userSelect });
+        })
+      : await this.prisma.user.create({ data: { ...userData, passwordHash }, select: userSelect });
 
     await this.auditLog.record({
       organizationId: input.organizationId,
@@ -221,13 +237,16 @@ export class UsersService {
       targetType: 'user',
       targetId: created.id,
       summary: `Created user ${created.email}`,
+      ...(registrar || departmentId ? { metadata: { departmentId, ...(registrar ? { delegated: registrar.scope } : {}) } } : {}),
     });
 
     return created;
   }
 
-  async createBulkUsers(input: CreateBulkUsersInput) {
+  async createBulkUsers(input: CreateBulkUsersInput, actor?: TeamScopeActor) {
     await this.ensureOrganizationExists(input.organizationId);
+    const registrar = await this.registrars.resolve(actor);
+    const departmentId = await this.resolvePlacement(registrar, input.organizationId, input.departmentId);
     const emails = input.users.map((user) => user.email);
     const existingEmails = await this.findExistingEmails(input.organizationId, emails);
 
@@ -248,14 +267,21 @@ export class UsersService {
       }),
     );
 
-    const createOperations = usersData.map((data) =>
-      this.prisma.user.create({
-        data,
-        select: userSelect,
-      }),
-    );
+    const users = registrar || departmentId
+      ? await this.createPlaced(usersData, input.organizationId, departmentId, registrar !== null, actor?.id ?? null)
+      : await this.prisma.$transaction(usersData.map((data) => this.prisma.user.create({ data, select: userSelect })));
 
-    const users = await this.prisma.$transaction(createOperations);
+    if (registrar || departmentId) {
+      await this.auditLog.record({
+        organizationId: input.organizationId,
+        actorId: actor?.id ?? null,
+        action: 'user.created',
+        targetType: 'user',
+        targetId: users[0]?.id ?? null,
+        summary: `Created ${users.length} users in bulk`,
+        metadata: { departmentId, count: users.length, ...(registrar ? { delegated: registrar.scope } : {}) },
+      });
+    }
 
     return {
       organizationId: input.organizationId,
@@ -265,8 +291,10 @@ export class UsersService {
     };
   }
 
-  async importUsers(input: ImportUsersInput) {
+  async importUsers(input: ImportUsersInput, actor?: TeamScopeActor) {
     await this.ensureOrganizationExists(input.organizationId);
+    const registrar = await this.registrars.resolve(actor);
+    const departmentId = await this.resolvePlacement(registrar, input.organizationId, input.departmentId);
 
     const rows: ImportRow[] = input.users.map((rawUser, index) => {
       const parsed = createBulkUserItemSchema.safeParse(rawUser);
@@ -340,14 +368,22 @@ export class UsersService {
         }),
       );
 
-      const users = await this.prisma.$transaction(
-        usersData.map((data) =>
-          this.prisma.user.create({
-            data,
-            select: { id: true, email: true },
-          }),
-        ),
-      );
+      const users = registrar || departmentId
+        ? await this.createPlaced(usersData, input.organizationId, departmentId, registrar !== null, actor?.id ?? null)
+        : await this.prisma.$transaction(
+            usersData.map((data) => this.prisma.user.create({ data, select: { id: true, email: true } })),
+          );
+      if (registrar || departmentId) {
+        await this.auditLog.record({
+          organizationId: input.organizationId,
+          actorId: actor?.id ?? null,
+          action: 'user.created',
+          targetType: 'user',
+          targetId: users[0]?.id ?? null,
+          summary: `Imported ${users.length} users`,
+          metadata: { departmentId, count: users.length, ...(registrar ? { delegated: registrar.scope } : {}) },
+        });
+      }
       const createdByEmail = new Map(users.map((user) => [user.email, user.id]));
 
       creatableRows.forEach((row) => {
@@ -375,8 +411,9 @@ export class UsersService {
 
   async updateUserStatus(userId: string, actor: TeamScopeActor, status: UpdateUserStatusInput['status']) {
     const organizationId = actor.organizationId;
+    const registrar = await this.registrars.resolve(actor);
     const user = await this.prisma.user.findFirst({
-      where: { id: userId, organizationId, ...this.teamScope.user(actor), deletedAt: null },
+      where: { id: userId, organizationId, ...this.teamScope.user(actor), ...this.registrars.writeWhere(registrar, actor), deletedAt: null },
       select: { id: true, status: true },
     });
 
@@ -408,7 +445,7 @@ export class UsersService {
       targetType: 'user',
       targetId: userId,
       summary: `Set user ${updatedUser.email} status to ${status}`,
-      metadata: { status, observerSessions },
+      metadata: { status, observerSessions, ...(registrar ? { delegated: registrar.scope } : {}) },
     });
 
     return { ...updatedUser, orphanedCourses, observerSessions };
@@ -417,8 +454,9 @@ export class UsersService {
   /** PR 346: number of unfinished sessions the user observes, shown before the deactivation is confirmed. */
   async getObserverSessionImpact(userId: string, actor: TeamScopeActor) {
     const organizationId = actor.organizationId;
+    const registrar = await this.registrars.resolve(actor);
     const user = await this.prisma.user.findFirst({
-      where: { id: userId, organizationId, ...this.teamScope.user(actor), deletedAt: null },
+      where: { id: userId, organizationId, ...this.teamScope.user(actor), ...this.registrars.writeWhere(registrar, actor), deletedAt: null },
       select: { id: true },
     });
 
@@ -447,6 +485,47 @@ export class UsersService {
     return courses
       .filter((course) => course.instructors.length === 1)
       .map((course) => ({ id: course.id, title: course.title }));
+  }
+
+  /** The department a registrar's new users go to (required for the department scope); built-in actors may name one too. */
+  private async resolvePlacement(registrar: Registrar | null, organizationId: string, departmentId: string | undefined): Promise<string | null> {
+    if (registrar) return this.registrars.assertDepartment(registrar, organizationId, departmentId);
+    if (!departmentId) return null;
+    return this.registrars.assertDepartment({ scope: 'organization', departmentIds: null }, organizationId, departmentId);
+  }
+
+  /** A registrar's new users are learners placed in the department; everything runs in one transaction. */
+  private async placeNewUsers(
+    tx: Pick<PrismaService, 'membership' | 'departmentMembership'>,
+    organizationId: string,
+    userIds: string[],
+    departmentId: string | null,
+    asLearner: boolean,
+    actorId: string | null,
+  ) {
+    if (asLearner) {
+      await tx.membership.createMany({ data: userIds.map((userId) => ({ organizationId, userId, role: 'learner' as const, assignedBy: actorId })) });
+    }
+    if (departmentId) {
+      await tx.departmentMembership.createMany({ data: userIds.map((userId) => ({ organizationId, userId, departmentId, isPrimary: true })) });
+    }
+  }
+
+  private async createPlaced(
+    usersData: Array<Parameters<PrismaService['user']['create']>[0]['data']>,
+    organizationId: string,
+    departmentId: string | null,
+    asLearner: boolean,
+    actorId: string | null,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const ids: string[] = [];
+      for (const data of usersData) ids.push((await tx.user.create({ data, select: { id: true } })).id);
+      await this.placeNewUsers(tx, organizationId, ids, departmentId, asLearner, actorId);
+      const created = await tx.user.findMany({ where: { id: { in: ids }, organizationId }, select: userSelect });
+      const order = new Map(ids.map((id, index) => [id, index]));
+      return created.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+    });
   }
 
   private async ensureOrganizationExists(organizationId: string) {

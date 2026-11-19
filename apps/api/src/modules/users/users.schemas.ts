@@ -25,6 +25,9 @@ export const createUserSchema = z.object({
   timezone: z.string().trim().min(1).max(64).default('Asia/Almaty'),
 });
 
+/** PR 483: `POST /users` may name the department the new user is placed in (required for a registrar limited to a department). */
+export const createUserRequestSchema = createUserSchema.extend({ departmentId: z.guid().optional() });
+
 export const usersBulkCreateMaxItems = 50;
 
 export const createBulkUserItemSchema = createUserSchema.omit({ organizationId: true });
@@ -32,6 +35,7 @@ export const createBulkUserItemSchema = createUserSchema.omit({ organizationId: 
 export const createBulkUsersSchema = z
   .object({
     organizationId: z.guid(),
+    departmentId: z.guid().optional(),
     users: z.array(createBulkUserItemSchema).min(1).max(usersBulkCreateMaxItems),
   })
   .superRefine((input, context) => {
@@ -54,6 +58,7 @@ export const usersImportMaxItems = 100;
 
 export const importUsersSchema = z.object({
   organizationId: z.guid(),
+  departmentId: z.guid().optional(),
   mode: z.enum(['validateOnly', 'create']).default('validateOnly'),
   users: z.array(z.record(z.string(), z.unknown())).min(1).max(usersImportMaxItems),
 });
@@ -69,6 +74,7 @@ export const updateUserStatusSchema = z.object({
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
+export type CreateUserRequestInput = z.infer<typeof createUserRequestSchema>;
 export type CreateBulkUsersInput = z.infer<typeof createBulkUsersSchema>;
 export type ImportUsersInput = z.infer<typeof importUsersSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;

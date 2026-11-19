@@ -62,7 +62,9 @@ export class RolesGuard implements CanActivate {
       const widened = access.roles.length !== currentUser.roles.length || access.roles.some((role, index) => role !== currentUser.roles[index]);
       const user = widened ? { ...currentUser, roles: access.roles } : currentUser;
       if (widened) request.currentUser = user;
-      if (access.orgWide || access.ownOnly) markRequestScope(user, { orgWide: access.orgWide, ownOnly: access.ownOnly });
+      if (access.orgWide || access.ownOnly || access.userScope) {
+        markRequestScope(user, { orgWide: access.orgWide, ownOnly: access.ownOnly, ...(access.userScope ? { userScope: access.userScope } : {}) });
+      }
     }
 
     return true;
