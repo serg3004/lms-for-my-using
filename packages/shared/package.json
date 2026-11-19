@@ -59,6 +59,11 @@
       "development": "./src/checklist-numbering.ts",
       "import": "./dist/checklist-numbering.js"
     },
+    "./permission-catalog": {
+      "types": "./src/permission-catalog.ts",
+      "development": "./src/permission-catalog.ts",
+      "import": "./dist/permission-catalog.js"
+    },
     "./rich-text": {
       "types": "./src/rich-text.ts",
       "development": "./src/rich-text.ts",

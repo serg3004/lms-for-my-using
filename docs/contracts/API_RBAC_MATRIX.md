@@ -20,6 +20,14 @@ Every HTTP handler must have an explicit access classification:
 
 `RolesGuard` is fail-closed for role-protected handlers when required policy metadata is missing. Authentication-only endpoints enforce authenticated access without inventing a role permission.
 
+## Permission catalog for custom roles (PR 479)
+
+Custom roles (stage 12, `docs/product/future/CUSTOM_ROLES_IMPLEMENTATION_PLAN.md`) are built from a fixed catalog of actions, not from free strings. The catalog lives in `packages/shared/src/permission-catalog.ts` and is shared by the API and the web: each action has a key, a group (checklists, courses, longreads, tests, reviews, reports, users), the scopes it allows (`own`, `assigned`, `team`, `department`, `organization`), a `delegable` flag, the actions it requires, and labels in RU, EN, KK and ZH. Rights are only added (union); there are no denials.
+
+The API adapter (`apps/api/src/modules/auth/permission-catalog.adapter.ts`) names, for every action, the `rolePolicies` entry that decides it today, so the five built-in roles keep exactly their present rights. `permission-route-map.ts` states which action(s) each role-protected endpoint of the seven areas needs. The audit test `permission-catalog.audit.spec.ts` fails when a route is missing from the table, an action has no route, a controller outside the seven areas is not listed with the reason it stays out, or the table and `rolePolicies` disagree for any of the five roles. The catalog is not yet enforced at run time: until PR 480 and PR 481 nothing reads it for access decisions, and behaviour is unchanged.
+
+Never delegated to a custom role: managing roles, granting `admin`, anything across organizations, security settings and deleting the organization (`NON_DELEGABLE_CAPABILITIES`); inside the catalog, who may act as an observer (`checklist.access.settings`) also stays with the administrator. `validatePermissionGrants` is the single check for a grant set (unknown action, not delegable, scope outside the allowed list, missing dependency such as conducting a session without reading the library).
+
 ## Role policy vs object scope
 
 A role policy answers whether a role may call a class of operation. It does **not** automatically authorize every object instance.

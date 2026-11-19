@@ -27,7 +27,7 @@ describe('course analytics: roles and routes (PR 473, 475, 476)', () => {
   ])('serves %s to administrator, manager and instructor only', (path) => {
     const at = controller.indexOf(`@Get('${path}')`);
     expect(at).toBeGreaterThan(-1);
-    expect(controller.slice(at, at + 120)).toContain("@Roles('admin', 'manager', 'instructor')");
+    expect(controller.slice(at, at + 120)).toContain('@Roles(...rolePolicies.courseAnalyticsRead)');
   });
 
   it('has no write route: the analytics only reads and exports', () => {

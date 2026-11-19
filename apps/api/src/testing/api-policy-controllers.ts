@@ -1,0 +1,78 @@
+import { AssessmentAttemptsController } from '../modules/assessment-attempts/assessment-attempts.controller.js';
+import { AssessmentQuestionsController } from '../modules/assessment-questions/assessment-questions.controller.js';
+import { AssessmentsController } from '../modules/assessments/assessments.controller.js';
+import { AssignmentsController } from '../modules/assignments/assignments.controller.js';
+import { AuditLogController } from '../modules/audit-log/audit-log.controller.js';
+import { AuthController } from '../modules/auth/auth.controller.js';
+import { CertificatesController } from '../modules/certificates/certificates.controller.js';
+import { ChecklistFoldersController } from '../modules/checklists/checklist-folders.controller.js';
+import { ChecklistPublicController } from '../modules/checklists/checklist-public.controller.js';
+import { ChecklistsController } from '../modules/checklists/checklists.controller.js';
+import { CourseMaterialsController } from '../modules/course-materials/course-materials.controller.js';
+import { CoursesController } from '../modules/courses/courses.controller.js';
+import { DepartmentManagersController } from '../modules/department-managers/department-managers.controller.js';
+import { DepartmentMembershipsController } from '../modules/department-memberships/department-memberships.controller.js';
+import { DepartmentsController } from '../modules/departments/departments.controller.js';
+import { GroupsController } from '../modules/groups/groups.controller.js';
+import { HealthController } from '../modules/health/health.controller.js';
+import { LearnerDashboardController } from '../modules/learner-dashboard/learner-dashboard.controller.js';
+import { LessonsController } from '../modules/lessons/lessons.controller.js';
+import { LongreadFilesController } from '../modules/longreads/longread-files.controller.js';
+import { LongreadsController } from '../modules/longreads/longreads.controller.js';
+import { ManagerController } from '../modules/manager/manager.controller.js';
+import { MaterialMalwareScanController } from '../modules/course-materials/material-malware-scan.controller.js';
+import { MembershipsController } from '../modules/memberships/memberships.controller.js';
+import { NotificationsController } from '../modules/notifications/notifications.controller.js';
+import { OpenApiController } from '../modules/openapi/openapi.controller.js';
+import { OrgExternalReferencesController } from '../modules/org-external-references/org-external-references.controller.js';
+import { OrgStructureAdminController } from '../modules/org-structure-admin/org-structure-admin.controller.js';
+import { OrganizationsController } from '../modules/organizations/organizations.controller.js';
+import { PositionCoursesController } from '../modules/position-courses/position-courses.controller.js';
+import { PositionsController } from '../modules/positions/positions.controller.js';
+import { ProgressController } from '../modules/progress/progress.controller.js';
+import { ReportingLinesController } from '../modules/reporting-lines/reporting-lines.controller.js';
+import { ReportsController } from '../modules/reports/reports.controller.js';
+import { UsersController } from '../modules/users/users.controller.js';
+
+export type ControllerClass = abstract new (...args: never[]) => object;
+export type ControllerEntry = { file: string; Controller: ControllerClass };
+export type EndpointHandler = (...args: never[]) => unknown;
+
+export const controllerEntries: ControllerEntry[] = [
+  { file: 'assessment-attempts/assessment-attempts.controller.ts', Controller: AssessmentAttemptsController },
+  { file: 'assessment-questions/assessment-questions.controller.ts', Controller: AssessmentQuestionsController },
+  { file: 'assessments/assessments.controller.ts', Controller: AssessmentsController },
+  { file: 'assignments/assignments.controller.ts', Controller: AssignmentsController },
+  { file: 'audit-log/audit-log.controller.ts', Controller: AuditLogController },
+  { file: 'auth/auth.controller.ts', Controller: AuthController },
+  { file: 'certificates/certificates.controller.ts', Controller: CertificatesController },
+  { file: 'checklists/checklist-folders.controller.ts', Controller: ChecklistFoldersController },
+  { file: 'checklists/checklist-public.controller.ts', Controller: ChecklistPublicController },
+  { file: 'checklists/checklists.controller.ts', Controller: ChecklistsController },
+  { file: 'course-materials/course-materials.controller.ts', Controller: CourseMaterialsController },
+  { file: 'course-materials/material-malware-scan.controller.ts', Controller: MaterialMalwareScanController },
+  { file: 'courses/courses.controller.ts', Controller: CoursesController },
+  { file: 'department-managers/department-managers.controller.ts', Controller: DepartmentManagersController },
+  { file: 'department-memberships/department-memberships.controller.ts', Controller: DepartmentMembershipsController },
+  { file: 'departments/departments.controller.ts', Controller: DepartmentsController },
+  { file: 'groups/groups.controller.ts', Controller: GroupsController },
+  { file: 'health/health.controller.ts', Controller: HealthController },
+  { file: 'learner-dashboard/learner-dashboard.controller.ts', Controller: LearnerDashboardController },
+  { file: 'lessons/lessons.controller.ts', Controller: LessonsController },
+  { file: 'longreads/longread-files.controller.ts', Controller: LongreadFilesController },
+  { file: 'longreads/longreads.controller.ts', Controller: LongreadsController },
+  { file: 'manager/manager.controller.ts', Controller: ManagerController },
+  { file: 'memberships/memberships.controller.ts', Controller: MembershipsController },
+  { file: 'notifications/notifications.controller.ts', Controller: NotificationsController },
+  { file: 'openapi/openapi.controller.ts', Controller: OpenApiController },
+  { file: 'organizations/organizations.controller.ts', Controller: OrganizationsController },
+  { file: 'org-external-references/org-external-references.controller.ts', Controller: OrgExternalReferencesController },
+  { file: 'org-structure-admin/org-structure-admin.controller.ts', Controller: OrgStructureAdminController },
+  { file: 'position-courses/position-courses.controller.ts', Controller: PositionCoursesController },
+  { file: 'positions/positions.controller.ts', Controller: PositionsController },
+  { file: 'progress/progress.controller.ts', Controller: ProgressController },
+  { file: 'reporting-lines/reporting-lines.controller.ts', Controller: ReportingLinesController },
+  { file: 'reports/reports.controller.ts', Controller: ReportsController },
+  { file: 'users/users.controller.ts', Controller: UsersController },
+];
+

@@ -25,32 +25,32 @@ export class ReportsController {
   }
 
   @Get('admin-dashboard')
-  @Roles('admin')
+  @Roles(...rolePolicies.adminDashboardRead)
   getAdminDashboard(@Req() request: AuthenticatedRequest) {
     return this.reportsService.getAdminDashboard(request.currentUser!);
   }
 
   @Get('course-analytics')
-  @Roles('admin', 'manager', 'instructor')
+  @Roles(...rolePolicies.courseAnalyticsRead)
   getCourseAnalytics(@Query() query: unknown, @Req() request: AuthenticatedRequest) {
     return this.courseAnalytics.getCourses(request.currentUser!, courseAnalyticsQuerySchema.parse(query));
   }
 
   /** PR 475: the current view as CSV/XLSX rows, with the same scope and filters as the reads. */
   @Get('course-analytics/export')
-  @Roles('admin', 'manager', 'instructor')
+  @Roles(...rolePolicies.courseAnalyticsRead)
   exportCourseAnalytics(@Query() query: unknown, @Req() request: AuthenticatedRequest) {
     return this.courseAnalytics.export(request.currentUser!, courseAnalyticsExportQuerySchema.parse(query));
   }
 
   @Get('course-analytics/courses/:courseId')
-  @Roles('admin', 'manager', 'instructor')
+  @Roles(...rolePolicies.courseAnalyticsRead)
   getCourseReport(@Param('courseId', ParseUUIDPipe) courseId: string, @Query() query: unknown, @Req() request: AuthenticatedRequest) {
     return this.courseAnalytics.getCourseReport(request.currentUser!, courseId, courseAnalyticsQuerySchema.parse(query));
   }
 
   @Get('course-analytics/users/:userId')
-  @Roles('admin', 'manager', 'instructor')
+  @Roles(...rolePolicies.courseAnalyticsRead)
   getUserReport(@Param('userId', ParseUUIDPipe) userId: string, @Query() query: unknown, @Req() request: AuthenticatedRequest) {
     return this.courseAnalytics.getUserReport(request.currentUser!, userId, courseAnalyticsQuerySchema.parse(query));
   }

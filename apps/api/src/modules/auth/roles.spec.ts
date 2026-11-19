@@ -145,6 +145,8 @@ describe('rolePolicies', () => {
     certificatesCreate: ['admin', 'manager', 'instructor'],
     managerTeamSummaryRead: ['admin', 'manager'],
     reportsRead: ['admin', 'manager'],
+    adminDashboardRead: ['admin'],
+    courseAnalyticsRead: ['admin', 'manager', 'instructor'],
     learnerDashboardRead: ['admin', 'manager', 'instructor', 'learner'],
     auditLogRead: ['admin'],
     notificationsRead: ['admin', 'manager', 'instructor', 'learner'],
