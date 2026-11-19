@@ -5,7 +5,7 @@ import { AuthGuard } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
 import { OrganizationScope } from '../auth/public.js';
 import { OrganizationScopeGuard } from '../auth/public.js';
-import { isLearnerOnly, Roles, rolePolicies } from '../auth/public.js';
+import { isLearnerOnly, isOrgWideGrant, Roles, rolePolicies } from '../auth/public.js';
 import { RolesGuard } from '../auth/public.js';
 import { CourseAccessPolicy } from '../course-access/public.js';
 import {
@@ -32,7 +32,7 @@ export class CoursesController {
     const { page, pageSize } = paginationQuerySchema.parse(query);
     const user = request.currentUser!;
     const instructorId = this.courseAccess.isInstructorScoped(user) ? user.id : undefined;
-    return this.coursesService.listCourses(user.organizationId, page, pageSize, instructorId, isLearnerOnly(user.roles));
+    return this.coursesService.listCourses(user.organizationId, page, pageSize, instructorId, isLearnerOnly(user.roles) && !isOrgWideGrant(user));
   }
 
   @Get('summary')
@@ -49,7 +49,7 @@ export class CoursesController {
   async getCourse(@Param('id') courseId: string, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     await this.courseAccess.assertCourseAccess(courseId, user);
-    return this.coursesService.getCourse(courseId, user.organizationId, isLearnerOnly(user.roles));
+    return this.coursesService.getCourse(courseId, user.organizationId, isLearnerOnly(user.roles) && !isOrgWideGrant(user));
   }
 
   @Get(':id/completion')

@@ -23,3 +23,4 @@ export {
 } from './effective-permissions.js';
 export type { EffectivePermissions, ScopeFilter } from './effective-permissions.js';
 export { EffectivePermissionsLookup, loadEffectivePermissions } from './effective-permissions.loader.js';
+export { isOrgWideGrant, isOwnOnlyGrant } from './access-scope.js';

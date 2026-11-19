@@ -82,7 +82,7 @@ Public path/method/request/response changes must update affected runtime metadat
 
 Backend policy/guard enforcement is security authority. Frontend route visibility is UX, not authorization. Current policy inventory is derived in [`../generated/RBAC.md`](../generated/RBAC.md); human semantics are in [`../contracts/API_RBAC_MATRIX.md`](../contracts/API_RBAC_MATRIX.md).
 
-Custom roles: the `custom-roles` module (PR 480) owns the role tables and their data operations. The effective-rights calculation and the per-request lookup live in `auth` (`effective-permissions.ts`, `effective-permissions.loader.ts`, `custom-role-access.ts`) because `RolesGuard` needs them and `custom-roles` already depends on `auth`; the reverse import would be a cycle. Other modules never read the role tables.
+Custom roles: the `custom-roles` module (PR 480) owns the role tables and their data operations. The effective-rights calculation and the per-request lookup live in `auth` (`effective-permissions.ts`, `effective-permissions.loader.ts`, `custom-role-access.ts`, `access-scope.ts`) because `RolesGuard` needs them and `custom-roles` already depends on `auth`; the reverse import would be a cycle. Other modules never read the role tables.
 
 Authorization changes require negative and positive tests at the owning layer.
 
