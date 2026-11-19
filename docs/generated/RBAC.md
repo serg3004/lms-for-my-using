@@ -18,6 +18,7 @@ Permissions owner: `apps/api/src/modules/auth/roles.ts` (`rolePolicies`). Role e
 
 | Policy | Roles |
 |---|---|
+| `adminDashboardRead` | `admin` |
 | `assessmentAnswerOptionsCreate` | `admin`, `instructor` |
 | `assessmentAnswerOptionsRead` | `admin`, `manager`, `instructor` |
 | `assessmentAttemptResultsRead` | `admin`, `manager`, `instructor`, `learner` |
@@ -53,6 +54,7 @@ Permissions owner: `apps/api/src/modules/auth/roles.ts` (`rolePolicies`). Role e
 | `checklistsCreate` | `admin`, `manager`, `instructor`, `mentor` |
 | `checklistsRead` | `admin`, `manager`, `instructor`, `mentor` |
 | `checklistsStartFree` | `admin`, `manager`, `instructor`, `mentor`, `learner` |
+| `courseAnalyticsRead` | `admin`, `manager`, `instructor` |
 | `courseMaterialsCreate` | `admin`, `instructor` |
 | `courseMaterialsRead` | `admin`, `manager`, `instructor`, `learner` |
 | `coursesCreate` | `admin`, `instructor` |
@@ -97,3 +99,53 @@ Permissions owner: `apps/api/src/modules/auth/roles.ts` (`rolePolicies`). Role e
 | `themeSettingsWrite` | `admin` |
 | `usersCreate` | `admin`, `manager` |
 | `usersRead` | `admin`, `manager` |
+
+## Permission catalog (custom roles)
+
+Owner: `packages/shared/src/permission-catalog.ts`; the route table is `apps/api/src/modules/auth/permission-route-map.ts`. Built-in roles are reproduced from the policy named in the table; a custom role is only ever added to this (union).
+
+| Action | Group | Scopes | Delegable | Requires | Policy | Built-in roles | Routes |
+|---|---|---|---|---|---|---|---|
+| `checklist.library.read` | checklists | `organization` | yes | - | `checklistsRead` | `admin`, `manager`, `instructor`, `mentor` | 11 |
+| `checklist.author` | checklists | `organization` | yes | `checklist.library.read` | `checklistsCreate` | `admin`, `manager`, `instructor`, `mentor` | 39 |
+| `checklist.template.manage` | checklists | `organization` | yes | `checklist.library.read` | `checklistTemplatesManage` | `admin` | 3 |
+| `checklist.free.start` | checklists | `own` | yes | - | `checklistsStartFree` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 3 |
+| `checklist.assign` | checklists | `team`, `department`, `organization` | yes | `checklist.instance.read` | `checklistInstancesCreate` | `admin`, `manager`, `instructor` | 2 |
+| `checklist.instance.read` | checklists | `own`, `team`, `department`, `organization` | yes | - | `checklistInstancesRead` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 12 |
+| `checklist.answer.write` | checklists | `own`, `team`, `department`, `organization` | yes | `checklist.instance.read` | `checklistItemResultsWrite` | `admin`, `manager`, `instructor`, `learner` | 8 |
+| `checklist.session.read` | checklists | `own`, `assigned`, `team`, `department`, `organization` | yes | - | `checklistSessionsRead` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 8 |
+| `checklist.session.manage` | checklists | `assigned`, `team`, `department`, `organization` | yes | `checklist.session.read` | `checklistSessionsManage` | `admin`, `manager`, `instructor`, `mentor` | 9 |
+| `checklist.session.create.own` | checklists | `own` | yes | `checklist.session.read` | `checklistSessionsCreateOwn` | `instructor` | 3 |
+| `checklist.session.import` | checklists | `team`, `department`, `organization` | yes | `checklist.session.manage` | `checklistSessionsImport` | `admin`, `manager`, `instructor`, `mentor` | 2 |
+| `checklist.session.conduct` | checklists | `own`, `assigned` | yes | `checklist.library.read` | `checklistSessionsRunOwn` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 15 |
+| `checklist.analytics.read` | checklists | `team`, `department`, `organization` | yes | `checklist.session.read` | `checklistManagerAnalyticsRead` | `admin`, `manager`, `instructor`, `mentor` | 6 |
+| `checklist.workplace.read` | checklists | `organization` | yes | - | `checklistWorkplaceSettingsRead` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 1 |
+| `checklist.workplace.write` | checklists | `organization` | yes | `checklist.workplace.read` | `checklistWorkplaceSettingsWrite` | `admin`, `manager`, `instructor`, `mentor` | 1 |
+| `checklist.results.delete` | checklists | `organization` | yes | `checklist.instance.read` | `checklistResultsDelete` | `admin` | 3 |
+| `checklist.review.write` | reviews | `team`, `department`, `organization` | yes | `checklist.instance.read` | `checklistReviewWrite` | `admin`, `manager`, `instructor`, `mentor` | 5 |
+| `checklist.score.recalculate` | reviews | `team`, `department`, `organization` | yes | `checklist.instance.read` | `checklistScoreRecalculate` | `admin`, `manager`, `instructor`, `mentor` | 1 |
+| `assessment.attempt.read` | reviews | `own`, `team`, `department`, `organization` | yes | - | `assessmentAttemptsRead` | `admin`, `manager`, `instructor` | 4 |
+| `assessment.attempt.result.read` | reviews | `own`, `team`, `department`, `organization` | yes | - | `assessmentAttemptResultsRead` | `admin`, `manager`, `instructor`, `learner` | 1 |
+| `course.read` | courses | `own`, `organization` | yes | - | `coursesRead` | `admin`, `manager`, `instructor`, `learner` | 5 |
+| `course.edit` | courses | `own`, `organization` | yes | `course.read` | `coursesCreate` | `admin`, `instructor` | 6 |
+| `lesson.read` | courses | `own`, `organization` | yes | - | `lessonsRead` | `admin`, `manager`, `instructor`, `learner` | 2 |
+| `lesson.read.all` | courses | `organization` | yes | `lesson.read` | `lessonsReadAll` | `admin` | 1 |
+| `lesson.edit` | courses | `own`, `organization` | yes | `lesson.read` | `lessonsCreate` | `admin`, `instructor` | 5 |
+| `material.read` | courses | `own`, `organization` | yes | - | `courseMaterialsRead` | `admin`, `manager`, `instructor`, `learner` | 3 |
+| `material.edit` | courses | `own`, `organization` | yes | `material.read` | `courseMaterialsCreate` | `admin`, `instructor` | 9 |
+| `longread.read` | longreads | `own`, `organization` | yes | - | `lessonsRead` | `admin`, `manager`, `instructor`, `learner` | 5 |
+| `longread.edit` | longreads | `own`, `organization` | yes | `longread.read` | `lessonsCreate` | `admin`, `instructor` | 20 |
+| `assessment.read` | tests | `own`, `organization` | yes | - | `assessmentsRead` | `admin`, `manager`, `instructor`, `learner` | 3 |
+| `assessment.author` | tests | `own`, `organization` | yes | `assessment.read` | `assessmentsCreate` | `admin`, `instructor` | 5 |
+| `assessment.question.read` | tests | `own`, `organization` | yes | - | `assessmentQuestionsRead` | `admin`, `manager`, `instructor` | 2 |
+| `assessment.question.edit` | tests | `own`, `organization` | yes | `assessment.question.read` | `assessmentQuestionsCreate` | `admin`, `instructor` | 3 |
+| `assessment.option.read` | tests | `own`, `organization` | yes | - | `assessmentAnswerOptionsRead` | `admin`, `manager`, `instructor` | 1 |
+| `assessment.option.edit` | tests | `own`, `organization` | yes | `assessment.option.read` | `assessmentAnswerOptionsCreate` | `admin`, `instructor` | 3 |
+| `assessment.attempt.start` | tests | `own` | yes | - | `assessmentAttemptsCreate` | `admin`, `manager`, `instructor`, `learner` | 4 |
+| `report.summary.read` | reports | `team`, `department`, `organization` | yes | - | `reportsRead` | `admin`, `manager` | 1 |
+| `report.team.read` | reports | `team`, `department` | yes | - | `managerTeamSummaryRead` | `admin`, `manager` | 2 |
+| `report.course.read` | reports | `team`, `department`, `organization` | yes | - | `courseAnalyticsRead` | `admin`, `manager`, `instructor` | 4 |
+| `report.admin.dashboard.read` | reports | `organization` | yes | - | `adminDashboardRead` | `admin` | 1 |
+| `user.read` | users | `team`, `department`, `organization` | yes | - | `usersRead` | `admin`, `manager` | 2 |
+| `user.create` | users | `department`, `organization` | yes | `user.read` | `usersCreate` | `admin`, `manager` | 6 |
+| `checklist.access.settings` | checklists | `organization` | no | - | `checklistAccessSettingsWrite` | `admin` | 2 |

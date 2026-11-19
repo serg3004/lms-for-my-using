@@ -63,6 +63,9 @@ export const rolePolicies = {
   certificatesCreate: ['admin', 'manager', 'instructor'],
   managerTeamSummaryRead: ['admin', 'manager'],
   reportsRead: ['admin', 'manager'],
+  // PR 479: the two reports that used literal role lists; named so that the permission catalog can map them.
+  adminDashboardRead: ['admin'],
+  courseAnalyticsRead: ['admin', 'manager', 'instructor'],
   learnerDashboardRead: ['admin', 'manager', 'instructor', 'learner'],
   auditLogRead: ['admin'],
   notificationsRead: ['admin', 'manager', 'instructor', 'learner'],
