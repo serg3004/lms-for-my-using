@@ -8,7 +8,7 @@ import {
   PERMISSION_SCOPES,
   type PermissionActionKey,
 } from '@lms/shared/permission-catalog';
-import { USER_ROLES } from '@lms/shared';
+import { USER_ROLES } from '@lms/shared/constants/roles';
 
 import { controllerEntries } from '../../testing/api-policy-controllers.js';
 import { actionPolicies, builtInActionsForRole, builtInRolesFor } from './permission-catalog.adapter.js';
