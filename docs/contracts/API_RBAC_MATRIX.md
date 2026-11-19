@@ -28,6 +28,10 @@ The API adapter (`apps/api/src/modules/auth/permission-catalog.adapter.ts`) name
 
 Never delegated to a custom role: managing roles, granting `admin`, anything across organizations, security settings and deleting the organization (`NON_DELEGABLE_CAPABILITIES`); inside the catalog, who may act as an observer (`checklist.access.settings`) also stays with the administrator. `validatePermissionGrants` is the single check for a grant set (unknown action, not delegable, scope outside the allowed list, missing dependency such as conducting a session without reading the library).
 
+## Custom role storage and effective rights (PR 480)
+
+Tables `custom_roles` (organization, unique name, `state`, `version`), `custom_role_permissions` (role, catalog action, scope; unique per role, action and scope) and `user_custom_role_assignments` (organization, user, role, `state`; unique per user and role) hold the roles. Foreign keys are composite with `organization_id`, so a role, a user and a grant from different organizations are refused by the database. `apps/api/src/modules/custom-roles` computes the effective rights as the union of the built-in roles (adapter) and the active custom roles, and returns, for each action, the scopes and a filter that always carries `organizationId`. Archived roles, unknown actions, non-delegable actions and scopes the action does not allow add nothing. `Organization.customRolesEnabled` (default off) turns custom roles on per organization; with it off the result equals `rolePolicies`, which `diffBuiltInDecisions` checks for every role. Edits use the role `version`: a stale version answers 409. `RolesGuard` does not read any of this yet; enforcement starts in PR 481.
+
 ## Role policy vs object scope
 
 A role policy answers whether a role may call a class of operation. It does **not** automatically authorize every object instance.

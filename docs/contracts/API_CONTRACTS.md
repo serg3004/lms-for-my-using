@@ -1808,6 +1808,13 @@ creating a lesson with `type: "longread"` and every `/lessons/:id/longread*` cal
 for a longread answers 404, and longread lessons are left out of lesson lists; all other lesson types behave as before.
 Existing longread data is kept when the flag is switched off.
 
+**Custom roles switch (PR 480).** The same endpoints carry `Organization.customRolesEnabled` (default `false`):
+`GET` returns `{ "longreadEnabled": boolean, "customRolesEnabled": boolean }`; `PATCH` accepts `customRolesEnabled`
+as an optional boolean beside `longreadEnabled` (admin only, audit `organization.features_updated` with a summary
+for each value that changed). While the switch is off the effective rights of every user are the built-in role
+policies only; stored custom roles and assignments change nothing. Nothing reads the switch for enforcement yet
+(PR 481-483); there are no role endpoints before PR 484.
+
 **Lessons.** `POST /courses/:courseId/lessons` with `type: "longread"` creates the lesson, its document and one empty
 chapter in one transaction. The type cannot be changed to or from `longread` (`PATCH /lessons/:id` answers 400).
 

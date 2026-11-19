@@ -122,18 +122,24 @@ export class OrganizationsService {
   }
 
   async getFeatures(organizationId: string) {
-    const organization = await this.prisma.organization.findFirst({ where: { id: organizationId }, select: { longreadEnabled: true } });
+    const organization = await this.prisma.organization.findFirst({
+      where: { id: organizationId },
+      select: { longreadEnabled: true, customRolesEnabled: true },
+    });
     if (!organization) throw new NotFoundException('Organization not found');
 
-    return { longreadEnabled: organization.longreadEnabled };
+    return { longreadEnabled: organization.longreadEnabled, customRolesEnabled: organization.customRolesEnabled };
   }
 
   async updateFeatures(organizationId: string, input: OrganizationFeaturesInput, actorId: string | null = null) {
     const existing = await this.getFeatures(organizationId);
     const updated = await this.prisma.organization.update({
       where: { id: organizationId },
-      data: { longreadEnabled: input.longreadEnabled },
-      select: { longreadEnabled: true },
+      data: {
+        longreadEnabled: input.longreadEnabled,
+        ...(input.customRolesEnabled === undefined ? {} : { customRolesEnabled: input.customRolesEnabled }),
+      },
+      select: { longreadEnabled: true, customRolesEnabled: true },
     });
 
     if (existing.longreadEnabled !== updated.longreadEnabled) {
@@ -147,8 +153,19 @@ export class OrganizationsService {
         metadata: { longreadEnabled: updated.longreadEnabled },
       });
     }
+    if (existing.customRolesEnabled !== updated.customRolesEnabled) {
+      await this.auditLog.record({
+        organizationId,
+        actorId,
+        action: 'organization.features_updated',
+        targetType: 'organization',
+        targetId: organizationId,
+        summary: `Custom roles ${updated.customRolesEnabled ? 'enabled' : 'disabled'}`,
+        metadata: { customRolesEnabled: updated.customRolesEnabled },
+      });
+    }
 
-    return { longreadEnabled: updated.longreadEnabled };
+    return { longreadEnabled: updated.longreadEnabled, customRolesEnabled: updated.customRolesEnabled };
   }
 
   async getThemeSettings(organizationId: string) {
