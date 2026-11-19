@@ -60,11 +60,13 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/checklist-instances/mine` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-instances/pending-review` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-instances/review-queue` | `Checklists` | `bearer` |
+| `GET` | `/api/v1/checklist-instances/transferred-from-me` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-instances/{id}` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-instances/{id}/events` | `Checklists` | `bearer` |
 | `DELETE` | `/api/v1/checklist-instances/{id}/result` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-instances/{id}/result/restore` | `Checklists` | `bearer` |
 | `PATCH` | `/api/v1/checklist-instances/{id}/reviewer` | `Checklists` | `bearer` |
+| `GET` | `/api/v1/checklist-instances/{id}/transfers` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-instances/{instanceId}/finish` | `Checklists` | `bearer` |
 | `PATCH` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}` | `Checklists` | `bearer` |
 | `DELETE` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}/answer` | `Checklists` | `bearer` |
@@ -74,6 +76,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}/photo/file` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}/review` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}/skip` | `Checklists` | `bearer` |
+| `POST` | `/api/v1/checklist-instances/{instanceId}/transfer` | `Checklists` | `bearer` |
+| `GET` | `/api/v1/checklist-instances/{instanceId}/transfer-candidates` | `Checklists` | `bearer` |
 | `PATCH` | `/api/v1/checklist-item-groups/{id}` | `Checklists` | `bearer` |
 | `DELETE` | `/api/v1/checklist-item-groups/{id}` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-item-groups/{id}/copy` | `Checklists` | `bearer` |

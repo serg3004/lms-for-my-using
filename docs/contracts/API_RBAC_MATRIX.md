@@ -145,6 +145,8 @@ check the linked session's observer in the service for every role; mentor gains 
 only on assigned observed instances. Reviewer and standalone-assignment rules remain separate.
 
 PR 406б: `POST /checklist-instances/:instanceId/finish` uses the same roles as item answer writes (`checklistItemResultsWrite`) and finishes a self-filled instance for its executor; privileged roles pass the reviewer access check. Observer sessions are not finished through it.
+PR 477: `GET /checklist-instances/:instanceId/transfer-candidates` and `POST /checklist-instances/:instanceId/transfer` use the roles of item answer writes (`checklistItemResultsWrite`: `admin`, `manager`, `instructor`, `learner`), but the object rule is narrower: the executor of the check, an `admin`, or a `manager` whose team scope (`ChecklistReviewAccessService.assertReviewerCanAccess`) contains the executor; an instructor or another learner is 403, a manager outside the team and another organization are 404. The recipient must be an active colleague of the executor's current department. `GET /checklist-instances/:instanceId/transfers` follows the access of `GET /checklist-instances/:id/events`; `GET /checklist-instances/transferred-from-me` (`checklistInstancesRead`) returns only the caller's own hand-overs.
+
 New creation (single/bulk/repeat) and reassignment reject employee = observer; existing rows are
 not rewritten. Start/completion audit event names and actors are unchanged.
 

@@ -1,6 +1,6 @@
 import { presentLearnerInstance, presentLearnerReport, withoutLearnerPoints } from './checklist-learner-result.js';
 import { MAX_SESSION_IMPORT_BYTES, type SessionImportFile } from './checklist-session-import.js';
-import { BadRequestException, Body, Controller, Logger, ForbiddenException, NotFoundException, Get, Headers, Param, Patch, Post, Put, Delete, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Logger, ForbiddenException, NotFoundException, Get, Headers, Param, ParseUUIDPipe, Patch, Post, Put, Delete, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { AuthGuard } from '../auth/public.js';
@@ -20,6 +20,7 @@ import { ChecklistsService } from './checklists.service.js';
 import {
   assignChecklistSchema,
   assignChecklistReviewerSchema,
+  transferChecklistInstanceSchema,
   bulkAssignChecklistSchema,
   bulkCreateChecklistSessionSchema,
   importChecklistSessionsSchema,
@@ -674,6 +675,13 @@ export class ChecklistsController {
     const user = request.currentUser!;
     return (await this.checklistsService.listMyInstances(user.id, user.organizationId)).map((instance) => presentLearnerInstance(instance, !isLearnerOnly(user.roles)));
   }
+  // PR 477: checks the user handed to colleagues and that are still open ("Handed over" in the list of their own checks).
+  @Get('checklist-instances/transferred-from-me')
+  @Roles(...rolePolicies.checklistInstancesRead)
+  async listTransferredAway(@Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.listTransferredAway(user.id, user.organizationId);
+  }
   @Get('checklist-instances/pending-review')
   @Roles(...rolePolicies.checklistReviewWrite)
   async listPendingReview(@Req() request: AuthenticatedRequest) {
@@ -707,6 +715,18 @@ export class ChecklistsController {
       if (instance.userId !== user.id) throw new ForbiddenException('You can only view your own checklist assignment');
     }
     return this.checklistsService.listEvents(instanceId, user.organizationId);
+  }
+  // PR 477: who handed the check to whom and when; the same access as the events of the check.
+  @Get('checklist-instances/:id/transfers')
+  @Roles(...rolePolicies.checklistInstancesRead)
+  async listTransferHistory(@Param('id', ParseUUIDPipe) instanceId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    if (!isLearnerOnly(user.roles)) await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
+    else {
+      const instance = await this.checklistsService.getInstance(instanceId, user.organizationId);
+      if (instance.userId !== user.id) throw new ForbiddenException('You can only view your own checklist assignment');
+    }
+    return this.checklistsService.listTransferHistory(instanceId, user.organizationId);
   }
   @Get('checklist-instances/:id')
   @Roles(...rolePolicies.checklistInstancesRead)
@@ -843,6 +863,26 @@ export class ChecklistsController {
       await this.uploadService.deleteObject(uploaded.objectKey).catch(() => undefined);
       throw error;
     }
+  }
+  // PR 477: hand an unfinished self-filled check over to a colleague. Who may: the executor, an administrator, a manager of the executor's team.
+  @Get('checklist-instances/:instanceId/transfer-candidates')
+  @Roles(...rolePolicies.checklistItemResultsWrite)
+  async transferCandidates(@Param('instanceId', ParseUUIDPipe) instanceId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    await this.assertMayHandOver(user, instanceId);
+    return this.checklistsService.transferInstanceCandidates(instanceId, user);
+  }
+  @Post('checklist-instances/:instanceId/transfer')
+  @Roles(...rolePolicies.checklistItemResultsWrite)
+  async transferInstance(@Param('instanceId', ParseUUIDPipe) instanceId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const input = transferChecklistInstanceSchema.parse(body);
+    await this.assertMayHandOver(user, instanceId);
+    return this.checklistsService.transferInstance(instanceId, user, input);
+  }
+  // A manager reaches only their team (the same scope as the review queue); everyone else must be the executor or an administrator, which the service checks.
+  private async assertMayHandOver(user: NonNullable<AuthenticatedRequest['currentUser']>, instanceId: string) {
+    if (!user.roles.includes('admin') && user.roles.includes('manager')) await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
   }
   // PR 406б: the explicit "Finish the check" of a self-filled sheet (a session is completed through its own route).
   @Post('checklist-instances/:instanceId/finish')

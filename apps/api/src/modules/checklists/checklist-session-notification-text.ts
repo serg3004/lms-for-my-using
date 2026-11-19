@@ -83,6 +83,18 @@ const observerDeactivatedTexts = {
   "zh": { "title": "观察员已被停用", "message": "已停用的观察员仍有未完成的场次。请打开列表并指派其他观察员。" }
 } as const;
 
+const instanceTransferTexts = {
+  "ru": { "title": "Вам передана проверка", "message": "Коллега передал вам незавершённую проверку. Откройте её, чтобы продолжить." },
+  "en": { "title": "A check was handed over to you", "message": "A colleague handed an unfinished check over to you. Open it to continue." },
+  "kk": { "title": "Сізге тексеру берілді", "message": "Әріптесіңіз сізге аяқталмаған тексеруді берді. Жалғастыру үшін оны ашыңыз." },
+  "zh": { "title": "有一项检查已转交给您", "message": "同事把一项未完成的检查转交给了您。请打开它继续完成。" }
+} as const;
+
+export function instanceTransferText(locale: string) {
+  const language = locale.split('-')[0];
+  return language && language in instanceTransferTexts ? instanceTransferTexts[language as keyof typeof instanceTransferTexts] : instanceTransferTexts.ru;
+}
+
 export function observerDeactivatedText(locale: string) {
   const language = locale.split('-')[0];
   return language && language in observerDeactivatedTexts ? observerDeactivatedTexts[language as keyof typeof observerDeactivatedTexts] : observerDeactivatedTexts.ru;

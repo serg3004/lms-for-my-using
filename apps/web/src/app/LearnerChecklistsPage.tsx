@@ -11,8 +11,8 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint, validateChecklistPhoto } from '../shared/checklistPhoto.js';
-import { finishChecklistInstance, listFreeChecklists, listMyChecklistInstances, removeChecklistItemPhoto, startFreeChecklist, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
-import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary, FreeChecklistSummary } from '../shared/api/types.js';
+import { finishChecklistInstance, listChecklistsTransferredFromMe, listFreeChecklists, listMyChecklistInstances, removeChecklistItemPhoto, startFreeChecklist, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
+import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary, ChecklistTransferredAway, FreeChecklistSummary } from '../shared/api/types.js';
 import { ChecklistCover } from '../shared/ChecklistCover.js';
 import { ChecklistPhotoStrip } from '../shared/ChecklistPhotoStrip.js';
 import { ChecklistAccessBadge } from '../shared/checklistAccess.js';
@@ -23,6 +23,7 @@ import { isNoteOffered, isNoteRequired, pendingAnswer } from './checklistItemNot
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { ChecklistPhotoProof } from './ChecklistPhotoProof.js';
 import { ChecklistFinishBar } from './ChecklistFinishBar.js';
+import { ChecklistTransferButton, ChecklistTransferHistory } from './ChecklistTransfer.js';
 import {
   checklistResultToAnswer,
   checklistItemLevels,
@@ -69,15 +70,16 @@ type LearnerChecklistRow = {
 };
 
 // `free` is null when the catalog could not be loaded: the rest of the page must keep working.
-type LearnerChecklistsData = { instances: ChecklistInstanceSummary[]; free: FreeChecklistSummary[] | null };
+type LearnerChecklistsData = { instances: ChecklistInstanceSummary[]; free: FreeChecklistSummary[] | null; transferred?: ChecklistTransferredAway[] };
 export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, openInstanceId: initialOpenInstanceId }: { linkedSessionId?: string | null; onLinkedSessionBack?: () => void; openInstanceId?: string | null } = {}) {
   const { t } = useTranslation();
   const [openInstanceId, setOpenInstanceId] = useState<string | null>(initialOpenInstanceId ?? null);
 
   const { state: loadState, reload: load } = useAsyncData<LearnerChecklistsData>(
     async () => {
-      const [instances, free] = await Promise.all([listMyChecklistInstances(), listFreeChecklists().catch(() => null)]);
-      return { instances, free };
+      // PR 477: the "Handed over" list is a convenience; the page works without it.
+      const [instances, free, transferred] = await Promise.all([listMyChecklistInstances(), listFreeChecklists().catch(() => null), listChecklistsTransferredFromMe().catch(() => [])]);
+      return { instances, free, transferred };
     },
     [t],
     {
@@ -120,6 +122,7 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, op
     }
   }
   const freeChecklists = loadState.data.free;
+  const transferred = Array.isArray(loadState.data.transferred) ? loadState.data.transferred : [];
   // The access label follows the live catalog (the instance snapshot may predate a mode change); the
   // frozen snapshot is only the fallback when the catalog could not be loaded.
   const freeById = new Map((freeChecklists ?? []).map((checklist) => [checklist.id, checklist]));
@@ -175,6 +178,7 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, op
           instance={open}
           onBack={() => setOpenInstanceId(null)}
           onUpdated={load}
+          onTransferred={() => { setOpenInstanceId(null); void load(); }}
           t={t}
         />
       </main>
@@ -255,6 +259,20 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, op
           </ul>
         </section>
       )}
+      {transferred.length > 0 && (
+        <section aria-labelledby="transferred-title" style={{ marginTop: 24 }}>
+          <h2 id="transferred-title" style={{ fontSize: 18 }}>{t('checklists.transfer.handedOverTitle', 'Handed over to colleagues')}</h2>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>
+            {transferred.map((row) => (
+              <li key={row.id} style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 14, background: COLORS.soft, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <strong style={{ overflowWrap: 'anywhere' }}>{plainText(row.title)}</strong>
+                <span style={{ fontSize: 12, fontWeight: 600, borderRadius: 999, padding: '3px 10px', color: COLORS.warning, background: COLORS.warningSoft }}>{t('checklists.transfer.handedOver', 'Handed over')}</span>
+                {row.toUser && <span style={{ color: COLORS.muted }}>{t('checklists.transfer.handedOverTo', 'Handed over: {{name}}', { name: `${row.toUser.lastName} ${row.toUser.firstName}`.trim() })}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <ObserverSessionsBlock />
       <LearnerChecklistSessions linkedSessionId={linkedSessionId} onLinkedSessionBack={onLinkedSessionBack} t={t} />
     </main>
@@ -290,6 +308,7 @@ export function ChecklistTaking({
   api = signedInTakingApi,
   photos = 'full',
   beforeFinish,
+  onTransferred,
 }: {
   instance: ChecklistInstanceSummary;
   /** Without it the "back to the list" link is not drawn (a guest has no list). */
@@ -301,6 +320,8 @@ export function ChecklistTaking({
   photos?: 'full' | 'attach' | 'off';
   /** Extra content right above the finish bar (the guest's code check). */
   beforeFinish?: ReactNode;
+  /** PR 477: given only for the signed-in employee's own pass; it turns on "Hand over the check…" and the hand-over history. */
+  onTransferred?: () => void;
 }) {
   const checklist = instance.checklist;
   const [submitting, setSubmitting] = useState<string | null>(null);
@@ -493,6 +514,8 @@ export function ChecklistTaking({
           );
         })}
       </div>
+      {editable && onTransferred && <ChecklistTransferButton instanceId={instance.id} expectedUpdatedAt={instance.updatedAt} onTransferred={onTransferred} t={t} />}
+      {onTransferred && <ChecklistTransferHistory instanceId={instance.id} t={t} />}
       {editable && beforeFinish}
       {editable && <ChecklistFinishBar requiresReview={checklist.requiresReview === true} missing={missingTitles} onFinish={finish} t={t} />}
       {instance.status === 'completed' && checklist.scoringMode === 'none' && (

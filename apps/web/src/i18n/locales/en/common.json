@@ -2917,6 +2917,10 @@
       "checklist_session_observer_deactivated": {
         "title": "Observer blocked",
         "message": "A blocked observer still has unfinished sessions. Open the list and assign another observer."
+      },
+      "checklist_instance_transferred": {
+        "title": "A check was handed over to you",
+        "message": "A colleague handed an unfinished check over to you. Open it to continue."
       }
     },
     "centerTitle": "Notification Center",
@@ -3066,6 +3070,30 @@
     "finishConfirmReview": "The answers will go to your instructor and cannot be changed afterwards.",
     "finishError": "Unable to finish the check.",
     "finishCancel": "Cancel",
+    "transfer": {
+      "open": "Hand over the check…",
+      "title": "Hand the check over to a colleague",
+      "intro": "The unfinished check moves to your colleague together with the answers and photos. After the hand-over you cannot edit it.",
+      "recipient": "Hand over to",
+      "choose": "Choose a colleague",
+      "note": "Note to the colleague (optional)",
+      "noteCount": "{{count}} of {{max}}",
+      "loading": "Loading colleagues…",
+      "loadError": "Unable to load the list of colleagues.",
+      "empty": "No colleagues available: a check can only be handed to someone from the same department.",
+      "submit": "Hand over",
+      "cancel": "Cancel",
+      "conflict": "The check has changed. Reload the page and try again.",
+      "error": "Unable to hand the check over.",
+      "reload": "Reload",
+      "handedOver": "Handed over",
+      "handedOverTo": "Handed over: {{name}}",
+      "handedOverTitle": "Handed over to colleagues",
+      "historyTitle": "Hand-over history",
+      "historyLine": "{{from}} → {{to}}, {{date}}",
+      "historyNote": "Note: {{note}}",
+      "unknownUser": "Employee"
+    },
     "itemDescription": "Description",
     "noteRequired": "Explanation (required)",
     "note": "Explanation",

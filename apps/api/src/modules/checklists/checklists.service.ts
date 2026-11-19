@@ -25,6 +25,7 @@ import { visibleFolderIds, type FolderActor } from './checklist-folder-tree.js';
 import { isNoteRequired, parseNoteAnswers } from './checklist-item-note.js';
 import { GUEST_USER_EMAIL } from './checklist-public-access.js';
 import { ChecklistResultDeletion } from './checklist-result-deletion.js';
+import { ChecklistInstanceTransfer, type TransferActor, type TransferInput } from './checklist-instance-transfer.js';
 import { findTemplate, renderTemplate, templateLocale } from './checklist-templates.js';
 import {
   AssignChecklistInput,
@@ -367,6 +368,7 @@ export class ChecklistsService {
       (checklistId, organizationId, userId, isPrivileged) => this.assertSheetMediaVisible(checklistId, organizationId, userId, isPrivileged),
       MAX_BUFFERED_UPLOAD_SIZE_BYTES,
     );
+    this.instanceTransfer = new ChecklistInstanceTransfer(prisma, auditLog);
     this.sheetAnalytics = new ChecklistSheetAnalytics(prisma);
     this.itemAnalytics = new ChecklistItemAnalytics(prisma, this.sheetAnalytics);
     this.analyticsExport = new ChecklistAnalyticsExport(this.sheetAnalytics, this.itemAnalytics, auditLog);
@@ -379,6 +381,7 @@ export class ChecklistsService {
   }
 
   private readonly resultDeletion: ChecklistResultDeletion;
+  private readonly instanceTransfer: ChecklistInstanceTransfer;
   private readonly orgTemplates: ChecklistOrgTemplates;
   private readonly sheetPhotos: ChecklistSheetPhotos;
   private readonly sheetAnalytics: ChecklistSheetAnalytics;
@@ -1594,6 +1597,12 @@ export class ChecklistsService {
       return { created: createFor.length, skippedActive: activeIds.size, resolvedRecipients: orderedRecipientIds.length, recipientCount: orderedRecipientIds.length };
     });
   }
+
+  /** PR 477: hand an unfinished self-filled check over to a colleague (rules in checklist-instance-transfer.ts). */
+  transferInstanceCandidates(instanceId: string, actor: TransferActor) { return this.instanceTransfer.candidates(instanceId, actor); }
+  transferInstance(instanceId: string, actor: TransferActor, input: TransferInput) { return this.instanceTransfer.transfer(instanceId, actor, input); }
+  listTransferredAway(userId: string, organizationId: string) { return this.instanceTransfer.transferredAway(userId, organizationId); }
+  listTransferHistory(instanceId: string, organizationId: string) { return this.instanceTransfer.history(instanceId, organizationId); }
 
   async listMyInstances(userId: string, organizationId: string) {
     return this.listInstancesWithDeadlineRefresh({ userId, organizationId });

@@ -8,6 +8,10 @@ import i18n from 'i18next';
 
 const api = vi.hoisted(() => ({
   listMyChecklistInstances: vi.fn(),
+  listChecklistsTransferredFromMe: vi.fn(async () => []),
+  listChecklistTransferHistory: vi.fn(async () => []),
+  listChecklistTransferCandidates: vi.fn(async () => []),
+  transferChecklistInstance: vi.fn(),
   listFreeChecklists: vi.fn(),
   startFreeChecklist: vi.fn(),
   submitChecklistItemResult: vi.fn(),

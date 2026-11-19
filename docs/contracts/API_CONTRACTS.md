@@ -887,6 +887,34 @@ only while the status is `assigned` or `in_progress` (otherwise 409 "already fin
 `completed` with the score, report settings and `completedAt` frozen as before. Another user is 403, another
 tenant 404. Audit action `checklist_instance.finished`. Observer sessions keep the automatic rule.
 
+PR 477: hand-over of a self-filled check to a colleague (a relay, one executor at a time; a session is
+handed over by changing its observer). The executor of an instance is `ChecklistInstance.userId`, so the
+hand-over moves that id; answers and photos stay on the instance.
+- `GET /checklist-instances/:instanceId/transfer-candidates` returns `[{ id, firstName, lastName }]` (no email),
+  at most 200, ordered by last name: active users of the organization who share a current department
+  membership (`effectiveTo IS NULL`) with the current executor, never the executor. An executor without a
+  department, a finished check, a session and a guest pass give `[]`.
+- `POST /checklist-instances/:instanceId/transfer` with `{ toUserId, note?, expectedUpdatedAt? }` (strict; `note`
+  trimmed, at most 500 characters; `expectedUpdatedAt` is the `updatedAt` of the instance the screen has seen).
+  Answer `{ id, userId }` (the new executor). Allowed only while the status is `assigned` or `in_progress`
+  (finished: 409). A session is 400, a guest pass is 400, handing to the executor is 400, a recipient who is not
+  a colleague (other department, other organization, blocked or deleted) is 400. The move is a compare-and-set on
+  executor, status and `updatedAt` inside one transaction with the event and the notification: when the check was
+  changed in the meantime (a stale `expectedUpdatedAt` or a lost race) the answer is 409 and nothing moves.
+  The same transaction writes a `ChecklistInstanceEvent` `transferred` (metadata `fromUserId`, `toUserId`, `note`),
+  a `checklist_instance_transferred` notification for the new executor (data `{ instanceId }` only, link
+  `/learn/checklists?open=<instanceId>`) and an outbox event `checklists.instance-transfer-notify`; the mail is
+  rechecked at delivery (the check must still be open and with that recipient) and is a generic text in the
+  recipient language, never a name, the note or the sheet title. Audit action `checklist_instance.transferred`
+  with ids and `hasNote` only.
+- `GET /checklist-instances/:instanceId/transfers` returns the hand-overs oldest first:
+  `[{ id, at, note, from: { id, firstName, lastName } | null, to: ... | null }]`; the access rule is that of the
+  events of the check (a learner only for their own check, a manager inside the team). The report of a filled
+  check (PR 478) shows the same list.
+- `GET /checklist-instances/transferred-from-me` returns the open checks the caller handed away,
+  `[{ id, checklistId, title, status, transferredAt, toUser }]`, newest first, at most 100, each check once; the
+  employee sees them as read-only "Handed over" rows, they cannot open or edit them.
+
 **Who may edit a checklist (PR 362в)** (same create/update routes): `allowEditByAll` (boolean; `false` by
 default for a new checklist, `true` for every checklist that existed before). When it is `false`, only the
 creator and an `admin` may `PATCH`/`DELETE` the checklist, upload or remove its cover, and create, change or

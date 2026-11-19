@@ -7,6 +7,7 @@ import { OutboxService } from '../outbox/public.js';
 import { ChecklistSessionReminderDelivery } from './checklist-session-reminder-delivery.js';
 import { CHECKLIST_OBSERVER_DEACTIVATED_NOTIFY_JOB } from './checklist-observer-deactivation.js';
 import { CHECKLIST_SESSION_CHANGE_NOTIFY_JOB } from './checklist-session-notifications.js';
+import { CHECKLIST_INSTANCE_TRANSFER_NOTIFY_JOB } from './checklist-instance-transfer.js';
 import { CHECKLIST_SESSION_MESSAGE_NOTIFY_JOB } from './checklist-session-message.js';
 
 export const CHECKLIST_SESSION_REMINDER_JOB = 'checklists.session-reminders-due';
@@ -71,6 +72,14 @@ export class ChecklistSessionReminderWorker implements OnModuleInit {
         return;
       }
       await this.delivery.sendChange({ organizationId, notificationId });
+    });
+    this.backgroundJobs.registerHandler(CHECKLIST_INSTANCE_TRANSFER_NOTIFY_JOB, async (job) => {
+      const { organizationId, notificationId } = job.data;
+      if (typeof organizationId !== 'string' || typeof notificationId !== 'string') {
+        this.logger.warn('Dropping malformed instance transfer notify payload');
+        return;
+      }
+      await this.delivery.sendInstanceTransferred({ organizationId, notificationId });
     });
     this.backgroundJobs.registerHandler(CHECKLIST_OBSERVER_DEACTIVATED_NOTIFY_JOB, async (job) => {
       const { organizationId, notificationId } = job.data;

@@ -15,6 +15,7 @@ import { managementCriterion, openManagementEdit, openManagementList, openManage
 import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 import { installManagerReportMocks } from '../fixtures/checklist-manager-report.js';
 import { courseA, installCourseAnalyticsMocks, userA } from '../fixtures/course-analytics.js';
+import { freshTransferState, installTransferMocks, openTransferDialog } from '../fixtures/checklist-transfer.js';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
@@ -378,6 +379,24 @@ test.describe('WCAG AA browser baseline', () => {
       await page.setViewportSize({ width: 390, height: 844 });
       await page.goto(path);
       await expect(page.getByRole('table').first()).toBeVisible();
+      await auditAccessibility(page, testInfo);
+    });
+  }
+
+  for (const state of ['form', 'empty', 'conflict'] as const) {
+    test(`hand-over of a check window (${state}) is accessible on a phone`, async ({ page }, testInfo) => {
+      const transfer = freshTransferState();
+      if (state === 'empty') transfer.candidates = [];
+      if (state === 'conflict') transfer.transferStatus = 409;
+      await installTransferMocks(page, 'executor', transfer);
+      await page.setViewportSize({ width: 390, height: 844 });
+      await openTransferDialog(page);
+      const dialog = page.getByRole('dialog');
+      if (state === 'conflict') {
+        await dialog.getByLabel('Кому передать').selectOption('anna');
+        await dialog.getByRole('button', { name: 'Передать', exact: true }).click();
+        await expect(dialog.getByRole('alert')).toBeVisible();
+      }
       await auditAccessibility(page, testInfo);
     });
   }

@@ -14,6 +14,9 @@ import type {
   ChecklistPublicAccessUpdate,
   ChecklistAnalyticsQuery,
   ChecklistInstanceEvent,
+  ChecklistTransferCandidate,
+  ChecklistTransferHistoryRow,
+  ChecklistTransferredAway,
   ChecklistInstanceSummary,
   ChecklistItemGroup,
   ChecklistItemResultSummary,
@@ -335,6 +338,20 @@ export function getChecklistAnalytics(query: ChecklistAnalyticsQuery = {}) {
 
 export function getChecklistInstance(instanceId: string) {
   return apiRequest<ChecklistInstanceSummary>(`/checklist-instances/${encodeURIComponent(instanceId)}`);
+}
+
+/** PR 477: colleagues an unfinished self-filled check may be handed to, hand it over, and the checks the user handed away. */
+export function listChecklistTransferCandidates(instanceId: string) {
+  return apiRequest<ChecklistTransferCandidate[]>(`/checklist-instances/${encodeURIComponent(instanceId)}/transfer-candidates`);
+}
+export function transferChecklistInstance(instanceId: string, input: { toUserId: string; note?: string; expectedUpdatedAt?: string }) {
+  return apiRequest<{ id: string; userId: string }>(`/checklist-instances/${encodeURIComponent(instanceId)}/transfer`, { method: 'POST', body: JSON.stringify(input) });
+}
+export function listChecklistTransferHistory(instanceId: string) {
+  return apiRequest<ChecklistTransferHistoryRow[]>(`/checklist-instances/${encodeURIComponent(instanceId)}/transfers`);
+}
+export function listChecklistsTransferredFromMe() {
+  return apiRequest<ChecklistTransferredAway[]>('/checklist-instances/transferred-from-me');
 }
 
 /** PR 406б: the explicit "Finish the check" of a self-filled sheet. */

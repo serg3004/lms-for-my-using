@@ -628,7 +628,23 @@ export type ChecklistInstanceEventType =
   | 'item_approved'
   | 'item_rejected'
   | 'completed'
-  | 'expired';
+  | 'expired'
+  | 'guest_link_disabled'
+  | 'transferred';
+
+/** PR 477: a colleague a check may be handed to. */
+export type ChecklistTransferCandidate = { id: string; firstName: string; lastName: string };
+/** PR 477: one hand-over of a check (oldest first in the history). */
+export type ChecklistTransferHistoryRow = {
+  id: string; at: string; note: string | null;
+  from: { id: string; firstName: string; lastName: string } | null;
+  to: { id: string; firstName: string; lastName: string } | null;
+};
+/** PR 477: an open check the user handed to a colleague (shown to them as "Handed over", read-only). */
+export type ChecklistTransferredAway = {
+  id: string; checklistId: string; title: string; status: ChecklistInstanceStatus; transferredAt: string;
+  toUser: { id: string; firstName: string; lastName: string } | null;
+};
 
 export type ChecklistInstanceEvent = {
   id: string;
