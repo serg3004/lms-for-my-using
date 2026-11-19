@@ -4,7 +4,11 @@ import type { PrismaService } from '../../database/prisma.service.js';
 import type { AuditLogService } from '../audit-log/public.js';
 import { exportLocale } from './checklist-report-csv.js';
 import { renderSessionReportPdf, type ReportPdfPhoto } from './checklist-session-report-pdf.js';
+import type { ChecklistInstanceReportData } from './checklist-instance-report.js';
 import type { ChecklistSessionReport } from './checklist-session-report.js';
+
+/** What the PDF can be built from: a session report or (PR 478) the report of a self-filled check. */
+export type PdfSourceReport = ChecklistSessionReport | ChecklistInstanceReportData;
 
 /** PR 372 limits: what one PDF may weigh, how long it may take, and how many photos it embeds. */
 export const REPORT_PDF_LIMITS = {
@@ -37,7 +41,7 @@ async function withDeadline<T>(work: Promise<T>, deadline: number): Promise<T> {
 }
 
 /** Loads the photos that fit the limits (in report order); the rest are only counted so the file can say so. */
-async function loadPhotos(deps: Deps, report: Extract<ChecklistSessionReport, { visible: true }>, organizationId: string, deadline: number) {
+async function loadPhotos(deps: Deps, report: Extract<PdfSourceReport, { visible: true }>, organizationId: string, deadline: number) {
   const withPhoto = report.criteria.filter((criterion) => criterion.photo);
   if (withPhoto.length === 0) return { photos: [] as ReportPdfPhoto[], omitted: 0, loaded: 0 };
   const rows = await deps.prisma.checklistItemResult.findMany({
@@ -73,9 +77,10 @@ async function loadPhotos(deps: Deps, report: Extract<ChecklistSessionReport, { 
  */
 export async function exportSessionReportPdf(
   deps: Deps,
-  report: ChecklistSessionReport,
+  report: PdfSourceReport,
   organizationId: string,
   actor: { id: string; locale: string | null },
+  target?: { action: 'checklist_instance.report_pdf_downloaded'; targetType: string; targetId: string; summary: string; filename: string },
 ) {
   const deadline = Date.now() + REPORT_PDF_LIMITS.timeoutMs;
   const locale = exportLocale(actor.locale);
@@ -91,11 +96,11 @@ export async function exportSessionReportPdf(
   await deps.auditLog.record({
     organizationId,
     actorId: actor.id,
-    action: 'checklist_session.report_pdf_downloaded',
-    targetType: 'checklist_session',
-    targetId: report.sessionId,
-    summary: 'Downloaded the checklist session report as PDF',
+    action: target?.action ?? 'checklist_session.report_pdf_downloaded',
+    targetType: target?.targetType ?? 'checklist_session',
+    targetId: target?.targetId ?? report.sessionId ?? '',
+    summary: target?.summary ?? 'Downloaded the checklist session report as PDF',
     metadata: { locale, bytes: built.pdf.length, photosEmbedded: built.photoSet.loaded, photosOmitted: built.photoSet.omitted },
   });
-  return { filename: `checklist-session-${report.sessionId}.pdf`, pdf: built.pdf };
+  return { filename: target?.filename ?? `checklist-session-${report.sessionId}.pdf`, pdf: built.pdf };
 }

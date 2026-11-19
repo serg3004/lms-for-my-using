@@ -23,6 +23,7 @@ import { isNoteOffered, isNoteRequired, pendingAnswer } from './checklistItemNot
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { ChecklistPhotoProof } from './ChecklistPhotoProof.js';
 import { ChecklistFinishBar } from './ChecklistFinishBar.js';
+import { ChecklistInstancePreview } from './ChecklistInstancePreview.js';
 import { ChecklistTransferButton, ChecklistTransferHistory } from './ChecklistTransfer.js';
 import {
   checklistResultToAnswer,
@@ -75,7 +76,7 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, op
   const { t } = useTranslation();
   const [openInstanceId, setOpenInstanceId] = useState<string | null>(initialOpenInstanceId ?? null);
 
-  const { state: loadState, reload: load } = useAsyncData<LearnerChecklistsData>(
+  const { state: loadState, refresh } = useAsyncData<LearnerChecklistsData>(
     async () => {
       // PR 477: the "Handed over" list is a convenience; the page works without it.
       const [instances, free, transferred] = await Promise.all([listMyChecklistInstances(), listFreeChecklists().catch(() => null), listChecklistsTransferredFromMe().catch(() => [])]);
@@ -91,6 +92,8 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, op
   const [startError, setStartError] = useState<string | null>(null);
   const [listTab, setListTab] = useState<LearnerListTab>(() => (typeof window === 'undefined' ? 'assigned' : tabFromHash(window.location.hash)));
   const [query, setQuery] = useState('');
+  // PR 478: the filled-in sheet shown as a report.
+  const [previewInstanceId, setPreviewInstanceId] = useState<string | null>(null);
   useEffect(() => {
     const onHash = () => setListTab(tabFromHash(window.location.hash));
     window.addEventListener('hashchange', onHash);
@@ -113,8 +116,8 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, op
     setStartError(null);
     try {
       const instance = await startFreeChecklist(checklistId);
+      await refresh();
       setOpenInstanceId(instance.id);
-      await load();
     } catch (err) {
       setStartError(err instanceof ApiClientError ? err.message : t('checklists.free.startError', 'Unable to start this checklist.'));
     } finally {
@@ -171,14 +174,22 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, op
     </button>
   );
 
+  if (open && previewInstanceId === open.id) {
+    return (
+      <main style={{ padding: 32, maxWidth: 860, margin: '0 auto' }}>
+        <ChecklistInstancePreview instanceId={open.id} onBack={() => setPreviewInstanceId(null)} t={t} />
+      </main>
+    );
+  }
   if (open) {
     return (
       <main style={{ padding: 32, maxWidth: 860, margin: '0 auto' }}>
         <ChecklistTaking
           instance={open}
           onBack={() => setOpenInstanceId(null)}
-          onUpdated={load}
-          onTransferred={() => { setOpenInstanceId(null); void load(); }}
+          onUpdated={refresh}
+          onTransferred={() => { setOpenInstanceId(null); void refresh(); }}
+          onPreview={() => setPreviewInstanceId(open.id)}
           t={t}
         />
       </main>
@@ -309,6 +320,7 @@ export function ChecklistTaking({
   photos = 'full',
   beforeFinish,
   onTransferred,
+  onPreview,
 }: {
   instance: ChecklistInstanceSummary;
   /** Without it the "back to the list" link is not drawn (a guest has no list). */
@@ -322,6 +334,8 @@ export function ChecklistTaking({
   beforeFinish?: ReactNode;
   /** PR 477: given only for the signed-in employee's own pass; it turns on "Hand over the check…" and the hand-over history. */
   onTransferred?: () => void;
+  /** PR 478: given only for the signed-in employee's own pass; it turns on the "Preview" button (the report of the filled-in sheet). */
+  onPreview?: () => void;
 }) {
   const checklist = instance.checklist;
   const [submitting, setSubmitting] = useState<string | null>(null);
@@ -514,6 +528,9 @@ export function ChecklistTaking({
           );
         })}
       </div>
+      {onPreview && (
+        <Button type="button" variant="secondary" style={{ minHeight: 44, marginTop: 12, marginRight: 8 }} onClick={onPreview}>{t('checklists.instanceReport.open', 'Preview')}</Button>
+      )}
       {editable && onTransferred && <ChecklistTransferButton instanceId={instance.id} expectedUpdatedAt={instance.updatedAt} onTransferred={onTransferred} t={t} />}
       {onTransferred && <ChecklistTransferHistory instanceId={instance.id} t={t} />}
       {editable && beforeFinish}

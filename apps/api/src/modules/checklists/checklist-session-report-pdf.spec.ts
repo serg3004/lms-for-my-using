@@ -81,6 +81,21 @@ describe('renderSessionReportPdf (PR 372)', () => {
     expect(text).toContain('Стр. 2 из 2');
   });
 
+  it('PR 478: the report of a self-filled check has no observer and no schedule, says "Отчёт по проверке" and lists the hand-overs', async () => {
+    const built = report([row('c1', 'g1', 'First criterion', 1, 1)]);
+    const instanceReport = {
+      ...built, sessionId: null, header: { ...built.header, observer: null },
+      transfers: [{ id: 'e1', at: new Date('2026-10-01T09:00:00Z'), note: 'Склад до 18:00', from: 'Ann Boris', to: 'Ann Clara' }],
+    } as never;
+    const { text } = await render(instanceReport);
+    expect(text).toContain('ОТЧЁТ ПО ПРОВЕРКЕ');
+    expect(text).not.toContain('Наблюдатель');
+    expect(text).not.toContain('Запланировано');
+    expect(text).toContain('История передач');
+    expect(text).toContain('Ann Boris → Ann Clara');
+    expect(text).toContain('Заметка: Склад до 18:00');
+  });
+
   it('PR 428: a formatted comment and feedback are drawn as styled text, not as markup', async () => {
     const rows = [row('c1', 'g1', 'First criterion', 1, 1, { comment: '<p><strong>Важно</strong> и <em>курсив</em></p>' })];
     const data = report(rows, { session: { id: 'sess', instanceId: 'inst', status: 'completed', scheduledAt: new Date('2026-10-01T10:00:00Z'), durationMinutes: 60, startedAt: new Date('2026-10-01T10:05:00Z'), timezone: 'Asia/Almaty', locationCapturePolicy: 'off', strengths: '<p><strong>Сильные</strong> стороны</p>', developmentAreas: null, nextSteps: null, contextFieldsSnapshot: [], contextValues: {} } as never });

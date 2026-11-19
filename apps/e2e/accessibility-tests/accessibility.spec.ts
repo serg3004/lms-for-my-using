@@ -16,6 +16,7 @@ import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 import { installManagerReportMocks } from '../fixtures/checklist-manager-report.js';
 import { courseA, installCourseAnalyticsMocks, userA } from '../fixtures/course-analytics.js';
 import { freshTransferState, installTransferMocks, openTransferDialog } from '../fixtures/checklist-transfer.js';
+import { freshReportState, installReportMocks } from '../fixtures/checklist-instance-report.js';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
@@ -397,6 +398,18 @@ test.describe('WCAG AA browser baseline', () => {
         await dialog.getByRole('button', { name: 'Передать', exact: true }).click();
         await expect(dialog.getByRole('alert')).toBeVisible();
       }
+      await auditAccessibility(page, testInfo);
+    });
+  }
+
+  for (const status of ['in_progress', 'completed'] as const) {
+    test(`filled-in sheet report (${status}) is accessible on a phone`, async ({ page }, testInfo) => {
+      await installReportMocks(page, freshReportState(status));
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto(status === 'completed' ? '/learn/checklists#completed' : '/learn/checklists');
+      await page.getByText('Приёмка товара').click();
+      await page.getByRole('button', { name: 'Предпросмотр', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Скачать PDF' })).toBeVisible();
       await auditAccessibility(page, testInfo);
     });
   }

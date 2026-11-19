@@ -25,6 +25,7 @@ import { visibleFolderIds, type FolderActor } from './checklist-folder-tree.js';
 import { isNoteRequired, parseNoteAnswers } from './checklist-item-note.js';
 import { GUEST_USER_EMAIL } from './checklist-public-access.js';
 import { ChecklistResultDeletion } from './checklist-result-deletion.js';
+import { ChecklistInstanceReport, type InstanceReportViewer } from './checklist-instance-report.js';
 import { ChecklistInstanceTransfer, type TransferActor, type TransferInput } from './checklist-instance-transfer.js';
 import { findTemplate, renderTemplate, templateLocale } from './checklist-templates.js';
 import {
@@ -369,6 +370,12 @@ export class ChecklistsService {
       MAX_BUFFERED_UPLOAD_SIZE_BYTES,
     );
     this.instanceTransfer = new ChecklistInstanceTransfer(prisma, auditLog);
+    this.instanceReport = new ChecklistInstanceReport({
+      prisma, auditLog,
+      breakdown: (instanceId, organizationId, formula) => this.getScoreBreakdown(instanceId, organizationId, formula),
+      history: (instanceId, organizationId) => this.instanceTransfer.history(instanceId, organizationId),
+      readPhotoBytes: (key, max) => this.readPhotoBytes(key, max),
+    });
     this.sheetAnalytics = new ChecklistSheetAnalytics(prisma);
     this.itemAnalytics = new ChecklistItemAnalytics(prisma, this.sheetAnalytics);
     this.analyticsExport = new ChecklistAnalyticsExport(this.sheetAnalytics, this.itemAnalytics, auditLog);
@@ -382,6 +389,7 @@ export class ChecklistsService {
 
   private readonly resultDeletion: ChecklistResultDeletion;
   private readonly instanceTransfer: ChecklistInstanceTransfer;
+  private readonly instanceReport: ChecklistInstanceReport;
   private readonly orgTemplates: ChecklistOrgTemplates;
   private readonly sheetPhotos: ChecklistSheetPhotos;
   private readonly sheetAnalytics: ChecklistSheetAnalytics;
@@ -1603,6 +1611,8 @@ export class ChecklistsService {
   transferInstance(instanceId: string, actor: TransferActor, input: TransferInput) { return this.instanceTransfer.transfer(instanceId, actor, input); }
   listTransferredAway(userId: string, organizationId: string) { return this.instanceTransfer.transferredAway(userId, organizationId); }
   listTransferHistory(instanceId: string, organizationId: string) { return this.instanceTransfer.history(instanceId, organizationId); }
+  getInstanceReport(instanceId: string, viewer: InstanceReportViewer) { return this.instanceReport.get(instanceId, viewer); }
+  getInstanceReportPdf(instanceId: string, viewer: InstanceReportViewer) { return this.instanceReport.pdf(instanceId, viewer); }
 
   async listMyInstances(userId: string, organizationId: string) {
     return this.listInstancesWithDeadlineRefresh({ userId, organizationId });

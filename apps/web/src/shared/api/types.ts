@@ -832,6 +832,13 @@ export type ChecklistSessionReport = {
   location: { policy: ChecklistGeolocationPolicy; captures: Array<{ capturePoint: string; status: string; capturedAt: string }> };
 };
 
+/** PR 478: the filled-in sheet of a self-filled check; the session report without a session and an observer. */
+export type ChecklistInstanceReport = Omit<ChecklistSessionReport, 'sessionId' | 'header'> & {
+  sessionId: null;
+  header: Omit<ChecklistSessionReport['header'], 'observer' | 'status'> & { observer: null; status: string };
+  transfers: Array<{ id: string; at: string; note: string | null; from: string | null; to: string | null }>;
+};
+
 export type ChecklistSessionQuery = {
   status?: ChecklistSessionStatus;
   observerId?: string;

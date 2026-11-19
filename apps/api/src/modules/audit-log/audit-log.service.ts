@@ -68,6 +68,7 @@ export type AuditLogAction =
   | 'checklist_report.exported'
   | 'course_report.exported'
   | 'checklist_session.report_pdf_downloaded'
+  | 'checklist_instance.report_pdf_downloaded'
   | 'checklist_scale.created'
   | 'checklist_scale.updated'
   | 'checklist_scale.archived'

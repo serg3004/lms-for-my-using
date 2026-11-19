@@ -3070,6 +3070,18 @@
     "finishConfirmReview": "The answers will go to your instructor and cannot be changed afterwards.",
     "finishError": "Unable to finish the check.",
     "finishCancel": "Cancel",
+    "instanceReport": {
+      "open": "Preview",
+      "back": "Back to the check",
+      "title": "Preview of the filled-in sheet",
+      "print": "Print",
+      "pdf": "Download PDF",
+      "pdfLoading": "Preparing PDF…",
+      "pdfError": "Unable to download the PDF.",
+      "loadError": "Unable to load the report.",
+      "notFinished": "The check is not completed yet: points and the result are shown after it is completed.",
+      "empty": "There are no answers yet."
+    },
     "transfer": {
       "open": "Hand over the check…",
       "title": "Hand the check over to a colleague",

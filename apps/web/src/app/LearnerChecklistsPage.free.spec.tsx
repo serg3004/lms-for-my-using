@@ -13,6 +13,8 @@ const api = vi.hoisted(() => ({
   listChecklistTransferCandidates: vi.fn(async () => []),
   transferChecklistInstance: vi.fn(),
   listFreeChecklists: vi.fn(),
+  getChecklistInstanceReport: vi.fn(),
+  downloadChecklistInstanceReportPdf: vi.fn(),
   startFreeChecklist: vi.fn(),
   submitChecklistItemResult: vi.fn(),
   uploadChecklistItemPhoto: vi.fn(),
@@ -96,6 +98,42 @@ describe('LearnerChecklistsPage: free-access catalog (PR 353)', () => {
 
     expect(api.startFreeChecklist).not.toHaveBeenCalled();
     expect(container.querySelector('h1')?.textContent).toBe('Открытие смены');
+  });
+
+  it('refreshes in the background: the list does not turn into the loading screen while a free checklist is started (PR 478)', async () => {
+    let finishReload: (rows: unknown[]) => void = () => undefined;
+    api.listMyChecklistInstances.mockResolvedValueOnce([]).mockImplementationOnce(() => new Promise((resolve) => { finishReload = resolve; }));
+    api.listFreeChecklists.mockResolvedValue([free()]);
+    api.startFreeChecklist.mockResolvedValue(instance('inst-1', 'Открытие смены'));
+    await render();
+
+    await act(async () => { button('Начать')?.click(); });
+
+    expect(container.textContent).not.toContain('Загрузка чек-листов');
+    expect(container.textContent).toContain('Открытие смены');
+    await act(async () => { finishReload([instance('inst-1', 'Открытие смены')]); });
+    expect(container.querySelector('h1')?.textContent).toBe('Открытие смены');
+  });
+
+  it('opens the filled-in sheet as a report from "Предпросмотр" and returns to the check (PR 478)', async () => {
+    api.listMyChecklistInstances.mockResolvedValue([instance('inst-9', 'Открытие смены')]);
+    api.listFreeChecklists.mockResolvedValue([free({ activeInstanceId: 'inst-9', activeInstanceStatus: 'assigned' })]);
+    api.getChecklistInstanceReport.mockResolvedValue({
+      pointsVisible: true, sessionId: null, instanceId: 'inst-9', checklist: { id: 'free-1', title: 'Открытие смены' }, visible: true,
+      header: { status: 'assigned', timezone: 'UTC', scheduledStart: null, scheduledEnd: null, startedAt: null, completedAt: null, learner: { id: 'u1', firstName: 'Анна', lastName: 'Иванова', email: 'a@example.test', department: null }, observer: null },
+      generalInfo: [], summary: null, groups: [], criteria: [], feedback: null, location: { policy: 'off', captures: [] }, transfers: [],
+    });
+    await render();
+    await act(async () => { button('Продолжить')?.click(); });
+
+    await act(async () => { button('Предпросмотр')?.click(); });
+    await act(async () => { await Promise.resolve(); });
+    expect(api.getChecklistInstanceReport).toHaveBeenCalledWith('inst-9');
+    expect(container.textContent).toContain('Предпросмотр заполненного листа');
+
+    await act(async () => { button('← Назад к проверке')?.click(); });
+    expect(container.querySelector('h1')?.textContent).toBe('Открытие смены');
+    expect(button('Предпросмотр')).toBeTruthy();
   });
 
   it('shows the server error and stays on the list when starting fails', async () => {
