@@ -283,10 +283,11 @@ describe('admin page smoke rendering', () => {
     useLoadingState();
     expect(renderToStaticMarkup(<AdminRolesPage />)).toContain('role="status"');
 
-    // useState call order in AdminRolesPage: 1) selectedUserId, 2) selectedRole, 3) submitState,
-    // 4) useAsyncData's internal state.
+
+    // useState call order in AdminRolesPage: selectedUserId, selectedRole, submitState, revoking,
+    // revokeError, then useAsyncData's internal state (6th).
     useStateAtCalls({
-      4: {
+      6: {
         status: 'loaded',
         data: {
           users: [{ id: 'user-1', organizationId: 'org-1', email: 'admin@demo.com', firstName: 'Admin', lastName: 'User', middleName: null, status: 'active' }],

@@ -119,4 +119,41 @@ export class MembershipsService {
 
     return created;
   }
+
+  /**
+   * Takes one built-in role away from a user. The organization always keeps an administrator, and an
+   * administrator cannot take their own administrator role away (that would lock them out of this screen).
+   */
+  async deleteMembership(membershipId: string, organizationId: string, actorId: string) {
+    const membership = await this.prisma.membership.findFirst({
+      where: { id: membershipId, organizationId },
+      select: membershipSelect,
+    });
+
+    if (!membership) {
+      throw new NotFoundException('Membership not found');
+    }
+
+    if (membership.role === 'admin') {
+      if (membership.userId === actorId) {
+        throw new ConflictException('Administrators cannot remove their own administrator role');
+      }
+      const administrators = await this.prisma.membership.count({ where: { organizationId, role: 'admin' } });
+      if (administrators <= 1) {
+        throw new ConflictException('The organization must keep at least one administrator');
+      }
+    }
+
+    await this.prisma.membership.delete({ where: { id: membership.id } });
+
+    await this.auditLog.record({
+      organizationId,
+      actorId,
+      action: 'membership.revoked',
+      targetType: 'user',
+      targetId: membership.userId,
+      summary: `Removed role ${membership.role} from user`,
+      metadata: { role: membership.role },
+    });
+  }
 }

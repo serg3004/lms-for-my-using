@@ -106,6 +106,7 @@ describe('rolePolicies', () => {
     customRolesManage: ['admin'],
     membershipsRead: ['admin', 'manager'],
     membershipsCreate: ['admin'],
+    membershipsDelete: ['admin'],
     groupsRead: ['admin', 'manager'],
     groupsWrite: ['admin'],
     groupMembersWrite: ['admin', 'manager'],

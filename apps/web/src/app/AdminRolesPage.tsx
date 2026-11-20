@@ -5,7 +5,7 @@ import { formatDate as formatLocaleDate } from '../shared/formatDate.js';
 
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
-import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
+import { AdminCard, AdminPageHeader, AdminPageLayout, ConfirmDialog, type AdminNavItem } from '../shared/adminPage.js';
 import { EmptyState, PageState, StatusBadge } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
 
@@ -70,6 +70,9 @@ export function AdminRolesPage() {
     status: 'idle',
   });
 
+  const [revoking, setRevoking] = useState<MembershipSummary | null>(null);
+  const [revokeError, setRevokeError] = useState('');
+
   const navItems: AdminNavItem[] = [
     { label: t('admin.roles.title', 'Roles'), href: '/admin/roles', isCurrent: true },
   ];
@@ -132,6 +135,23 @@ export function AdminRolesPage() {
           : t('admin.roles.saveError', 'Unable to assign role. Try again later.');
 
       setSubmitState({ status: 'error', message });
+    }
+  }
+
+  async function handleRevoke() {
+    const membership = revoking;
+    if (!membership) return;
+    setRevoking(null);
+    setRevokeError('');
+    try {
+      await apiRequest<void>(`/memberships/${membership.id}`, { method: 'DELETE' });
+      await loadRoleData();
+    } catch (error) {
+      setRevokeError(
+        error instanceof ApiClientError && error.status === 409
+          ? t('admin.roles.revokeBlocked', 'This role cannot be removed: the organization must keep an administrator, and you cannot remove your own administrator role.')
+          : t('admin.roles.revokeError', 'Unable to remove the role. Try again later.'),
+      );
     }
   }
 
@@ -233,6 +253,7 @@ export function AdminRolesPage() {
 
         <AdminCard>
           <h2>{t('admin.roles.currentTitle', 'Current assignments')}</h2>
+          {revokeError ? <p role="alert">{revokeError}</p> : null}
           {loadState.data.memberships.length === 0 ? (
             <EmptyState message={t('admin.roles.empty', 'No role assignments found.')} />
           ) : (
@@ -242,6 +263,7 @@ export function AdminRolesPage() {
                   <th>{t('admin.roles.user', 'User')}</th>
                   <th>{t('admin.roles.role', 'Role')}</th>
                   <th>{t('admin.roles.createdAt', 'Assigned at')}</th>
+                  <th>{t('admin.roles.actions', 'Actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -252,6 +274,11 @@ export function AdminRolesPage() {
                       <StatusBadge>{t(`admin.roles.options.${membership.role}`, membership.role)}</StatusBadge>
                     </td>
                     <td>{formatDate(membership.createdAt)}</td>
+                    <td>
+                      <button className="admin-btn admin-btn--sm admin-btn--secondary" onClick={() => setRevoking(membership)} type="button">
+                        {t('admin.roles.revoke', 'Remove')}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -259,6 +286,16 @@ export function AdminRolesPage() {
           )}
         </AdminCard>
       </section>
+      <ConfirmDialog
+        open={Boolean(revoking)}
+        title={t('admin.roles.revokeTitle', 'Remove this role?')}
+        message={revoking ? t('admin.roles.revokeMessage', { user: getMembershipUserLabel(loadState.data.users, revoking.userId), role: t(`admin.roles.options.${revoking.role}`, revoking.role), defaultValue: '{{user}} will lose the role "{{role}}". You can assign it again later.' }) : ''}
+        confirmLabel={t('admin.roles.revokeConfirm', 'Remove role')}
+        cancelLabel={t('admin.users.cancel', 'Cancel')}
+        variant="danger"
+        onConfirm={() => void handleRevoke()}
+        onCancel={() => setRevoking(null)}
+      />
     </AdminPageLayout>
   );
 }
