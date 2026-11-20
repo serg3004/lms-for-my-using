@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
@@ -37,5 +37,13 @@ export class MembershipsController {
     const input: CreateMembershipInput = createMembershipSchema.parse(body);
 
     return this.membershipsService.createMembership(input);
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  @Roles(...rolePolicies.membershipsDelete)
+  async deleteMembership(@Param('id') membershipId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    await this.membershipsService.deleteMembership(membershipId, user.organizationId, user.id);
   }
 }

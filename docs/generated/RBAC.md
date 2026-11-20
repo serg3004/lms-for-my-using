@@ -78,6 +78,7 @@ Permissions owner: `apps/api/src/modules/auth/roles.ts` (`rolePolicies`). Role e
 | `lessonsReadAll` | `admin` |
 | `managerTeamSummaryRead` | `admin`, `manager` |
 | `membershipsCreate` | `admin` |
+| `membershipsDelete` | `admin` |
 | `membershipsRead` | `admin`, `manager` |
 | `notificationsRead` | `admin`, `manager`, `instructor`, `learner` |
 | `notificationsWrite` | `admin`, `manager`, `instructor`, `learner` |

@@ -20,6 +20,7 @@ For a concrete endpoint, verify current runtime OpenAPI/controller metadata. Do 
 - Refresh tokens are backed by server-side session state and rotate.
 - Logout revokes the current session; logout-all revokes all sessions for the current user.
 - Password-reset request/confirm is implemented; delivery-provider availability is a separate live/config concern.
+- `DELETE /memberships/{id}` removes one built-in role of a user (administrator only, 204; 409 for the last administrator or the caller's own administrator role; audit `membership.revoked`).
 - The password-reset request takes the same `organizationId` as sign-in (organization ID or its short name); an unknown name is answered `{ accepted: true }` like an unknown email.
 
 Historical descriptions of stateless-only logout or an intentional password-reset `503` do not override current auth code.

@@ -15,6 +15,7 @@ export type AuditLogAction =
   | 'custom_role.assigned'
   | 'custom_role.revoked'
   | 'membership.assigned'
+  | 'membership.revoked'
   | 'organization.theme_updated'
   | 'organization.theme_reset'
   | 'course.created'
