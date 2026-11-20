@@ -54,6 +54,8 @@ Tests: `custom-role-access.spec.ts` runs the real guard over every role-protecte
 
 **Role management (PR 484).** `rolePolicies.customRolesManage` is `['admin']`: every `/custom-roles` route is open to the administrator only, and managing or granting roles is not a catalog action (`role.manage` is never delegable), so a custom role cannot open these routes. `GET /me/permissions` is open to any signed-in user and reveals only their own rights. Tests: `custom-roles-api.database.spec.ts` (HTTP and PostgreSQL: 403 for other roles, validation 422, 409 on a stale version, isolation of two organizations, assignment, revocation and archiving effective on the next request, audit with the grant difference).
 
+**Acceptance (PR 486).** `custom-roles.acceptance.spec.ts` drives every role-protected route of the seven areas through the real `RolesGuard` for a plain learner who holds one custom role: the grant of an action (in every scope the catalog allows) opens exactly the routes of that action and none else; no role, the organization switch off and an archived role keep every route closed; a not delegable action is refused by `validatePermissionGrants` and adds nothing when stored. `custom-roles-acceptance.database.spec.ts` repeats this on PostgreSQL over HTTP with one probe per area, checks that a revoked role stops on the next request and that turning the switch off and on again loses no roles or assignments. The rollout and rollback procedure is `docs/runbooks/CUSTOM_ROLES_ROLLOUT.md`.
+
 ## Role policy vs object scope
 
 A role policy answers whether a role may call a class of operation. It does **not** automatically authorize every object instance.
