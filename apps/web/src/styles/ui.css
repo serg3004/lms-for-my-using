@@ -2496,3 +2496,42 @@
 .learner-profile__actions [role="alert"] { color: var(--color-danger); }
 @media (max-width: 600px) { .learner-profile__identity { grid-template-columns: 1fr; } }
 .ds-data-table__batch-hint { flex-basis: 100%; color: var(--color-text-muted); font-size: 12.5px; }
+
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-inline-end: 52px;
+}
+
+.password-field__toggle {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-end: 2px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  transform: translateY(-50%);
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.password-field__toggle:hover {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+.password-field__toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
