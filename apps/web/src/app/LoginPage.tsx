@@ -1,10 +1,11 @@
-import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react';
+import { ChangeEvent, FormEvent, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
 import { login } from '../shared/api/auth.js';
 import { getLoginErrorMessage } from '../shared/apiErrorFeedback.js';
 import { hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
+import { LoginLanguageMenu } from '../shared/LoginLanguageMenu.js';
 import { SkipLink } from '../shared/ui.js';
 
 type LoginFormState = {
@@ -14,7 +15,6 @@ type LoginFormState = {
 };
 
 type LoginFormField = keyof LoginFormState;
-type LoginLocale = 'ru' | 'en' | 'kk' | 'zh';
 
 type LoginLocationState = {
   from?: {
@@ -23,20 +23,6 @@ type LoginLocationState = {
 };
 
 const REMEMBERED_LOGIN_KEY = 'lms-remembered-login';
-const LANGUAGE_KEY = 'lms-prototype-language';
-const SUPPORTED_LOCALES: LoginLocale[] = ['ru', 'en', 'kk', 'zh'];
-const LANGUAGE_LABELS: Record<LoginLocale, string> = {
-  ru: 'Русский',
-  en: 'English',
-  kk: 'Қазақша',
-  zh: '中文',
-};
-const LANGUAGE_CODES: Record<LoginLocale, string> = {
-  ru: 'RU',
-  en: 'EN',
-  kk: 'KK',
-  zh: 'ZH',
-};
 
 function getRememberedLogin(): Pick<LoginFormState, 'organizationId' | 'email'> | null {
   try {
@@ -96,10 +82,9 @@ export function getLoginRedirectPath(locationState: unknown, user?: { roles: str
 }
 
 export function LoginPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const languageMenuRef = useRef<HTMLDivElement>(null);
   const [formState, setFormState] = useState(getInitialLoginFormState);
   const [validationErrors, setValidationErrors] = useState<FormValidationErrors<LoginFormField>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -108,38 +93,6 @@ export function LoginPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => getRememberedLogin() !== null);
-  const [isLanguageMenuOpen, setIsLanguageMenuOpen] = useState(false);
-
-  const currentLocale = ((i18n.resolvedLanguage ?? i18n.language).split('-')[0] || 'ru') as LoginLocale;
-
-  useEffect(() => {
-    const storedLanguage = localStorage.getItem(LANGUAGE_KEY);
-    if (storedLanguage && SUPPORTED_LOCALES.includes(storedLanguage as LoginLocale)) {
-      void i18n.changeLanguage(storedLanguage);
-    }
-  }, [i18n]);
-
-  useEffect(() => {
-    function handlePointerDown(event: MouseEvent) {
-      if (!languageMenuRef.current?.contains(event.target as Node)) {
-        setIsLanguageMenuOpen(false);
-      }
-    }
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setIsLanguageMenuOpen(false);
-      }
-    }
-
-    document.addEventListener('mousedown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('mousedown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, []);
 
   const updateField =
     (field: LoginFormField) =>
@@ -206,12 +159,6 @@ export function LoginPage() {
     }
   }
 
-  function handleLanguageChange(locale: LoginLocale) {
-    localStorage.setItem(LANGUAGE_KEY, locale);
-    void i18n.changeLanguage(locale);
-    setIsLanguageMenuOpen(false);
-  }
-
   return (
     <>
       <SkipLink label={t('a11y.skipToContent')} />
@@ -228,38 +175,7 @@ export function LoginPage() {
       </section>
 
       <section className="login-side">
-        <div className="login-language" ref={languageMenuRef}>
-          <button
-            aria-controls="login-language-menu"
-            aria-expanded={isLanguageMenuOpen}
-            aria-haspopup="menu"
-            className="login-language__button"
-            onClick={() => setIsLanguageMenuOpen((currentValue) => !currentValue)}
-            type="button"
-          >
-            {LANGUAGE_CODES[currentLocale] ?? 'RU'}
-          </button>
-
-          <div
-            className={`login-language__menu${isLanguageMenuOpen ? ' login-language__menu--open' : ''}`}
-            id="login-language-menu"
-            role="menu"
-          >
-            {SUPPORTED_LOCALES.map((locale) => (
-              <button
-                className={`login-language__option${currentLocale === locale ? ' login-language__option--active' : ''}`}
-                key={locale}
-                onClick={() => handleLanguageChange(locale)}
-                role="menuitemradio"
-                aria-checked={currentLocale === locale}
-                type="button"
-                value={locale}
-              >
-                {LANGUAGE_LABELS[locale]}
-              </button>
-            ))}
-          </div>
-        </div>
+        <LoginLanguageMenu />
 
         <div className="login-card">
           <header className="login-header">

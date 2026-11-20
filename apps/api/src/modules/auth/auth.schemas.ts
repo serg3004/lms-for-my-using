@@ -27,7 +27,8 @@ export const loginSchema = z.object({
 });
 
 export const passwordResetRequestSchema = z.object({
-  organizationId: z.guid(),
+  // Same short name or ID as the sign-in form.
+  organizationId: organizationLoginSchema,
   email: z.string().trim().email().max(320).transform((email) => email.toLowerCase()),
 });
 

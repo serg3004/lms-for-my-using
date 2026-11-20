@@ -5,7 +5,7 @@ Password reset is implemented. Both canonical endpoints and the PR 136 compatibi
 - `POST /auth/password-reset/request` (`/auth/reset-password-request`);
 - `POST /auth/password-reset/confirm` (`/auth/reset-password`).
 
-The request body contains `organizationId` and normalized `email`. Known and unknown accounts receive the same `{ "accepted": true }` response. For an active account the API invalidates earlier unused reset tokens, creates 32 random bytes, stores only its SHA-256 digest, and sets a one-hour expiry.
+The request body contains `organizationId` (the organization ID or its short name, the same value the sign-in form accepts; an unknown name gets the same answer as an unknown email) and normalized `email`. Known and unknown accounts receive the same `{ "accepted": true }` response. For an active account the API invalidates earlier unused reset tokens, creates 32 random bytes, stores only its SHA-256 digest, and sets a one-hour expiry.
 
 Delivery is provider-neutral. `PASSWORD_RESET_DELIVERY_URL` identifies an HTTPS webhook that receives the email, organization, raw one-time token, and expiry; `PASSWORD_RESET_DELIVERY_TOKEN` optionally authenticates that request. The raw token is never persisted or logged. Without a configured delivery URL the public response remains generic but no message is delivered.
 

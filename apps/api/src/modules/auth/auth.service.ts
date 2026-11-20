@@ -131,8 +131,10 @@ export class AuthService {
   }
 
   async requestPasswordReset(input: PasswordResetRequestInput) {
-    const user = await this.prisma.user.findFirst({
-      where: { organizationId: input.organizationId, email: input.email, status: 'active', deletedAt: null },
+    // An unknown organization name must look exactly like an unknown email: the answer stays "accepted".
+    const organizationId = await this.resolveLoginOrganizationId(input.organizationId).catch(() => null);
+    const user = organizationId && await this.prisma.user.findFirst({
+      where: { organizationId, email: input.email, status: 'active', deletedAt: null },
       select: { id: true, organizationId: true, email: true },
     });
 
