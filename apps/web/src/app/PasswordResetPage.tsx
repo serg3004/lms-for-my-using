@@ -5,16 +5,17 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { confirmPasswordReset, requestPasswordReset } from '../shared/api/auth.js';
 import { ApiClientError } from '../shared/apiClient.js';
 import { SkipLink } from '../shared/ui.js';
+import { LoginLanguageMenu } from '../shared/LoginLanguageMenu.js';
 import { PasswordInput } from '../shared/PasswordInput.js';
 
-const locales = ['ru', 'en', 'kk', 'zh'] as const;
-const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// The same short name or ID of the organization that the sign-in form accepts.
+const organizationPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const strongPasswordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,255}$/;
 
 type View = 'request' | 'sent' | 'confirm' | 'invalid' | 'success';
 
 export function PasswordResetPage() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token')?.trim() ?? '';
   const [view, setView] = useState<View>(token.length >= 32 ? 'confirm' : token ? 'invalid' : 'request');
@@ -25,13 +26,12 @@ export function PasswordResetPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const locale = (i18n.resolvedLanguage ?? i18n.language).split('-')[0];
 
   async function submitRequest(event: FormEvent) {
     event.preventDefault();
     const nextErrors: Record<string, string> = {};
     if (!organizationId.trim()) nextErrors.organizationId = t('passwordReset.required');
-    else if (!uuidPattern.test(organizationId.trim())) nextErrors.organizationId = t('passwordReset.organizationInvalid');
+    else if (!organizationPattern.test(organizationId.trim())) nextErrors.organizationId = t('passwordReset.organizationInvalid');
     if (!email.trim()) nextErrors.email = t('passwordReset.required');
     else if (!/^\S+@\S+\.\S+$/.test(email.trim())) nextErrors.email = t('passwordReset.emailInvalid');
     setErrors(nextErrors);
@@ -85,12 +85,7 @@ export function PasswordResetPage() {
         <div className="login-hero__footer">LearnSpace</div>
       </section>
       <section className="login-side">
-        <label className="password-reset-language">
-          <span className="sr-only">{t('passwordReset.language')}</span>
-          <select aria-label={t('passwordReset.language')} value={locale} onChange={(event) => void i18n.changeLanguage(event.target.value)}>
-            {locales.map((item) => <option key={item} value={item}>{item.toUpperCase()}</option>)}
-          </select>
-        </label>
+        <LoginLanguageMenu />
         <div className="login-card">
           {statusView ? <div className="password-reset-status" role="status">
             <div className="password-reset-status__icon" aria-hidden="true">{view === 'success' ? '✓' : view === 'sent' ? '✉' : '!'}</div>

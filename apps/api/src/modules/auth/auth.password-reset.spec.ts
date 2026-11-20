@@ -47,6 +47,7 @@ function createHarness(options: { userExists?: boolean; expired?: boolean } = {}
     user: {
       findFirst: jest.fn(async () => options.userExists === false ? null : { id: userId, organizationId, email: 'learner@example.com' }),
     },
+    organization: { findFirst: jest.fn(async ({ where }: { where: { slug: string } }) => where.slug === 'demo-company' ? { id: organizationId } : null) },
     passwordResetToken,
     $transaction: jest.fn(async (input: unknown) => {
       if (typeof input === 'function') return input(transaction);
@@ -72,6 +73,19 @@ describe('password reset flow', () => {
     await expect(unknown.service.requestPasswordReset(input)).resolves.toEqual({ accepted: true });
     expect(known.delivery.send).toHaveBeenCalledTimes(1);
     expect(unknown.delivery.send).not.toHaveBeenCalled();
+  });
+
+  it('accepts the short organization name like the sign-in form and answers the same for an unknown name', async () => {
+    const byName = createHarness();
+    const unknownName = createHarness();
+    const input = passwordResetRequestSchema.parse({ organizationId: ' Demo-Company ', email: 'learner@example.com' });
+
+    expect(input.organizationId).toBe('demo-company');
+    await expect(byName.service.requestPasswordReset(input)).resolves.toEqual({ accepted: true });
+    expect(byName.delivery.send).toHaveBeenCalledTimes(1);
+    await expect(unknownName.service.requestPasswordReset({ ...input, organizationId: 'no-such-company' })).resolves.toEqual({ accepted: true });
+    expect(unknownName.delivery.send).not.toHaveBeenCalled();
+    expect(() => passwordResetRequestSchema.parse({ organizationId: 'bad name!', email: 'learner@example.com' })).toThrow();
   });
 
   it('changes the password, consumes the token, and revokes existing sessions', async () => {
