@@ -20,6 +20,7 @@ import { installCourseAnalyticsMocks, courseA, userA } from '../fixtures/course-
 import { GOOD_CODE, openPublicPage } from '../fixtures/checklist-public-page.js';
 import { freshTransferState, installTransferMocks, openTransferDialog } from '../fixtures/checklist-transfer.js';
 import { freshReportState, installReportMocks } from '../fixtures/checklist-instance-report.js';
+import { freshRolesState, installCustomRolesMocks, registrar } from '../fixtures/custom-roles.js';
 import { expect, test, type Page } from '@playwright/test';
 
 const widths = [320, 375, 768, 1024, 1280, 1440] as const;
@@ -41,6 +42,25 @@ for (const width of [390, 1280]) for (const status of ['in_progress', 'completed
   await page.getByRole('button', { name: 'Скачать PDF' }).waitFor();
   await expectNoPageOverflow(page);
   await expectVisualMatch(page, `check-report-${status}-${width}`, false, { maxDiffPixels: 3000 });
+});
+
+for (const width of [390, 1280]) test(`custom roles editor is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installCustomRolesMocks(page, freshRolesState({ enabled: true }));
+  await page.goto('/admin/custom-roles');
+  await page.getByRole('button', { name: registrar.name }).click();
+  await page.getByLabel('Название роли').waitFor();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `custom-roles-editor-${width}`, false, { maxDiffPixels: 3000 });
+});
+
+for (const width of [390, 1280]) test(`user rights dialog is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installCustomRolesMocks(page, freshRolesState({ enabled: true }));
+  await page.goto('/admin/users');
+  if (width < 768) await page.getByRole('button', { name: /Подробнее: Петров/ }).click();
+  await page.getByRole('button', { name: 'Права', exact: true }).last().click();
+  await page.getByRole('dialog').getByText('Итоговые права').waitFor();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `user-rights-dialog-${width}`, false, { maxDiffPixels: 3000 });
 });
 
 for (const width of [390, 1280]) for (const [screen, path] of [

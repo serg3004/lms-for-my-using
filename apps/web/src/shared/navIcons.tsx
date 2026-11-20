@@ -136,6 +136,7 @@ const ICON_BY_HREF: Record<string, NavIconName> = {
   '/admin/results': 'results',
   '/admin/departments': 'orgStructure',
   '/admin/roles': 'roles',
+  '/admin/custom-roles': 'roles',
   '/admin/appearance': 'appearance',
   '/admin/audit-log': 'audit',
   '/learn': 'home',
