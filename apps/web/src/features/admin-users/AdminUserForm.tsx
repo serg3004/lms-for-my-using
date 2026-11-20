@@ -2,6 +2,7 @@ import type { FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { FormField } from '../../shared/adminPage.js';
+import { PasswordInput } from '../../shared/PasswordInput.js';
 import { clearFieldError, type FormValidationErrors } from '../../shared/formValidation.js';
 import { USER_ROLES, USER_STATUSES, type UserForm, type UserFormField, type UserFormMode } from './model.js';
 
@@ -24,7 +25,7 @@ export function AdminUserForm({ form, mode, errors, message, isSaving, onChange,
       <FormField id="user-middleName" label={t('admin.users.fieldMiddleName', 'Middle name')}><input id="user-middleName" value={form.middleName} onChange={(e) => onChange({ ...form, middleName: e.target.value })} /></FormField>
     </div>
     <FormField id="user-email" label={t('admin.users.fieldEmail', 'Email')} required error={errors.email}><input id="user-email" type="email" aria-describedby={errors.email ? 'user-email-error' : undefined} aria-invalid={Boolean(errors.email)} value={form.email} onChange={(e) => field('email', e.target.value)} /></FormField>
-    {mode === 'create' && <FormField id="user-password" label={t('admin.users.fieldPassword', 'Password')} required error={errors.password}><input id="user-password" type="password" minLength={8} autoComplete="new-password" aria-describedby={errors.password ? 'user-password-error' : undefined} aria-invalid={Boolean(errors.password)} value={form.password} onChange={(e) => field('password', e.target.value)} /></FormField>}
+    {mode === 'create' && <FormField id="user-password" label={t('admin.users.fieldPassword', 'Password')} required error={errors.password}><PasswordInput id="user-password" minLength={8} autoComplete="new-password" aria-describedby={errors.password ? 'user-password-error' : undefined} aria-invalid={Boolean(errors.password)} value={form.password} onChange={(e) => field('password', e.target.value)} /></FormField>}
     {mode === 'edit' && <><div className="admin-form__row">
       <FormField id="user-position" label={t('admin.users.fieldPosition', 'Position')}><input id="user-position" value={form.position} onChange={(e) => onChange({ ...form, position: e.target.value })} /></FormField>
       <FormField id="user-shift" label={t('admin.users.fieldShift', 'Shift')}><input id="user-shift" value={form.shift} onChange={(e) => onChange({ ...form, shift: e.target.value })} /></FormField>

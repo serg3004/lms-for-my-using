@@ -5,6 +5,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { confirmPasswordReset, requestPasswordReset } from '../shared/api/auth.js';
 import { ApiClientError } from '../shared/apiClient.js';
 import { SkipLink } from '../shared/ui.js';
+import { PasswordInput } from '../shared/PasswordInput.js';
 
 const locales = ['ru', 'en', 'kk', 'zh'] as const;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -103,8 +104,8 @@ export function PasswordResetPage() {
                 <ResetField id="reset-organization" label={t('passwordReset.organizationId')} error={errors.organizationId}><input id="reset-organization" autoComplete="organization" value={organizationId} onChange={(event) => setOrganizationId(event.target.value)} /></ResetField>
                 <ResetField id="reset-email" label={t('passwordReset.email')} error={errors.email}><input id="reset-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></ResetField>
               </> : <>
-                <ResetField id="reset-password" label={t('passwordReset.password')} error={errors.password}><input id="reset-password" type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} /></ResetField>
-                <ResetField id="reset-password-confirmation" label={t('passwordReset.confirmPassword')} error={errors.passwordConfirmation}><input id="reset-password-confirmation" type="password" autoComplete="new-password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} /></ResetField>
+                <ResetField id="reset-password" label={t('passwordReset.password')} error={errors.password}><PasswordInput id="reset-password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} /></ResetField>
+                <ResetField id="reset-password-confirmation" label={t('passwordReset.confirmPassword')} error={errors.passwordConfirmation}><PasswordInput id="reset-password-confirmation" autoComplete="new-password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} /></ResetField>
               </>}
               {errorMessage ? <p className="login-form__error" role="alert">{errorMessage}</p> : null}
               <button className="login-form__submit" disabled={isSubmitting} type="submit">{t(view === 'confirm' ? (isSubmitting ? 'passwordReset.submitting' : 'passwordReset.submit') : (isSubmitting ? 'passwordReset.requesting' : 'passwordReset.request'))}</button>
