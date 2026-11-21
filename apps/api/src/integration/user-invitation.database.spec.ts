@@ -74,7 +74,7 @@ describe('email invitation — database', () => {
     method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body),
   });
   const login = (email: string, password: string) => post('/auth/login', { organizationId, email, password });
-  const tokenOf = (url: string) => new URL(url).searchParams.get('token') ?? '';
+  const tokenOf = (url: string) => new URL(url, 'http://localhost').searchParams.get('token') ?? '';
 
   it('creates an invited user without a password, blocks sign-in until accepted, and accepts the link exactly once', async () => {
     const admin = await createUser('admin', 'admin');
