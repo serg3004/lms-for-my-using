@@ -180,6 +180,6 @@ export class UsersController {
   updateUserStatus(@Param('id') userId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = updateUserStatusSchema.parse(body);
 
-    return this.usersService.updateUserStatus(userId, request.currentUser!, input.status);
+    return this.usersService.updateUserStatus(userId, request.currentUser!, input.status, input.confirm === true);
   }
 }

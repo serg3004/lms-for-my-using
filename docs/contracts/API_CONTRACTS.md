@@ -1799,8 +1799,17 @@ user) and revokes any earlier unused link. The link is emailed to the user when 
 
 `PATCH /users/{id}/status` returns `observerSessions` (the user's unfinished sessions as observer:
 `scheduled`, `in_progress` or `paused`, not deleted) next to `orphanedCourses`. `GET /users/{id}/status-impact`
-returns `{ observerSessions }` for the same user before the change is confirmed; it uses the same
-role policy and team scope as the status change, and an out-of-scope or foreign-tenant user is a 404.
+returns `{ observerSessions, soleInstructorCourses: [{ id, title }], openAssignments, subordinates, managedDepartments }`
+for the same user before the change is confirmed; it uses the same role policy and team scope as the status change, and an
+out-of-scope or foreign-tenant user is a 404.
+
+PR 495 -- archive and restore. `PATCH /users/{id}/status` accepts `status: "archived"` together with `confirm: true`; without
+`confirm` the answer is `409` and nothing changes (the screen reads the impact first). Archiving ends every session at once, closes
+sign-in (an archived user gets the same `401` as for a wrong password), keeps memberships, assignments, progress and reports, and keeps
+the email reserved for the same record (no second record with that email). Only an administrator archives or restores (a manager gets
+`403` and can still block); archiving yourself or the last active administrator is `409`; an archived user cannot be blocked, only restored.
+`status: "active"` on an archived user restores them; a person who never signed in and has an invitation returns to `invited` and
+receives a fresh invitation (`invitation` in the answer). Audit: `user.archived`, `user.restored`. `GET /users?status=archived` lists the archive.
 
 When an `active` user becomes `suspended` and has at least one unfinished session, one
 `checklist_session_observer_deactivated` notice and one `checklists.observer-deactivated-notify`

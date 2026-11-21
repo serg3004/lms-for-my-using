@@ -6,7 +6,7 @@ import { passwordViolationMessages } from '../../shared/passwordPolicyErrors.js'
 import type { FormValidationErrors } from '../../shared/formValidation.js';
 import { toCreateUserPayload, toUpdateUserPayload } from './mappers.js';
 import type { InvitationResult, TemporaryPasswordResult } from './ResetPasswordDialogs.js';
-import type { AdminUserSummary, UserForm, UserFormField, UserFormMode } from './model.js';
+import type { AdminUserSummary, UserForm, UserFormField, UserFormMode, UserStatusImpact } from './model.js';
 
 export function useAdminUserMutations(reload: () => Promise<void>) {
   const { t } = useTranslation();
@@ -54,6 +54,27 @@ export function useAdminUserMutations(reload: () => Promise<void>) {
     }
   }
 
+  /** PR 495: archives (after the administrator confirmed the impact) or restores; returns whether it worked. */
+  async function setStatus(user: AdminUserSummary, status: 'archived' | 'active'): Promise<boolean> {
+    try {
+      await apiRequest(`/users/${user.id}/status`, { method: 'PATCH', body: JSON.stringify(status === 'archived' ? { status, confirm: true } : { status }) });
+      return true;
+    } catch {
+      return false;
+    } finally {
+      await reload();
+    }
+  }
+
+  /** PR 495: the full impact of archiving; `null` when the check itself fails (archiving is then not offered). */
+  async function loadImpact(user: AdminUserSummary): Promise<UserStatusImpact | null> {
+    try {
+      return await apiRequest<UserStatusImpact>(`/users/${user.id}/status-impact`);
+    } catch {
+      return null;
+    }
+  }
+
   /** Issues a one-time reset link: emailed when mail works, otherwise returned once for the administrator to hand over. */
   async function resetPassword(user: AdminUserSummary) {
     return apiRequest<{ delivered: boolean; resetUrl?: string }>(`/users/${user.id}/reset-password`, { method: 'POST', body: JSON.stringify({}) });
@@ -73,5 +94,5 @@ export function useAdminUserMutations(reload: () => Promise<void>) {
     }
   }
 
-  return { isSaving, saveUser, toggleStatus, loadObserverSessions, resetPassword, issueTemporaryPassword };
+  return { isSaving, saveUser, toggleStatus, setStatus, loadImpact, loadObserverSessions, resetPassword, issueTemporaryPassword };
 }

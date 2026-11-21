@@ -2,18 +2,19 @@ import { PendingInvitations } from '../features/admin-users/PendingInvitations.j
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
+import { AdminPageHeader, AdminPageLayout, ConfirmDialog, type AdminNavItem } from '../shared/adminPage.js';
 import type { FormValidationErrors } from '../shared/formValidation.js';
 import { hasValidationErrors } from '../shared/formValidation.js';
 import { ApiClientError } from '../shared/apiClient.js';
 import { PageState, Pagination } from '../shared/ui.js';
 import { DeactivateUserDialog, type PendingDeactivation } from '../features/admin-users/DeactivateUserDialog.js';
+import { ArchiveUserDialog, type PendingArchive } from '../features/admin-users/ArchiveUserDialog.js';
 import { UserRightsDialog } from '../features/admin-users/UserRightsDialog.js';
 import { InvitationResultDialog, ResetPasswordDialogs, TemporaryPasswordDialogs, type InvitationResult, type PasswordResetResult, type TemporaryPasswordResult } from '../features/admin-users/ResetPasswordDialogs.js';
 import { AdminUserDialog } from '../features/admin-users/AdminUserDialog.js';
 import { AdminUsersFilters } from '../features/admin-users/AdminUsersFilters.js';
 import { AdminUsersTable } from '../features/admin-users/AdminUsersTable.js';
-import { EMPTY_USER_FORM, toEditUserForm, withoutPassword, type AdminUserSummary, type UserForm, type UserFormField, type UserFormMode } from '../features/admin-users/model.js';
+import { EMPTY_USER_FORM, toEditUserForm, userName, withoutPassword, type AdminUserSummary, type UserForm, type UserFormField, type UserFormMode } from '../features/admin-users/model.js';
 import { useAdminUserMutations } from '../features/admin-users/useAdminUserMutations.js';
 import { useAdminUsers } from '../features/admin-users/useAdminUsers.js';
 import { validateUserForm } from '../features/admin-users/validation.js';
@@ -31,6 +32,10 @@ export function AdminUsersPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [errors, setErrors] = useState<FormValidationErrors<UserFormField>>({});
   const [pendingDeactivation, setPendingDeactivation] = useState<PendingDeactivation | null>(null);
+
+  const [pendingArchive, setPendingArchive] = useState<PendingArchive | null>(null);
+  const [pendingRestore, setPendingRestore] = useState<AdminUserSummary | null>(null);
+  const [archiveFailed, setArchiveFailed] = useState(false);
 
   const [rightsUser, setRightsUser] = useState<AdminUserSummary | null>(null);
   const [pendingReset, setPendingReset] = useState<AdminUserSummary | null>(null);
@@ -78,6 +83,21 @@ export function AdminUsersPage() {
     setPendingDeactivation(null);
     if (pending) await mutations.toggleStatus(pending.user);
   }
+  async function startArchive(user: AdminUserSummary) {
+    setArchiveFailed(false);
+    setPendingArchive({ user, impact: await mutations.loadImpact(user) });
+  }
+  async function confirmArchive() {
+    const pending = pendingArchive;
+    if (!pending) return;
+    if (await mutations.setStatus(pending.user, 'archived')) setPendingArchive(null);
+    else setArchiveFailed(true);
+  }
+  async function confirmRestore() {
+    const user = pendingRestore;
+    setPendingRestore(null);
+    if (user && !(await mutations.setStatus(user, 'active'))) setMessage(t('security.restoreError'));
+  }
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!mode || usersQuery.state.status !== 'loaded') return;
@@ -98,6 +118,7 @@ export function AdminUsersPage() {
   if (usersQuery.state.status === 'unauthenticated' || usersQuery.state.status === 'error') return <main className="admin-state"><PageState title={t('admin.users.title', 'Users')} message={usersQuery.state.message} variant="error" /></main>;
   if (usersQuery.state.status !== 'loaded') return null;
   const loadedState = usersQuery.state;
+  const canArchive = loadedState.currentUser.roles.includes('admin');
 
   return <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')} navItems={navItems}>
     <AdminPageHeader
@@ -108,12 +129,14 @@ export function AdminUsersPage() {
     />
     <PendingInvitations />
     <AdminUsersFilters filters={usersQuery.filters} onChange={usersQuery.setFilters} />
-    <AdminUsersTable users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} onResetPassword={setPendingReset} onTemporaryPassword={setPendingTemporary} onRights={setRightsUser} />
+    <AdminUsersTable users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} onResetPassword={setPendingReset} onTemporaryPassword={setPendingTemporary} onRights={setRightsUser} onArchive={canArchive ? (user) => void startArchive(user) : undefined} onRestore={canArchive ? setPendingRestore : undefined} />
     {rightsUser ? <UserRightsDialog user={rightsUser} onClose={() => setRightsUser(null)} /> : null}
     <InvitationResultDialog result={inviteResult} onClose={() => setInviteResult(null)} />
     <ResetPasswordDialogs pending={pendingReset} result={resetResult} onConfirm={() => void confirmReset()} onCancel={() => setPendingReset(null)} onClose={() => setResetResult(null)} />
     <TemporaryPasswordDialogs pending={pendingTemporary} result={temporaryResult} onConfirm={() => void confirmTemporary()} onCancel={() => setPendingTemporary(null)} onClose={() => setTemporaryResult(null)} />
     <DeactivateUserDialog pending={pendingDeactivation} onCancel={() => setPendingDeactivation(null)} onConfirm={() => void confirmDeactivation()} />
+    <ArchiveUserDialog pending={pendingArchive} error={archiveFailed} onCancel={() => setPendingArchive(null)} onConfirm={() => void confirmArchive()} />
+    <ConfirmDialog open={pendingRestore !== null} title={t('security.restoreTitle')} message={pendingRestore ? t('security.restoreIntro', { name: userName(pendingRestore) }) : ''} confirmLabel={t('security.restoreAction')} cancelLabel={t('admin.users.cancel', 'Cancel')} onCancel={() => setPendingRestore(null)} onConfirm={() => void confirmRestore()} />
     <Pagination page={usersQuery.page} pageSize={loadedState.pageSize} total={loadedState.total} onPage={usersQuery.setPage} />
     <AdminUserDialog open={mode !== null} mode={mode ?? 'create'} form={form} errors={errors} message={message} isSaving={mutations.isSaving} onChange={setForm} onErrorsChange={setErrors} onSubmit={(event) => void submit(event)} onClose={close} />
   </AdminPageLayout>;

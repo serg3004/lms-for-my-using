@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { unrestrictedActor } from '../manager-team-scope/manager-team-scope.js';
@@ -435,12 +435,90 @@ describe('UsersService updateUserStatus', () => {
 describe('UsersService getObserverSessionImpact', () => {
   it('counts only open sessions of an in-scope user and 404s for others (PR 346)', async () => {
     const count = jest.fn(async () => 4);
-    const prisma = { user: { findFirst: async () => ({ id: userId }) }, checklistSession: { count } } as unknown as PrismaService;
-    await expect(new UsersService(prisma).getObserverSessionImpact(userId, unrestrictedActor(organizationId))).resolves.toEqual({ observerSessions: 4 });
+    const prisma = {
+      user: { findFirst: async () => ({ id: userId }) },
+      checklistSession: { count },
+      course: { findMany: async () => [{ id: 'course-1', title: 'Safety', instructors: [{ instructorId: userId }] }] },
+      assignment: { count: async () => 2 },
+      reportingLine: { count: async () => 3 },
+      departmentManager: { count: async () => 1 },
+    } as unknown as PrismaService;
+    await expect(new UsersService(prisma).getObserverSessionImpact(userId, unrestrictedActor(organizationId))).resolves.toEqual({
+      observerSessions: 4,
+      soleInstructorCourses: [{ id: 'course-1', title: 'Safety' }],
+      openAssignments: 2,
+      subordinates: 3,
+      managedDepartments: 1,
+    });
     expect(count).toHaveBeenCalledWith({ where: { organizationId, observerId: userId, deletedAt: null, status: { in: ['scheduled', 'in_progress', 'paused'] } } });
 
     const missing = { user: { findFirst: async () => null } } as unknown as PrismaService;
     await expect(new UsersService(missing).getObserverSessionImpact(userId, unrestrictedActor(organizationId))).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('UsersService archive and restore (PR 495)', () => {
+  const admin = { id: 'admin-actor', organizationId, roles: ['admin'] } as ReturnType<typeof unrestrictedActor>;
+  const manager = { id: 'manager-actor', organizationId, roles: ['manager'] } as ReturnType<typeof unrestrictedActor>;
+
+  function archiveHarness(options: { previous?: string; lastLoginAt?: Date | null; invitations?: number; otherAdmins?: number; isAdmin?: boolean }) {
+    const tx = {
+      user: { update: jest.fn(async ({ data }: { data: { status: string } }) => ({ id: userId, email: 'a@b.c', status: data.status })) },
+      session: { updateMany: jest.fn(async () => ({ count: 1 })) },
+      checklistSession: { count: jest.fn(async () => 0) },
+      membership: { findMany: jest.fn(async () => []) },
+    };
+    const authService = { sendInvitation: jest.fn(async () => ({ delivered: true })) };
+    const prisma = {
+      user: { findFirst: async () => ({ id: userId, status: options.previous ?? 'active', lastLoginAt: options.lastLoginAt === undefined ? new Date() : options.lastLoginAt }) },
+      membership: { count: jest.fn(async ({ where }: { where: { userId?: unknown } }) => (where.userId === userId ? (options.isAdmin ? 1 : 0) : options.otherAdmins ?? 1)) },
+      userInvitation: { count: async () => options.invitations ?? 0 },
+      course: { findMany: async () => [] },
+      assignment: { count: async () => 0 },
+      reportingLine: { count: async () => 0 },
+      departmentManager: { count: async () => 0 },
+      checklistSession: { count: async () => 0 },
+      $transaction: async (run: (client: typeof tx) => Promise<unknown>) => run(tx),
+    } as unknown as PrismaService;
+    return { tx, authService, service: new UsersService(prisma, { record: jest.fn(async () => undefined) } as never, undefined, authService as never) };
+  }
+
+  it('refuses to archive or restore for a manager', async () => {
+    await expect(archiveHarness({}).service.updateUserStatus(userId, manager, 'archived', true)).rejects.toThrow(ForbiddenException);
+    await expect(archiveHarness({ previous: 'archived' }).service.updateUserStatus(userId, manager, 'active')).rejects.toThrow(ForbiddenException);
+  });
+
+  it('does not archive without confirmation', async () => {
+    const { service, tx } = archiveHarness({});
+    await expect(service.updateUserStatus(userId, admin, 'archived')).rejects.toThrow(ConflictException);
+    expect(tx.user.update).not.toHaveBeenCalled();
+  });
+
+  it('archives after confirmation and ends every session', async () => {
+    const { service, tx } = archiveHarness({});
+    await expect(service.updateUserStatus(userId, admin, 'archived', true)).resolves.toMatchObject({ status: 'archived' });
+    expect(tx.session.updateMany).toHaveBeenCalled();
+  });
+
+  it('protects yourself and the last active administrator', async () => {
+    await expect(archiveHarness({}).service.updateUserStatus(admin.id, admin, 'archived', true)).rejects.toThrow(ConflictException);
+    await expect(archiveHarness({ isAdmin: true, otherAdmins: 0 }).service.updateUserStatus(userId, admin, 'archived', true)).rejects.toThrow(ConflictException);
+    await expect(archiveHarness({ isAdmin: true, otherAdmins: 1 }).service.updateUserStatus(userId, admin, 'archived', true)).resolves.toMatchObject({ status: 'archived' });
+  });
+
+  it('does not block an archived user without restoring first', async () => {
+    await expect(archiveHarness({ previous: 'archived' }).service.updateUserStatus(userId, admin, 'suspended')).rejects.toThrow(ConflictException);
+  });
+
+  it('restores to active, or to invited with a fresh invitation for someone who never signed in', async () => {
+    const active = archiveHarness({ previous: 'archived' });
+    await expect(active.service.updateUserStatus(userId, admin, 'active')).resolves.toMatchObject({ status: 'active' });
+    expect(active.authService.sendInvitation).not.toHaveBeenCalled();
+
+    const invited = archiveHarness({ previous: 'archived', lastLoginAt: null, invitations: 1 });
+    await expect(invited.service.updateUserStatus(userId, admin, 'active')).resolves.toMatchObject({ status: 'invited', invitation: { delivered: true } });
+    expect(invited.authService.sendInvitation).toHaveBeenCalledWith(userId, organizationId, admin.id);
+    expect(invited.tx.session.updateMany).not.toHaveBeenCalled();
   });
 });
 
