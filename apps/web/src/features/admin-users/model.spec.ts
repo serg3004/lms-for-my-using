@@ -13,6 +13,10 @@ const user: AdminUserSummary = {
 };
 
 describe('admin users model', () => {
+  it.each(['ru', 'en', 'kk', 'zh'])('provides department labels in %s', (language) => {
+    expect(i18next.exists('admin.users.fieldDepartment', { lng: language })).toBe(true);
+    expect(i18next.exists('admin.users.departmentsLoadError', { lng: language })).toBe(true);
+  });
   it('maps a user to an edit form without a password', () => expect(toEditUserForm(user)).toMatchObject({ id: 'u1', password: '', role: 'admin', middleName: '' }));
   it('removes the password without changing non-sensitive fields', () => expect(withoutPassword({ ...EMPTY_USER_FORM, email: 'kept@example.com', password: 'Secret123!' })).toMatchObject({ email: 'kept@example.com', password: '' }));
   it('validates create fields (password rules come from the organization policy on the server)', () => expect(validateUserForm({ ...EMPTY_USER_FORM, email: 'bad', password: 'short' }, 'create', i18next.t)).toEqual({ lastName: 'Укажите фамилию', firstName: 'Укажите имя', email: 'Введите корректный email' }));
@@ -21,6 +25,7 @@ describe('admin users model', () => {
 
 describe('admin users payload mappers', () => {
   const form = { ...toEditUserForm(user), email: ' USER@Example.COM ', firstName: ' Ada ', middleName: ' ' };
-  it('normalizes create payloads', () => expect(toCreateUserPayload({ ...form, password: 'Secret123!' }, 'o1')).toEqual({ organizationId: 'o1', email: 'user@example.com', password: 'Secret123!', firstName: 'Ada', lastName: 'Lovelace', middleName: undefined }));
+  it('normalizes create payloads', () => expect(toCreateUserPayload({ ...form, password: 'Secret123!' }, 'o1')).toEqual({ organizationId: 'o1', role: 'admin', email: 'user@example.com', password: 'Secret123!', firstName: 'Ada', lastName: 'Lovelace', middleName: undefined }));
   it('maps optional update values and role', () => expect(toUpdateUserPayload(form)).toMatchObject({ email: 'user@example.com', middleName: undefined, position: undefined, role: 'admin' }));
+  it('sends role and department in the creation payload', () => expect(toCreateUserPayload({ ...form, role: 'mentor', departmentId: 'd1' }, 'o1')).toMatchObject({ role: 'mentor', departmentId: 'd1' }));
 });

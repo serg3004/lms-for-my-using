@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { listDepartments } from '../../shared/api/departments.js';
 import type { FormValidationErrors } from '../../shared/formValidation.js';
 import { AdminUserForm } from './AdminUserForm.js';
 import type { UserForm, UserFormField, UserFormMode } from './model.js';
@@ -24,6 +25,30 @@ export function AdminUserDialog(props: Props) {
     } else if (!props.open && dialog?.open) dialog.close();
   }, [props.open]);
 
+  const [departments, setDepartments] = useState<Array<{ id: string; name: string }>>([]);
+  const [departmentsLoading, setDepartmentsLoading] = useState(false);
+  const [departmentsError, setDepartmentsError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!props.open || props.mode !== 'create') return;
+    let active = true;
+    setDepartments([]);
+    setDepartmentsLoading(true);
+    setDepartmentsError(null);
+    void (async () => {
+      const items: Array<{ id: string; name: string }> = [];
+      for (let page = 1; ; page++) {
+        const result = await listDepartments({ page, pageSize: 200, status: 'active' });
+        if (!active) return;
+        items.push(...result.items);
+        if (items.length >= result.total || result.items.length === 0) break;
+      }
+      if (active) setDepartments(items);
+    })().catch(() => {
+      if (active) setDepartmentsError(t('admin.users.departmentsLoadError', 'Unable to load departments. Close and reopen the dialog to retry.'));
+    }).finally(() => { if (active) setDepartmentsLoading(false); });
+    return () => { active = false; };
+  }, [props.open, props.mode, t]);
+
   function close() {
     props.onClose();
     requestAnimationFrame(() => returnFocusRef.current?.focus());
@@ -31,6 +56,6 @@ export function AdminUserDialog(props: Props) {
 
   return <dialog aria-labelledby={titleId} className="admin-dialog admin-user-dialog" ref={dialogRef} onCancel={(e) => { e.preventDefault(); close(); }} onClose={() => { if (props.open) close(); }}>
     <div className="admin-dialog__header"><h2 id={titleId}>{props.mode === 'create' ? t('admin.users.createDialogTitle', 'Create user') : t('admin.users.editDialogTitle', 'Edit user')}</h2><button aria-label={t('admin.users.closeDialog', 'Close user dialog')} className="admin-dialog__close" onClick={close} type="button">✕</button></div>
-    <AdminUserForm form={props.form} mode={props.mode} errors={props.errors} message={props.message} isSaving={props.isSaving} onChange={props.onChange} onErrorsChange={props.onErrorsChange} onSubmit={props.onSubmit} onCancel={close} />
+    <AdminUserForm departments={departments} departmentsLoading={departmentsLoading} departmentsError={departmentsError} form={props.form} mode={props.mode} errors={props.errors} message={props.message} isSaving={props.isSaving} onChange={props.onChange} onErrorsChange={props.onErrorsChange} onSubmit={props.onSubmit} onCancel={close} />
   </dialog>;
 }

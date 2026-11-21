@@ -1755,11 +1755,22 @@ while a provider request is already in flight cannot retract that request.
 
 ## Observer deactivation notices (PR 346)
 
-Delegated registration (PR 483): `POST /users` accepts an optional `departmentId`; `POST /users/bulk` and `POST /users/import`
-accept an optional top-level `departmentId`. A caller who reaches these routes only through a custom role must send it (403
-outside their department tree), the new users are `learner` members with a primary department membership; an administrator
-or manager may send it too and then gets the department membership (and no role) for the new users. Such callers also get 403 for
-a `role` field in `PATCH /users/{id}` and 404 for users outside their department or holding a role above `learner`.
+User creation (PR 483, PR 490): `POST /users`, `POST /users/bulk`, and `POST /users/import` accept
+optional top-level `role` and `departmentId` (shared by every row for bulk/import). Only an administrator may
+supply `role`; other callers receive 403 even for an explicit `learner`. Managers and delegated registrars
+receive `learner` automatically. Administrators may omit the role for backwards compatibility.
+A manager must select an active department they directly manage (current DIRECT DepartmentManager), or a
+descendant; group or reporting-line management alone does not grant placement in an unrelated department.
+Department-scoped registrars must select an active department in their own primary department tree;
+organization-scoped registrars may omit it. All supplied departments must belong to the requested organization.
+The user's organization must match the actor's organization. User, role, primary department membership,
+and (for passwordless single creation) invitation token are written in one transaction. Any write failure
+rolls back that transaction, including every valid row in a bulk/import batch. Import still reports invalid
+rows separately; validateOnly writes nothing. Bulk/import still require passwords. Invitation mail is sent
+only after commit; unavailable mail keeps the existing one-time link fallback. The creation dialog sends
+one POST /users request containing the chosen role and department, with no subsequent POST /memberships.
+Delegated registrars also get 403 for `role` in `PATCH /users/{id}` and 404 for users outside their scope or
+holding a role above `learner`.
 
 `POST /users/{id}/reset-password` (administrator, manager of the team, or a custom role with `user.reset-password`)
 issues a one-hour single-use reset link for an active user in the caller's scope (`404` outside it, `409` for an inactive

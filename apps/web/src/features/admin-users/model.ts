@@ -24,6 +24,7 @@ export type AdminUserSummary = {
 
 export type UserForm = {
   id?: string;
+  departmentId?: string;
   email: string;
   password: string;
   firstName: string;
