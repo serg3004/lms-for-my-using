@@ -16,7 +16,7 @@ async function fillCreateForm(page: Page, email: string, password: string) {
   await dialog.getByLabel('Фамилия').fill('Automation');
   await dialog.getByLabel('Имя').fill('Admin user');
   await dialog.getByLabel('Email').fill(email);
-  await dialog.getByLabel('Пароль *').fill(password);
+  await dialog.getByLabel('Пароль (необязательно)').fill(password);
   await dialog.getByLabel('Роль', { exact: true }).selectOption('learner');
 }
 
@@ -26,28 +26,28 @@ test('admin creates, filters, edits, deactivates and reactivates a user', async 
   await expect(page.getByRole('heading', { name: 'Пользователи' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Создать пользователя' }).click();
-  await page.getByLabel('Пароль *').fill('CloseMustClear123!');
+  await page.getByLabel('Пароль (необязательно)').fill('CloseMustClear123!');
   await page.getByRole('dialog', { name: 'Создать пользователя' }).getByRole('button', { name: 'Отмена' }).click();
   await page.getByRole('button', { name: 'Создать пользователя' }).click();
-  await expect(page.getByLabel('Пароль *')).toHaveValue('');
+  await expect(page.getByLabel('Пароль (необязательно)')).toHaveValue('');
   // The eye button shows and hides the typed password.
-  await page.getByLabel('Пароль *').fill('EyeCheck123!');
-  await expect(page.getByLabel('Пароль *')).toHaveAttribute('type', 'password');
+  await page.getByLabel('Пароль (необязательно)').fill('EyeCheck123!');
+  await expect(page.getByLabel('Пароль (необязательно)')).toHaveAttribute('type', 'password');
   await page.getByRole('button', { name: 'Показать пароль' }).click();
-  await expect(page.getByLabel('Пароль *')).toHaveAttribute('type', 'text');
+  await expect(page.getByLabel('Пароль (необязательно)')).toHaveAttribute('type', 'text');
   await page.getByRole('button', { name: 'Скрыть пароль' }).click();
-  await expect(page.getByLabel('Пароль *')).toHaveAttribute('type', 'password');
+  await expect(page.getByLabel('Пароль (необязательно)')).toHaveAttribute('type', 'password');
   await fillCreateForm(page, 'admin@demo.com', 'Temporary123!');
   await page.getByRole('dialog', { name: 'Создать пользователя' }).getByRole('button', { name: 'Сохранить' }).click();
   await expect(page.getByText('Пользователь с таким email уже существует')).toBeVisible();
-  await expect(page.getByLabel('Пароль *')).toHaveValue('');
+  await expect(page.getByLabel('Пароль (необязательно)')).toHaveValue('');
 
   await page.getByLabel('Email').fill(isolatedUser.email);
-  await page.getByLabel('Пароль *').fill('Temporary123!');
+  await page.getByLabel('Пароль (необязательно)').fill('Temporary123!');
   await page.getByRole('dialog', { name: 'Создать пользователя' }).getByRole('button', { name: 'Сохранить' }).click();
   await expect(page.getByRole('dialog', { name: 'Создать пользователя' })).not.toBeVisible();
   await page.getByRole('button', { name: 'Создать пользователя' }).click();
-  await expect(page.getByLabel('Пароль *')).toHaveValue('');
+  await expect(page.getByLabel('Пароль (необязательно)')).toHaveValue('');
   await page.getByRole('dialog', { name: 'Создать пользователя' }).getByRole('button', { name: 'Отмена' }).click();
 
   await page.getByLabel('Поиск пользователей').fill(isolatedUser.email);

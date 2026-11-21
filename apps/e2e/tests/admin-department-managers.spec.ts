@@ -18,7 +18,7 @@ async function createLearner(page: Page, email: string) {
   await dialog.getByLabel('Фамилия').fill('Manager');
   await dialog.getByLabel('Имя').fill('Candidate');
   await dialog.getByLabel('Email').fill(email);
-  await dialog.getByLabel('Пароль *').fill('Temporary123!');
+  await dialog.getByLabel('Пароль (необязательно)').fill('Temporary123!');
   await dialog.getByLabel('Роль', { exact: true }).selectOption('learner');
   await dialog.getByRole('button', { name: 'Сохранить' }).click();
   await expect(dialog).not.toBeVisible();
