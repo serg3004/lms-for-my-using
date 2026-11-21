@@ -575,31 +575,54 @@ export class UsersService {
     };
   }
 
-  async updateUserStatus(userId: string, actor: TeamScopeActor, status: UpdateUserStatusInput['status']) {
+  async updateUserStatus(userId: string, actor: TeamScopeActor, status: UpdateUserStatusInput['status'], confirm = false) {
     const organizationId = actor.organizationId;
     const registrar = await this.registrars.resolve(actor);
     const user = await this.prisma.user.findFirst({
       where: { id: userId, organizationId, ...this.teamScope.user(actor), ...this.registrars.writeWhere(registrar, actor), deletedAt: null },
-      select: { id: true, status: true },
+      select: { id: true, status: true, lastLoginAt: true },
     });
 
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
+    // PR 495: a manager only blocks; archiving and restoring belong to the administrator.
+    const archiving = status === 'archived';
+    const restoring = user.status === 'archived' && status === 'active';
+    if ((archiving || restoring) && !actor.roles.includes('admin')) {
+      throw new ForbiddenException('Only an administrator can archive or restore a user');
+    }
+    if (user.status === 'archived' && status === 'suspended') {
+      throw new ConflictException('An archived user must be restored before being blocked');
+    }
+    if (archiving && user.status !== 'archived') {
+      if (userId === actor.id) throw new ConflictException('You cannot archive yourself');
+      if (await this.isLastActiveAdmin(userId, organizationId)) throw new ConflictException('The last active administrator cannot be archived');
+      if (!confirm) {
+        // The screen reads the impact from GET /users/:id/status-impact and sends `confirm: true` only after the administrator accepts it.
+        throw new ConflictException('Archiving needs confirmation of its impact');
+      }
+    }
+
+    // A person who never signed in (still waiting for an invitation) goes back to `invited` and gets a fresh link.
+    const restoreAsInvited = restoring && !user.lastLoginAt && (await this.prisma.userInvitation.count({ where: { userId, organizationId } })) > 0;
+    const targetStatus = restoreAsInvited ? 'invited' : status;
+
     // PR 346: an observer leaving the active state with open sessions notifies the admins once,
     // in the same transaction as the status change; repeating the same status never re-notifies.
     const { updatedUser, observerSessions } = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.user.update({
         where: { id: userId, organizationId },
-        data: { status },
+        data: { status: targetStatus },
         select: userSelect,
       });
       // PR 493: a blocked user is signed out of every device at once, not when the access token runs out.
-      if (status !== 'active') {
+      if (targetStatus !== 'active' && targetStatus !== 'invited') {
         await tx.session.updateMany({ where: { userId, organizationId, revokedAt: null }, data: { revokedAt: new Date() } });
       }
-      const open = status !== 'active' ? await countOpenObserverSessions(tx, organizationId, userId) : 0;
+      const leaving = status !== 'active';
+      const open = leaving ? await countOpenObserverSessions(tx, organizationId, userId) : 0;
       if (open > 0 && user.status === 'active') {
         await notifyObserverDeactivated(tx, { organizationId, observerId: userId, sessionCount: open });
       }
@@ -607,18 +630,31 @@ export class UsersService {
     });
 
     const orphanedCourses = status !== 'active' ? await this.findSoleInstructorCourses(userId, organizationId) : [];
+    const invitation = restoreAsInvited && this.authService
+      ? await this.authService.sendInvitation(userId, organizationId, actor.id)
+      : undefined;
 
     await this.auditLog.record({
       organizationId,
       actorId: actor.id,
-      action: 'user.status_changed',
+      action: archiving ? 'user.archived' : restoring ? 'user.restored' : 'user.status_changed',
       targetType: 'user',
       targetId: userId,
-      summary: `Set user ${updatedUser.email} status to ${status}`,
-      metadata: { status, observerSessions, ...(registrar ? { delegated: registrar.scope } : {}) },
+      summary: `Set user ${updatedUser.email} status to ${targetStatus}`,
+      metadata: { status: targetStatus, observerSessions, ...(registrar ? { delegated: registrar.scope } : {}) },
     });
 
-    return { ...updatedUser, orphanedCourses, observerSessions };
+    return { ...updatedUser, orphanedCourses, observerSessions, ...(invitation ? { invitation } : {}) };
+  }
+
+  /** True when the user is the only active administrator of the organization (archiving them would lock everyone out). */
+  private async isLastActiveAdmin(userId: string, organizationId: string): Promise<boolean> {
+    const isAdmin = await this.prisma.membership.count({ where: { organizationId, userId, role: 'admin' } });
+    if (isAdmin === 0) return false;
+    const others = await this.prisma.membership.count({
+      where: { organizationId, role: 'admin', userId: { not: userId }, user: { status: 'active', deletedAt: null } },
+    });
+    return others === 0;
   }
 
   /** Administrator (or a holder of `user.reset-password`) issues a one-time reset link for a user in their scope. */
@@ -776,7 +812,7 @@ export class UsersService {
     return issued;
   }
 
-  /** PR 346: number of unfinished sessions the user observes, shown before the deactivation is confirmed. */
+  /** PR 346 / PR 495: what changing the user's status leaves behind, shown before the change is confirmed. */
   async getObserverSessionImpact(userId: string, actor: TeamScopeActor) {
     const organizationId = actor.organizationId;
     const registrar = await this.registrars.resolve(actor);
@@ -789,7 +825,19 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    return { observerSessions: await countOpenObserverSessions(this.prisma, organizationId, userId) };
+    return this.loadStatusImpact(userId, organizationId);
+  }
+
+  private async loadStatusImpact(userId: string, organizationId: string) {
+    const now = new Date();
+    const [observerSessions, soleInstructorCourses, openAssignments, reportingLines, managedDepartments] = await Promise.all([
+      countOpenObserverSessions(this.prisma, organizationId, userId),
+      this.findSoleInstructorCourses(userId, organizationId),
+      this.prisma.assignment.count({ where: { organizationId, userId, status: 'assigned', deletedAt: null } }),
+      this.prisma.reportingLine.count({ where: { organizationId, managerId: userId, OR: [{ effectiveTo: null }, { effectiveTo: { gt: now } }] } }),
+      this.prisma.departmentManager.count({ where: { organizationId, userId, OR: [{ effectiveTo: null }, { effectiveTo: { gt: now } }] } }),
+    ]);
+    return { observerSessions, soleInstructorCourses, openAssignments, subordinates: reportingLines, managedDepartments };
   }
 
   /** Courses where userId is the only active CourseInstructor — left without an accessible owner once deactivated. */

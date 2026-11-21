@@ -87,7 +87,9 @@ export const updateUserSchema = createUserSchema
   });
 
 export const updateUserStatusSchema = z.object({
-  status: z.enum(['active', 'suspended']),
+  status: z.enum(['active', 'suspended', 'archived']),
+  /** PR 495: archiving goes through only after the administrator has seen the impact and confirmed it. */
+  confirm: z.boolean().optional(),
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;

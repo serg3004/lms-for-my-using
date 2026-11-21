@@ -74,3 +74,12 @@ export function toEditUserForm(user: AdminUserSummary): UserForm {
 export function withoutPassword(form: UserForm): UserForm {
   return { ...form, password: '' };
 }
+
+/** PR 495: what archiving a user leaves behind, read before the administrator confirms. */
+export type UserStatusImpact = {
+  observerSessions: number;
+  soleInstructorCourses: { id: string; title: string }[];
+  openAssignments: number;
+  subordinates: number;
+  managedDepartments: number;
+};

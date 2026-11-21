@@ -39,6 +39,7 @@ module.exports = {
     '/src/integration/temporary-password\\.database\\.spec\\.ts$',
     '/src/integration/login-lockout\\.database\\.spec\\.ts$',
     '/src/integration/login-journal\\.database\\.spec\\.ts$',
+    '/src/integration/user-archive\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-history\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-delete-message\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-notifications\\.database\\.spec\\.ts$',

@@ -8,6 +8,8 @@ export type AuditLogAction =
   | 'user.created'
   | 'user.updated'
   | 'user.status_changed'
+  | 'user.archived'
+  | 'user.restored'
   | 'user.password_reset_issued'
   | 'user.invited'
   | 'user.invitation.accepted'
