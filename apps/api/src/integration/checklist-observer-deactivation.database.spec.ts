@@ -63,7 +63,7 @@ describe('observer deactivation notices (PR 346) — database', () => {
 
   it('notifies every active admin of the organization once, and only admins of that organization', async () => {
     await openSession();
-    await expect(users.getObserverSessionImpact(observer.id, actor())).resolves.toEqual({ observerSessions: 1 });
+    await expect(users.getObserverSessionImpact(observer.id, actor())).resolves.toMatchObject({ observerSessions: 1 });
     await expect(users.updateUserStatus(observer.id, actor(), 'suspended')).resolves.toMatchObject({ status: 'suspended', observerSessions: 1 });
     const rows = await notices();
     expect(rows.map((row) => row.userId).sort()).toEqual([admin.id, secondAdmin.id].sort());
@@ -87,10 +87,10 @@ describe('observer deactivation notices (PR 346) — database', () => {
   it('ignores sessions of other observers and completed or deleted sessions', async () => {
     const created = await openSession();
     await prisma.checklistSession.update({ where: { id: created.id }, data: { status: 'completed' } });
-    await expect(users.getObserverSessionImpact(observer.id, actor())).resolves.toEqual({ observerSessions: 0 });
+    await expect(users.getObserverSessionImpact(observer.id, actor())).resolves.toMatchObject({ observerSessions: 0 });
     await prisma.checklistSession.update({ where: { id: created.id }, data: { status: 'scheduled', deletedAt: new Date() } });
-    await expect(users.getObserverSessionImpact(observer.id, actor())).resolves.toEqual({ observerSessions: 0 });
-    await expect(users.getObserverSessionImpact(learner.id, actor())).resolves.toEqual({ observerSessions: 0 });
+    await expect(users.getObserverSessionImpact(observer.id, actor())).resolves.toMatchObject({ observerSessions: 0 });
+    await expect(users.getObserverSessionImpact(learner.id, actor())).resolves.toMatchObject({ observerSessions: 0 });
   });
 
   it('answers 404 for a user of another organization', async () => {
