@@ -83,3 +83,24 @@ export function revokeUserSession(userId: string, sessionId: string) {
 export function revokeAllUserSessions(userId: string) {
   return apiRequest<{ revoked: number }>(`/users/${encodeURIComponent(userId)}/sessions/revoke`, { method: 'POST', body: JSON.stringify({}) });
 }
+
+/** PR 496: the fields a person edits in their own profile; `version` is the one last read (a different one is a 409). */
+export type OwnProfile = { phone: string | null; locale: string; timezone: string; aboutMe: string | null; hasPhoto: boolean; version: number };
+
+export function getOwnProfile() {
+  return apiRequest<OwnProfile>('/auth/me/profile');
+}
+
+export function updateOwnProfile(input: { version: number; phone?: string | null; timezone?: string; aboutMe?: string | null }) {
+  return apiRequest<OwnProfile>('/auth/me/profile', { method: 'PATCH', body: JSON.stringify(input) });
+}
+
+export function uploadOwnPhoto(file: File) {
+  const form = new FormData();
+  form.append('file', file);
+  return apiRequest<OwnProfile>('/auth/me/photo', { method: 'POST', body: form });
+}
+
+export function removeOwnPhoto() {
+  return apiRequest<OwnProfile>('/auth/me/photo', { method: 'DELETE' });
+}

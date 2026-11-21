@@ -460,6 +460,11 @@ model User {
   temporaryPasswordUsedAt    DateTime?                  @map("temporary_password_used_at") @db.Timestamptz
   /// PR 493: sign-in is refused until this moment after too many failed attempts; an administrator can lift it earlier.
   loginLockedUntil           DateTime?                  @map("login_locked_until") @db.Timestamptz
+  /// PR 496: the person's own short note and photo; `profileVersion` guards two open tabs against overwriting each other.
+  aboutMe                    String?                    @map("about_me")
+  photoObjectKey             String?                    @map("photo_object_key")
+  photoMimeType              String?                    @map("photo_mime_type")
+  profileVersion             Int                        @default(0) @map("profile_version")
   loginAttempts              LoginAttempt[]
   loginEvents                LoginEvent[]
   createdAt                  DateTime                   @default(now()) @map("created_at") @db.Timestamptz

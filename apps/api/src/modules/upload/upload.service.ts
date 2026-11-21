@@ -198,6 +198,27 @@ export class UploadService {
     return key;
   }
 
+  /** PR 496: a person's own photo, stored under a tenant/user-scoped key; the key never leaves the server, the picture is read through `GET /users/:id/photo`. */
+  async uploadUserPhoto(file: Express.Multer.File, organizationId: string, userId: string): Promise<string> {
+    if (!this.s3 || !this.bucket) {
+      throw new ServiceUnavailableException('File storage is not configured');
+    }
+
+    const key = `organizations/${organizationId}/users/${userId}/photo/${randomUUID()}`;
+
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        ContentLength: file.size,
+      }),
+    );
+
+    return key;
+  }
+
   /** Presigned GET URL for inline display (e.g. <img src>) — sets the real content type, no attachment disposition. */
   async getInlinePresignedUrl(key: string, mimeType: string, expiresIn = 300): Promise<string> {
     if (!this.downloadS3 || !this.bucket) {

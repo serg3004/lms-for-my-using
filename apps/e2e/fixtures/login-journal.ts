@@ -25,6 +25,7 @@ export async function installLoginJournalMocks(page: Page, roles: string[] = ['l
     if (path.endsWith('/theme')) return route.fulfill({ json: { themeSettings: {} } });
     if (path === '/notifications/unread-count') return route.fulfill({ json: { count: 0 } });
     if (path.endsWith('/password-policy')) return route.fulfill({ json: { minLength: 10, historyCount: 3 } });
+    if (path === '/auth/me/profile') return route.fulfill({ json: { phone: null, locale: 'ru', timezone: 'Asia/Almaty', aboutMe: null, hasPhoto: false, version: 0 } });
     if (path === '/auth/me/sessions' && method === 'GET') return route.fulfill({ json: own });
     if (path.startsWith('/auth/me/sessions/') && method === 'DELETE') {
       const id = path.split('/')[4] ?? '';
