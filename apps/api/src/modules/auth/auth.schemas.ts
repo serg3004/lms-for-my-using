@@ -64,6 +64,8 @@ export const currentUserSchema = z.object({
   status: z.enum(['active', 'invited', 'suspended', 'archived']),
   locale: z.string(),
   timezone: z.string(),
+  /** PR 489: set by a temporary password; until the user sets their own, only changing it and signing out work. */
+  mustChangePassword: z.boolean(),
   roles: z.array(userRoleSchema),
 });
 

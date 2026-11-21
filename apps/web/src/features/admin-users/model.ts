@@ -27,6 +27,8 @@ export type UserForm = {
   departmentId?: string;
   email: string;
   password: string;
+  /** PR 489: create with a server-made temporary password instead of an invitation or a chosen password. */
+  temporaryPassword?: boolean;
   firstName: string;
   lastName: string;
   middleName: string;

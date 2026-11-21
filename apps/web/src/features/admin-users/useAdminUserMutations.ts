@@ -5,7 +5,7 @@ import { ApiClientError, apiRequest } from '../../shared/apiClient.js';
 import { passwordViolationMessages } from '../../shared/passwordPolicyErrors.js';
 import type { FormValidationErrors } from '../../shared/formValidation.js';
 import { toCreateUserPayload, toUpdateUserPayload } from './mappers.js';
-import type { InvitationResult } from './ResetPasswordDialogs.js';
+import type { InvitationResult, TemporaryPasswordResult } from './ResetPasswordDialogs.js';
 import type { AdminUserSummary, UserForm, UserFormField, UserFormMode } from './model.js';
 
 export function useAdminUserMutations(reload: () => Promise<void>) {
@@ -13,23 +13,25 @@ export function useAdminUserMutations(reload: () => Promise<void>) {
   const [isSaving, setIsSaving] = useState(false);
 
   async function saveUser(form: UserForm, mode: UserFormMode, organizationId: string): Promise<{
-    ok: boolean; invitation?: InvitationResult; formErrors?: FormValidationErrors<UserFormField>; message?: string;
+    ok: boolean; invitation?: InvitationResult; temporary?: TemporaryPasswordResult; formErrors?: FormValidationErrors<UserFormField>; message?: string;
   }> {
     setIsSaving(true);
     try {
       let invited: InvitationResult | undefined;
+      let temporary: TemporaryPasswordResult | undefined;
       if (mode === 'create') {
-        const created = await apiRequest<AdminUserSummary & { invitation?: { delivered: boolean; inviteUrl?: string } }>('/users', {
+        const created = await apiRequest<AdminUserSummary & { invitation?: { delivered: boolean; inviteUrl?: string }; temporaryPassword?: { temporaryPassword: string; expiresAt: string } }>('/users', {
           method: 'POST', body: JSON.stringify(toCreateUserPayload(form, organizationId)),
         });
         if (created.invitation) invited = { user: created, ...created.invitation };
+        if (created.temporaryPassword) temporary = { user: created, ...created.temporaryPassword };
       } else if (form.id) {
         await apiRequest<AdminUserSummary>(`/users/${form.id}`, {
           method: 'PATCH', body: JSON.stringify(toUpdateUserPayload(form)),
         });
       }
       await reload();
-      return { ok: true, ...(invited ? { invitation: invited } : {}) };
+      return { ok: true, ...(invited ? { invitation: invited } : {}), ...(temporary ? { temporary } : {}) };
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 409) {
         return { ok: false, formErrors: { email: t('admin.users.duplicateEmail', 'A user with this email already exists') } };
@@ -57,6 +59,11 @@ export function useAdminUserMutations(reload: () => Promise<void>) {
     return apiRequest<{ delivered: boolean; resetUrl?: string }>(`/users/${user.id}/reset-password`, { method: 'POST', body: JSON.stringify({}) });
   }
 
+  /** PR 489: a temporary password for an active user; returned once. */
+  async function issueTemporaryPassword(user: AdminUserSummary) {
+    return apiRequest<{ temporaryPassword: string; expiresAt: string }>(`/users/${user.id}/temporary-password`, { method: 'POST', body: JSON.stringify({}) });
+  }
+
   /** PR 346: unfinished observer sessions of the user; `null` when the check itself fails. */
   async function loadObserverSessions(user: AdminUserSummary): Promise<number | null> {
     try {
@@ -66,5 +73,5 @@ export function useAdminUserMutations(reload: () => Promise<void>) {
     }
   }
 
-  return { isSaving, saveUser, toggleStatus, loadObserverSessions, resetPassword };
+  return { isSaving, saveUser, toggleStatus, loadObserverSessions, resetPassword, issueTemporaryPassword };
 }

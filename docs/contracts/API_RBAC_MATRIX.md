@@ -389,3 +389,8 @@ read permissions and team/course filters apply to the server-written version/cha
 ## Password policy and changing your own password (PR 488)
 
 `GET /organizations/:id/password-policy` is allowed for every authenticated role of that organization (the screens that set or change a password show the minimum length); `PATCH /organizations/:id/password-policy` is allowed for `admin` only and is written to the audit log (`organization.password_policy_updated`). `POST /auth/change-password` needs only an authenticated session: a user changes their own password after confirming the current one, never another person's; it grants no new object access. Custom roles (`customRolesEnabled`) cannot grant the policy write.
+
+## Temporary password (PR 489)
+
+`POST /users/:id/temporary-password` uses the `user.reset-password` permission and the same object filters as `POST /users/{id}/reset-password` (administrator: whole organization; manager: own team; delegated registrar: own department tree, never above `learner`); the caller cannot issue one for themselves. `POST /users` with `temporaryPassword: true` follows the existing `user.create` rules. While `mustChangePassword` is set, `AuthGuard` refuses every guarded route with `403 PASSWORD_CHANGE_REQUIRED` whatever the role; custom roles do not change this.
+

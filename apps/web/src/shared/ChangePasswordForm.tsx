@@ -9,7 +9,7 @@ import { PasswordInput } from './PasswordInput.js';
 import { useSession } from './session.js';
 
 /** PR 488: a user changes their own password; the rules come from the organization's policy and are checked by the server. */
-export function ChangePasswordForm({ className = 'learner-profile__card' }: { className?: string }) {
+export function ChangePasswordForm({ className = 'learner-profile__card', onChanged }: { className?: string; onChanged?: () => void }) {
   const { t } = useTranslation();
   const { currentUser } = useSession();
   const [minLength, setMinLength] = useState<number | null>(null);
@@ -37,6 +37,7 @@ export function ChangePasswordForm({ className = 'learner-profile__card' }: { cl
       setNewPassword('');
       setConfirmation('');
       setState('done');
+      onChanged?.();
     } catch (error) {
       setState('idle');
       const violations = passwordViolationMessages(error, t);

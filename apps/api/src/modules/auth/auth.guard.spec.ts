@@ -163,3 +163,14 @@ describe('AuthGuard', () => {
     expect(tokens).toEqual([]);
   });
 });
+
+describe('AuthGuard with a temporary password (PR 489)', () => {
+  it('closes the API for a user who must still choose their own password', async () => {
+    const authService = { getCurrentUser: async () => ({ ...currentUser, mustChangePassword: true }) } as unknown as AuthService;
+    const request: AuthenticatedRequest = { headers: { authorization: 'Bearer token' }, method: 'GET' };
+
+    await expect(new AuthGuard(authService).canActivate(createContext(request))).rejects.toMatchObject({
+      response: { error: { code: 'PASSWORD_CHANGE_REQUIRED' } },
+    });
+  });
+});

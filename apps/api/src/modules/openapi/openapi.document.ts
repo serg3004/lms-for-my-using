@@ -149,6 +149,9 @@ export function getOpenApiDocument(): OpenApiDocument {
       '/users/{id}/reset-password': {
         post: operation('Issue a one-time password reset link for a user', ['Users'], true),
       },
+      '/users/{id}/temporary-password': {
+        post: operation('Issue a temporary password (shown once; the user must choose their own at the first sign-in)', ['Users'], true),
+      },
       '/custom-roles': {
         get: operation('List custom roles', ['Custom roles'], true),
         post: operation('Create a custom role (optionally based on another)', ['Custom roles'], true),
