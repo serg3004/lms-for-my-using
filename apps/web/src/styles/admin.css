@@ -1168,6 +1168,10 @@
 
 /* ── Table row actions ───────────────────────────────────────────────────── */
 
+.admin-pending-invitations .ds-data-table__responsive-details dt {
+  color: var(--color-text);
+}
+
 .admin-table-actions {
   display: flex;
   flex-wrap: wrap;

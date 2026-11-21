@@ -35,7 +35,7 @@ export function PendingInvitations() {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const contentId = useId();
-  return <section style={{ marginBlockEnd: 16 }}>
+  return <section className="admin-pending-invitations" style={{ marginBlockEnd: 16 }}>
     <button className="admin-btn admin-btn--secondary" type="button" disabled={busy} aria-expanded={open} aria-controls={contentId} onClick={() => setOpen(!open)}>
       {t(`${keys}.title`)}
     </button>
