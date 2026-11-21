@@ -42,6 +42,8 @@ Notifications уже реализованы. Требуется только own
 
 **Решено владельцем 2026-10-25:** провайдер — Resend. Код: `RESEND_API_KEY` + `MAIL_FROM` (домен должен быть подтверждён в Resend). У владельца нет своего домена, поэтому добавлен запасной путь через SMTP обычного ящика (PR 342: `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`). SLA не задан; живая отправка `[НЕ ПРОВЕРЕНО]`.
 
+**Обновление 2026-11-21.** Живая проверка Gmail SMTP не прошла: Railway отключает исходящий SMTP на тарифах Free/Trial/Hobby (лог `Password reset delivery failed (timeout)`), SMTP возможен только на Pro. Решение владельца: **временно Brevo** (HTTPS API, бесплатно до 300 писем/день, свой домен не нужен): `BREVO_API_KEY` + `MAIL_FROM` (адрес отправителя, подтверждённый в Brevo). Когда появится свой домен — переключиться на Resend (`RESEND_API_KEY` приоритетнее, переделка кода не нужна). Приоритет в коде: Resend, затем Brevo, затем SMTP. Живая отправка `[НЕ ПРОВЕРЕНО]` до задания ключа.
+
 **Источник:** `TV-048`.
 
 Provider-neutral delivery hook реализован. Требуется выбрать provider/operational requirement и определить, какой delivery SLA нужен продукту. Live delivery проверяется отдельно.
