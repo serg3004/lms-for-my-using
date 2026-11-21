@@ -17,6 +17,7 @@ import { AuthenticatedAccess, PublicAccess } from './roles.js';
 import {
   LoginInput,
   loginSchema,
+  invitationAcceptSchema,
   passwordResetConfirmSchema,
   passwordResetRequestSchema,
   updatePreferencesSchema,
@@ -124,6 +125,13 @@ export class AuthController {
   confirmPasswordReset(@Body() body: unknown) {
     const input = passwordResetConfirmSchema.parse(body);
     return this.authService.confirmPasswordReset(input);
+  }
+
+  @Post('invitation/accept')
+  @PublicAccess()
+  acceptInvitation(@Body() body: unknown) {
+    const input = invitationAcceptSchema.parse(body);
+    return this.authService.acceptInvitation(input);
   }
 
   @Get('me')

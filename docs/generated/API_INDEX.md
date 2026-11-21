@@ -29,6 +29,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/attempts/{id}/result` | `AssessmentAttempts` | `bearer` |
 | `GET` | `/api/v1/audit-log` | `AuditLog` | `bearer` |
 | `GET` | `/api/v1/audit-log/filter-options` | `AuditLog` | `bearer` |
+| `POST` | `/api/v1/auth/invitation/accept` | `Auth` | `bearer` |
 | `POST` | `/api/v1/auth/login` | `Auth` | `public` |
 | `POST` | `/api/v1/auth/logout` | `Auth` | `bearer` |
 | `POST` | `/api/v1/auth/logout-all` | `Auth` | `bearer` |

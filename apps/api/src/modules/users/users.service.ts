@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
@@ -221,7 +222,11 @@ export class UsersService {
 
     const { password, ...userData } = input;
     delete userData.departmentId;
-    const passwordHash = await hashPassword(password);
+    const invite = password === undefined;
+    if (invite && !this.authService) throw new ConflictException('Invitations are not available');
+    // An invited user has no usable password until they accept: hash of a random secret nobody sees.
+    const passwordHash = await hashPassword(password ?? randomBytes(32).toString('hex'));
+    if (invite) userData.status = 'invited';
 
     const created = registrar || departmentId
       ? await this.prisma.$transaction(async (tx) => {
@@ -241,7 +246,22 @@ export class UsersService {
       ...(registrar || departmentId ? { metadata: { departmentId, ...(registrar ? { delegated: registrar.scope } : {}) } } : {}),
     });
 
-    return created;
+    if (!invite) return created;
+
+    const invitation = await this.authService!.issueInvitationFor(
+      { id: created.id, organizationId: input.organizationId, email: created.email, firstName: created.firstName, locale: created.locale },
+      actorId,
+    );
+    await this.auditLog.record({
+      organizationId: input.organizationId,
+      actorId,
+      action: 'user.invited',
+      targetType: 'user',
+      targetId: created.id,
+      summary: `Invited user ${created.email}`,
+      metadata: { delivered: invitation.delivered },
+    });
+    return { ...created, invitation };
   }
 
   async createBulkUsers(input: CreateBulkUsersInput, actor?: TeamScopeActor) {

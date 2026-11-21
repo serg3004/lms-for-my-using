@@ -460,6 +460,7 @@ model User {
   certificates               Certificate[]
   sessions                   Session[]
   passwordResetTokens        PasswordResetToken[]
+  invitations                UserInvitation[]
   instructedCourses          CourseInstructor[]
   groupMemberships           GroupMember[]
   managedGroups              ManagerGroup[]
@@ -506,6 +507,24 @@ model PasswordResetToken {
   @@index([userId, organizationId])
   @@index([expiresAt])
   @@map("password_reset_tokens")
+}
+
+model UserInvitation {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  tokenHash      String    @unique @map("token_hash")
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz
+  usedAt         DateTime? @map("used_at") @db.Timestamptz
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz
+  sendCount      Int       @default(1) @map("send_count")
+  createdById    String?   @map("created_by_id") @db.Uuid
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, organizationId])
+  @@index([expiresAt])
+  @@map("user_invitations")
 }
 
 model Group {

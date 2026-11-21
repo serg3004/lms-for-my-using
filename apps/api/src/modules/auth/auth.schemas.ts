@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { UserRole } from '@lms/shared/types/api';
 
-const strongPasswordSchema = z
+export const strongPasswordSchema = z
   .string()
   .min(12)
   .max(255)
@@ -33,6 +33,11 @@ export const passwordResetRequestSchema = z.object({
 });
 
 export const passwordResetConfirmSchema = z.object({
+  token: z.string().trim().min(32).max(512),
+  password: strongPasswordSchema,
+});
+
+export const invitationAcceptSchema = z.object({
   token: z.string().trim().min(32).max(512),
   password: strongPasswordSchema,
 });
@@ -73,6 +78,7 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export type LoginIdentityInput = Pick<LoginInput, 'organizationId' | 'email'>;
 export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestSchema>;
 export type PasswordResetConfirmInput = z.infer<typeof passwordResetConfirmSchema>;
+export type InvitationAcceptInput = z.infer<typeof invitationAcceptSchema>;
 export type UpdatePreferencesInput = z.infer<typeof updatePreferencesSchema>;
 export type CurrentUser = z.infer<typeof currentUserSchema>;
 export type { UserRole } from '@lms/shared/types/api';

@@ -26,7 +26,11 @@ export const createUserSchema = z.object({
 });
 
 /** PR 483: `POST /users` may name the department the new user is placed in (required for a registrar limited to a department). */
-export const createUserRequestSchema = createUserSchema.extend({ departmentId: z.guid().optional() });
+/** PR 487: without `password` the user is created `invited` and receives an email invitation to set their own. */
+export const createUserRequestSchema = createUserSchema.extend({
+  password: createUserSchema.shape.password.optional(),
+  departmentId: z.guid().optional(),
+});
 
 export const usersBulkCreateMaxItems = 50;
 

@@ -3,7 +3,7 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { unrestrictedActor } from '../manager-team-scope/manager-team-scope.js';
-import { createBulkUsersSchema, createUserSchema, importUsersSchema, updateUserSchema } from './users.schemas.js';
+import { createBulkUsersSchema, createUserRequestSchema, createUserSchema, importUsersSchema, updateUserSchema } from './users.schemas.js';
 import { UsersService } from './users.service.js';
 
 const organizationId = '11111111-1111-1111-1111-111111111111';
@@ -461,5 +461,11 @@ describe('UsersService listUsers', () => {
     await service.listUsers(unrestrictedActor(organizationId), 1, 20);
 
     expect(capturedWhere).not.toHaveProperty('status');
+  });
+
+  it('PR 487: a single user may be created without a password (invitation), bulk and the base schema still require one', () => {
+    const base = { organizationId: '11111111-1111-4111-8111-111111111111', email: 'New@Example.com', firstName: 'A', lastName: 'B' };
+    expect(createUserRequestSchema.parse(base).password).toBeUndefined();
+    expect(() => createUserSchema.parse(base)).toThrow();
   });
 });

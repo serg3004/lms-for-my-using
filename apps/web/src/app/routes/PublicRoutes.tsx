@@ -13,6 +13,7 @@ export function PublicRoutes() {
   return <>
     <Route path="/login" element={<LoginPage />} />
     <Route path="/password-reset" element={<PasswordResetPage />} />
+    <Route path="/invitation" element={<PasswordResetPage mode="invitation" />} />
     <Route path="/c/:token" element={<PublicChecklistPage />} />
     <Route path="/" element={<PublicHomePage />} />
     <Route path="/403" element={<ForbiddenPage />} />

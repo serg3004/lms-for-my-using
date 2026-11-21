@@ -23,6 +23,8 @@ For a concrete endpoint, verify current runtime OpenAPI/controller metadata. Do 
 - `DELETE /memberships/{id}` removes one built-in role of a user (administrator only, 204; 409 for the last administrator or the caller's own administrator role; audit `membership.revoked`).
 - The password-reset request takes the same `organizationId` as sign-in (organization ID or its short name); an unknown name is answered `{ accepted: true }` like an unknown email.
 
+- Email invitation (PR 487): `POST /users` without `password` creates the user as `invited` with an unusable random password and a one-time invitation (7 days, only its SHA-256 hash is stored; earlier unused ones are revoked). The mail is written in the invited person's `locale` (ru/en/kk/zh) and carries `${FRONTEND_URL}/invitation?token=`. The response adds `invitation: { delivered, expiresAt, inviteUrl? }`; `inviteUrl` is returned once only when mail is not configured or sending failed. Sign-in stays closed (`invited`) until the public `POST /auth/invitation/accept` `{ token, password }` (same strong-password rule as the reset) sets the password and activates the user; an unknown, used, revoked or expired link, or a user who is no longer `invited`, all answer `400`. Audit: `user.invited`, `user.invitation.accepted`. A request with `password` keeps the previous behaviour; bulk and import still require a password.
+
 Historical descriptions of stateless-only logout or an intentional password-reset `503` do not override current auth code.
 
 ## Tenant and authorization semantics

@@ -35,6 +35,13 @@ export function requestPasswordReset(input: PasswordResetRequestInput) {
   });
 }
 
+export function acceptInvitation(input: PasswordResetConfirmInput) {
+  return apiRequest<PasswordResetAcceptedResponse>('/auth/invitation/accept', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
 export function confirmPasswordReset(input: PasswordResetConfirmInput) {
   return apiRequest<PasswordResetAcceptedResponse>('/auth/password-reset/confirm', {
     method: 'POST',
