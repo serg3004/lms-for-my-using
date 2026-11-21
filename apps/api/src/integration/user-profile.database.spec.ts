@@ -3,6 +3,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { INestApplication } from '@nestjs/common';
+import sharp from 'sharp';
 
 import type { PrismaService } from '../database/prisma.service.js';
 import { assertSafeTestDatabase } from './database-test-safety.js';
@@ -55,7 +56,7 @@ describe('own profile — database', () => {
     const { ApiExceptionFilter } = await import('../common/filters/api-exception.filter.js');
     // An in-memory storage stands in for the S3 bucket.
     const fakeStorage = {
-      uploadUserPhoto: async (file: Express.Multer.File, org: string, user: string) => { const key = `${org}/${user}/${randomUUID()}`; storage.set(key, file.buffer); return key; },
+      uploadUserPhoto: async (bytes: Buffer, _mime: string, org: string, user: string, variant: string) => { const key = `${org}/${user}/${variant}-${randomUUID()}`; storage.set(key, bytes); return key; },
       getObjectBytes: async (key: string) => storage.get(key) ?? null,
       deleteObject: async (key: string) => { storage.delete(key); },
     };
@@ -131,10 +132,13 @@ describe('own profile — database', () => {
     for (const viewer of [worker, admin, manager]) {
       const response = await send('GET', `/users/${worker.id}/photo`, undefined, await headersFor(viewer.email));
       expect(response.status).toBe(200);
-      expect(response.headers.get('content-type')).toBe('image/png');
-      expect(Buffer.from(await response.arrayBuffer()).equals(PNG)).toBe(true);
+      expect(response.headers.get('content-type')).toBe('image/webp');
+      expect((await sharp(Buffer.from(await response.arrayBuffer())).metadata()).format).toBe('webp');
     }
     expect((await send('GET', `/users/me/photo`, undefined, workerHeaders)).status).toBe(200);
+    const thumb = await send('GET', `/users/${worker.id}/photo?size=thumb`, undefined, workerHeaders);
+    expect(thumb.status).toBe(200);
+    expect(await sharp(Buffer.from(await thumb.arrayBuffer())).metadata()).toMatchObject({ width: 128, height: 128 });
     for (const viewer of [outsiderManager, stranger]) {
       expect((await send('GET', `/users/${worker.id}/photo`, undefined, await headersFor(viewer.email))).status).toBe(404);
     }
@@ -143,7 +147,7 @@ describe('own profile — database', () => {
     bad.append('file', new Blob([new Uint8Array(Buffer.from('not an image'))], { type: 'image/png' }), 'me.png');
     expect((await fetch(`${baseUrl}/api/v1/auth/me/photo`, { method: 'POST', headers: workerHeaders, body: bad })).status).toBe(400);
 
-    expect(storage.size).toBe(1);
+    expect(storage.size).toBe(2); // the trimmed picture and its thumbnail
     const removed = await send('DELETE', '/auth/me/photo', undefined, workerHeaders);
     expect(removed.status).toBe(200);
     expect(await unwrap(removed)).toMatchObject({ hasPhoto: false });

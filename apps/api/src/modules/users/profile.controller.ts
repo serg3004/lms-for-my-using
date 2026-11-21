@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, Query, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 
@@ -49,13 +49,14 @@ export class ProfileController {
 
   @Get('users/:id/photo')
   @AuthenticatedAccess()
-  async getPhoto(@Param('id') id: string, @Headers('if-none-match') ifNoneMatch: string | undefined, @Req() request: AuthenticatedRequest, @Res() response: ImageResponse) {
+  async getPhoto(@Param('id') id: string, @Headers('if-none-match') ifNoneMatch: string | undefined, @Query('size') sizeParam: string | undefined, @Req() request: AuthenticatedRequest, @Res() response: ImageResponse) {
     const actor = request.currentUser!;
     const targetId = id === 'me' ? actor.id : id;
     if (!UUID_PATTERN.test(targetId)) throw new BadRequestException('Invalid user id');
 
-    const file = await this.profile.getPhotoFile(targetId, actor);
-    const etag = `"${file.version}"`;
+    const size = sizeParam === 'thumb' ? 'thumb' : 'full';
+    const file = await this.profile.getPhotoFile(targetId, actor, size);
+    const etag = `"${file.version}-${size}"`;
     const headers = { 'Content-Type': file.mimeType, 'Cache-Control': 'private, no-cache', ETag: etag, 'X-Content-Type-Options': 'nosniff' };
     if (ifNoneMatch === etag) {
       response.set(headers).status(304).send();

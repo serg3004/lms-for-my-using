@@ -198,21 +198,21 @@ export class UploadService {
     return key;
   }
 
-  /** PR 496: a person's own photo, stored under a tenant/user-scoped key; the key never leaves the server, the picture is read through `GET /users/:id/photo`. */
-  async uploadUserPhoto(file: Express.Multer.File, organizationId: string, userId: string): Promise<string> {
+  /** PR 496: one processed variant of a person's photo, stored under a tenant/user-scoped key; keys never leave the server, pictures are read through `GET /users/:id/photo`. */
+  async uploadUserPhoto(bytes: Buffer, mimeType: string, organizationId: string, userId: string, variant: 'full' | 'thumb'): Promise<string> {
     if (!this.s3 || !this.bucket) {
       throw new ServiceUnavailableException('File storage is not configured');
     }
 
-    const key = `organizations/${organizationId}/users/${userId}/photo/${randomUUID()}`;
+    const key = `organizations/${organizationId}/users/${userId}/photo/${variant}-${randomUUID()}`;
 
     await this.s3.send(
       new PutObjectCommand({
         Bucket: this.bucket,
         Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-        ContentLength: file.size,
+        Body: bytes,
+        ContentType: mimeType,
+        ContentLength: bytes.length,
       }),
     );
 

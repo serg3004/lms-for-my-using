@@ -4,7 +4,7 @@ import { installLoginJournalMocks, journalUserId } from '../fixtures/login-journ
 
 test('PR 494: the person sees their devices, ends another one and signs out everywhere', async ({ page }) => {
   const calls = await installLoginJournalMocks(page);
-  await page.goto('/learn/profile');
+  await page.goto('/profile');
   await expect(page.getByRole('heading', { name: 'Мои устройства' })).toBeVisible();
   await expect(page.getByText('Chrome · Windows (это устройство), 203.0.x.x')).toBeVisible();
   await expect(page.getByText('Safari · iOS')).toBeVisible();

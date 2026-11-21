@@ -99,7 +99,7 @@ for (const width of [390, 1280]) test(`my devices and the sign-in journal are re
   await expectNoPageOverflow(page);
   await expectVisualMatch(page, `user-logins-${width}`, false, { maxDiffPixels: 3000 });
   await installLoginJournalMocks(page);
-  await page.goto('/learn/profile');
+  await page.goto('/profile');
   await expect(page.getByRole('heading', { name: 'Мои устройства' })).toBeVisible();
   await expectNoPageOverflow(page);
   await expectVisualMatch(page, `my-devices-${width}`, false, { maxDiffPixels: 3000 });
@@ -108,7 +108,7 @@ for (const width of [390, 1280]) test(`my devices and the sign-in journal are re
 for (const width of [390, 1280]) test(`own profile card is responsive at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height });
   await installUserProfileMocks(page);
-  await page.goto('/learn/profile');
+  await page.goto('/profile');
   const card = page.getByRole('region', { name: 'О себе' });
   await expect(card.getByLabel('Телефон')).toBeVisible();
   await card.getByLabel('Телефон').fill('+7 701 123 45 67');

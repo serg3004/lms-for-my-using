@@ -57,7 +57,7 @@ export function OwnProfileCard({ className = 'learner-profile__card' }: { classN
     if (photoVersion === null) { setPhotoUrl(null); return undefined; }
     let url: string | null = null;
     let active = true;
-    apiDownloadRequest('/users/me/photo').then(({ blob }) => {
+    apiDownloadRequest('/users/me/photo?size=thumb').then(({ blob }) => {
       if (!active) return;
       url = URL.createObjectURL(blob);
       setPhotoUrl(url);

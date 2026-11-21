@@ -23,6 +23,7 @@ export function InstructorPageLayout({ children, firstName, lastName }: Instruct
     { label: t('instructor.navDashboard'), href: '/instructor/dashboard' },
     { label: t('instructor.navCourses'), href: '/instructor/courses' },
     { label: t('instructor.navChecklists'), href: '/instructor/checklists' },
+    { label: t('learner.profileTitle'), href: '/profile' },
   ] as const;
 
   const navItems: WorkspaceNavItem[] = instructorNav.map((item) => ({

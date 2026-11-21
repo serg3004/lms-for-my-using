@@ -192,14 +192,14 @@ const LEARNER_NAV_DEFS = [
   { key: 'progress.navLink', href: '/learn/progress' },
   { key: 'certificates.navLink', href: '/learn/certificates' },
   { key: 'notifications.bell', href: '/learn/notifications' },
-  { key: 'learner.profileTitle', href: '/learn/profile' },
+  { key: 'learner.profileTitle', href: '/profile' },
 ] as const;
 
 const LEARNER_MOBILE_NAV_DEFS = [
   { key: 'nav.home', href: '/learn', icon: 'home' },
   { key: 'courses.title', href: '/learn/courses', icon: 'courses' },
   { key: 'notifications.bell', href: '/learn/notifications', icon: 'notifications' },
-  { key: 'learner.profileTitle', href: '/learn/profile', icon: 'profile' },
+  { key: 'learner.profileTitle', href: '/profile', icon: 'profile' },
 ] as const;
 
 function MobileNavIcon({ icon }: { icon: (typeof LEARNER_MOBILE_NAV_DEFS)[number]['icon'] }) {

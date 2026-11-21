@@ -6,6 +6,7 @@ import { rolePolicies } from '../auth/public.js';
 import { ManagerTeamScope } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import { UploadService, validateUploadFile } from '../upload/public.js';
+import { processProfilePhoto } from './profile-photo.js';
 import { PROFILE_PHOTO_MAX_BYTES, PROFILE_PHOTO_MIME_TYPES, type UpdateOwnProfileInput } from './profile.schemas.js';
 
 const profileSelect = { phone: true, locale: true, timezone: true, aboutMe: true, photoMimeType: true, profileVersion: true } as const;
@@ -70,44 +71,54 @@ export class ProfileService {
     if (file.size > PROFILE_PHOTO_MAX_BYTES) throw new BadRequestException('The photo must not be larger than 1 MB');
     validateUploadFile(file);
 
-    const previous = await this.prisma.user.findFirst({ where: { id: userId, organizationId, deletedAt: null }, select: { photoObjectKey: true } });
+    const previous = await this.prisma.user.findFirst({ where: { id: userId, organizationId, deletedAt: null }, select: { photoObjectKey: true, photoThumbObjectKey: true } });
     if (!previous) throw new NotFoundException('User not found');
 
-    const key = await this.upload.uploadUserPhoto(file, organizationId, userId);
+    // Both variants are re-encoded here: what is stored is a trimmed picture and a square thumbnail, never the uploaded bytes.
+    const photo = await processProfilePhoto(file.buffer);
+    const [fullKey, thumbKey] = await Promise.all([
+      this.upload.uploadUserPhoto(photo.full, photo.mimeType, organizationId, userId, 'full'),
+      this.upload.uploadUserPhoto(photo.thumb, photo.mimeType, organizationId, userId, 'thumb'),
+    ]);
     await this.prisma.user.update({
       where: { id: userId, organizationId },
-      data: { photoObjectKey: key, photoMimeType: file.mimetype, profileVersion: { increment: 1 } },
+      data: { photoObjectKey: fullKey, photoThumbObjectKey: thumbKey, photoMimeType: photo.mimeType, profileVersion: { increment: 1 } },
     });
-    if (previous.photoObjectKey) await this.upload.deleteObject(previous.photoObjectKey).catch(() => undefined);
+    await this.deleteStored([previous.photoObjectKey, previous.photoThumbObjectKey]);
 
     await this.auditLog.record({ organizationId, actorId: userId, action: 'user.photo_changed', targetType: 'user', targetId: userId, summary: 'User changed own photo' });
     return this.getOwnProfile(userId, organizationId);
   }
 
   async removeOwnPhoto(userId: string, organizationId: string) {
-    const current = await this.prisma.user.findFirst({ where: { id: userId, organizationId, deletedAt: null }, select: { photoObjectKey: true } });
+    const current = await this.prisma.user.findFirst({ where: { id: userId, organizationId, deletedAt: null }, select: { photoObjectKey: true, photoThumbObjectKey: true } });
     if (!current) throw new NotFoundException('User not found');
     if (!current.photoObjectKey) return this.getOwnProfile(userId, organizationId);
 
-    await this.prisma.user.update({ where: { id: userId, organizationId }, data: { photoObjectKey: null, photoMimeType: null, profileVersion: { increment: 1 } } });
-    await this.upload.deleteObject(current.photoObjectKey).catch(() => undefined);
+    await this.prisma.user.update({ where: { id: userId, organizationId }, data: { photoObjectKey: null, photoThumbObjectKey: null, photoMimeType: null, profileVersion: { increment: 1 } } });
+    await this.deleteStored([current.photoObjectKey, current.photoThumbObjectKey]);
     await this.auditLog.record({ organizationId, actorId: userId, action: 'user.photo_removed', targetType: 'user', targetId: userId, summary: 'User removed own photo' });
     return this.getOwnProfile(userId, organizationId);
   }
 
   /** The photo is visible to its owner and to those who may read that user (administrator; manager within the team). */
-  async getPhotoFile(targetId: string, actor: TeamScopeActor) {
+  async getPhotoFile(targetId: string, actor: TeamScopeActor, size: 'full' | 'thumb' = 'full') {
     const own = targetId === actor.id;
     if (!own && !actor.roles.some((role) => (rolePolicies.usersRead as readonly string[]).includes(role))) throw new NotFoundException('Photo not found');
 
     const user = await this.prisma.user.findFirst({
       where: { id: targetId, organizationId: actor.organizationId, deletedAt: null, ...(own ? {} : this.teamScope.user(actor)) },
-      select: { photoObjectKey: true, photoMimeType: true, profileVersion: true },
+      select: { photoObjectKey: true, photoThumbObjectKey: true, photoMimeType: true, profileVersion: true },
     });
-    if (!user?.photoObjectKey || !user.photoMimeType) throw new NotFoundException('Photo not found');
+    const key = size === 'thumb' ? user?.photoThumbObjectKey ?? user?.photoObjectKey : user?.photoObjectKey;
+    if (!user || !key || !user.photoMimeType) throw new NotFoundException('Photo not found');
 
-    const bytes = await this.upload.getObjectBytes(user.photoObjectKey, PROFILE_PHOTO_MAX_BYTES * 2);
+    const bytes = await this.upload.getObjectBytes(key, PROFILE_PHOTO_MAX_BYTES * 2);
     if (!bytes) throw new NotFoundException('Photo not found');
     return { bytes, mimeType: user.photoMimeType, version: user.profileVersion };
+  }
+
+  private async deleteStored(keys: Array<string | null>) {
+    await Promise.all(keys.filter((key): key is string => key !== null).map((key) => this.upload.deleteObject(key).catch(() => undefined)));
   }
 }

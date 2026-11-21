@@ -55,6 +55,7 @@ export function LearnerProfilePage() {
           <div><dt>{t('profile.name')}</dt><dd>{fullName}</dd></div>
           <div><dt>{t('profile.email')}</dt><dd>{currentUser.email}</dd></div>
           <div><dt>{t('profile.position')}</dt><dd>{currentUser.position || t('profile.notSpecified')}</dd></div>
+          <div><dt>{t('security.profileRoles')}</dt><dd>{currentUser.roles.map((role) => t(`admin.roles.options.${role}`, role)).join(', ') || t('profile.notSpecified')}</dd></div>
         </dl>
         <p className="learner-profile__readonly">{t('profile.readonlyHint')}</p>
       </div>

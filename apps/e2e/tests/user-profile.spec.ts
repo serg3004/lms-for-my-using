@@ -6,7 +6,7 @@ const photo = { name: 'me.png', mimeType: 'image/png', buffer: Buffer.from('iVBO
 
 test('PR 496: the person edits phone, time zone and the note, and sets and removes a photo', async ({ page }) => {
   const calls = await installUserProfileMocks(page);
-  await page.goto('/learn/profile');
+  await page.goto('/profile');
   const card = page.getByRole('region', { name: 'О себе' });
   await expect(card).toBeVisible();
   await expect(card.getByText('ФИО, почту, должность, смену и роль меняет администратор или руководитель.')).toBeVisible();
@@ -32,7 +32,7 @@ test('PR 496: the person edits phone, time zone and the note, and sets and remov
 
 test('PR 496: a change made elsewhere is reloaded and explained, then saving works', async ({ page }) => {
   const calls = await installUserProfileMocks(page, { conflictOnce: true });
-  await page.goto('/learn/profile');
+  await page.goto('/profile');
   const card = page.getByRole('region', { name: 'О себе' });
   await card.getByLabel('О себе', { exact: true }).fill('Моя версия');
   await card.getByRole('button', { name: 'Сохранить' }).click();
@@ -43,4 +43,11 @@ test('PR 496: a change made elsewhere is reloaded and explained, then saving wor
   await card.getByRole('button', { name: 'Сохранить' }).click();
   await expect(card.getByText('Профиль сохранён.')).toBeVisible();
   expect(calls.patches.map((patch) => patch.version)).toEqual([0, 1]);
+});
+
+test('PR 496: the old learner profile address leads to the common profile screen', async ({ page }) => {
+  await installUserProfileMocks(page);
+  await page.goto('/learn/profile');
+  await expect(page).toHaveURL(/\/profile$/);
+  await expect(page.getByRole('region', { name: 'О себе' })).toBeVisible();
 });

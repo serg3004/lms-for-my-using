@@ -19,7 +19,8 @@ export function MentorPageLayout({ children, firstName, lastName }: MentorPageLa
   const currentUser = session?.currentUser;
 
   const navItems: WorkspaceNavItem[] = [
-    { label: t('checklistReview.title', 'Checklist review'), href: '/mentor', isCurrent: true },
+    { label: t('checklistReview.title', 'Checklist review'), href: '/mentor', isCurrent: typeof window === 'undefined' || !window.location.pathname.startsWith('/profile') },
+    { label: t('learner.profileTitle'), href: '/profile', isCurrent: typeof window !== 'undefined' && window.location.pathname.startsWith('/profile') },
   ];
 
   async function handleLogout() {

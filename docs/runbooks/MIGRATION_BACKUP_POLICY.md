@@ -849,7 +849,7 @@ Migration `20261121180000_temporary_password` is additive and backward-compatibl
 
 ### Own profile (PR 496)
 
-Migration `20261121230000_user_profile` is additive and backward-compatible: it adds `users.about_me TEXT`, `users.photo_object_key TEXT`, `users.photo_mime_type TEXT` (all nullable) and `users.profile_version INTEGER NOT NULL DEFAULT 0`. No backfill. A previous API version ignores the new columns. Rollback: redeploy the previous API; do not drop the columns while the new API runs. Photos live in the object storage under `organizations/<org>/users/<user>/photo/<uuid>`; a replaced or removed photo is deleted from storage by the API (best effort), so after a storage failure a stray object can remain and is harmless. `SELECT count(*) FROM users WHERE photo_object_key IS NOT NULL` shows how many photos exist.
+Migration `20261121230000_user_profile` is additive and backward-compatible: it adds `users.about_me TEXT`, `users.photo_object_key TEXT`, `users.photo_thumb_object_key TEXT`, `users.photo_mime_type TEXT` (all nullable) and `users.profile_version INTEGER NOT NULL DEFAULT 0`. No backfill. A previous API version ignores the new columns. Rollback: redeploy the previous API; do not drop the columns while the new API runs. Photos live in the object storage under `organizations/<org>/users/<user>/photo/<full|thumb>-<uuid>`; a replaced or removed photo is deleted from storage by the API (best effort), so after a storage failure a stray object can remain and is harmless. `SELECT count(*) FROM users WHERE photo_object_key IS NOT NULL` shows how many photos exist.
 
 ### Sign-in journal and devices (PR 494)
 

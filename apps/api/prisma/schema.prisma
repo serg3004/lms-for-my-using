@@ -463,6 +463,7 @@ model User {
   /// PR 496: the person's own short note and photo; `profileVersion` guards two open tabs against overwriting each other.
   aboutMe                    String?                    @map("about_me")
   photoObjectKey             String?                    @map("photo_object_key")
+  photoThumbObjectKey        String?                    @map("photo_thumb_object_key")
   photoMimeType              String?                    @map("photo_mime_type")
   profileVersion             Int                        @default(0) @map("profile_version")
   loginAttempts              LoginAttempt[]

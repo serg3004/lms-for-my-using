@@ -4,7 +4,7 @@ import { canAccessPath, protectedPathPrefixes } from './navigationPolicy.js';
 
 describe('navigationPolicy', () => {
   it('keeps every role workspace behind authentication', () => {
-    expect(protectedPathPrefixes).toEqual(['/learn', '/admin', '/manager', '/instructor', '/mentor']);
+    expect(protectedPathPrefixes).toEqual(['/learn', '/admin', '/manager', '/instructor', '/mentor', '/profile']);
   });
 
   it('allows admins and managers into the admin workspace', () => {

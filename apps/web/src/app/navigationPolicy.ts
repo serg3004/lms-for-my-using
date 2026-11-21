@@ -2,7 +2,7 @@ import type { CurrentUser } from '../shared/api/types.js';
 
 export { getRootNavigationItems } from '../shared/rootNavigation.js';
 
-export const protectedPathPrefixes = ['/learn', '/admin', '/manager', '/instructor', '/mentor'] as const;
+export const protectedPathPrefixes = ['/learn', '/admin', '/manager', '/instructor', '/mentor', '/profile'] as const;
 
 export function canAccessPath(pathname: string, user: Pick<CurrentUser, 'roles'>) {
   if (pathname === '/admin' || pathname.startsWith('/admin/')) {
