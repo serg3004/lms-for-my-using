@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { passwordHistoryRange, passwordMinLengthRange } from '../../common/password-policy.js';
+
 export const organizationStatusSchema = z.enum(['active', 'suspended', 'archived']);
 export const organizationPlanSchema = z.enum(['trial', 'standard', 'enterprise']);
 
@@ -19,7 +21,7 @@ export const registerOrganizationSchema = z.object({
   organization: createOrganizationSchema,
   admin: z.object({
     email: z.string().trim().email().max(320).transform((email) => email.toLowerCase()),
-    password: z.string().min(8).max(255),
+    password: z.string().min(1).max(255),
     firstName: z.string().trim().min(1).max(80),
     lastName: z.string().trim().min(1).max(80),
     middleName: z.string().trim().min(1).max(80).optional(),
@@ -56,6 +58,13 @@ export const themeSettingsSchema = z.object({
 });
 
 export type ThemeSettingsInput = z.infer<typeof themeSettingsSchema>;
+
+/** PR 488: the organization's password policy; an administrator sets it, the rules themselves live in common/password-policy.ts. */
+export const passwordPolicySchema = z.object({
+  minLength: z.number().int().min(passwordMinLengthRange.min).max(passwordMinLengthRange.max),
+  historyCount: z.number().int().min(passwordHistoryRange.min).max(passwordHistoryRange.max),
+}).strict();
+export type PasswordPolicyInput = z.infer<typeof passwordPolicySchema>;
 
 /** PR 381: organization feature switches; each one defaults to off and is changed only by an admin. */
 export const organizationFeaturesSchema = z.object({

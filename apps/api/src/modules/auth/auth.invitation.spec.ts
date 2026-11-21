@@ -35,13 +35,15 @@ function createHarness(options: { status?: string; expired?: boolean } = {}) {
       record && record.tokenHash === where.tokenHash ? { ...record, user: { status, deletedAt: null } } : null),
   };
   const transaction = {
+    passwordHistory: { findMany: jest.fn(async () => []), create: jest.fn(async () => ({})), deleteMany: jest.fn(async () => ({ count: 0 })) },
     userInvitation,
     user: { update: jest.fn(async ({ data }: { data: { passwordHash: string; status: string } }) => { passwordHash = data.passwordHash; status = data.status; }) },
     auditLog: { create: jest.fn(async ({ data }: { data: { action: string } }) => { audit.push(data); }) },
   };
   const prisma = {
     userInvitation,
-    organization: { findUnique: jest.fn(async () => ({ name: 'Demo' })) },
+    organization: { findUnique: jest.fn(async () => ({ name: 'Demo', passwordMinLength: 10, passwordHistoryCount: 3 })) },
+    user: { findUnique: jest.fn(async () => ({ id: userId, organizationId, email: 'new@example.com', firstName: 'Aigul', lastName: 'Invited', middleName: null, passwordHash: 'scrypt:x:00' })) },
     $transaction: jest.fn(async (input: unknown) => (typeof input === 'function' ? input(transaction) : Promise.all(input as Promise<unknown>[]))),
   } as unknown as PrismaService;
   const service = new AuthService(prisma, { send: jest.fn() } as never);
@@ -76,30 +78,35 @@ describe('user invitation (PR 487)', () => {
     const harness = createHarness();
     const token = tokenFrom((await harness.service.issueInvitationFor(invitedUser, null)).inviteUrl);
 
-    await expect(harness.service.acceptInvitation({ token, password: 'NewPassword1!' })).resolves.toEqual({ accepted: true });
+    await expect(harness.service.acceptInvitation({ token, password: 'NewPassword123' })).resolves.toEqual({ accepted: true });
     expect(harness.getStatus()).toBe('active');
-    expect(await verifyPassword('NewPassword1!', harness.getPasswordHash())).toBe(true);
+    expect(await verifyPassword('NewPassword123', harness.getPasswordHash())).toBe(true);
     expect(harness.audit.map((entry) => entry.action)).toEqual(['user.invitation.accepted']);
-    await expect(harness.service.acceptInvitation({ token, password: 'AnotherPass1!' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(harness.service.acceptInvitation({ token, password: 'AnotherPass123' })).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects unknown, expired, and already-active cases with the same answer', async () => {
     const unknown = createHarness();
-    await expect(unknown.service.acceptInvitation({ token: 'x'.repeat(43), password: 'NewPassword1!' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(unknown.service.acceptInvitation({ token: 'x'.repeat(43), password: 'NewPassword123' })).rejects.toBeInstanceOf(BadRequestException);
 
     const expired = createHarness({ expired: true });
     const expiredToken = tokenFrom((await expired.service.issueInvitationFor(invitedUser, null)).inviteUrl);
-    await expect(expired.service.acceptInvitation({ token: expiredToken, password: 'NewPassword1!' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(expired.service.acceptInvitation({ token: expiredToken, password: 'NewPassword123' })).rejects.toBeInstanceOf(BadRequestException);
 
     const active = createHarness({ status: 'active' });
     const activeToken = tokenFrom((await active.service.issueInvitationFor(invitedUser, null)).inviteUrl);
-    await expect(active.service.acceptInvitation({ token: activeToken, password: 'NewPassword1!' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(active.service.acceptInvitation({ token: activeToken, password: 'NewPassword123' })).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('applies the strong password rule to the accepted password', () => {
-    const token = 'x'.repeat(43);
-    expect(() => invitationAcceptSchema.parse({ token, password: 'short' })).toThrow();
-    expect(invitationAcceptSchema.parse({ token, password: 'NewPassword1!' }).password).toBe('NewPassword1!');
+  it('applies the organization password policy to the accepted password and keeps the link usable after a refusal', async () => {
+    const harness = createHarness();
+    const token = tokenFrom((await harness.service.issueInvitationFor(invitedUser, null)).inviteUrl);
+
+    await expect(harness.service.acceptInvitation({ token, password: 'short1' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(harness.service.acceptInvitation({ token, password: 'qwerty123' })).rejects.toBeInstanceOf(BadRequestException);
+    expect(harness.getStatus()).toBe('invited');
+    await expect(harness.service.acceptInvitation({ token, password: 'GoodPassword7' })).resolves.toEqual({ accepted: true });
+    expect(invitationAcceptSchema.parse({ token, password: 'x' }).password).toBe('x');
   });
 
   it('writes the mail in the language of the invited person, with the link and lifetime', () => {

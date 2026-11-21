@@ -29,6 +29,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/attempts/{id}/result` | `AssessmentAttempts` | `bearer` |
 | `GET` | `/api/v1/audit-log` | `AuditLog` | `bearer` |
 | `GET` | `/api/v1/audit-log/filter-options` | `AuditLog` | `bearer` |
+| `POST` | `/api/v1/auth/change-password` | `Auth` | `bearer` |
 | `POST` | `/api/v1/auth/invitation/accept` | `Auth` | `bearer` |
 | `POST` | `/api/v1/auth/login` | `Auth` | `public` |
 | `POST` | `/api/v1/auth/logout` | `Auth` | `bearer` |
@@ -302,6 +303,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/organizations/{id}/features` | `Organizations` | `bearer` |
 | `PATCH` | `/api/v1/organizations/{id}/features` | `Organizations` | `bearer` |
 | `POST` | `/api/v1/organizations/{id}/logo` | `Organizations` | `bearer` |
+| `GET` | `/api/v1/organizations/{id}/password-policy` | `Organizations` | `bearer` |
+| `PATCH` | `/api/v1/organizations/{id}/password-policy` | `Organizations` | `bearer` |
 | `GET` | `/api/v1/organizations/{id}/theme` | `Organizations` | `bearer` |
 | `PATCH` | `/api/v1/organizations/{id}/theme` | `Organizations` | `bearer` |
 | `DELETE` | `/api/v1/organizations/{id}/theme` | `Organizations` | `bearer` |

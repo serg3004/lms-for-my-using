@@ -12,7 +12,7 @@ const userId = '99999999-9999-9999-9999-999999999999';
 function createBulkUser(email: string) {
   return {
     email,
-    password: 'secret-password',
+    password: 'secret-password1',
     firstName: 'Ada',
     lastName: 'Lovelace',
   };
@@ -23,7 +23,7 @@ describe('Users validation', () => {
     const input = createUserSchema.parse({
       organizationId,
       email: 'USER@Example.com',
-      password: 'secret-password',
+      password: 'secret-password1',
       firstName: 'Ada',
       lastName: 'Lovelace',
       position: 'Instructor',
@@ -33,7 +33,7 @@ describe('Users validation', () => {
     expect(input).toEqual({
       organizationId,
       email: 'user@example.com',
-      password: 'secret-password',
+      password: 'secret-password1',
       firstName: 'Ada',
       lastName: 'Lovelace',
       position: 'Instructor',
@@ -44,12 +44,12 @@ describe('Users validation', () => {
     });
   });
 
-  it('rejects short user password', () => {
+  it('rejects an empty user password (length and the other rules are the organization policy, checked by the service)', () => {
     expect(() =>
       createUserSchema.parse({
         organizationId,
         email: 'user@example.com',
-        password: 'short',
+        password: '',
         firstName: 'Ada',
         lastName: 'Lovelace',
       }),
@@ -101,6 +101,7 @@ describe('UsersService bulk create', () => {
     const prisma = {
       organization: {
         findFirst: async () => ({ id: organizationId }),
+        findUnique: async () => ({ passwordMinLength: 10, passwordHistoryCount: 3 }),
       },
       user: {
         findMany: async () => [],
@@ -138,6 +139,7 @@ describe('UsersService bulk create', () => {
     const prisma = {
       organization: {
         findFirst: async () => ({ id: organizationId }),
+        findUnique: async () => ({ passwordMinLength: 10, passwordHistoryCount: 3 }),
       },
       user: {
         findMany: async () => [{ email: 'first@example.com' }],
@@ -162,6 +164,7 @@ describe('UsersService import', () => {
     const prisma = {
       organization: {
         findFirst: async () => ({ id: organizationId }),
+        findUnique: async () => ({ passwordMinLength: 10, passwordHistoryCount: 3 }),
       },
       user: {
         findMany: async () => [],
@@ -202,6 +205,7 @@ describe('UsersService import', () => {
     const prisma = {
       organization: {
         findFirst: async () => ({ id: organizationId }),
+        findUnique: async () => ({ passwordMinLength: 10, passwordHistoryCount: 3 }),
       },
       user: {
         findMany: async () => [{ email: 'existing@example.com' }],

@@ -11,6 +11,8 @@ export type AuditLogAction =
   | 'user.password_reset_issued'
   | 'user.invited'
   | 'user.invitation.accepted'
+  | 'user.password_changed'
+  | 'organization.password_policy_updated'
   | 'custom_role.created'
   | 'custom_role.updated'
   | 'custom_role.archived'

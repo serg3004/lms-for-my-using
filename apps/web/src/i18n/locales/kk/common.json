@@ -353,7 +353,6 @@
       "emailRequired": "Email көрсетіңіз",
       "emailInvalid": "Жарамды email мекенжайын енгізіңіз",
       "passwordRequired": "Құпия сөзді көрсетіңіз",
-      "passwordTooShort": "Құпия сөз кемінде 8 таңбадан тұруы керек",
       "duplicateEmail": "Бұл email бар пайдаланушы бұрыннан бар",
       "saveFailed": "Пайдаланушыны сақтау мүмкін болмады. Қайталап көріңіз.",
       "status": {

@@ -62,6 +62,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `Organization` |
 | `OrganizationTheme` |
 | `OutboxEvent` |
+| `PasswordHistory` |
 | `PasswordResetToken` |
 | `Position` |
 | `PositionCourse` |

@@ -3,9 +3,10 @@ import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
+import { assertPasswordPolicy, defaultPasswordPolicy } from '../../common/password-policy.js';
 import { hashPassword } from '../auth/public.js';
 import { UploadService } from '../upload/public.js';
-import { CreateOrganizationInput, OrganizationFeaturesInput, RegisterOrganizationInput, ThemeSettingsInput } from './organizations.schemas.js';
+import { CreateOrganizationInput, OrganizationFeaturesInput, PasswordPolicyInput, RegisterOrganizationInput, ThemeSettingsInput } from './organizations.schemas.js';
 
 type StoredThemeSettings = Partial<ThemeSettingsInput> & { logoObjectKey?: string; logoMimeType?: string };
 
@@ -86,6 +87,8 @@ export class OrganizationsService {
     await this.ensureAdminEmailIsAvailable(input.admin.email);
 
     const { password, ...adminData } = input.admin;
+    // A new organization starts with the default policy.
+    assertPasswordPolicy(password, defaultPasswordPolicy, input.admin);
     const passwordHash = await hashPassword(password);
 
     const [organization, admin] = await this.prisma.$transaction(async (transaction) => {
@@ -166,6 +169,40 @@ export class OrganizationsService {
     }
 
     return { longreadEnabled: updated.longreadEnabled, customRolesEnabled: updated.customRolesEnabled };
+  }
+
+  async getPasswordPolicy(organizationId: string) {
+    const organization = await this.prisma.organization.findFirst({
+      where: { id: organizationId },
+      select: { passwordMinLength: true, passwordHistoryCount: true },
+    });
+    if (!organization) throw new NotFoundException('Organization not found');
+
+    return { minLength: organization.passwordMinLength, historyCount: organization.passwordHistoryCount };
+  }
+
+  /** Stricter or looser, the new policy applies to passwords set from now on; existing passwords are not touched. */
+  async updatePasswordPolicy(organizationId: string, input: PasswordPolicyInput, actorId: string | null = null) {
+    const existing = await this.getPasswordPolicy(organizationId);
+    const updated = await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: { passwordMinLength: input.minLength, passwordHistoryCount: input.historyCount },
+      select: { passwordMinLength: true, passwordHistoryCount: true },
+    });
+    const policy = { minLength: updated.passwordMinLength, historyCount: updated.passwordHistoryCount };
+
+    if (existing.minLength !== policy.minLength || existing.historyCount !== policy.historyCount) {
+      await this.auditLog.record({
+        organizationId,
+        actorId,
+        action: 'organization.password_policy_updated',
+        targetType: 'organization',
+        targetId: organizationId,
+        summary: `Password policy: minimum length ${policy.minLength}, remembered passwords ${policy.historyCount}`,
+        metadata: { before: existing, after: policy },
+      });
+    }
+    return policy;
   }
 
   async getThemeSettings(organizationId: string) {

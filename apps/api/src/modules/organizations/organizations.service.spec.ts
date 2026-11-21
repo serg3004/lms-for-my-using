@@ -17,7 +17,7 @@ function createRegistrationInput() {
     },
     admin: {
       email: 'ADMIN@Example.com',
-      password: 'secret-password',
+      password: 'secret-password1',
       firstName: 'Ada',
       lastName: 'Lovelace',
     },

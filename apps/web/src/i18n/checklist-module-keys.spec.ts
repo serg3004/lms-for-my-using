@@ -3,10 +3,11 @@ import { describe, expect, it } from 'vitest';
 import ruCommon from './locales/ru/common.json';
 import { loginResources } from './loginResources.js';
 import { passwordResetResources } from './passwordResetResources.js';
+import { securityResources } from './securityResources.js';
 
 // Mirrors index.ts's runtime merge: `login.*`/`passwordReset.*` live in their own resource files,
 // not ru/common.json, so a bare `common.json` lookup would misreport them as missing.
-const ru = { ...ruCommon, login: loginResources.ru, passwordReset: passwordResetResources.ru };
+const ru = { ...ruCommon, login: loginResources.ru, passwordReset: passwordResetResources.ru, security: securityResources.ru };
 
 /**
  * PR 316 (UI refresh): the checklist module's 0.3 audit found several `t(...)` calls whose keys
