@@ -50,3 +50,39 @@ export function ResetPasswordDialogs({ pending, result, onConfirm, onCancel, onC
     />
   </>;
 }
+
+export type TemporaryPasswordResult = { user: AdminUserSummary; temporaryPassword: string; expiresAt: string } | { user: AdminUserSummary; error: string };
+
+/** PR 489: confirms issuing a temporary password, then shows it once (it is stored nowhere in clear text). */
+export function TemporaryPasswordDialogs({ pending, result, onConfirm, onCancel, onClose }: {
+  pending: AdminUserSummary | null; result: TemporaryPasswordResult | null; onConfirm: () => void; onCancel: () => void; onClose: () => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const name = (user: AdminUserSummary) => `${user.lastName} ${user.firstName}`.trim();
+  let message = '';
+  if (result) {
+    message = 'error' in result
+      ? result.error
+      : `${name(result.user)}: ${result.temporaryPassword}. ${t('security.tempShownHint', { date: new Date(result.expiresAt).toLocaleDateString(i18n.language) })}`;
+  }
+  return <>
+    <ConfirmDialog
+      cancelLabel={t('admin.users.cancel', 'Cancel')}
+      confirmLabel={t('security.tempIssue')}
+      message={t('security.tempIssueHint', { name: pending ? name(pending) : '' })}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+      open={pending !== null}
+      title={t('security.tempIssueTitle')}
+    />
+    <ConfirmDialog
+      cancelLabel={t('admin.users.close', 'Close')}
+      confirmLabel={t('admin.users.close', 'Close')}
+      message={message}
+      onCancel={onClose}
+      onConfirm={onClose}
+      open={result !== null}
+      title={t('security.tempShownTitle')}
+    />
+  </>;
+}

@@ -31,6 +31,8 @@ export const createUserSchema = z.object({
 export const createUserRequestSchema = createUserSchema.extend({
   password: createUserSchema.shape.password.optional(),
   departmentId: z.guid().optional(),
+  /** PR 489: no password and no invitation: the server makes a temporary password, shown once, and the first sign-in leads to choosing their own. */
+  temporaryPassword: z.boolean().optional(),
 });
 
 export const usersBulkCreateMaxItems = 50;

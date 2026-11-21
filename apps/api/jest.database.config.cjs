@@ -22,6 +22,7 @@ module.exports = {
     '<rootDir>/src/integration/memberships-revoke.database.spec.ts',
     '<rootDir>/src/integration/user-invitation.database.spec.ts',
     '<rootDir>/src/integration/password-policy.database.spec.ts',
+    '<rootDir>/src/integration/temporary-password.database.spec.ts',
     '<rootDir>/src/integration/checklist-session-history.database.spec.ts',
     '<rootDir>/src/integration/checklist-session-delete-message.database.spec.ts',
     '<rootDir>/src/integration/checklist-session-notifications.database.spec.ts',

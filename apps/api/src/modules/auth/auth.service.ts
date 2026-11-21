@@ -10,6 +10,7 @@ import { buildPasswordChangedMail } from './password-changed-mail.js';
 import { buildInvitationMail, createInvitationToken, hashInvitationToken, invitationLifetimeDays, invitationLifetimeMs } from './user-invitation.js';
 import { isMailConfigured, sendMail } from '../../common/mail/mailer.js';
 import { assertPasswordPolicy, passwordPolicyError } from '../../common/password-policy.js';
+import { generateTemporaryPassword, temporaryPasswordLifetimeMs } from '../../common/temporary-password.js';
 import { isPasswordReused, loadPasswordPolicy, rememberReplacedPassword } from './password-policy.js';
 import { createPasswordResetToken, hashPasswordResetToken, PasswordResetDelivery, passwordResetLifetimeMs } from './password-reset.js';
 
@@ -26,11 +27,14 @@ const currentUserSelect = {
   status: true,
   locale: true,
   timezone: true,
+  mustChangePassword: true,
 } as const;
 
 const loginUserSelect = {
   ...currentUserSelect,
   passwordHash: true,
+  temporaryPasswordExpiresAt: true,
+  temporaryPasswordUsedAt: true,
 } as const;
 
 const logoutAccepted = {
@@ -121,6 +125,12 @@ export class AuthService {
       throw invalidCredentialsException();
     }
 
+    // PR 489: a temporary password works once and only within its term; a second try looks like a wrong password.
+    if (user.mustChangePassword && user.temporaryPasswordExpiresAt) {
+      if (user.temporaryPasswordUsedAt || user.temporaryPasswordExpiresAt.getTime() <= Date.now()) throw invalidCredentialsException();
+      await this.prisma.user.update({ where: { id: user.id }, data: { temporaryPasswordUsedAt: new Date() } });
+    }
+
     return this.withRoles({
       id: user.id,
       organizationId: user.organizationId,
@@ -134,6 +144,7 @@ export class AuthService {
       status: user.status,
       locale: user.locale,
       timezone: user.timezone,
+      mustChangePassword: user.mustChangePassword,
     });
   }
 
@@ -183,6 +194,31 @@ export class AuthService {
     }
     const frontend = (process.env['FRONTEND_URL'] ?? '').replace(/\/+$/, '');
     return { delivered, expiresAt, ...(delivered ? {} : { resetUrl: `${frontend}/password-reset?token=${reset.token}` }) };
+  }
+
+  /**
+   * PR 489: sets a new random temporary password for an active user, ends all their sessions and marks that the
+   * next sign-in must lead to choosing their own. The password is returned once and only its hash is stored.
+   */
+  async issueTemporaryPasswordFor(
+    user: { id: string; organizationId: string; email: string; firstName: string; lastName: string; middleName?: string | null; passwordHash?: string },
+  ) {
+    const policy = await loadPasswordPolicy(this.prisma, user.organizationId);
+    const temporaryPassword = generateTemporaryPassword(policy, user);
+    const passwordHash = await hashPassword(temporaryPassword);
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + temporaryPasswordLifetimeMs);
+    await this.prisma.$transaction(async (transaction) => {
+      const current = await transaction.user.findUniqueOrThrow({ where: { id: user.id }, select: { passwordHash: true } });
+      await rememberReplacedPassword(transaction, user, current.passwordHash);
+      await transaction.user.update({
+        where: { id: user.id },
+        data: { passwordHash, mustChangePassword: true, temporaryPasswordExpiresAt: expiresAt, temporaryPasswordUsedAt: null },
+      });
+      await transaction.passwordResetToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: now } });
+      await transaction.session.updateMany({ where: { userId: user.id, organizationId: user.organizationId, revokedAt: null }, data: { revokedAt: now } });
+    });
+    return { temporaryPassword, expiresAt };
   }
 
   /**
@@ -255,7 +291,7 @@ export class AuthService {
         where: { userId: invitation.userId, usedAt: null, revokedAt: null },
         data: { revokedAt: now },
       });
-      await transaction.user.update({ where: { id: invitation.userId }, data: { passwordHash, status: 'active' } });
+      await transaction.user.update({ where: { id: invitation.userId }, data: { passwordHash, status: 'active', mustChangePassword: false, temporaryPasswordExpiresAt: null, temporaryPasswordUsedAt: null } });
       await transaction.auditLog.create({
         data: {
           organizationId: invitation.organizationId,
@@ -299,7 +335,7 @@ export class AuthService {
       if (consumed.count !== 1) throw new BadRequestException('Invalid or expired password reset token');
 
       await rememberReplacedPassword(transaction, resetUser, resetUser.passwordHash);
-      await transaction.user.update({ where: { id: token.userId }, data: { passwordHash } });
+      await transaction.user.update({ where: { id: token.userId }, data: { passwordHash, mustChangePassword: false, temporaryPasswordExpiresAt: null, temporaryPasswordUsedAt: null } });
       await transaction.session.updateMany({
         where: { userId: token.userId, organizationId: token.organizationId, revokedAt: null },
         data: { revokedAt: now },
@@ -349,7 +385,7 @@ export class AuthService {
 
     await this.prisma.$transaction(async (transaction) => {
       await rememberReplacedPassword(transaction, user, user.passwordHash);
-      await transaction.user.update({ where: { id: user.id }, data: { passwordHash } });
+      await transaction.user.update({ where: { id: user.id }, data: { passwordHash, mustChangePassword: false, temporaryPasswordExpiresAt: null, temporaryPasswordUsedAt: null } });
       await transaction.session.updateMany({
         where: { userId: user.id, organizationId: user.organizationId, revokedAt: null, jti: { not: claims.jti } },
         data: { revokedAt: now },

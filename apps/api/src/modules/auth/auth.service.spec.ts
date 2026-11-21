@@ -21,6 +21,7 @@ const currentUser = {
   status: 'active',
   locale: 'ru',
   timezone: 'Asia/Almaty',
+  mustChangePassword: false,
 };
 
 type PrismaUserFindFirstArgs = {

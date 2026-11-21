@@ -92,6 +92,13 @@ export class UsersController {
     return this.usersService.resetUserPassword(userId, request.currentUser!);
   }
 
+  @Post(':id/temporary-password')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersResetPassword)
+  issueTemporaryPassword(@Param('id') userId: string, @Req() request: AuthenticatedRequest) {
+    return this.usersService.issueTemporaryPassword(userId, request.currentUser!);
+  }
+
   @Patch(':id/status')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(...rolePolicies.usersDeactivate)

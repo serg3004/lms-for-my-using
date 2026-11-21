@@ -7,7 +7,7 @@ export function toCreateUserPayload(form: UserForm, organizationId: string) {
     organizationId,
     email: form.email.trim().toLowerCase(),
     // Empty password = invite by email (PR 487): the user sets their own through a one-time link.
-    ...(form.password ? { password: form.password } : {}),
+    ...(form.password ? { password: form.password } : form.temporaryPassword ? { temporaryPassword: true } : {}),
     firstName: form.firstName.trim(),
     lastName: form.lastName.trim(),
     middleName: optional(form.middleName),
