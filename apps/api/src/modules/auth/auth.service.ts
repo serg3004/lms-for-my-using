@@ -1,11 +1,13 @@
-import { BadRequestException, Injectable, Optional, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, Optional, UnauthorizedException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { type CurrentUser, type LoginInput, type PasswordResetConfirmInput, type PasswordResetRequestInput, type UpdatePreferencesInput, type UserRole } from './auth.schemas.js';
+import { type CurrentUser, type InvitationAcceptInput, type LoginInput, type PasswordResetConfirmInput, type PasswordResetRequestInput, type UpdatePreferencesInput, type UserRole } from './auth.schemas.js';
 import { type JwtClaims, signJwt, verifyJwt } from './auth.tokens.js';
 import { createRefreshToken } from './auth.refresh-tokens.js';
 import { refreshTokenLifetimeMs } from './auth.lifecycle.js';
 import { hashPassword, verifyPassword } from './passwords.js';
+import { buildInvitationMail, createInvitationToken, hashInvitationToken, invitationLifetimeDays, invitationLifetimeMs } from './user-invitation.js';
+import { isMailConfigured, sendMail } from '../../common/mail/mailer.js';
 import { createPasswordResetToken, hashPasswordResetToken, PasswordResetDelivery, passwordResetLifetimeMs } from './password-reset.js';
 
 const currentUserSelect = {
@@ -47,6 +49,8 @@ function invalidCredentialsException() {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly passwordResetDelivery?: PasswordResetDelivery,
@@ -176,6 +180,85 @@ export class AuthService {
     }
     const frontend = (process.env['FRONTEND_URL'] ?? '').replace(/\/+$/, '');
     return { delivered, expiresAt, ...(delivered ? {} : { resetUrl: `${frontend}/password-reset?token=${reset.token}` }) };
+  }
+
+  /**
+   * PR 487: one-time invitation link for a user created without a password (status `invited`). Earlier unused links
+   * are revoked. The mail is written in the invited person's language; if mail is not set up or sending fails, the
+   * caller gets the link once to hand over (nobody can read it afterwards, only its hash is stored).
+   */
+  async issueInvitationFor(
+    user: { id: string; organizationId: string; email: string; firstName: string; locale: string },
+    createdById: string | null,
+  ) {
+    const invitation = createInvitationToken();
+    const expiresAt = new Date(Date.now() + invitationLifetimeMs);
+    await this.prisma.$transaction([
+      this.prisma.userInvitation.updateMany({ where: { userId: user.id, usedAt: null, revokedAt: null }, data: { revokedAt: new Date() } }),
+      this.prisma.userInvitation.create({
+        data: { userId: user.id, organizationId: user.organizationId, tokenHash: invitation.hash, expiresAt, createdById },
+      }),
+    ]);
+
+    const frontend = (process.env['FRONTEND_URL'] ?? '').replace(/\/+$/, '');
+    const link = `${frontend}/invitation?token=${invitation.token}`;
+    let delivered = false;
+    if (isMailConfigured()) {
+      const organization = await this.prisma.organization.findUnique({ where: { id: user.organizationId }, select: { name: true } });
+      const mail = buildInvitationMail(user.locale, {
+        firstName: user.firstName,
+        organizationName: organization?.name ?? '',
+        link,
+        days: invitationLifetimeDays,
+      });
+      delivered = await sendMail({ to: user.email, ...mail }).then(
+        () => true,
+        () => {
+          // Never log the error text or the address: provider errors can embed them.
+          this.logger.warn('Invitation delivery failed');
+          return false;
+        },
+      );
+    }
+    return { delivered, expiresAt, ...(delivered ? {} : { inviteUrl: link }) };
+  }
+
+  /** Public: sets the password from an invitation link. A missing, used, revoked or expired link all answer the same way. */
+  async acceptInvitation(input: InvitationAcceptInput) {
+    const now = new Date();
+    const invitation = await this.prisma.userInvitation.findUnique({
+      where: { tokenHash: hashInvitationToken(input.token) },
+      select: { id: true, userId: true, organizationId: true, expiresAt: true, usedAt: true, revokedAt: true, user: { select: { status: true, deletedAt: true } } },
+    });
+    if (!invitation || invitation.usedAt || invitation.revokedAt || invitation.expiresAt <= now || invitation.user.status !== 'invited' || invitation.user.deletedAt) {
+      throw new BadRequestException('Invalid or expired invitation');
+    }
+    const passwordHash = await hashPassword(input.password);
+
+    await this.prisma.$transaction(async (transaction) => {
+      const consumed = await transaction.userInvitation.updateMany({
+        where: { id: invitation.id, usedAt: null, revokedAt: null, expiresAt: { gt: now } },
+        data: { usedAt: now },
+      });
+      if (consumed.count !== 1) throw new BadRequestException('Invalid or expired invitation');
+      await transaction.userInvitation.updateMany({
+        where: { userId: invitation.userId, usedAt: null, revokedAt: null },
+        data: { revokedAt: now },
+      });
+      await transaction.user.update({ where: { id: invitation.userId }, data: { passwordHash, status: 'active' } });
+      await transaction.auditLog.create({
+        data: {
+          organizationId: invitation.organizationId,
+          actorId: invitation.userId,
+          action: 'user.invitation.accepted',
+          targetType: 'user',
+          targetId: invitation.userId,
+          summary: 'The invited user set a password and activated the account',
+        },
+      });
+    });
+
+    return logoutAccepted;
   }
 
   async confirmPasswordReset(input: PasswordResetConfirmInput) {

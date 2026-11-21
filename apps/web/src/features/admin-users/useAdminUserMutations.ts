@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ApiClientError, apiRequest } from '../../shared/apiClient.js';
 import type { FormValidationErrors } from '../../shared/formValidation.js';
 import { toCreateUserPayload, toUpdateUserPayload } from './mappers.js';
+import type { InvitationResult } from './ResetPasswordDialogs.js';
 import type { AdminUserSummary, UserForm, UserFormField, UserFormMode } from './model.js';
 
 export function useAdminUserMutations(reload: () => Promise<void>) {
@@ -11,14 +12,16 @@ export function useAdminUserMutations(reload: () => Promise<void>) {
   const [isSaving, setIsSaving] = useState(false);
 
   async function saveUser(form: UserForm, mode: UserFormMode, organizationId: string): Promise<{
-    ok: boolean; formErrors?: FormValidationErrors<UserFormField>; message?: string;
+    ok: boolean; invitation?: InvitationResult; formErrors?: FormValidationErrors<UserFormField>; message?: string;
   }> {
     setIsSaving(true);
     try {
+      let invited: InvitationResult | undefined;
       if (mode === 'create') {
-        const created = await apiRequest<AdminUserSummary>('/users', {
+        const created = await apiRequest<AdminUserSummary & { invitation?: { delivered: boolean; inviteUrl?: string } }>('/users', {
           method: 'POST', body: JSON.stringify(toCreateUserPayload(form, organizationId)),
         });
+        if (created.invitation) invited = { user: created, ...created.invitation };
         if (form.role) await apiRequest('/memberships', {
           method: 'POST', body: JSON.stringify({ organizationId, userId: created.id, role: form.role }),
         });
@@ -28,7 +31,7 @@ export function useAdminUserMutations(reload: () => Promise<void>) {
         });
       }
       await reload();
-      return { ok: true };
+      return { ok: true, ...(invited ? { invitation: invited } : {}) };
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 409) {
         return { ok: false, formErrors: { email: t('admin.users.duplicateEmail', 'A user with this email already exists') } };

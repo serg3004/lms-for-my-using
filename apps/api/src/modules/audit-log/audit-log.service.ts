@@ -9,6 +9,8 @@ export type AuditLogAction =
   | 'user.updated'
   | 'user.status_changed'
   | 'user.password_reset_issued'
+  | 'user.invited'
+  | 'user.invitation.accepted'
   | 'custom_role.created'
   | 'custom_role.updated'
   | 'custom_role.archived'

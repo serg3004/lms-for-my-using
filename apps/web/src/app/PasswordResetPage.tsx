@@ -2,7 +2,7 @@ import { cloneElement, FormEvent, type ReactElement, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 
-import { confirmPasswordReset, requestPasswordReset } from '../shared/api/auth.js';
+import { acceptInvitation, confirmPasswordReset, requestPasswordReset } from '../shared/api/auth.js';
 import { ApiClientError } from '../shared/apiClient.js';
 import { SkipLink } from '../shared/ui.js';
 import { LoginLanguageMenu } from '../shared/LoginLanguageMenu.js';
@@ -14,11 +14,13 @@ const strongPasswordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])
 
 type View = 'request' | 'sent' | 'confirm' | 'invalid' | 'success';
 
-export function PasswordResetPage() {
+/** `mode="invitation"` (PR 487): the same set-a-password flow, opened from the invitation email at `/invitation?token=`. */
+export function PasswordResetPage({ mode = 'reset' }: { mode?: 'reset' | 'invitation' } = {}) {
   const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token')?.trim() ?? '';
-  const [view, setView] = useState<View>(token.length >= 32 ? 'confirm' : token ? 'invalid' : 'request');
+  const invitation = mode === 'invitation';
+  const [view, setView] = useState<View>(token.length >= 32 ? 'confirm' : token || invitation ? 'invalid' : 'request');
   const [organizationId, setOrganizationId] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -61,7 +63,7 @@ export function PasswordResetPage() {
 
     setIsSubmitting(true);
     try {
-      await confirmPasswordReset({ token, password });
+      await (invitation ? acceptInvitation : confirmPasswordReset)({ token, password });
       setPassword('');
       setPasswordConfirmation('');
       setView('success');
@@ -90,11 +92,11 @@ export function PasswordResetPage() {
         <div className="login-card">
           {statusView ? <div className="password-reset-status" role="status">
             <div className="password-reset-status__icon" aria-hidden="true">{view === 'success' ? '✓' : view === 'sent' ? '✉' : '!'}</div>
-            <header className="login-header"><h2>{t(`passwordReset.${statusTitle}`)}</h2><p>{t(`passwordReset.${statusCopy}`)}</p></header>
-            {view === 'invalid' ? <Link className="login-form__submit password-reset-link" to="/password-reset">{t('passwordReset.retry')}</Link> : null}
+            <header className="login-header"><h2>{t(invitation && view !== 'sent' ? `passwordReset.invitation.${statusTitle}` : `passwordReset.${statusTitle}`)}</h2><p>{t(invitation && view !== 'sent' ? `passwordReset.invitation.${statusCopy}` : `passwordReset.${statusCopy}`)}</p></header>
+            {view === 'invalid' && !invitation ? <Link className="login-form__submit password-reset-link" to="/password-reset">{t('passwordReset.retry')}</Link> : null}
             <Link className="password-reset-secondary" to="/login">{t('passwordReset.backToLogin')}</Link>
           </div> : <>
-            <header className="login-header"><h2>{t(view === 'confirm' ? 'passwordReset.confirmTitle' : 'passwordReset.requestTitle')}</h2><p>{t(view === 'confirm' ? 'passwordReset.confirmSubtitle' : 'passwordReset.requestSubtitle')}</p></header>
+            <header className="login-header"><h2>{t(view === 'confirm' ? (invitation ? 'passwordReset.invitation.confirmTitle' : 'passwordReset.confirmTitle') : 'passwordReset.requestTitle')}</h2><p>{t(view === 'confirm' ? (invitation ? 'passwordReset.invitation.confirmSubtitle' : 'passwordReset.confirmSubtitle') : 'passwordReset.requestSubtitle')}</p></header>
             <form className="login-form" onSubmit={view === 'confirm' ? submitPassword : submitRequest}>
               {view === 'request' ? <>
                 <ResetField id="reset-organization" label={t('passwordReset.organizationId')} error={errors.organizationId ? t(errors.organizationId) : undefined}><input id="reset-organization" autoComplete="organization" value={organizationId} onChange={(event) => setOrganizationId(event.target.value)} /></ResetField>

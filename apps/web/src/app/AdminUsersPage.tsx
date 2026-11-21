@@ -8,7 +8,7 @@ import { ApiClientError } from '../shared/apiClient.js';
 import { PageState, Pagination } from '../shared/ui.js';
 import { DeactivateUserDialog, type PendingDeactivation } from '../features/admin-users/DeactivateUserDialog.js';
 import { UserRightsDialog } from '../features/admin-users/UserRightsDialog.js';
-import { ResetPasswordDialogs, type PasswordResetResult } from '../features/admin-users/ResetPasswordDialogs.js';
+import { InvitationResultDialog, ResetPasswordDialogs, type InvitationResult, type PasswordResetResult } from '../features/admin-users/ResetPasswordDialogs.js';
 import { AdminUserDialog } from '../features/admin-users/AdminUserDialog.js';
 import { AdminUsersFilters } from '../features/admin-users/AdminUsersFilters.js';
 import { AdminUsersTable } from '../features/admin-users/AdminUsersTable.js';
@@ -34,6 +34,7 @@ export function AdminUsersPage() {
   const [rightsUser, setRightsUser] = useState<AdminUserSummary | null>(null);
   const [pendingReset, setPendingReset] = useState<AdminUserSummary | null>(null);
   const [resetResult, setResetResult] = useState<PasswordResetResult | null>(null);
+  const [inviteResult, setInviteResult] = useState<InvitationResult | null>(null);
 
   async function confirmReset() {
     const user = pendingReset;
@@ -72,7 +73,7 @@ export function AdminUsersPage() {
     setMessage(null);
     const result = await mutations.saveUser(form, mode, usersQuery.state.currentUser.organizationId);
     setForm((current) => withoutPassword(current));
-    if (result.ok) close();
+    if (result.ok) { close(); setInviteResult(result.invitation ?? null); }
     else {
       if (result.formErrors) setErrors(result.formErrors);
       setMessage(result.message ?? null);
@@ -94,6 +95,7 @@ export function AdminUsersPage() {
     <AdminUsersFilters filters={usersQuery.filters} onChange={usersQuery.setFilters} />
     <AdminUsersTable users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} onResetPassword={setPendingReset} onRights={setRightsUser} />
     {rightsUser ? <UserRightsDialog user={rightsUser} onClose={() => setRightsUser(null)} /> : null}
+    <InvitationResultDialog result={inviteResult} onClose={() => setInviteResult(null)} />
     <ResetPasswordDialogs pending={pendingReset} result={resetResult} onConfirm={() => void confirmReset()} onCancel={() => setPendingReset(null)} onClose={() => setResetResult(null)} />
     <DeactivateUserDialog pending={pendingDeactivation} onCancel={() => setPendingDeactivation(null)} onConfirm={() => void confirmDeactivation()} />
     <Pagination page={usersQuery.page} pageSize={loadedState.pageSize} total={loadedState.total} onPage={usersQuery.setPage} />
