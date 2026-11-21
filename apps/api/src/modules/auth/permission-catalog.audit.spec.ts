@@ -127,6 +127,7 @@ describe('permission catalog (PR 479)', () => {
     const delegable = new Set(delegablePermissionActions().map((item) => item.key));
     // The decision about who may observe is an access setting: it stays with the administrator.
     expect(delegable.has('checklist.access.settings')).toBe(false);
+    expect(delegable.has('user.invitation.manage')).toBe(false);
     // No delegable action may be the only way into a route that hands out roles or reaches another organization.
     for (const [route, actions] of Object.entries(permissionRouteMap)) {
       if (/^(Memberships|Organizations)Controller\./.test(route)) {

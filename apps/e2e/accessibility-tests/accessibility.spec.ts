@@ -16,6 +16,7 @@ import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 import { installManagerReportMocks } from '../fixtures/checklist-manager-report.js';
 import { courseA, installCourseAnalyticsMocks, userA } from '../fixtures/course-analytics.js';
 import { freshTransferState, installTransferMocks, openTransferDialog } from '../fixtures/checklist-transfer.js';
+import { freshRolesState, installCustomRolesMocks } from '../fixtures/custom-roles.js';
 import { freshReportState, installReportMocks } from '../fixtures/checklist-instance-report.js';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
@@ -247,8 +248,7 @@ test.describe('WCAG AA browser baseline', () => {
 
   test('admin can access pending invitation controls on mobile', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 390, height: 900 });
-    await loginAs(page, 'admin');
-    await expect(page).toHaveURL(/\/admin$/);
+    await installCustomRolesMocks(page, freshRolesState());
     await page.route('**/api/v1/users/invitations?*', (route) => route.fulfill({ json: {
       items: [{ id: 'pending-user', firstName: 'Анна', lastName: 'Иванова', middleName: null,
         email: 'pending@example.invalid', sentAt: '2026-01-01T09:00:00Z', expiresAt: '2026-01-08T09:00:00Z',
