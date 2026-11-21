@@ -223,6 +223,7 @@ async function expectVisualMatch(page: Page, name: string, soft = false, options
 }
 
 async function installAdminMocks(page: Page) {
+  await page.route('**/api/v1/departments?*', (route) => route.fulfill({ json: paginated([{ id: 'visual-department', name: 'Обучение' }]) }));
   // The authenticated shell reconciles the cached theme in the background.
   // Keep that request inside the visual fixture so a real API (or a refused
   // proxy connection) cannot change when the dialog screenshot is captured.
@@ -793,6 +794,7 @@ for (const width of widths) {
       const dialog = page.locator('dialog.admin-user-dialog');
       await expect(dialog).toBeVisible();
       await expect(dialog.getByRole('heading', { level: 2 })).toBeVisible();
+      await expect(dialog.getByLabel('Подразделение', { exact: true })).toBeEnabled();
       await page.evaluate(() => document.fonts.ready);
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);

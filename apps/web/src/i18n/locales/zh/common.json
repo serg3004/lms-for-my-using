@@ -298,6 +298,10 @@
       "addInstructor": "添加"
     },
     "users": {
+      "fieldDepartment": "部门",
+      "noDepartmentOption": "— 无部门 —",
+      "departmentsLoading": "正在加载部门…",
+      "departmentsLoadError": "无法加载部门。请关闭并重新打开窗口。",
       "eyebrow": "访问管理",
       "title": "用户",
       "subtitle": "管理组织用户及其角色。",

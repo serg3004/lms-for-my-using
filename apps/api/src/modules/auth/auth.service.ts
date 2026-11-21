@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { BadRequestException, Injectable, Logger, Optional, UnauthorizedException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
@@ -203,8 +204,27 @@ export class AuthService {
       }),
     ]);
 
+    return this.deliverInvitation(user, invitation.token, expiresAt);
+  }
+
+  /** Persist the invitation in the caller's user-creation transaction; send only after commit. */
+  async prepareInvitationFor(
+    user: { id: string; organizationId: string; email: string; firstName: string; locale: string },
+    createdById: string | null,
+    tx: Prisma.TransactionClient,
+  ) {
+    const invitation = createInvitationToken();
+    const expiresAt = new Date(Date.now() + invitationLifetimeMs);
+    await tx.userInvitation.create({ data: { userId: user.id, organizationId: user.organizationId, tokenHash: invitation.hash, expiresAt, createdById } });
+    return () => this.deliverInvitation(user, invitation.token, expiresAt);
+  }
+
+  private async deliverInvitation(
+    user: { id: string; organizationId: string; email: string; firstName: string; locale: string },
+    token: string, expiresAt: Date,
+  ) {
     const frontend = (process.env['FRONTEND_URL'] ?? '').replace(/\/+$/, '');
-    const link = `${frontend}/invitation?token=${invitation.token}`;
+    const link = `${frontend}/invitation?token=${token}`;
     let delivered = false;
     if (isMailConfigured()) {
       const organization = await this.prisma.organization.findUnique({ where: { id: user.organizationId }, select: { name: true } });

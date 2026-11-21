@@ -7,12 +7,15 @@ import { clearFieldError, type FormValidationErrors } from '../../shared/formVal
 import { USER_ROLES, USER_STATUSES, type UserForm, type UserFormField, type UserFormMode } from './model.js';
 
 type Props = {
+  departments?: Array<{ id: string; name: string }>;
+  departmentsLoading?: boolean;
+  departmentsError?: string | null;
   form: UserForm; mode: UserFormMode; errors: FormValidationErrors<UserFormField>; message: string | null;
   isSaving: boolean; onChange: (form: UserForm) => void; onErrorsChange: (errors: FormValidationErrors<UserFormField>) => void;
   onSubmit: (event: FormEvent) => void; onCancel: () => void;
 };
 
-export function AdminUserForm({ form, mode, errors, message, isSaving, onChange, onErrorsChange, onSubmit, onCancel }: Props) {
+export function AdminUserForm({ departments = [], departmentsLoading = false, departmentsError, form, mode, errors, message, isSaving, onChange, onErrorsChange, onSubmit, onCancel }: Props) {
   const { t } = useTranslation();
   const field = (name: UserFormField, value: string) => {
     onChange({ ...form, [name]: value });
@@ -36,6 +39,14 @@ export function AdminUserForm({ form, mode, errors, message, isSaving, onChange,
       <FormField id="user-timezone" label={t('admin.users.fieldTimezone', 'Timezone')} required><input id="user-timezone" required value={form.timezone} onChange={(e) => onChange({ ...form, timezone: e.target.value })} /></FormField>
     </div></>}
     <FormField id="user-role" label={t('admin.users.fieldRole', 'Role')}><select id="user-role" value={form.role} onChange={(e) => onChange({ ...form, role: e.target.value as UserForm['role'] })}><option value="">{t('admin.users.noRoleOption', '— No role —')}</option>{USER_ROLES.map((x) => <option key={x} value={x}>{t(`admin.roles.options.${x}`, x)}</option>)}</select></FormField>
+    {mode === 'create' && <FormField id="user-department" label={t('admin.users.fieldDepartment', 'Department')}>
+      <select id="user-department" disabled={departmentsLoading || Boolean(departmentsError)} value={form.departmentId ?? ''} onChange={(e) => onChange({ ...form, departmentId: e.target.value })}>
+        <option value="">{t('admin.users.noDepartmentOption', '— No department —')}</option>
+        {departments.map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}
+      </select>
+      {departmentsLoading && <p role="status">{t('admin.users.departmentsLoading', 'Loading departments…')}</p>}
+      {departmentsError && <p role="alert">{departmentsError}</p>}
+    </FormField>}
     {message && <p className="admin-form__error" role="alert">{message}</p>}
     <div className="admin-form__actions"><button className="admin-btn admin-btn--secondary" onClick={onCancel} type="button">{t('admin.users.cancel', 'Cancel')}</button><button className="admin-btn admin-btn--primary" disabled={isSaving} type="submit">{isSaving ? t('admin.users.saving', 'Saving...') : t('admin.users.save', 'Save')}</button></div>
   </form>;

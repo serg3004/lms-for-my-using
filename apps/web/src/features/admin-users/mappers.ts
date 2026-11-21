@@ -5,6 +5,8 @@ const optional = (value: string) => value.trim() || undefined;
 export function toCreateUserPayload(form: UserForm, organizationId: string) {
   return {
     organizationId,
+    ...(form.role ? { role: form.role } : {}),
+    ...(form.departmentId ? { departmentId: form.departmentId } : {}),
     email: form.email.trim().toLowerCase(),
     // Empty password = invite by email (PR 487): the user sets their own through a one-time link.
     ...(form.password ? { password: form.password } : {}),
