@@ -218,18 +218,18 @@ export class OrganizationsService {
     const existing = await this.getLoginProtection(organizationId);
     await this.prisma.organization.update({
       where: { id: organizationId },
-      data: { loginMaxFailures: input.maxFailures, loginFailureWindowMinutes: input.windowMinutes, loginLockMinutes: input.lockMinutes },
+      data: { loginMaxFailures: input.maxFailures, loginFailureWindowMinutes: input.windowMinutes, loginLockMinutes: input.lockMinutes, loginLogRetentionDays: input.logRetentionDays ?? existing.logRetentionDays },
     });
-    const updated: LoginProtection = { maxFailures: input.maxFailures, windowMinutes: input.windowMinutes, lockMinutes: input.lockMinutes };
+    const updated: LoginProtection = { maxFailures: input.maxFailures, windowMinutes: input.windowMinutes, lockMinutes: input.lockMinutes, logRetentionDays: input.logRetentionDays ?? existing.logRetentionDays };
 
-    if (existing.maxFailures !== updated.maxFailures || existing.windowMinutes !== updated.windowMinutes || existing.lockMinutes !== updated.lockMinutes) {
+    if (existing.maxFailures !== updated.maxFailures || existing.windowMinutes !== updated.windowMinutes || existing.lockMinutes !== updated.lockMinutes || existing.logRetentionDays !== updated.logRetentionDays) {
       await this.auditLog.record({
         organizationId,
         actorId,
         action: 'organization.login_protection_updated',
         targetType: 'organization',
         targetId: organizationId,
-        summary: `Sign-in protection: ${updated.maxFailures} failures in ${updated.windowMinutes} min lock for ${updated.lockMinutes} min`,
+        summary: `Sign-in protection: ${updated.maxFailures} failures in ${updated.windowMinutes} min lock for ${updated.lockMinutes} min, sign-in log kept ${updated.logRetentionDays} days`,
         metadata: { before: existing, after: updated },
       });
     }

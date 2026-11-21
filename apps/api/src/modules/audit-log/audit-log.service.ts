@@ -15,6 +15,7 @@ export type AuditLogAction =
   | 'user.temporary_password_issued'
   | 'user.login_locked'
   | 'user.login_unlocked'
+  | 'user.sessions_revoked'
   | 'organization.login_protection_updated'
   | 'organization.password_policy_updated'
   | 'custom_role.created'

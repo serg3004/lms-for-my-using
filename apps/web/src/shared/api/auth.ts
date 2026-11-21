@@ -55,3 +55,31 @@ export function changePassword(input: { currentPassword: string; newPassword: st
     body: JSON.stringify(input),
   });
 }
+
+/** PR 494: the person's own open sessions ("my devices") and the sign-in journal an administrator reads. */
+export type DeviceSession = { id: string; deviceLabel: string | null; ipMasked: string | null; createdAt: string; lastActiveAt: string; current?: boolean };
+export type LoginEvent = { id: string; outcome: 'success' | 'failed' | 'blocked' | 'locked'; deviceLabel: string | null; ipMasked: string | null; createdAt: string };
+
+export function listOwnSessions() {
+  return apiRequest<DeviceSession[]>('/auth/me/sessions');
+}
+
+export function revokeOwnSession(sessionId: string) {
+  return apiRequest<{ revoked: boolean }>(`/auth/me/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
+}
+
+export function logoutEverywhere() {
+  return apiRequest<{ accepted: boolean }>('/auth/logout-all', { method: 'POST', body: JSON.stringify({}) });
+}
+
+export function getUserLoginHistory(userId: string) {
+  return apiRequest<{ events: LoginEvent[]; sessions: DeviceSession[] }>(`/users/${encodeURIComponent(userId)}/login-history`);
+}
+
+export function revokeUserSession(userId: string, sessionId: string) {
+  return apiRequest<{ revoked: number }>(`/users/${encodeURIComponent(userId)}/sessions/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
+}
+
+export function revokeAllUserSessions(userId: string) {
+  return apiRequest<{ revoked: number }>(`/users/${encodeURIComponent(userId)}/sessions/revoke`, { method: 'POST', body: JSON.stringify({}) });
+}

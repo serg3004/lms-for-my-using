@@ -690,6 +690,66 @@ export class UsersService {
     return { unlocked: true };
   }
 
+  /** PR 494: the last sign-ins and the open sessions of a user in the caller's scope. */
+  async getLoginHistory(userId: string, actor: TeamScopeActor) {
+    await this.findUserInScope(userId, actor);
+    const now = new Date();
+    const [events, sessions] = await Promise.all([
+      this.prisma.loginEvent.findMany({
+        where: { userId, organizationId: actor.organizationId },
+        select: { id: true, outcome: true, deviceLabel: true, ipMasked: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      this.prisma.session.findMany({
+        where: { userId, organizationId: actor.organizationId, revokedAt: null, OR: [{ refreshExpiresAt: { gt: now } }, { refreshExpiresAt: null, expiresAt: { gt: now } }] },
+        select: { id: true, deviceLabel: true, ipMasked: true, createdAt: true, lastActiveAt: true },
+        orderBy: { lastActiveAt: 'desc' },
+        take: 100,
+      }),
+    ]);
+    return { events, sessions };
+  }
+
+  /** PR 494: ends one session of a user in the caller's scope. */
+  async revokeUserSession(userId: string, sessionId: string, actor: TeamScopeActor) {
+    const user = await this.findUserInScope(userId, actor);
+    const result = await this.prisma.session.updateMany({ where: { id: sessionId, userId, organizationId: actor.organizationId, revokedAt: null }, data: { revokedAt: new Date() } });
+    if (result.count === 0) throw new NotFoundException('Session not found');
+    await this.recordSessionsRevoked(actor, user, 1);
+    return { revoked: 1 };
+  }
+
+  /** PR 494: ends every session of a user in the caller's scope. */
+  async revokeAllUserSessions(userId: string, actor: TeamScopeActor) {
+    const user = await this.findUserInScope(userId, actor);
+    const result = await this.prisma.session.updateMany({ where: { userId, organizationId: actor.organizationId, revokedAt: null }, data: { revokedAt: new Date() } });
+    await this.recordSessionsRevoked(actor, user, result.count);
+    return { revoked: result.count };
+  }
+
+  private async findUserInScope(userId: string, actor: TeamScopeActor) {
+    const registrar = await this.registrars.resolve(actor);
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, organizationId: actor.organizationId, ...this.teamScope.user(actor), ...this.registrars.writeWhere(registrar, actor), deletedAt: null },
+      select: { id: true, email: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
+  private recordSessionsRevoked(actor: TeamScopeActor, user: { id: string; email: string }, count: number) {
+    return this.auditLog.record({
+      organizationId: actor.organizationId,
+      actorId: actor.id,
+      action: 'user.sessions_revoked',
+      targetType: 'user',
+      targetId: user.id,
+      summary: `Ended ${count} session(s) of ${user.email}`,
+      metadata: { count },
+    });
+  }
+
   /** PR 489: a temporary password for an active user in the caller's scope; shown once, never written to the audit log. */
   async issueTemporaryPassword(userId: string, actor: TeamScopeActor) {
     const organizationId = actor.organizationId;

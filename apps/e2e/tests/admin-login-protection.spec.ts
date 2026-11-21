@@ -12,7 +12,7 @@ test('PR 493: the administrator changes the sign-in limits and lifts a lock', as
   await page.getByLabel('Блокировать на (минут, 1–1440)').fill('30');
   await page.getByRole('button', { name: 'Сохранить пределы' }).click();
   await expect(page.getByText('Пределы сохранены.')).toBeVisible();
-  expect(calls.saved).toEqual([{ maxFailures: 8, windowMinutes: 15, lockMinutes: 30 }]);
+  expect(calls.saved).toEqual([{ maxFailures: 8, windowMinutes: 15, lockMinutes: 30, logRetentionDays: 90 }]);
 
   await expect(page.getByText('Сергеева Айгуль')).toBeVisible();
   await page.getByRole('button', { name: 'Разблокировать' }).click();

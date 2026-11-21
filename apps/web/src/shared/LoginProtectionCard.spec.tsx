@@ -33,7 +33,7 @@ async function render() {
 describe('LoginProtectionCard (PR 493)', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('ru');
-    api.getLoginProtection.mockReset().mockResolvedValue({ maxFailures: 5, windowMinutes: 15, lockMinutes: 15 });
+    api.getLoginProtection.mockReset().mockResolvedValue({ maxFailures: 5, windowMinutes: 15, lockMinutes: 15, logRetentionDays: 90 });
     api.saveLoginProtection.mockReset().mockImplementation(async (_org: string, settings: unknown) => settings);
     api.listLockedUsers.mockReset().mockResolvedValue([worker]);
     api.unlockUser.mockReset().mockResolvedValue({ unlocked: true });
@@ -51,7 +51,7 @@ describe('LoginProtectionCard (PR 493)', () => {
     });
     await act(async () => { view.querySelector<HTMLFormElement>('form')!.requestSubmit(); });
 
-    expect(api.saveLoginProtection).toHaveBeenCalledWith('org-1', { maxFailures: 7, windowMinutes: 15, lockMinutes: 15 });
+    expect(api.saveLoginProtection).toHaveBeenCalledWith('org-1', { maxFailures: 7, windowMinutes: 15, lockMinutes: 15, logRetentionDays: 90 });
     expect(view.textContent).toContain('Пределы сохранены');
   });
 

@@ -1,6 +1,6 @@
 import { paginationQuerySchema } from '../../common/pagination.schema.js';
 
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
@@ -77,6 +77,27 @@ export class UsersController {
   @Roles(...rolePolicies.usersResetPassword)
   listLockedUsers(@Req() request: AuthenticatedRequest) {
     return this.usersService.listLockedUsers(request.currentUser!);
+  }
+
+  @Get(':id/login-history')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersResetPassword)
+  getLoginHistory(@Param('id') userId: string, @Req() request: AuthenticatedRequest) {
+    return this.usersService.getLoginHistory(userId, request.currentUser!);
+  }
+
+  @Delete(':id/sessions/:sessionId')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersResetPassword)
+  revokeUserSession(@Param('id') userId: string, @Param('sessionId') sessionId: string, @Req() request: AuthenticatedRequest) {
+    return this.usersService.revokeUserSession(userId, sessionId, request.currentUser!);
+  }
+
+  @Post(':id/sessions/revoke')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersResetPassword)
+  revokeAllUserSessions(@Param('id') userId: string, @Req() request: AuthenticatedRequest) {
+    return this.usersService.revokeAllUserSessions(userId, request.currentUser!);
   }
 
   @Post(':id/unlock')

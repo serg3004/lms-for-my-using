@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { loginFailureWindowRange, loginLockRange, loginMaxFailuresRange } from '../../common/login-protection.js';
+import { loginFailureWindowRange, loginLockRange, loginLogRetentionRange, loginMaxFailuresRange } from '../../common/login-protection.js';
 import { passwordHistoryRange, passwordMinLengthRange } from '../../common/password-policy.js';
 
 export const organizationStatusSchema = z.enum(['active', 'suspended', 'archived']);
@@ -72,6 +72,7 @@ export const loginProtectionSchema = z.object({
   maxFailures: z.number().int().min(loginMaxFailuresRange.min).max(loginMaxFailuresRange.max),
   windowMinutes: z.number().int().min(loginFailureWindowRange.min).max(loginFailureWindowRange.max),
   lockMinutes: z.number().int().min(loginLockRange.min).max(loginLockRange.max),
+  logRetentionDays: z.number().int().min(loginLogRetentionRange.min).max(loginLogRetentionRange.max).optional(),
 }).strict();
 export type LoginProtectionInput = z.infer<typeof loginProtectionSchema>;
 

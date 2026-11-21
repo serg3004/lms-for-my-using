@@ -22,6 +22,7 @@ import { freshTransferState, installTransferMocks, openTransferDialog } from '..
 import { freshReportState, installReportMocks } from '../fixtures/checklist-instance-report.js';
 import { freshRolesState, installCustomRolesMocks, registrar } from '../fixtures/custom-roles.js';
 import { importFileCsv, installUsersImportMocks } from '../fixtures/users-import.js';
+import { installLoginJournalMocks, journalUserId } from '../fixtures/login-journal.js';
 import { expect, test, type Page } from '@playwright/test';
 
 const widths = [320, 375, 768, 1024, 1280, 1440] as const;
@@ -87,6 +88,20 @@ for (const width of [390, 1280]) test(`user import page is responsive at ${width
   await expect(page.getByText('Подразделение не найдено.')).toBeVisible();
   await expectNoPageOverflow(page);
   await expectVisualMatch(page, `users-import-${width}`, false, { maxDiffPixels: 3000 });
+});
+
+for (const width of [390, 1280]) test(`my devices and the sign-in journal are responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height });
+  await installLoginJournalMocks(page, ['admin']);
+  await page.goto(`/admin/users/${journalUserId}/logins`);
+  await expect(page.getByText('Firefox · Linux').first()).toBeVisible();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `user-logins-${width}`, false, { maxDiffPixels: 3000 });
+  await installLoginJournalMocks(page);
+  await page.goto('/learn/profile');
+  await expect(page.getByRole('heading', { name: 'Мои устройства' })).toBeVisible();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `my-devices-${width}`, false, { maxDiffPixels: 3000 });
 });
 
 for (const width of [390, 1280]) test(`user rights dialog is responsive at ${width}px`, async ({ page }) => {
