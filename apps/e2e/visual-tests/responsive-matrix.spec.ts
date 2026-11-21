@@ -21,6 +21,7 @@ import { GOOD_CODE, openPublicPage } from '../fixtures/checklist-public-page.js'
 import { freshTransferState, installTransferMocks, openTransferDialog } from '../fixtures/checklist-transfer.js';
 import { freshReportState, installReportMocks } from '../fixtures/checklist-instance-report.js';
 import { freshRolesState, installCustomRolesMocks, registrar } from '../fixtures/custom-roles.js';
+import { importFileCsv, installUsersImportMocks } from '../fixtures/users-import.js';
 import { expect, test, type Page } from '@playwright/test';
 
 const widths = [320, 375, 768, 1024, 1280, 1440] as const;
@@ -51,6 +52,16 @@ for (const width of [390, 1280]) test(`custom roles editor is responsive at ${wi
   await page.getByLabel('Название роли').waitFor();
   await expectNoPageOverflow(page);
   await expectVisualMatch(page, `custom-roles-editor-${width}`, false, { maxDiffPixels: 3000 });
+});
+
+for (const width of [390, 1280]) test(`user import page is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installUsersImportMocks(page);
+  await page.goto('/admin/users/import');
+  await page.getByLabel('Выберите файл').setInputFiles({ name: 'people.csv', mimeType: 'text/csv', buffer: Buffer.from(importFileCsv) });
+  await page.getByRole('button', { name: 'Проверить' }).click();
+  await expect(page.getByText('Подразделение не найдено.')).toBeVisible();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `users-import-${width}`, false, { maxDiffPixels: 3000 });
 });
 
 for (const width of [390, 1280]) test(`user rights dialog is responsive at ${width}px`, async ({ page }) => {
