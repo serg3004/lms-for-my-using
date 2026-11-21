@@ -84,3 +84,29 @@ test('admin creates, filters, edits, deactivates and reactivates a user', async 
   await row.getByRole('button', { name: 'Активировать' }).click();
   await expect(row.getByText('Активен')).toBeVisible();
 });
+
+test('admin manages a pending invitation on the users page', async ({ page, isolatedUser }) => {
+  await loginAsAdmin(page);
+  await page.goto('/admin/users');
+  await page.getByRole('button', { name: 'Создать пользователя' }).click();
+  await fillCreateForm(page, isolatedUser.email, '');
+  await page.getByRole('dialog', { name: 'Создать пользователя' }).getByRole('button', { name: 'Сохранить' }).click();
+
+  const result = page.getByRole('dialog', { name: 'Приглашение' });
+  await expect(result).toBeVisible();
+  await result.getByRole('button', { name: 'Закрыть' }).first().click();
+  await page.getByRole('button', { name: 'Ожидают входа' }).click();
+  const table = page.getByRole('table', { name: 'Ожидают входа' });
+  const row = table.getByRole('row').filter({ hasText: isolatedUser.email });
+  await expect(row.getByText('Ожидает', { exact: true })).toBeVisible();
+
+  await row.getByRole('button', { name: 'Продлить на 7 дней' }).click();
+  await expect(page.getByText('Срок приглашения продлён.')).toBeVisible();
+  await row.getByRole('checkbox').check();
+  await page.getByRole('button', { name: 'Отправить выбранным' }).click();
+  await expect(page.getByText('Приглашение уже отправляли. Повторите через минуту.')).toBeVisible();
+
+  await row.getByRole('button', { name: 'Отозвать' }).click();
+  await page.getByRole('dialog', { name: 'Отозвать' }).getByRole('button', { name: 'Отозвать' }).click();
+  await expect(row.getByText('Отозвано', { exact: true })).toBeVisible();
+});

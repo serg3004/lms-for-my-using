@@ -1,3 +1,5 @@
+import { paginationQuerySchema } from '../../common/pagination.schema.js';
+
 import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard } from '../auth/public.js';
@@ -14,6 +16,8 @@ import {
   importUsersSchema,
   ImportUsersInput,
   listUsersQuerySchema,
+  invitationUserIdSchema,
+  resendInvitationsSchema,
   updateUserSchema,
   UpdateUserInput,
   updateUserStatusSchema,
@@ -30,6 +34,42 @@ export class UsersController {
   listUsers(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
     const { page, pageSize, search, status } = listUsersQuerySchema.parse(query);
     return this.usersService.listUsers(request.currentUser!, page, pageSize, search, status);
+  }
+
+  @Get('invitations')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersCreate)
+  listInvitations(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
+    const { page, pageSize } = paginationQuerySchema.parse(query);
+    return this.usersService.listInvitations(request.currentUser!, page, pageSize);
+  }
+
+  @Post('invitations/resend')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersCreate)
+  resendInvitations(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    return this.usersService.resendInvitations(request.currentUser!, resendInvitationsSchema.parse(body).userIds);
+  }
+
+  @Post(':id/invitation/resend')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersCreate)
+  resendInvitation(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    return this.usersService.resendInvitation(request.currentUser!, invitationUserIdSchema.parse(id));
+  }
+
+  @Post(':id/invitation/revoke')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersCreate)
+  revokeInvitation(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    return this.usersService.changeInvitation(request.currentUser!, invitationUserIdSchema.parse(id), 'revoked');
+  }
+
+  @Post(':id/invitation/extend')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersCreate)
+  extendInvitation(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    return this.usersService.changeInvitation(request.currentUser!, invitationUserIdSchema.parse(id), 'extended');
   }
 
   @Get(':id')
