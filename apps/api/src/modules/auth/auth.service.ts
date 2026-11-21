@@ -10,10 +10,12 @@ import { hashPassword, verifyPassword } from './passwords.js';
 import { buildPasswordChangedMail } from './password-changed-mail.js';
 import { buildInvitationMail, createInvitationToken, hashInvitationToken, invitationLifetimeDays, invitationLifetimeMs } from './user-invitation.js';
 import { isMailConfigured, sendMail } from '../../common/mail/mailer.js';
+import type { ClientContext } from '../../common/device-info.js';
 import { loginProtection } from '../../common/observability/metrics.js';
 import { assertPasswordPolicy, passwordPolicyError } from '../../common/password-policy.js';
 import { generateTemporaryPassword, temporaryPasswordLifetimeMs } from '../../common/temporary-password.js';
 import { isPasswordReused, loadPasswordPolicy, rememberReplacedPassword } from './password-policy.js';
+import { LoginJournal } from './login-journal.js';
 import { LoginLockout } from './login-lockout.js';
 import { createPasswordResetToken, hashPasswordResetToken, PasswordResetDelivery, passwordResetLifetimeMs } from './password-reset.js';
 
@@ -73,12 +75,14 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
   private readonly lockout: LoginLockout;
+  private readonly journal: LoginJournal;
 
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly passwordResetDelivery?: PasswordResetDelivery,
   ) {
     this.lockout = new LoginLockout(prisma);
+    this.journal = new LoginJournal(prisma);
   }
 
   async findActiveUserByLoginIdentity(input: Pick<LoginInput, 'organizationId' | 'email'>) {
@@ -120,7 +124,7 @@ export class AuthService {
     return this.withRoles(user);
   }
 
-  async validateLogin(input: LoginInput) {
+  async validateLogin(input: LoginInput, context?: ClientContext) {
     const organizationId = await this.resolveLoginOrganizationId(input.organizationId);
 
     const user = await this.prisma.user.findFirst({
@@ -140,13 +144,15 @@ export class AuthService {
     // PR 493: a locked account answers exactly like a wrong password, even for the right one, and does not count further.
     if (this.lockout.isLocked(user)) {
       loginProtection.inc({ event: 'blocked' });
+      await this.journal.record(user, 'blocked', context);
       throw invalidCredentialsException();
     }
 
     const isPasswordValid = await verifyPassword(input.password, user.passwordHash);
 
     if (!isPasswordValid) {
-      await this.lockout.registerFailure(user);
+      const locked = await this.lockout.registerFailure(user);
+      await this.journal.record(user, locked ? 'locked' : 'failed', context);
       throw invalidCredentialsException();
     }
     await this.lockout.clear(user.id);
@@ -543,8 +549,8 @@ export class AuthService {
     return logoutAccepted;
   }
 
-  async login(input: LoginInput) {
-    const user = await this.validateLogin(input);
+  async login(input: LoginInput, context?: ClientContext) {
+    const user = await this.validateLogin(input, context);
     const { token, jti, expiresAt } = await signJwt({
       sub: user.id,
       organizationId: user.organizationId,
@@ -561,8 +567,10 @@ export class AuthService {
         expiresAt,
         refreshTokenHash: refresh.hash,
         refreshExpiresAt,
+        ...this.journal.device(context),
       },
     });
+    await this.journal.record(user, 'success', context);
 
     return {
       accessToken: token,
@@ -570,6 +578,40 @@ export class AuthService {
       tokenType: 'Bearer',
       user,
     };
+  }
+
+  /** PR 494: the signed-in person's own open sessions; the one that asks is marked as current. */
+  async listOwnSessions(accessToken: string) {
+    const claims = await this.verifiedClaims(accessToken);
+    const now = new Date();
+    const sessions = await this.prisma.session.findMany({
+      where: { userId: claims.sub, organizationId: claims.organizationId, revokedAt: null, OR: [{ refreshExpiresAt: { gt: now } }, { refreshExpiresAt: null, expiresAt: { gt: now } }] },
+      select: { id: true, jti: true, deviceLabel: true, ipMasked: true, createdAt: true, lastActiveAt: true },
+      orderBy: { lastActiveAt: 'desc' },
+      take: 100,
+    });
+    return sessions.map(({ jti, ...session }) => ({ ...session, current: jti === claims.jti }));
+  }
+
+  /** PR 494: ends one of the person's other sessions; another person's session, or the current one, is "not found". */
+  async revokeOwnSession(accessToken: string, sessionId: string) {
+    const claims = await this.verifiedClaims(accessToken);
+    const result = await this.prisma.session.updateMany({
+      where: { id: sessionId, userId: claims.sub, organizationId: claims.organizationId, revokedAt: null, jti: { not: claims.jti } },
+      data: { revokedAt: new Date() },
+    });
+    if (result.count === 0) throw new NotFoundException('Session not found');
+    return { revoked: true };
+  }
+
+  private async verifiedClaims(accessToken: string) {
+    try {
+      const claims = await verifyJwt(accessToken);
+      await this.validateSession(claims.jti);
+      return claims;
+    } catch {
+      throw new UnauthorizedException('Invalid token');
+    }
   }
 
   async refreshSession(sessionId: string, userId: string, organizationId: string) {
@@ -593,7 +635,7 @@ export class AuthService {
 
     await this.prisma.session.update({
       where: { id: sessionId, userId, organizationId },
-      data: { jti, expiresAt, refreshTokenHash: newRefresh.hash, refreshExpiresAt },
+      data: { jti, expiresAt, refreshTokenHash: newRefresh.hash, refreshExpiresAt, lastActiveAt: new Date() },
     });
 
     return {

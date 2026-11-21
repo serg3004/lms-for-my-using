@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { supportedLocales } from '../i18n/index.js';
 import { updateCurrentUserPreferences } from '../shared/apiClient.js';
 import { ChangePasswordForm } from '../shared/ChangePasswordForm.js';
+import { MyDevicesCard } from '../shared/MyDevicesCard.js';
 import { useSession } from '../shared/session.js';
 
 const localeNames = { ru: 'Русский', en: 'English', kk: 'Қазақша', zh: '中文' } as const;
@@ -71,6 +72,7 @@ export function LearnerProfilePage() {
         </div>
       </form>
       <ChangePasswordForm />
+      <MyDevicesCard />
     </section>
   );
 }

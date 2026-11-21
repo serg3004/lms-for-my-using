@@ -48,6 +48,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `GroupMember` |
 | `Lesson` |
 | `LoginAttempt` |
+| `LoginEvent` |
 | `LongreadBlock` |
 | `LongreadChapter` |
 | `LongreadDocument` |

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Optional, Patch, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Optional, Param, Patch, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
 
 import {
   AuthHeaders,
@@ -26,8 +26,9 @@ import {
 import type { AuthenticatedRequest } from './auth.guard.js';
 
 type AuthRequest = {
-  headers: AuthHeaders;
+  headers: AuthHeaders & { 'user-agent'?: string | string[] | undefined };
   method?: string;
+  ip?: string | undefined;
 };
 
 @Controller('auth')
@@ -39,9 +40,10 @@ export class AuthController {
 
   @Post('login')
   @PublicAccess()
-  async login(@Body() body: unknown, @Res({ passthrough: true }) response: AuthCookieResponse) {
+  async login(@Body() body: unknown, @Req() request: AuthRequest, @Res({ passthrough: true }) response: AuthCookieResponse) {
     const input: LoginInput = loginSchema.parse(body);
-    const result = await this.authService.login(input);
+    const userAgent = request.headers['user-agent'];
+    const result = await this.authService.login(input, { userAgent: typeof userAgent === 'string' ? userAgent : undefined, ip: request.ip });
     const csrfToken = createCsrfToken();
 
     setAuthCookies(response, result.accessToken, csrfToken, result.refreshToken);
@@ -142,6 +144,20 @@ export class AuthController {
     assertValidCsrf(request.headers, request.method, accessToken.source);
     const input = changePasswordSchema.parse(body);
     return this.authService.changePassword(accessToken.token, input);
+  }
+
+  @Get('me/sessions')
+  @AuthenticatedAccess()
+  listOwnSessions(@Req() request: AuthRequest) {
+    return this.authService.listOwnSessions(resolveAccessToken(request.headers).token);
+  }
+
+  @Delete('me/sessions/:id')
+  @AuthenticatedAccess()
+  revokeOwnSession(@Req() request: AuthRequest, @Param('id') sessionId: string) {
+    const accessToken = resolveAccessToken(request.headers);
+    assertValidCsrf(request.headers, request.method, accessToken.source);
+    return this.authService.revokeOwnSession(accessToken.token, sessionId);
   }
 
   @Get('me')

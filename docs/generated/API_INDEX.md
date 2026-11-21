@@ -36,6 +36,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/auth/logout-all` | `Auth` | `bearer` |
 | `GET` | `/api/v1/auth/me` | `Auth` | `bearer` |
 | `PATCH` | `/api/v1/auth/me/preferences` | `Auth` | `bearer` |
+| `GET` | `/api/v1/auth/me/sessions` | `Auth` | `bearer` |
+| `DELETE` | `/api/v1/auth/me/sessions/{id}` | `Auth` | `bearer` |
 | `POST` | `/api/v1/auth/password-reset/confirm` | `Auth` | `public` |
 | `POST` | `/api/v1/auth/password-reset/request` | `Auth` | `public` |
 | `POST` | `/api/v1/auth/refresh` | `Auth` | `public` |
@@ -367,8 +369,11 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/users/{id}/invitation/extend` | `Users` | `bearer` |
 | `POST` | `/api/v1/users/{id}/invitation/resend` | `Users` | `bearer` |
 | `POST` | `/api/v1/users/{id}/invitation/revoke` | `Users` | `bearer` |
+| `GET` | `/api/v1/users/{id}/login-history` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}/reporting-lines` | `ReportingLines` | `bearer` |
 | `POST` | `/api/v1/users/{id}/reset-password` | `Users` | `bearer` |
+| `POST` | `/api/v1/users/{id}/sessions/revoke` | `Users` | `bearer` |
+| `DELETE` | `/api/v1/users/{id}/sessions/{sessionId}` | `Users` | `bearer` |
 | `PATCH` | `/api/v1/users/{id}/status` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}/status-impact` | `Users` | `bearer` |
 | `POST` | `/api/v1/users/{id}/temporary-password` | `Users` | `bearer` |

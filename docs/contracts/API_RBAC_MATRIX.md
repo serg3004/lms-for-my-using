@@ -396,6 +396,10 @@ read permissions and team/course filters apply to the server-written version/cha
 
 `GET` and `PATCH /organizations/:id/login-protection` (the limits of wrong passwords, counting window and lock time) are allowed for `admin` only (`rolePolicies.loginProtection`); a change is written to the audit log (`organization.login_protection_updated`). `GET /users/locked` and `POST /users/:id/unlock` use the same roles and scope as `POST /users/:id/reset-password` (`admin`, and `manager` inside their team; custom roles through `user.reset-password`); unlocking is audited (`user.login_unlocked`). The sign-in endpoint itself stays public and answers a locked account exactly like a wrong password. Custom roles cannot grant the limits.
 
+## Sign-in journal and devices (PR 494)
+
+`GET /auth/me/sessions`, `DELETE /auth/me/sessions/:id` and `POST /auth/logout-all` need only an authenticated session and touch only the caller's own sessions; an id of another person's session answers `404`, never an object. `GET /users/:id/login-history`, `DELETE /users/:id/sessions/:sessionId` and `POST /users/:id/sessions/revoke` use the `user.reset-password` permission and the same object filters as `POST /users/:id/reset-password` (administrator: whole organization; manager: own team; department-limited registrar: their departments; custom roles through the catalog action). Ending someone's sessions is audited (`user.sessions_revoked`). The retention period of the journal is part of `login-protection` and stays admin-only.
+
 ## Temporary password (PR 489)
 
 `POST /users/:id/temporary-password` uses the `user.reset-password` permission and the same object filters as `POST /users/{id}/reset-password` (administrator: whole organization; manager: own team; delegated registrar: own department tree, never above `learner`); the caller cannot issue one for themselves. `POST /users` with `temporaryPassword: true` follows the existing `user.create` rules. While `mustChangePassword` is set, `AuthGuard` refuses every guarded route with `403 PASSWORD_CHANGE_REQUIRED` whatever the role; custom roles do not change this.

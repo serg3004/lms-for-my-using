@@ -361,9 +361,12 @@ model Organization {
   loginMaxFailures           Int                         @default(5) @map("login_max_failures")
   loginFailureWindowMinutes  Int                         @default(15) @map("login_failure_window_minutes")
   loginLockMinutes           Int                         @default(15) @map("login_lock_minutes")
+  /// PR 494: how long sign-in events are kept; never below 90 days, an administrator may raise it.
+  loginLogRetentionDays      Int                         @default(90) @map("login_log_retention_days")
   createdAt                  DateTime                    @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                  DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                  DateTime?                   @map("deleted_at") @db.Timestamptz
+  loginEvents                LoginEvent[]
   users                      User[]
   groups                     Group[]
   courses                    Course[]
@@ -458,6 +461,7 @@ model User {
   /// PR 493: sign-in is refused until this moment after too many failed attempts; an administrator can lift it earlier.
   loginLockedUntil           DateTime?                  @map("login_locked_until") @db.Timestamptz
   loginAttempts              LoginAttempt[]
+  loginEvents                LoginEvent[]
   createdAt                  DateTime                   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                  DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                  DateTime?                  @map("deleted_at") @db.Timestamptz
@@ -1919,6 +1923,10 @@ model Session {
   expiresAt        DateTime     @map("expires_at") @db.Timestamptz
   refreshExpiresAt DateTime?    @map("refresh_expires_at") @db.Timestamptz
   revokedAt        DateTime?    @map("revoked_at") @db.Timestamptz
+  /// PR 494: what the person sees in "my devices"; the raw User-Agent and the full IP are never stored.
+  lastActiveAt     DateTime     @default(now()) @map("last_active_at") @db.Timestamptz
+  deviceLabel      String?      @map("device_label")
+  ipMasked         String?      @map("ip_masked")
   user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -1939,6 +1947,23 @@ model LoginAttempt {
   @@index([userId, createdAt])
   @@index([createdAt])
   @@map("login_attempts")
+}
+
+/// PR 494: one sign-in of an existing account (success, wrong password, refused during a lock); kept for the organization's retention period.
+model LoginEvent {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  outcome        String
+  deviceLabel    String?      @map("device_label")
+  ipMasked       String?      @map("ip_masked")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("login_events")
 }
 
 model MaterialFileDeletionAudit {

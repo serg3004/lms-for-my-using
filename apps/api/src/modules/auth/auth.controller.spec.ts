@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 
 import {
@@ -86,6 +87,7 @@ describe('AuthController login', () => {
         email: 'USER@example.com',
         password: 'password',
       },
+      { headers: { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0) Chrome/130.0' }, ip: '203.0.113.7' },
       response,
     );
 
@@ -128,6 +130,7 @@ describe('AuthController login', () => {
 
     const result = await controller.login(
       { organizationId: 'org-id', email: 'user@test.com', password: 'pass' },
+      { headers: {} },
       response,
     );
 
@@ -252,3 +255,38 @@ describe('AuthController getCurrentUser', () => {
     expect(getTokens()).toEqual(['cookie-token']);
   });
 });
+
+describe('AuthController sessions (PR 494)', () => {
+  const bearer = { headers: { authorization: 'Bearer access-token', 'x-csrf-token': 'x' } };
+
+  it('passes the browser and the address of the sign-in to the service', async () => {
+    const login = jest.fn(async () => ({ accessToken: 'login-token', refreshToken: 'r', tokenType: 'Bearer', user: currentUser }));
+    const controller = new AuthController({ login } as unknown as AuthService);
+    const { response } = createResponse();
+
+    await controller.login(
+      { organizationId: '11111111-1111-1111-1111-111111111111', email: 'user@example.com', password: 'password' },
+      { headers: { 'user-agent': 'Mozilla/5.0 (Windows NT 10.0) Chrome/130.0' }, ip: '203.0.113.7' },
+      response,
+    );
+
+    expect(login).toHaveBeenCalledWith(expect.anything(), { userAgent: 'Mozilla/5.0 (Windows NT 10.0) Chrome/130.0', ip: '203.0.113.7' });
+  });
+
+  it('lists the own sessions for the access token of the request', async () => {
+    const listOwnSessions = jest.fn(async () => [{ id: 's1', current: true }]);
+    const controller = new AuthController({ listOwnSessions } as unknown as AuthService);
+
+    await expect(controller.listOwnSessions(bearer)).resolves.toEqual([{ id: 's1', current: true }]);
+    expect(listOwnSessions).toHaveBeenCalledWith('access-token');
+  });
+
+  it('ends one session by id for the access token of the request', async () => {
+    const revokeOwnSession = jest.fn(async () => ({ revoked: true }));
+    const controller = new AuthController({ revokeOwnSession } as unknown as AuthService);
+
+    await expect(controller.revokeOwnSession({ headers: { authorization: 'Bearer access-token' }, method: 'DELETE' }, 's2')).resolves.toEqual({ revoked: true });
+    expect(revokeOwnSession).toHaveBeenCalledWith('access-token', 's2');
+  });
+});
+

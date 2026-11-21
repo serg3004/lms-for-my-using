@@ -33,7 +33,7 @@ export function savePasswordPolicy(organizationId: string, policy: OrganizationP
 }
 
 /** PR 493: sign-in protection thresholds and the accounts it has locked. */
-export type LoginProtection = { maxFailures: number; windowMinutes: number; lockMinutes: number };
+export type LoginProtection = { maxFailures: number; windowMinutes: number; lockMinutes: number; logRetentionDays: number };
 export type LockedUser = { id: string; email: string; firstName: string; lastName: string; middleName: string | null; loginLockedUntil: string };
 
 export function getLoginProtection(organizationId: string) {

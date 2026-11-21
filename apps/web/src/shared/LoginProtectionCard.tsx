@@ -13,6 +13,7 @@ export function LoginProtectionCard({ organizationId }: { organizationId: string
   const [maxFailures, setMaxFailures] = useState('5');
   const [windowMinutes, setWindowMinutes] = useState('15');
   const [lockMinutes, setLockMinutes] = useState('15');
+  const [retentionDays, setRetentionDays] = useState('90');
   const [state, setState] = useState<State>('loading');
   const [locked, setLocked] = useState<LockedUser[] | null>(null);
   const [lockedError, setLockedError] = useState<'load' | 'unlock' | null>(null);
@@ -24,7 +25,7 @@ export function LoginProtectionCard({ organizationId }: { organizationId: string
 
   useEffect(() => {
     getLoginProtection(organizationId)
-      .then((settings) => { setMaxFailures(String(settings.maxFailures)); setWindowMinutes(String(settings.windowMinutes)); setLockMinutes(String(settings.lockMinutes)); setState('ready'); })
+      .then((settings) => { setMaxFailures(String(settings.maxFailures)); setWindowMinutes(String(settings.windowMinutes)); setLockMinutes(String(settings.lockMinutes)); setRetentionDays(String(settings.logRetentionDays)); setState('ready'); })
       .catch(() => setState('loadError'));
     loadLocked();
   }, [organizationId, loadLocked]);
@@ -33,10 +34,11 @@ export function LoginProtectionCard({ organizationId }: { organizationId: string
     event.preventDefault();
     setState('saving');
     try {
-      const saved = await saveLoginProtection(organizationId, { maxFailures: Number(maxFailures), windowMinutes: Number(windowMinutes), lockMinutes: Number(lockMinutes) });
+      const saved = await saveLoginProtection(organizationId, { maxFailures: Number(maxFailures), windowMinutes: Number(windowMinutes), lockMinutes: Number(lockMinutes), logRetentionDays: Number(retentionDays) });
       setMaxFailures(String(saved.maxFailures));
       setWindowMinutes(String(saved.windowMinutes));
       setLockMinutes(String(saved.lockMinutes));
+      setRetentionDays(String(saved.logRetentionDays));
       setState('saved');
     } catch {
       setState('saveError');
@@ -74,6 +76,9 @@ export function LoginProtectionCard({ organizationId }: { organizationId: string
             </FormField>
             <FormField id="lock-minutes" label={t('security.lockMinutes')}>
               <input id="lock-minutes" type="number" min={1} max={1440} required value={lockMinutes} onChange={edit(setLockMinutes)} />
+            </FormField>
+            <FormField id="log-retention" label={t('security.retentionDays')}>
+              <input id="log-retention" type="number" min={90} max={3650} required value={retentionDays} onChange={edit(setRetentionDays)} />
             </FormField>
           </div>
           {state === 'saved' ? <p role="status">{t('security.lockSaved')}</p> : null}
