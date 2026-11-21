@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import { BadRequestException, Injectable, Logger, Optional, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, HttpException, HttpStatus, Injectable, Logger, NotFoundException, Optional, UnauthorizedException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { type CurrentUser, type ChangePasswordInput, type InvitationAcceptInput, type LoginInput, type PasswordResetConfirmInput, type PasswordResetRequestInput, type UpdatePreferencesInput, type UserRole } from './auth.schemas.js';
@@ -37,6 +37,16 @@ const loginUserSelect = {
   temporaryPasswordExpiresAt: true,
   temporaryPasswordUsedAt: true,
 } as const;
+
+const invitationResendIntervalMs = 60_000;
+const invitationOrder = [{ createdAt: 'desc' }, { sendCount: 'desc' }, { id: 'desc' }] satisfies Prisma.UserInvitationOrderByWithRelationInput[];
+
+type InvitationUser = { id: string; organizationId: string; email: string; firstName: string; locale: string };
+
+async function lockInvitationUser(tx: Prisma.TransactionClient, userId: string, organizationId: string) {
+  // Activation and invitation changes must acquire the user row before changing any links.
+  await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid AND organization_id = ${organizationId}::uuid FOR UPDATE`;
+}
 
 const logoutAccepted = {
   accepted: true,
@@ -228,58 +238,124 @@ export class AuthService {
    * caller gets the link once to hand over (nobody can read it afterwards, only its hash is stored).
    */
   async issueInvitationFor(
-    user: { id: string; organizationId: string; email: string; firstName: string; locale: string },
+    user: InvitationUser,
     createdById: string | null,
   ) {
-    const invitation = createInvitationToken();
-    const expiresAt = new Date(Date.now() + invitationLifetimeMs);
-    await this.prisma.$transaction([
-      this.prisma.userInvitation.updateMany({ where: { userId: user.id, usedAt: null, revokedAt: null }, data: { revokedAt: new Date() } }),
-      this.prisma.userInvitation.create({
-        data: { userId: user.id, organizationId: user.organizationId, tokenHash: invitation.hash, expiresAt, createdById },
-      }),
-    ]);
+    return this.sendInvitation(user.id, user.organizationId, createdById);
+  }
 
-    return this.deliverInvitation(user, invitation.token, expiresAt);
+  async sendInvitation(userId: string, organizationId: string, actorId: string | null, scope?: Prisma.UserWhereInput) {
+    const deliver = await this.prisma.$transaction(async (tx) => {
+      const user = await this.findLockedInvitationUser(tx, userId, organizationId, scope);
+      const now = new Date();
+      const where = { userId, organizationId };
+      const previous = await tx.userInvitation.findFirst({
+        where,
+        orderBy: invitationOrder,
+        select: { createdAt: true, sendCount: true },
+      });
+      if (scope && previous && now.getTime() - previous.createdAt.getTime() < invitationResendIntervalMs) {
+        throw new HttpException('Invitation was sent recently', HttpStatus.TOO_MANY_REQUESTS);
+      }
+      await tx.userInvitation.updateMany({ where: { ...where, usedAt: null, revokedAt: null }, data: { revokedAt: now } });
+      const deliver = await this.prepareInvitationFor(user, actorId, tx, {
+        createdAt: now, sendCount: (previous?.sendCount ?? 0) + 1,
+      });
+      if (scope) await this.recordInvitationChange(tx, where, actorId, 'resent');
+      return deliver;
+    });
+    return deliver();
   }
 
   /** Persist the invitation in the caller's user-creation transaction; send only after commit. */
   async prepareInvitationFor(
-    user: { id: string; organizationId: string; email: string; firstName: string; locale: string },
+    user: InvitationUser,
     createdById: string | null,
     tx: Prisma.TransactionClient,
+    { createdAt = new Date(), sendCount = 1 } = {},
   ) {
     const invitation = createInvitationToken();
-    const expiresAt = new Date(Date.now() + invitationLifetimeMs);
-    await tx.userInvitation.create({ data: { userId: user.id, organizationId: user.organizationId, tokenHash: invitation.hash, expiresAt, createdById } });
+    const expiresAt = new Date(createdAt.getTime() + invitationLifetimeMs);
+    await tx.userInvitation.create({
+      data: { userId: user.id, organizationId: user.organizationId, tokenHash: invitation.hash, expiresAt, createdById, createdAt, sendCount },
+    });
     return () => this.deliverInvitation(user, invitation.token, expiresAt);
   }
 
   private async deliverInvitation(
-    user: { id: string; organizationId: string; email: string; firstName: string; locale: string },
+    user: InvitationUser,
     token: string, expiresAt: Date,
   ) {
     const frontend = (process.env['FRONTEND_URL'] ?? '').replace(/\/+$/, '');
     const link = `${frontend}/invitation?token=${token}`;
     let delivered = false;
     if (isMailConfigured()) {
-      const organization = await this.prisma.organization.findUnique({ where: { id: user.organizationId }, select: { name: true } });
-      const mail = buildInvitationMail(user.locale, {
-        firstName: user.firstName,
-        organizationName: organization?.name ?? '',
-        link,
-        days: invitationLifetimeDays,
-      });
-      delivered = await sendMail({ to: user.email, ...mail }).then(
-        () => true,
-        () => {
-          // Never log the error text or the address: provider errors can embed them.
-          this.logger.warn('Invitation delivery failed');
-          return false;
-        },
-      );
+      try {
+        const organization = await this.prisma.organization.findUnique({ where: { id: user.organizationId }, select: { name: true } });
+        const mail = buildInvitationMail(user.locale, {
+          firstName: user.firstName,
+          organizationName: organization?.name ?? '',
+          link,
+          days: invitationLifetimeDays,
+        });
+        await sendMail({ to: user.email, ...mail });
+        delivered = true;
+      } catch {
+        // Provider errors can contain the link and the recipient's address.
+        this.logger.warn('Invitation delivery failed');
+      }
     }
     return { delivered, expiresAt, ...(delivered ? {} : { inviteUrl: link }) };
+  }
+
+  async changeInvitation(
+    userId: string, organizationId: string, actorId: string, scope: Prisma.UserWhereInput, action: 'revoked' | 'extended',
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      await this.findLockedInvitationUser(tx, userId, organizationId, scope);
+      const now = new Date();
+      const where = { userId, organizationId, usedAt: null, revokedAt: null };
+      if (action === 'revoked') {
+        const result = await tx.userInvitation.updateMany({ where, data: { revokedAt: now } });
+        if (result.count) await this.recordInvitationChange(tx, where, actorId, action);
+        return { expiresAt: null };
+      }
+      const latest = await tx.userInvitation.findFirst({
+        where: { userId, organizationId }, orderBy: invitationOrder,
+        select: { id: true, usedAt: true, revokedAt: true, expiresAt: true },
+      });
+      if (!latest || latest.usedAt || latest.revokedAt || latest.expiresAt <= now) {
+        throw new ConflictException('Only a pending invitation can be extended');
+      }
+      const expiresAt = new Date(latest.expiresAt.getTime() + invitationLifetimeMs);
+      await tx.userInvitation.update({ where: { id: latest.id }, data: { expiresAt } });
+      await this.recordInvitationChange(tx, where, actorId, action);
+      return { expiresAt };
+    });
+  }
+
+  private async findLockedInvitationUser(
+    tx: Prisma.TransactionClient, userId: string, organizationId: string, scope?: Prisma.UserWhereInput,
+  ) {
+    await lockInvitationUser(tx, userId, organizationId);
+    const user = await tx.user.findFirst({
+      where: { ...scope, id: userId, organizationId, status: 'invited', deletedAt: null },
+      select: { id: true, organizationId: true, email: true, firstName: true, locale: true },
+    });
+    if (!user) throw new NotFoundException('Invited user not found');
+    return user;
+  }
+
+  private async recordInvitationChange(
+    tx: Prisma.TransactionClient, target: { userId: string; organizationId: string }, actorId: string | null,
+    action: 'resent' | 'revoked' | 'extended',
+  ) {
+    await tx.auditLog.create({
+      data: {
+        organizationId: target.organizationId, actorId, action: `user.invitation.${action}`,
+        targetType: 'user', targetId: target.userId, summary: `Invitation ${action}`,
+      },
+    });
   }
 
   /** Public: sets the password from an invitation link. A missing, used, revoked or expired link all answer the same way. */
@@ -302,14 +378,21 @@ export class AuthService {
     const passwordHash = await hashPassword(input.password);
 
     await this.prisma.$transaction(async (transaction) => {
+      await lockInvitationUser(transaction, invitation.userId, invitation.organizationId);
+      const activeInvitation = await transaction.user.findFirst({
+        where: { id: invitation.userId, organizationId: invitation.organizationId, status: 'invited', deletedAt: null },
+        select: { id: true },
+      });
+      if (!activeInvitation) throw new BadRequestException('Invalid or expired invitation');
+      const acceptedAt = new Date();
       const consumed = await transaction.userInvitation.updateMany({
-        where: { id: invitation.id, usedAt: null, revokedAt: null, expiresAt: { gt: now } },
-        data: { usedAt: now },
+        where: { id: invitation.id, usedAt: null, revokedAt: null, expiresAt: { gt: acceptedAt } },
+        data: { usedAt: acceptedAt },
       });
       if (consumed.count !== 1) throw new BadRequestException('Invalid or expired invitation');
       await transaction.userInvitation.updateMany({
-        where: { userId: invitation.userId, usedAt: null, revokedAt: null },
-        data: { revokedAt: now },
+        where: { userId: invitation.userId, organizationId: invitation.organizationId, usedAt: null, revokedAt: null },
+        data: { revokedAt: acceptedAt },
       });
       await transaction.user.update({ where: { id: invitation.userId }, data: { passwordHash, status: 'active', mustChangePassword: false, temporaryPasswordExpiresAt: null, temporaryPasswordUsedAt: null } });
       await transaction.auditLog.create({

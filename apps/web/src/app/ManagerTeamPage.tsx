@@ -1,3 +1,4 @@
+import { PendingInvitations } from '../features/admin-users/PendingInvitations.js';
 import { ObserverSessionsBlock } from './ObserverSessionsBlock.js';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -89,6 +90,7 @@ export function ManagerTeamPage() {
         </select>
       </div>
 
+      <PendingInvitations />
       <ObserverSessionsBlock />
       <DataTable columns={columns} density="dense" emptyMessage={t('manager.team.empty')} keyExtractor={(member) => member.userId} label={t('manager.team.title')} responsiveDetails={{ label: t('courses.details'), expandLabel: (member) => `${t('courses.details')}: ${memberName(member)}`, collapseLabel: (member) => `${t('courses.details')}: ${memberName(member)}` }} rows={filtered} />
     </ManagerPageLayout>

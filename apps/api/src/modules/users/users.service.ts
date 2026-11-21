@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
@@ -8,6 +8,7 @@ import { AuthService, hashPassword, loadPasswordPolicy } from '../auth/public.js
 import { countOpenObserverSessions, notifyObserverDeactivated } from '../checklists/public.js';
 import { ManagerTeamScope } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
+import { OrganizationAccessScopeService } from '../organization-access-scope/public.js';
 import { assertNoRoleChange, UserRegistrarAccess, type Registrar } from './user-registrar-access.js';
 import {
   createBulkUserItemSchema,
@@ -62,6 +63,7 @@ type ImportRow = {
 @Injectable()
 export class UsersService {
   private readonly registrars: UserRegistrarAccess;
+  private readonly invitationScope: OrganizationAccessScopeService;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -70,6 +72,7 @@ export class UsersService {
     private readonly authService?: AuthService,
   ) {
     this.registrars = new UserRegistrarAccess(prisma);
+    this.invitationScope = new OrganizationAccessScopeService(prisma, teamScope);
   }
 
   async listUsers(actor: TeamScopeActor, page: number, pageSize: number, search?: string, status?: ListUsersQuery['status']) {
@@ -96,6 +99,64 @@ export class UsersService {
       this.prisma.user.count({ where }),
     ]);
     return { items, page, pageSize, total };
+  }
+
+  async listInvitations(actor: TeamScopeActor, page: number, pageSize: number) {
+    const where = {
+      ...(await this.invitationScope.user(actor)),
+      organizationId: actor.organizationId,
+      status: 'invited' as const,
+      deletedAt: null,
+    };
+    const [users, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: (page - 1) * pageSize, take: pageSize,
+        select: {
+          id: true, firstName: true, lastName: true, middleName: true, email: true,
+          invitations: {
+            where: { organizationId: actor.organizationId },
+            orderBy: [{ createdAt: 'desc' }, { sendCount: 'desc' }, { id: 'desc' }], take: 1,
+            select: { createdAt: true, sendCount: true, expiresAt: true, revokedAt: true, usedAt: true },
+          },
+        },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+    const now = new Date();
+    const items = users.map(({ invitations: [latest], ...user }) => ({
+      ...user,
+      sentAt: latest?.createdAt ?? null,
+      sendCount: latest?.sendCount ?? 0,
+      expiresAt: latest?.expiresAt ?? null,
+      status: !latest ? 'unsent' : latest.revokedAt || latest.usedAt ? 'revoked' : latest.expiresAt <= now ? 'expired' : 'pending',
+    }));
+    return { items, page, pageSize, total };
+  }
+
+  async resendInvitation(actor: TeamScopeActor, userId: string) {
+    return this.authService!.sendInvitation(userId, actor.organizationId, actor.id, await this.invitationScope.user(actor));
+  }
+
+  async resendInvitations(actor: TeamScopeActor, userIds: string[]) {
+    const scope = await this.invitationScope.user(actor);
+    const items = [];
+    for (let start = 0; start < userIds.length; start += 5) {
+      const batch = await Promise.all(userIds.slice(start, start + 5).map(async (userId) => {
+        try {
+          return { userId, status: 'sent', ...(await this.authService!.sendInvitation(userId, actor.organizationId, actor.id, scope)) };
+        } catch (error) {
+          const code = error instanceof HttpException ? error.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+          const status = code === HttpStatus.NOT_FOUND ? 'notFound' : code === HttpStatus.TOO_MANY_REQUESTS ? 'rateLimited' : 'failed';
+          return { userId, status };
+        }
+      }));
+      items.push(...batch);
+    }
+    return { items };
+  }
+
+  async changeInvitation(actor: TeamScopeActor, userId: string, action: 'revoked' | 'extended') {
+    return this.authService!.changeInvitation(userId, actor.organizationId, actor.id, await this.invitationScope.user(actor), action);
   }
 
   async getUser(userId: string, actor: TeamScopeActor) {
