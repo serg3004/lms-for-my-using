@@ -1770,11 +1770,23 @@ organization-scoped registrars may omit it. All supplied departments must belong
 The user's organization must match the actor's organization. User, role, primary department membership,
 and (for passwordless single creation) invitation token are written in one transaction. Any write failure
 rolls back that transaction, including every valid row in a bulk/import batch. Import still reports invalid
-rows separately; validateOnly writes nothing. Bulk/import still require passwords. Invitation mail is sent
+rows separately; validateOnly writes nothing. Bulk still requires passwords; import rows may omit them (PR 492, below). Invitation mail is sent
 only after commit; unavailable mail keeps the existing one-time link fallback. The creation dialog sends
 one POST /users request containing the chosen role and department, with no subsequent POST /memberships.
 Delegated registrars also get 403 for `role` in `PATCH /users/{id}` and 404 for users outside their scope or
 holding a role above `learner`.
+
+User import rows (PR 492): a `POST /users/import` row may omit `password`; such a row creates an `invited` user with an
+invitation (same token, expiry and mail as single creation, written in the batch transaction, sent after commit in groups of
+ten; `invited` and `invitationDelivered` in the row report say whether mail went out). A row may also carry `department`
+(title, case-insensitive, active departments of the organization) and `role` (a built-in role key or its name in any interface
+language) which win over the batch `departmentId`/`role`. A title that matches no department, matches several in the allowed
+area, or lies outside the registrar's tree, an unknown role, and a role from a non-administrator each fail that row only
+(`Department not found`, `Department name is ambiguous`, `The department is outside your area`, `Role not found`,
+`Roles are granted by an administrator`). A department-limited registrar may leave the batch department empty when every
+row names its own (`Department is required` otherwise). Rows with a password and no placement behave as before. The
+web page splits large files into requests of at most 100 rows; a second upload of the same file creates nobody twice
+(`User email already exists in organization`).
 
 `POST /users/{id}/reset-password` (administrator, manager of the team, or a custom role with `user.reset-password`)
 issues a one-hour single-use reset link for an active user in the caller's scope (`404` outside it, `409` for an inactive

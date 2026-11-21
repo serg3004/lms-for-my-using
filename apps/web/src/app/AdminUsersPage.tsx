@@ -104,7 +104,7 @@ export function AdminUsersPage() {
       eyebrow={t('admin.users.eyebrow', 'Access management')}
       title={t('admin.users.title', 'Users')}
       subtitle={t('admin.users.subtitle', 'Manage organization users and their roles.')}
-      action={<button className="admin-btn admin-btn--primary" onClick={() => open('create')} type="button">{t('admin.users.createButton', 'Create user')}</button>}
+      action={<div className="td-actions"><a className="admin-btn admin-btn--secondary" href="/admin/users/import">{t('usersImport.button')}</a><button className="admin-btn admin-btn--primary" onClick={() => open('create')} type="button">{t('admin.users.createButton', 'Create user')}</button></div>}
     />
     <PendingInvitations />
     <AdminUsersFilters filters={usersQuery.filters} onChange={usersQuery.setFilters} />

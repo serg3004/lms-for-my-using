@@ -96,3 +96,13 @@ export type CreateBulkUsersInput = z.infer<typeof createBulkUsersSchema>;
 export type ImportUsersInput = z.infer<typeof importUsersSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type UpdateUserStatusInput = z.infer<typeof updateUserStatusSchema>;
+
+/**
+ * PR 492: a row of an import file. The password is optional (no password: an email invitation), the department is
+ * named by its title and the role by its key or its name in any interface language; the service resolves both per row.
+ */
+export const importUserItemSchema = createBulkUserItemSchema.extend({
+  password: createUserSchema.shape.password.optional(),
+  department: z.string().trim().min(1).max(160).optional(),
+  role: z.string().trim().min(1).max(40).optional(),
+});

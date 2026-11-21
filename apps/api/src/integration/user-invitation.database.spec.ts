@@ -284,4 +284,72 @@ describe('email invitation — database', () => {
     )));
   });
 
+  type ImportReport = { createdCount: number; skippedCount: number; rows: Array<{ status: string; errors: string[]; invited?: boolean; invitationDelivered?: boolean }> };
+  const reportOf = async (response: Response) => {
+    const body = (await response.json()) as { data?: ImportReport } & Partial<ImportReport>;
+    return (body.data ?? body) as ImportReport;
+  };
+
+  it('PR 492: imports rows without a password as invitations, places them by department and role names, and never duplicates on a second upload', async () => {
+    const admin = await createUser('import-admin', 'admin');
+    const headers = await headersFor(admin);
+    const department = await prisma.department.create({ data: { organizationId, name: 'Склад импорта' } });
+    const email = `imported-${randomUUID()}@example.test`;
+    const payload = { organizationId, mode: 'create', users: [{ email, firstName: 'Айгуль', lastName: 'Импорт', department: 'склад импорта', role: 'Наставник' }] };
+
+    const first = await post('/users/import', payload, headers);
+    expect(first.status).toBe(201);
+    const report = await reportOf(first);
+    expect(report.createdCount).toBe(1);
+    expect(report.rows[0]).toMatchObject({ status: 'created', invited: true, invitationDelivered: false });
+
+    const user = await prisma.user.findFirstOrThrow({ where: { organizationId, email }, include: { memberships: true, departmentMemberships: true, invitations: true } });
+    expect(user.status).toBe('invited');
+    expect(user.memberships.map((m) => m.role)).toEqual(['mentor']);
+    expect(user.departmentMemberships).toEqual([expect.objectContaining({ departmentId: department.id, isPrimary: true })]);
+    expect(user.invitations).toHaveLength(1);
+
+    const second = await reportOf(await post('/users/import', payload, headers));
+    expect(second.createdCount).toBe(0);
+    expect(second.rows[0]?.errors).toContain('User email already exists in organization');
+    expect(await prisma.user.count({ where: { organizationId, email } })).toBe(1);
+  });
+
+  it('PR 492: refuses rows with an unknown or ambiguous department and an unknown role, and creates nothing in validation mode', async () => {
+    const admin = await createUser('import-admin2', 'admin');
+    const headers = await headersFor(admin);
+    await prisma.department.createMany({ data: [{ organizationId, name: 'Двойник' }, { organizationId, name: 'двойник' }] });
+    const stamp = randomUUID();
+    const row = (label: string, extra: Record<string, string>) => ({ email: `${label}-${stamp}@example.test`, firstName: label, lastName: 'Row', ...extra });
+    const report = await reportOf(await post('/users/import', { organizationId, mode: 'validateOnly', users: [
+      row('missing', { department: 'Нет такого' }), row('ambiguous', { department: 'Двойник' }), row('role', { role: 'король' }), row('fine', {}),
+    ] }, headers));
+    expect(report.rows.map((entry) => entry.errors[0])).toEqual(['Department not found', 'Department name is ambiguous', 'Role not found', undefined]);
+    expect(await prisma.user.count({ where: { organizationId, email: { contains: stamp } } })).toBe(0);
+
+    const created = await reportOf(await post('/users/import', { organizationId, mode: 'create', users: [row('missing2', { department: 'Нет такого' }), row('fine2', {})] }, headers));
+    expect(created.createdCount).toBe(1);
+    expect(created.rows.map((entry) => entry.status)).toEqual(['skipped', 'created']);
+  });
+
+  it('PR 492: a manager imports only into the own team, with no roles, and a row outside the area is refused on its own', async () => {
+    const manager = await createUser('import-manager', 'manager');
+    const own = await prisma.department.create({ data: { organizationId, name: 'Своя команда импорта' } });
+    const child = await prisma.department.create({ data: { organizationId, parentId: own.id, name: 'Дочерняя команда импорта' } });
+    const outside = await prisma.department.create({ data: { organizationId, name: 'Чужая команда импорта' } });
+    await prisma.departmentManager.create({ data: { organizationId, userId: manager.userId, departmentId: own.id, type: 'DIRECT' } });
+    const headers = await headersFor(manager);
+    const stamp = randomUUID();
+    const row = (label: string, extra: Record<string, string>) => ({ email: `${label}-${stamp}@example.test`, firstName: label, lastName: 'Team', ...extra });
+
+    const report = await reportOf(await post('/users/import', { organizationId, mode: 'create', users: [
+      row('inside', { department: child.name }), row('outside', { department: outside.name }), row('nodept', {}), row('role', { department: own.name, role: 'admin' }),
+    ] }, headers));
+    expect(report.rows.map((entry) => entry.errors[0])).toEqual([undefined, 'The department is outside your area', 'Department is required', 'Roles are granted by an administrator']);
+    expect(report.createdCount).toBe(1);
+    const created = await prisma.user.findFirstOrThrow({ where: { organizationId, email: `inside-${stamp}@example.test` }, include: { memberships: true, departmentMemberships: true } });
+    expect(created.memberships.map((m) => m.role)).toEqual(['learner']);
+    expect(created.departmentMemberships[0]?.departmentId).toBe(child.id);
+  });
+
 });

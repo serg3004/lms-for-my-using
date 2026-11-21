@@ -8,6 +8,7 @@ import zhCommon from './locales/zh/common.json';
 import { loginResources } from './loginResources.js';
 import { passwordResetResources } from './passwordResetResources.js';
 import { securityResources } from './securityResources.js';
+import { usersImportResources } from './usersImportResources.js';
 
 export const DEFAULT_LOCALE = 'ru';
 
@@ -17,10 +18,10 @@ void i18next.use(initReactI18next).init({
   lng: DEFAULT_LOCALE,
   fallbackLng: DEFAULT_LOCALE,
   resources: {
-    ru: { translation: { ...ruCommon, login: loginResources.ru, passwordReset: passwordResetResources.ru, security: securityResources.ru } },
-    en: { translation: { ...enCommon, login: loginResources.en, passwordReset: passwordResetResources.en, security: securityResources.en } },
-    kk: { translation: { ...kkCommon, login: loginResources.kk, passwordReset: passwordResetResources.kk, security: securityResources.kk } },
-    zh: { translation: { ...zhCommon, login: loginResources.zh, passwordReset: passwordResetResources.zh, security: securityResources.zh } },
+    ru: { translation: { ...ruCommon, login: loginResources.ru, passwordReset: passwordResetResources.ru, security: securityResources.ru, usersImport: usersImportResources.ru } },
+    en: { translation: { ...enCommon, login: loginResources.en, passwordReset: passwordResetResources.en, security: securityResources.en, usersImport: usersImportResources.en } },
+    kk: { translation: { ...kkCommon, login: loginResources.kk, passwordReset: passwordResetResources.kk, security: securityResources.kk, usersImport: usersImportResources.kk } },
+    zh: { translation: { ...zhCommon, login: loginResources.zh, passwordReset: passwordResetResources.zh, security: securityResources.zh, usersImport: usersImportResources.zh } },
   },
   interpolation: {
     escapeValue: false,
