@@ -4,6 +4,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service.js';
 
 import { isMailConfigured, sendMail } from '../../common/mail/mailer.js';
+import { BrevoHttpError } from '../../common/mail/brevo.js';
 import { ResendHttpError } from '../../common/mail/resend.js';
 import { SmtpRejectedError } from '../../common/mail/smtp.js';
 import { checklistSessionReminderDeliveryErrors } from '../../common/observability/metrics.js';
@@ -39,7 +40,7 @@ class ChecklistSessionReminderDeliveryHttpError extends Error {
 }
 
 function classifyDeliveryFailure(error: unknown): DeliveryFailureReason {
-  if (error instanceof ChecklistSessionReminderDeliveryHttpError || error instanceof ResendHttpError || error instanceof SmtpRejectedError) return 'http_error';
+  if (error instanceof ChecklistSessionReminderDeliveryHttpError || error instanceof ResendHttpError || error instanceof BrevoHttpError || error instanceof SmtpRejectedError) return 'http_error';
   if (error instanceof DOMException && error.name === 'TimeoutError') return 'timeout';
   return 'network_error';
 }

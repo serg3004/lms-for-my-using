@@ -303,6 +303,9 @@ provider failure is counted in the delivery-error metric and never blocks the wo
 Resend is not configured but `SMTP_HOST`, `SMTP_USER` and `SMTP_PASS` are, the same two deliveries
 send through SMTP instead (`common/mail/smtp.ts`; `MAIL_FROM` defaults to `SMTP_USER`); Resend wins
 if both are set, and a server rejection (auth, sender, recipient) counts as `http_error`.
+Brevo (HTTPS API, for hosts that block outbound SMTP such as Railway Free/Trial/Hobby): when `BREVO_API_KEY`
+and `MAIL_FROM` are set (and Resend is not), the same deliveries send through `common/mail/brevo.ts`;
+priority is Resend, then Brevo, then SMTP, and a non-2xx Brevo response counts as `http_error`.
 
 ## Checklist session admin API (PR 292)
 

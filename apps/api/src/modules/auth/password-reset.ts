@@ -2,6 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 
 import { isMailConfigured, sendMail } from '../../common/mail/mailer.js';
+import { BrevoHttpError } from '../../common/mail/brevo.js';
 import { ResendHttpError } from '../../common/mail/resend.js';
 import { SmtpRejectedError } from '../../common/mail/smtp.js';
 import { passwordResetDeliveryErrors } from '../../common/observability/metrics.js';
@@ -35,7 +36,7 @@ class PasswordResetDeliveryHttpError extends Error {
 }
 
 function classifyDeliveryFailure(error: unknown): DeliveryFailureReason {
-  if (error instanceof PasswordResetDeliveryHttpError || error instanceof ResendHttpError || error instanceof SmtpRejectedError) return 'http_error';
+  if (error instanceof PasswordResetDeliveryHttpError || error instanceof ResendHttpError || error instanceof BrevoHttpError || error instanceof SmtpRejectedError) return 'http_error';
   if (error instanceof DOMException && error.name === 'TimeoutError') return 'timeout';
   return 'network_error';
 }
