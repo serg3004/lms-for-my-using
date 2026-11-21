@@ -16,6 +16,7 @@ import { refreshReuse } from '../../common/observability/metrics.js';
 import { AuthenticatedAccess, PublicAccess } from './roles.js';
 import {
   LoginInput,
+  changePasswordSchema,
   loginSchema,
   invitationAcceptSchema,
   passwordResetConfirmSchema,
@@ -132,6 +133,15 @@ export class AuthController {
   acceptInvitation(@Body() body: unknown) {
     const input = invitationAcceptSchema.parse(body);
     return this.authService.acceptInvitation(input);
+  }
+
+  @Post('change-password')
+  @AuthenticatedAccess()
+  changePassword(@Req() request: AuthRequest, @Body() body: unknown) {
+    const accessToken = resolveAccessToken(request.headers);
+    assertValidCsrf(request.headers, request.method, accessToken.source);
+    const input = changePasswordSchema.parse(body);
+    return this.authService.changePassword(accessToken.token, input);
   }
 
   @Get('me')

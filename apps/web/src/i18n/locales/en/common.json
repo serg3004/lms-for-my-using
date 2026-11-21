@@ -353,7 +353,6 @@
       "emailRequired": "Email is required",
       "emailInvalid": "Enter a valid email address",
       "passwordRequired": "Password is required",
-      "passwordTooShort": "Password must be at least 8 characters",
       "duplicateEmail": "A user with this email already exists",
       "saveFailed": "Failed to save user. Try again.",
       "status": {

@@ -1,13 +1,16 @@
 import { BadRequestException, Injectable, Logger, Optional, UnauthorizedException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { type CurrentUser, type InvitationAcceptInput, type LoginInput, type PasswordResetConfirmInput, type PasswordResetRequestInput, type UpdatePreferencesInput, type UserRole } from './auth.schemas.js';
+import { type CurrentUser, type ChangePasswordInput, type InvitationAcceptInput, type LoginInput, type PasswordResetConfirmInput, type PasswordResetRequestInput, type UpdatePreferencesInput, type UserRole } from './auth.schemas.js';
 import { type JwtClaims, signJwt, verifyJwt } from './auth.tokens.js';
 import { createRefreshToken } from './auth.refresh-tokens.js';
 import { refreshTokenLifetimeMs } from './auth.lifecycle.js';
 import { hashPassword, verifyPassword } from './passwords.js';
+import { buildPasswordChangedMail } from './password-changed-mail.js';
 import { buildInvitationMail, createInvitationToken, hashInvitationToken, invitationLifetimeDays, invitationLifetimeMs } from './user-invitation.js';
 import { isMailConfigured, sendMail } from '../../common/mail/mailer.js';
+import { assertPasswordPolicy, passwordPolicyError } from '../../common/password-policy.js';
+import { isPasswordReused, loadPasswordPolicy, rememberReplacedPassword } from './password-policy.js';
 import { createPasswordResetToken, hashPasswordResetToken, PasswordResetDelivery, passwordResetLifetimeMs } from './password-reset.js';
 
 const currentUserSelect = {
@@ -233,6 +236,13 @@ export class AuthService {
     if (!invitation || invitation.usedAt || invitation.revokedAt || invitation.expiresAt <= now || invitation.user.status !== 'invited' || invitation.user.deletedAt) {
       throw new BadRequestException('Invalid or expired invitation');
     }
+    const invitedUser = await this.prisma.user.findUnique({
+      where: { id: invitation.userId },
+      select: { id: true, organizationId: true, email: true, firstName: true, lastName: true, middleName: true, passwordHash: true },
+    });
+    if (!invitedUser) throw new BadRequestException('Invalid or expired invitation');
+    // The link stays usable after a refused password, so the person can try again.
+    await this.assertPasswordAllowed(invitedUser, input.password, { checkReuse: false });
     const passwordHash = await hashPassword(input.password);
 
     await this.prisma.$transaction(async (transaction) => {
@@ -264,7 +274,6 @@ export class AuthService {
   async confirmPasswordReset(input: PasswordResetConfirmInput) {
     const now = new Date();
     const tokenHash = hashPasswordResetToken(input.token);
-    const passwordHash = await hashPassword(input.password);
 
     const token = await this.prisma.passwordResetToken.findUnique({
       where: { tokenHash },
@@ -273,6 +282,14 @@ export class AuthService {
     if (!token || token.usedAt || token.expiresAt <= now) {
       throw new BadRequestException('Invalid or expired password reset token');
     }
+    const resetUser = await this.prisma.user.findUnique({
+      where: { id: token.userId },
+      select: { id: true, organizationId: true, email: true, firstName: true, lastName: true, middleName: true, passwordHash: true },
+    });
+    if (!resetUser) throw new BadRequestException('Invalid or expired password reset token');
+    // A refused password does not use up the link.
+    await this.assertPasswordAllowed(resetUser, input.password);
+    const passwordHash = await hashPassword(input.password);
 
     await this.prisma.$transaction(async (transaction) => {
       const consumed = await transaction.passwordResetToken.updateMany({
@@ -281,6 +298,7 @@ export class AuthService {
       });
       if (consumed.count !== 1) throw new BadRequestException('Invalid or expired password reset token');
 
+      await rememberReplacedPassword(transaction, resetUser, resetUser.passwordHash);
       await transaction.user.update({ where: { id: token.userId }, data: { passwordHash } });
       await transaction.session.updateMany({
         where: { userId: token.userId, organizationId: token.organizationId, revokedAt: null },
@@ -288,6 +306,72 @@ export class AuthService {
       });
     });
 
+    return logoutAccepted;
+  }
+
+  /** Throws a 400 listing every rule the password breaks; used wherever a user's own password is set. */
+  private async assertPasswordAllowed(
+    user: { id: string; organizationId: string; email: string; firstName: string; lastName: string; middleName: string | null; passwordHash: string },
+    password: string,
+    options: { checkReuse?: boolean } = {},
+  ) {
+    const policy = await loadPasswordPolicy(this.prisma, user.organizationId);
+    assertPasswordPolicy(password, policy, user);
+    if (options.checkReuse !== false && await isPasswordReused(this.prisma, user, password, policy.historyCount)) {
+      throw passwordPolicyError(['reused'], policy);
+    }
+  }
+
+  /**
+   * PR 488: the signed-in user changes their own password. The current one must be right (401 otherwise, so a stolen
+   * session alone cannot do it), the new one follows the organization policy, every other session of the user ends
+   * and the current one stays. The audit entry and the "password changed" mail carry no password.
+   */
+  async changePassword(accessToken: string, input: ChangePasswordInput) {
+    let claims: JwtClaims;
+    try {
+      claims = await verifyJwt(accessToken);
+      await this.validateSession(claims.jti);
+    } catch {
+      throw new UnauthorizedException('Invalid token');
+    }
+    const user = await this.prisma.user.findFirst({
+      where: { id: claims.sub, organizationId: claims.organizationId, status: 'active', deletedAt: null },
+      select: { id: true, organizationId: true, email: true, firstName: true, lastName: true, middleName: true, locale: true, passwordHash: true },
+    });
+    if (!user) throw new UnauthorizedException('Invalid token');
+    if (!(await verifyPassword(input.currentPassword, user.passwordHash))) {
+      throw new UnauthorizedException({ error: { code: 'AUTH_INVALID_CREDENTIALS', message: 'The current password is incorrect' } });
+    }
+    await this.assertPasswordAllowed(user, input.newPassword);
+    const passwordHash = await hashPassword(input.newPassword);
+    const now = new Date();
+
+    await this.prisma.$transaction(async (transaction) => {
+      await rememberReplacedPassword(transaction, user, user.passwordHash);
+      await transaction.user.update({ where: { id: user.id }, data: { passwordHash } });
+      await transaction.session.updateMany({
+        where: { userId: user.id, organizationId: user.organizationId, revokedAt: null, jti: { not: claims.jti } },
+        data: { revokedAt: now },
+      });
+      await transaction.auditLog.create({
+        data: {
+          organizationId: user.organizationId,
+          actorId: user.id,
+          action: 'user.password_changed',
+          targetType: 'user',
+          targetId: user.id,
+          summary: 'The user changed their own password',
+        },
+      });
+    });
+
+    if (isMailConfigured()) {
+      await sendMail({ to: user.email, ...buildPasswordChangedMail(user.locale, { firstName: user.firstName, at: now }) }).catch(() => {
+        // Never log the error text or the address: provider errors can embed them.
+        this.logger.warn('Password changed notification failed');
+      });
+    }
     return logoutAccepted;
   }
 

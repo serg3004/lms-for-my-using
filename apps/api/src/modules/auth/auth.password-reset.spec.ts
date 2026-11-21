@@ -38,16 +38,24 @@ function createHarness(options: { userExists?: boolean; expired?: boolean } = {}
     }),
     findUnique: jest.fn(async () => resetRecord),
   };
+  const passwordHistory = {
+    findMany: jest.fn(async () => []),
+    create: jest.fn(async () => ({})),
+    deleteMany: jest.fn(async () => ({ count: 0 })),
+  };
   const transaction = {
     passwordResetToken,
     user: { update: jest.fn(async ({ data }: { data: { passwordHash: string } }) => { passwordHash = data.passwordHash; }) },
+    passwordHistory,
     session: { updateMany: jest.fn(async () => { sessionsRevoked = true; return { count: 1 }; }) },
   };
   const prisma = {
     user: {
       findFirst: jest.fn(async () => options.userExists === false ? null : { id: userId, organizationId, email: 'learner@example.com' }),
+      findUnique: jest.fn(async () => ({ id: userId, organizationId, email: 'learner@example.com', firstName: 'Lena', lastName: 'Learner', middleName: null, passwordHash: 'scrypt:old:00' })),
     },
-    organization: { findFirst: jest.fn(async ({ where }: { where: { slug: string } }) => where.slug === 'demo-company' ? { id: organizationId } : null) },
+    passwordHistory,
+    organization: { findUnique: jest.fn(async () => ({ passwordMinLength: 10, passwordHistoryCount: 3 })), findFirst: jest.fn(async ({ where }: { where: { slug: string } }) => where.slug === 'demo-company' ? { id: organizationId } : null) },
     passwordResetToken,
     $transaction: jest.fn(async (input: unknown) => {
       if (typeof input === 'function') return input(transaction);
@@ -94,19 +102,19 @@ describe('password reset flow', () => {
     await harness.service.requestPasswordReset(request);
     const token = harness.getDelivered()!.token;
 
-    await expect(harness.service.confirmPasswordReset({ token, password: 'NewPassword1!' })).resolves.toEqual({ accepted: true });
-    expect(await verifyPassword('NewPassword1!', harness.getPasswordHash())).toBe(true);
+    await expect(harness.service.confirmPasswordReset({ token, password: 'NewPassword123' })).resolves.toEqual({ accepted: true });
+    expect(await verifyPassword('NewPassword123', harness.getPasswordHash())).toBe(true);
     expect(await verifyPassword('OldPassword1!', harness.getPasswordHash() || oldHash)).toBe(false);
     expect(harness.sessionsRevoked()).toBe(true);
-    await expect(harness.service.confirmPasswordReset({ token, password: 'AnotherPass1!' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(harness.service.confirmPasswordReset({ token, password: 'AnotherPass123' })).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects expired and unknown tokens', async () => {
     const expired = createHarness({ expired: true });
     await expired.service.requestPasswordReset(request);
 
-    await expect(expired.service.confirmPasswordReset({ token: expired.getDelivered()!.token, password: 'NewPassword1!' })).rejects.toBeInstanceOf(BadRequestException);
-    await expect(createHarness().service.confirmPasswordReset({ token: 'x'.repeat(43), password: 'NewPassword1!' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(expired.service.confirmPasswordReset({ token: expired.getDelivered()!.token, password: 'NewPassword123' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(createHarness().service.confirmPasswordReset({ token: 'x'.repeat(43), password: 'NewPassword123' })).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('validates token and strong password input', () => {

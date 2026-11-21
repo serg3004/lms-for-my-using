@@ -354,6 +354,9 @@ model Organization {
   longreadEnabled            Boolean                     @default(false) @map("longread_enabled")
   /// PR 480: custom roles grant rights only while an administrator has switched them on for the organization; off by default.
   customRolesEnabled         Boolean                     @default(false) @map("custom_roles_enabled")
+  /// PR 488: password policy of the organization, set by an administrator.
+  passwordMinLength          Int                         @default(10) @map("password_min_length")
+  passwordHistoryCount       Int                         @default(3) @map("password_history_count")
   createdAt                  DateTime                    @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                  DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                  DateTime?                   @map("deleted_at") @db.Timestamptz
@@ -461,6 +464,7 @@ model User {
   sessions                   Session[]
   passwordResetTokens        PasswordResetToken[]
   invitations                UserInvitation[]
+  passwordHistory            PasswordHistory[]
   instructedCourses          CourseInstructor[]
   groupMemberships           GroupMember[]
   managedGroups              ManagerGroup[]
@@ -507,6 +511,20 @@ model PasswordResetToken {
   @@index([userId, organizationId])
   @@index([expiresAt])
   @@map("password_reset_tokens")
+}
+
+/// PR 488: hashes of earlier passwords of a user, kept only to refuse reusing the last few.
+model PasswordHistory {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  passwordHash   String   @map("password_hash")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("password_history")
 }
 
 model UserInvitation {

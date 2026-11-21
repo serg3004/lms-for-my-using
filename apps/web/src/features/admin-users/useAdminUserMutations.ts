@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../../shared/apiClient.js';
+import { passwordViolationMessages } from '../../shared/passwordPolicyErrors.js';
 import type { FormValidationErrors } from '../../shared/formValidation.js';
 import { toCreateUserPayload, toUpdateUserPayload } from './mappers.js';
 import type { InvitationResult } from './ResetPasswordDialogs.js';
@@ -36,6 +37,8 @@ export function useAdminUserMutations(reload: () => Promise<void>) {
       if (error instanceof ApiClientError && error.status === 409) {
         return { ok: false, formErrors: { email: t('admin.users.duplicateEmail', 'A user with this email already exists') } };
       }
+      const violations = passwordViolationMessages(error, t);
+      if (violations) return { ok: false, formErrors: { password: violations.join(' ') } };
       return { ok: false, message: error instanceof ApiClientError ? error.message : t('admin.users.saveFailed', 'Failed to save user. Try again.') };
     } finally {
       setIsSaving(false);

@@ -353,7 +353,6 @@
       "emailRequired": "请填写邮箱",
       "emailInvalid": "请输入有效的邮箱地址",
       "passwordRequired": "请填写密码",
-      "passwordTooShort": "密码至少需要8个字符",
       "duplicateEmail": "该邮箱的用户已存在",
       "saveFailed": "保存用户失败，请重试。",
       "status": {

@@ -15,7 +15,7 @@ const user: AdminUserSummary = {
 describe('admin users model', () => {
   it('maps a user to an edit form without a password', () => expect(toEditUserForm(user)).toMatchObject({ id: 'u1', password: '', role: 'admin', middleName: '' }));
   it('removes the password without changing non-sensitive fields', () => expect(withoutPassword({ ...EMPTY_USER_FORM, email: 'kept@example.com', password: 'Secret123!' })).toMatchObject({ email: 'kept@example.com', password: '' }));
-  it('validates create fields and password strength', () => expect(validateUserForm({ ...EMPTY_USER_FORM, email: 'bad', password: 'short' }, 'create', i18next.t)).toEqual({ lastName: 'Укажите фамилию', firstName: 'Укажите имя', email: 'Введите корректный email', password: 'Пароль должен быть не короче 8 символов' }));
+  it('validates create fields (password rules come from the organization policy on the server)', () => expect(validateUserForm({ ...EMPTY_USER_FORM, email: 'bad', password: 'short' }, 'create', i18next.t)).toEqual({ lastName: 'Укажите фамилию', firstName: 'Укажите имя', email: 'Введите корректный email' }));
   it('does not require a password while editing', () => expect(validateUserForm(toEditUserForm(user), 'edit', i18next.t)).toEqual({}));
 });
 

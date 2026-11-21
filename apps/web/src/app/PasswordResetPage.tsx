@@ -7,10 +7,10 @@ import { ApiClientError } from '../shared/apiClient.js';
 import { SkipLink } from '../shared/ui.js';
 import { LoginLanguageMenu } from '../shared/LoginLanguageMenu.js';
 import { PasswordInput } from '../shared/PasswordInput.js';
+import { passwordViolationMessages } from '../shared/passwordPolicyErrors.js';
 
 // The same short name or ID of the organization that the sign-in form accepts.
 const organizationPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const strongPasswordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{12,255}$/;
 
 type View = 'request' | 'sent' | 'confirm' | 'invalid' | 'success';
 
@@ -29,6 +29,7 @@ export function PasswordResetPage({ mode = 'reset' }: { mode?: 'reset' | 'invita
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [passwordProblems, setPasswordProblems] = useState<string[]>([]);
 
   async function submitRequest(event: FormEvent) {
     event.preventDefault();
@@ -55,10 +56,11 @@ export function PasswordResetPage({ mode = 'reset' }: { mode?: 'reset' | 'invita
   async function submitPassword(event: FormEvent) {
     event.preventDefault();
     const nextErrors: Record<string, string> = {};
-    if (!strongPasswordPattern.test(password)) nextErrors.password = 'passwordReset.passwordInvalid';
+    if (!password) nextErrors.password = 'passwordReset.required';
     if (password !== passwordConfirmation) nextErrors.passwordConfirmation = 'passwordReset.passwordMismatch';
     setErrors(nextErrors);
     setErrorMessage(null);
+    setPasswordProblems([]);
     if (Object.keys(nextErrors).length) return;
 
     setIsSubmitting(true);
@@ -68,7 +70,9 @@ export function PasswordResetPage({ mode = 'reset' }: { mode?: 'reset' | 'invita
       setPasswordConfirmation('');
       setView('success');
     } catch (error) {
-      if (error instanceof ApiClientError && error.status === 400) setView('invalid');
+      const violations = passwordViolationMessages(error, t);
+      if (violations) setPasswordProblems(violations);
+      else if (error instanceof ApiClientError && error.status === 400) setView('invalid');
       else setErrorMessage('passwordReset.confirmError');
     } finally {
       setIsSubmitting(false);
@@ -105,6 +109,7 @@ export function PasswordResetPage({ mode = 'reset' }: { mode?: 'reset' | 'invita
                 <ResetField id="reset-password" label={t('passwordReset.password')} error={errors.password ? t(errors.password) : undefined}><PasswordInput id="reset-password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} /></ResetField>
                 <ResetField id="reset-password-confirmation" label={t('passwordReset.confirmPassword')} error={errors.passwordConfirmation ? t(errors.passwordConfirmation) : undefined}><PasswordInput id="reset-password-confirmation" autoComplete="new-password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} /></ResetField>
               </>}
+              {passwordProblems.length ? <ul className="login-form__error" role="alert">{passwordProblems.map((problem) => <li key={problem}>{problem}</li>)}</ul> : null}
               {errorMessage ? <p className="login-form__error" role="alert">{t(errorMessage)}</p> : null}
               <button className="login-form__submit" disabled={isSubmitting} type="submit">{t(view === 'confirm' ? (isSubmitting ? 'passwordReset.submitting' : 'passwordReset.submit') : (isSubmitting ? 'passwordReset.requesting' : 'passwordReset.request'))}</button>
               <Link className="password-reset-secondary" to="/login">{t('passwordReset.backToLogin')}</Link>

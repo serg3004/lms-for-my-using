@@ -48,3 +48,10 @@ export function confirmPasswordReset(input: PasswordResetConfirmInput) {
     body: JSON.stringify(input),
   });
 }
+
+export function changePassword(input: { currentPassword: string; newPassword: string }) {
+  return apiRequest<unknown>('/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}

@@ -18,3 +18,16 @@ export function saveOrganizationFeatures(organizationId: string, features: Organ
     body: JSON.stringify(features),
   });
 }
+
+export type OrganizationPasswordPolicy = { minLength: number; historyCount: number };
+
+export function getPasswordPolicy(organizationId: string) {
+  return apiRequest<OrganizationPasswordPolicy>(`/organizations/${encodeURIComponent(organizationId)}/password-policy`);
+}
+
+export function savePasswordPolicy(organizationId: string, policy: OrganizationPasswordPolicy) {
+  return apiRequest<OrganizationPasswordPolicy>(`/organizations/${encodeURIComponent(organizationId)}/password-policy`, {
+    method: 'PATCH',
+    body: JSON.stringify(policy),
+  });
+}

@@ -353,7 +353,6 @@
       "emailRequired": "Укажите email",
       "emailInvalid": "Введите корректный email",
       "passwordRequired": "Укажите пароль",
-      "passwordTooShort": "Пароль должен быть не короче 8 символов",
       "duplicateEmail": "Пользователь с таким email уже существует",
       "saveFailed": "Не удалось сохранить пользователя. Попробуйте снова.",
       "status": {

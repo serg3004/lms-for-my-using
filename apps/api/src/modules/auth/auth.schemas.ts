@@ -1,14 +1,8 @@
 import { z } from 'zod';
 import type { UserRole } from '@lms/shared/types/api';
 
-export const strongPasswordSchema = z
-  .string()
-  .min(12)
-  .max(255)
-  .regex(/[a-z]/, 'Password must contain a lowercase letter')
-  .regex(/[A-Z]/, 'Password must contain an uppercase letter')
-  .regex(/[0-9]/, 'Password must contain a number')
-  .regex(/[^A-Za-z0-9]/, 'Password must contain a special character');
+/** The password rules (length, letters and digits, name and e-mail, common and recent passwords) live in common/password-policy.ts and are applied by the services. */
+export const newPasswordSchema = z.string().min(1).max(255);
 
 export const userRoleSchema: z.ZodType<UserRole> = z.enum(['learner', 'instructor', 'mentor', 'manager', 'admin']);
 
@@ -34,13 +28,19 @@ export const passwordResetRequestSchema = z.object({
 
 export const passwordResetConfirmSchema = z.object({
   token: z.string().trim().min(32).max(512),
-  password: strongPasswordSchema,
+  password: newPasswordSchema,
 });
 
 export const invitationAcceptSchema = z.object({
   token: z.string().trim().min(32).max(512),
-  password: strongPasswordSchema,
+  password: newPasswordSchema,
 });
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(255),
+  newPassword: newPasswordSchema,
+});
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
 export const passwordResetAcceptedSchema = z.object({
   accepted: z.literal(true),

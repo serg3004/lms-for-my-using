@@ -3,7 +3,8 @@ import { ConflictException, Injectable, NotFoundException } from '@nestjs/common
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
-import { AuthService, hashPassword } from '../auth/public.js';
+import { assertPasswordPolicy, checkPassword, describePasswordViolations } from '../../common/password-policy.js';
+import { AuthService, hashPassword, loadPasswordPolicy } from '../auth/public.js';
 import { countOpenObserverSessions, notifyObserverDeactivated } from '../checklists/public.js';
 import { ManagerTeamScope } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
@@ -223,6 +224,7 @@ export class UsersService {
     const { password, ...userData } = input;
     delete userData.departmentId;
     const invite = password === undefined;
+    if (password !== undefined) assertPasswordPolicy(password, await loadPasswordPolicy(this.prisma, input.organizationId), input);
     if (invite && !this.authService) throw new ConflictException('Invitations are not available');
     // An invited user has no usable password until they accept: hash of a random secret nobody sees.
     const passwordHash = await hashPassword(password ?? randomBytes(32).toString('hex'));
@@ -274,6 +276,9 @@ export class UsersService {
     if (existingEmails.size > 0) {
       throw new ConflictException('User email already exists in organization');
     }
+
+    const policy = await loadPasswordPolicy(this.prisma, input.organizationId);
+    input.users.forEach((user) => assertPasswordPolicy(user.password, policy, user));
 
     const usersData = await Promise.all(
       input.users.map(async (user) => {
@@ -358,6 +363,15 @@ export class UsersService {
       if (row.data && (emailCounts.get(row.data.email) ?? 0) > 1) {
         row.report.status = 'skipped';
         row.report.errors.push('Duplicate user email in import payload');
+      }
+    });
+
+    const importPolicy = await loadPasswordPolicy(this.prisma, input.organizationId);
+    rows.forEach((row) => {
+      const violations = row.data ? checkPassword(row.data.password, importPolicy, row.data) : [];
+      if (violations.length > 0) {
+        row.report.status = 'skipped';
+        row.report.errors.push(`Password: ${describePasswordViolations(violations, importPolicy)}`);
       }
     });
 

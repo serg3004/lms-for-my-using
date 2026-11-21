@@ -5,6 +5,7 @@ export { OrganizationScope, organizationScopeMetadataKey } from './organization-
 export { OrganizationScopeGuard } from './organization-scope.guard.js';
 export { AuthService } from './auth.service.js';
 export { hashPassword } from './passwords.js';
+export { loadPasswordPolicy } from './password-policy.js';
 export {
   AuthenticatedAccess,
   PublicAccess,

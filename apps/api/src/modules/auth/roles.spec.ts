@@ -97,6 +97,8 @@ describe('rolePolicies', () => {
     themeSettingsWrite: ['admin'],
     organizationFeaturesRead: ['admin', 'manager', 'instructor', 'learner'],
     organizationFeaturesWrite: ['admin'],
+    passwordPolicyRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
+    passwordPolicyWrite: ['admin'],
     usersRead: ['admin', 'manager'],
     usersCreate: ['admin', 'manager'],
     usersImport: ['admin', 'manager'],
