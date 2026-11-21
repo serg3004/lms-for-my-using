@@ -213,15 +213,16 @@ describe('custom roles on user routes — database', () => {
     expect((await patch(headers, `/users/${other}`, { email: `o-${randomUUID()}@example.test`, firstName: 'Fine', lastName: 'Edit', role: 'manager' })).status).toBe(403);
   });
 
-  it('keeps the built-in administrator and manager as they were', async () => {
+  it('keeps built-in creation rights independent of the custom-role switch', async () => {
     const adminId = await createUser('builtin-admin', 'admin');
     const managerId = await createUser('builtin-manager', 'manager');
     const target = await createUser('builtin-target', 'learner');
+    await prisma.departmentManager.create({ data: { organizationId, userId: managerId, departmentId: deptA, type: 'DIRECT' } });
     for (const enabled of [false, true]) {
       await setSwitch(enabled);
-      const created = await post(await headersFor(managerId), '/users', newUser());
+      const created = await post(await headersFor(managerId), '/users', newUser({ departmentId: deptA1 }));
       expect(created.status).toBe(201);
-      expect((await json<{ memberships: unknown[] }>(created)).memberships).toEqual([]);
+      expect((await json<{ memberships: Array<{ role: string }> }>(created)).memberships.map((m) => m.role)).toEqual(['learner']);
       expect((await patch(await headersFor(adminId), `/users/${target}`, { email: `t-${randomUUID()}@example.test`, firstName: 'Promoted', lastName: 'User', role: 'instructor' })).status).toBe(200);
       expect((await prisma.membership.findMany({ where: { organizationId, userId: target } })).map((membership) => membership.role)).toEqual(['instructor']);
       await prisma.membership.deleteMany({ where: { organizationId, userId: target } });

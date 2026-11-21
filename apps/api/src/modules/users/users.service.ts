@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
@@ -212,8 +212,10 @@ export class UsersService {
   }
 
   async createUser(input: CreateUserRequestInput, actorId: string | null = null, actor?: TeamScopeActor) {
+    if (actor && actor.organizationId !== input.organizationId) throw new ForbiddenException('Organization mismatch');
+    if (input.role !== undefined && !actor?.roles.includes('admin')) throw new ForbiddenException('Roles are granted by an administrator');
     await this.ensureOrganizationExists(input.organizationId);
-    const registrar = await this.registrars.resolve(actor);
+    const registrar = await this.registrars.resolveCreation(actor);
     const departmentId = await this.resolvePlacement(registrar, input.organizationId, input.departmentId);
     const existingEmails = await this.findExistingEmails(input.organizationId, [input.email]);
 
@@ -225,6 +227,7 @@ export class UsersService {
     delete userData.departmentId;
     if (wantsTemporary && password !== undefined) throw new BadRequestException('A temporary password and a chosen password cannot be combined');
     if (wantsTemporary && !this.authService) throw new ConflictException('Temporary passwords are not available');
+    delete userData.role;
     const invite = password === undefined && !wantsTemporary;
     if (password !== undefined) assertPasswordPolicy(password, await loadPasswordPolicy(this.prisma, input.organizationId), input);
     if (invite && !this.authService) throw new ConflictException('Invitations are not available');
@@ -232,13 +235,13 @@ export class UsersService {
     const passwordHash = await hashPassword(password ?? randomBytes(32).toString('hex'));
     if (invite) userData.status = 'invited';
 
-    const created = registrar || departmentId
-      ? await this.prisma.$transaction(async (tx) => {
-          const user = await tx.user.create({ data: { ...userData, passwordHash }, select: { id: true } });
-          await this.placeNewUsers(tx, input.organizationId, [user.id], departmentId, registrar !== null, actorId);
-          return tx.user.findUniqueOrThrow({ where: { id: user.id, organizationId: input.organizationId }, select: userSelect });
-        })
-      : await this.prisma.user.create({ data: { ...userData, passwordHash }, select: userSelect });
+    const { created, deliverInvitation } = await this.prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({ data: { ...userData, passwordHash }, select: { id: true } });
+      await this.placeNewUsers(tx, input.organizationId, [user.id], departmentId, input.role ?? (registrar ? 'learner' : undefined), actorId);
+      const created = await tx.user.findUniqueOrThrow({ where: { id: user.id, organizationId: input.organizationId }, select: userSelect });
+      const deliverInvitation = invite ? await this.authService!.prepareInvitationFor({ ...created, organizationId: input.organizationId }, actorId, tx) : undefined;
+      return { created, deliverInvitation };
+    });
 
     await this.auditLog.record({
       organizationId: input.organizationId,
@@ -247,7 +250,7 @@ export class UsersService {
       targetType: 'user',
       targetId: created.id,
       summary: `Created user ${created.email}`,
-      ...(registrar || departmentId ? { metadata: { departmentId, ...(registrar ? { delegated: registrar.scope } : {}) } } : {}),
+      ...(registrar || departmentId || input.role ? { metadata: { departmentId, ...(registrar ? { delegated: registrar.scope } : {}) } } : {}),
     });
 
     if (wantsTemporary) {
@@ -265,10 +268,7 @@ export class UsersService {
     }
     if (!invite) return created;
 
-    const invitation = await this.authService!.issueInvitationFor(
-      { id: created.id, organizationId: input.organizationId, email: created.email, firstName: created.firstName, locale: created.locale },
-      actorId,
-    );
+    const invitation = await deliverInvitation!();
     await this.auditLog.record({
       organizationId: input.organizationId,
       actorId,
@@ -282,8 +282,10 @@ export class UsersService {
   }
 
   async createBulkUsers(input: CreateBulkUsersInput, actor?: TeamScopeActor) {
+    if (actor && actor.organizationId !== input.organizationId) throw new ForbiddenException('Organization mismatch');
+    if (input.role !== undefined && !actor?.roles.includes('admin')) throw new ForbiddenException('Roles are granted by an administrator');
     await this.ensureOrganizationExists(input.organizationId);
-    const registrar = await this.registrars.resolve(actor);
+    const registrar = await this.registrars.resolveCreation(actor);
     const departmentId = await this.resolvePlacement(registrar, input.organizationId, input.departmentId);
     const emails = input.users.map((user) => user.email);
     const existingEmails = await this.findExistingEmails(input.organizationId, emails);
@@ -308,11 +310,11 @@ export class UsersService {
       }),
     );
 
-    const users = registrar || departmentId
-      ? await this.createPlaced(usersData, input.organizationId, departmentId, registrar !== null, actor?.id ?? null)
+    const users = registrar || departmentId || input.role
+      ? await this.createPlaced(usersData, input.organizationId, departmentId, input.role ?? (registrar ? 'learner' : undefined), actor?.id ?? null)
       : await this.prisma.$transaction(usersData.map((data) => this.prisma.user.create({ data, select: userSelect })));
 
-    if (registrar || departmentId) {
+    if (registrar || departmentId || input.role) {
       await this.auditLog.record({
         organizationId: input.organizationId,
         actorId: actor?.id ?? null,
@@ -333,8 +335,10 @@ export class UsersService {
   }
 
   async importUsers(input: ImportUsersInput, actor?: TeamScopeActor) {
+    if (actor && actor.organizationId !== input.organizationId) throw new ForbiddenException('Organization mismatch');
+    if (input.role !== undefined && !actor?.roles.includes('admin')) throw new ForbiddenException('Roles are granted by an administrator');
     await this.ensureOrganizationExists(input.organizationId);
-    const registrar = await this.registrars.resolve(actor);
+    const registrar = await this.registrars.resolveCreation(actor);
     const departmentId = await this.resolvePlacement(registrar, input.organizationId, input.departmentId);
 
     const rows: ImportRow[] = input.users.map((rawUser, index) => {
@@ -418,12 +422,12 @@ export class UsersService {
         }),
       );
 
-      const users = registrar || departmentId
-        ? await this.createPlaced(usersData, input.organizationId, departmentId, registrar !== null, actor?.id ?? null)
+      const users = registrar || departmentId || input.role
+        ? await this.createPlaced(usersData, input.organizationId, departmentId, input.role ?? (registrar ? 'learner' : undefined), actor?.id ?? null)
         : await this.prisma.$transaction(
             usersData.map((data) => this.prisma.user.create({ data, select: { id: true, email: true } })),
           );
-      if (registrar || departmentId) {
+      if (registrar || departmentId || input.role) {
         await this.auditLog.record({
           organizationId: input.organizationId,
           actorId: actor?.id ?? null,
@@ -601,11 +605,11 @@ export class UsersService {
     organizationId: string,
     userIds: string[],
     departmentId: string | null,
-    asLearner: boolean,
+    role: CreateUserRequestInput['role'],
     actorId: string | null,
   ) {
-    if (asLearner) {
-      await tx.membership.createMany({ data: userIds.map((userId) => ({ organizationId, userId, role: 'learner' as const, assignedBy: actorId })) });
+    if (role) {
+      await tx.membership.createMany({ data: userIds.map((userId) => ({ organizationId, userId, role, assignedBy: actorId })) });
     }
     if (departmentId) {
       await tx.departmentMembership.createMany({ data: userIds.map((userId) => ({ organizationId, userId, departmentId, isPrimary: true })) });
@@ -616,13 +620,13 @@ export class UsersService {
     usersData: Array<Parameters<PrismaService['user']['create']>[0]['data']>,
     organizationId: string,
     departmentId: string | null,
-    asLearner: boolean,
+    role: CreateUserRequestInput['role'],
     actorId: string | null,
   ) {
     return this.prisma.$transaction(async (tx) => {
       const ids: string[] = [];
       for (const data of usersData) ids.push((await tx.user.create({ data, select: { id: true } })).id);
-      await this.placeNewUsers(tx, organizationId, ids, departmentId, asLearner, actorId);
+      await this.placeNewUsers(tx, organizationId, ids, departmentId, role, actorId);
       const created = await tx.user.findMany({ where: { id: { in: ids }, organizationId }, select: userSelect });
       const order = new Map(ids.map((id, index) => [id, index]));
       return created.sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));

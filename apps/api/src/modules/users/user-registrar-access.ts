@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { customUserScope } from '../auth/public.js';
+import { OrganizationAccessScopeService } from '../organization-access-scope/public.js';
 import { getSubtreeDepartmentIds } from '../departments/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
 
@@ -35,6 +36,13 @@ export class UserRegistrarAccess {
     return { scope, departmentIds };
   }
 
+  async resolveCreation(actor: TeamScopeActor | undefined): Promise<Registrar | null> {
+    if (actor?.roles.includes('admin')) return null;
+    const delegated = await this.resolve(actor);
+    if (delegated || !actor?.roles.includes('manager')) return delegated;
+    return { scope: 'department', departmentIds: await new OrganizationAccessScopeService(this.prisma).managedDepartmentIds(actor) };
+  }
+
   /** Users the registrar may see: the own department tree, or everybody for the organization scope. */
   readWhere(registrar: Registrar | null, organizationId: string): Prisma.UserWhereInput {
     if (!registrar || registrar.departmentIds === null) return {};
@@ -62,7 +70,6 @@ export class UserRegistrarAccess {
       if (!departmentId || !registrar.departmentIds.includes(departmentId)) {
         throw new ForbiddenException('The department is outside your area');
       }
-      return departmentId;
     }
     if (!departmentId) return null;
     const exists = await this.prisma.department.findFirst({ where: { id: departmentId, organizationId, status: 'active' }, select: { id: true } });

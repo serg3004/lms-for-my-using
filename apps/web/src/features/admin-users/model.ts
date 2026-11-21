@@ -24,6 +24,7 @@ export type AdminUserSummary = {
 
 export type UserForm = {
   id?: string;
+  departmentId?: string;
   email: string;
   password: string;
   /** PR 489: create with a server-made temporary password instead of an invitation or a chosen password. */

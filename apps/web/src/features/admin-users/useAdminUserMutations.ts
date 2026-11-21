@@ -25,9 +25,6 @@ export function useAdminUserMutations(reload: () => Promise<void>) {
         });
         if (created.invitation) invited = { user: created, ...created.invitation };
         if (created.temporaryPassword) temporary = { user: created, ...created.temporaryPassword };
-        if (form.role) await apiRequest('/memberships', {
-          method: 'POST', body: JSON.stringify({ organizationId, userId: created.id, role: form.role }),
-        });
       } else if (form.id) {
         await apiRequest<AdminUserSummary>(`/users/${form.id}`, {
           method: 'PATCH', body: JSON.stringify(toUpdateUserPayload(form)),

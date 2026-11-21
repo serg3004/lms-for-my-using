@@ -298,6 +298,10 @@
       "addInstructor": "Add"
     },
     "users": {
+      "fieldDepartment": "Department",
+      "noDepartmentOption": "— No department —",
+      "departmentsLoading": "Loading departments…",
+      "departmentsLoadError": "Unable to load departments. Close and reopen the dialog to retry.",
       "eyebrow": "Access management",
       "title": "Users",
       "subtitle": "Manage organization users and their roles.",

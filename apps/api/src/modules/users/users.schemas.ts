@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { paginationQuerySchema } from '../../common/pagination.schema.js';
 
+export const initialUserRoleSchema = z.enum(['learner', 'instructor', 'mentor', 'manager', 'admin']);
+
 export const userStatusSchema = z.enum(['active', 'invited', 'suspended', 'archived']);
 
 export const listUsersQuerySchema = paginationQuerySchema.extend({
@@ -33,6 +35,7 @@ export const createUserRequestSchema = createUserSchema.extend({
   departmentId: z.guid().optional(),
   /** PR 489: no password and no invitation: the server makes a temporary password, shown once, and the first sign-in leads to choosing their own. */
   temporaryPassword: z.boolean().optional(),
+  role: initialUserRoleSchema.optional(),
 });
 
 export const usersBulkCreateMaxItems = 50;
@@ -43,6 +46,7 @@ export const createBulkUsersSchema = z
   .object({
     organizationId: z.guid(),
     departmentId: z.guid().optional(),
+    role: initialUserRoleSchema.optional(),
     users: z.array(createBulkUserItemSchema).min(1).max(usersBulkCreateMaxItems),
   })
   .superRefine((input, context) => {
@@ -66,6 +70,7 @@ export const usersImportMaxItems = 100;
 export const importUsersSchema = z.object({
   organizationId: z.guid(),
   departmentId: z.guid().optional(),
+  role: initialUserRoleSchema.optional(),
   mode: z.enum(['validateOnly', 'create']).default('validateOnly'),
   users: z.array(z.record(z.string(), z.unknown())).min(1).max(usersImportMaxItems),
 });

@@ -1,5 +1,6 @@
 /// <reference types="jest" />
 
+import { jest } from '@jest/globals';
 import { randomUUID } from 'node:crypto';
 
 import type { INestApplication } from '@nestjs/common';
@@ -116,4 +117,80 @@ describe('email invitation — database', () => {
     expect((await post('/auth/invitation/accept', { token, password: PASSWORD })).status).toBe(400);
     expect((await post('/auth/invitation/accept', { token: 'x'.repeat(43), password: PASSWORD })).status).toBe(400);
   });
+  it.each(['/users', '/users/bulk', '/users/import'])('PR 490: assigns role and department atomically through %s', async (path) => {
+    const admin = await createUser('placement-admin', 'admin');
+    const headers = await headersFor(admin);
+    const department = await prisma.department.create({ data: { organizationId, name: 'Placement' } });
+    const email = `placed-${randomUUID()}@example.test`;
+    const person = { email, firstName: 'Placed', lastName: 'User', password: PASSWORD };
+    const placement = { organizationId, role: 'mentor', departmentId: department.id };
+    const payload = path === '/users' ? { ...placement, ...person } : { ...placement, mode: 'create', users: [person] };
+    expect((await post(path, payload, headers)).status).toBe(201);
+    const user = await prisma.user.findFirstOrThrow({ where: { organizationId, email }, include: { memberships: true, departmentMemberships: true } });
+    expect(user.memberships.map((m) => m.role)).toEqual(['mentor']);
+    expect(user.departmentMemberships).toEqual([expect.objectContaining({ departmentId: department.id, isPrimary: true })]);
+  });
+
+  it.each(['/users', '/users/bulk', '/users/import'])('PR 490: denies role escalation and foreign departments through %s', async (path) => {
+    const manager = await createUser('placement-manager', 'manager');
+    const admin = await createUser('placement-admin', 'admin');
+    const own = await prisma.department.create({ data: { organizationId, name: 'Managed' } });
+    const child = await prisma.department.create({ data: { organizationId, parentId: own.id, name: 'Managed child' } });
+    const outside = await prisma.department.create({ data: { organizationId, name: 'Outside' } });
+    const foreign = await prisma.department.create({ data: { organizationId: otherOrganizationId, name: 'Foreign' } });
+    await prisma.departmentManager.create({ data: { organizationId, userId: manager.userId, departmentId: own.id, type: 'DIRECT' } });
+    const headers = await headersFor(manager);
+    const email = `restricted-${randomUUID()}@example.test`;
+    const person = { email, firstName: 'Restricted', lastName: 'User', password: PASSWORD };
+    const payload = (departmentId: string, role?: string) => path === '/users'
+      ? { organizationId, departmentId, role, ...person }
+      : { organizationId, departmentId, role, mode: 'create', users: [person] };
+    expect((await post(path, payload(own.id, 'admin'), headers)).status).toBe(403);
+    expect((await post(path, payload(outside.id), headers)).status).toBe(403);
+    expect((await post(path, payload(foreign.id), await headersFor(admin))).status).toBe(404);
+    expect(await prisma.user.count({ where: { email } })).toBe(0);
+    expect((await post(path, payload(child.id), headers)).status).toBe(201);
+    const user = await prisma.user.findFirstOrThrow({ where: { email }, include: { memberships: true } });
+    expect(user.memberships.map((m) => m.role)).toEqual(['learner']);
+  });
+
+  it.each(['single', 'bulk', 'import'])('PR 490: rolls back every user on a role insert failure (%s)', async (mode) => {
+    const { UsersService } = await import('../modules/users/users.service.js');
+    const { createUserRequestSchema, createBulkUsersSchema, importUsersSchema } = await import('../modules/users/users.schemas.js');
+    const service = app.get(UsersService);
+    // A missing assigning actor violates the real membership FK after the user has been inserted.
+    const actor = { id: randomUUID(), organizationId, roles: ['admin'] };
+    const email = `rollback-${randomUUID()}@example.test`;
+    const person = { email, firstName: 'Rollback', lastName: 'User', password: PASSWORD };
+    const common = { organizationId, role: 'learner' };
+    const pending = mode === 'single' ? service.createUser(createUserRequestSchema.parse({ ...common, ...person }), actor.id, actor)
+      : mode === 'bulk' ? service.createBulkUsers(createBulkUsersSchema.parse({ ...common, users: [person, { ...person, email: `second-${email}` }] }), actor)
+        : service.importUsers(importUsersSchema.parse({ ...common, mode: 'create', users: [person, { ...person, email: `second-${email}` }] }), actor);
+    await expect(pending).rejects.toThrow();
+    expect(await prisma.user.count({ where: { email: { in: [email, `second-${email}`] } } })).toBe(0);
+  });
+
+  it('PR 490: rolls back the user, role, department and token when invitation preparation fails', async () => {
+    const { AuthService } = await import('../modules/auth/auth.service.js');
+    const auth = app.get(AuthService);
+    const original = auth.prepareInvitationFor.bind(auth);
+    const admin = await createUser('rollback-invite-admin', 'admin');
+    const department = await prisma.department.create({ data: { organizationId, name: 'Rollback invitation' } });
+    const email = `invite-rollback-${randomUUID()}@example.test`;
+    let insertedId = '';
+    const spy = jest.spyOn(auth, 'prepareInvitationFor').mockImplementationOnce(async (...args) => {
+      insertedId = args[0].id;
+      await original(...args);
+      throw new Error('Invitation preparation failed');
+    });
+    try {
+      expect((await post('/users', { organizationId, email, firstName: 'Rollback', lastName: 'Invite', role: 'learner', departmentId: department.id }, await headersFor(admin))).status).toBe(500);
+      expect(insertedId).not.toBe('');
+      expect(await prisma.user.count({ where: { id: insertedId } })).toBe(0);
+      expect(await prisma.membership.count({ where: { userId: insertedId } })).toBe(0);
+      expect(await prisma.departmentMembership.count({ where: { userId: insertedId } })).toBe(0);
+      expect(await prisma.userInvitation.count({ where: { userId: insertedId } })).toBe(0);
+    } finally { spy.mockRestore(); }
+  });
+
 });
