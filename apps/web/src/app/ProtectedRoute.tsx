@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { ForbiddenPage } from './ForbiddenPage.js';
+import { ForcedPasswordChange } from './ForcedPasswordChange.js';
 import { ApiClientError } from '../shared/apiClient.js';
 import type { CurrentUser } from '../shared/api/types.js';
 import { SessionProvider, useOptionalSession, useSession } from '../shared/session.js';
@@ -83,6 +84,10 @@ function ProtectedRouteContent({ children, canAccess, isProtectedPath, location 
 
   if (authState === 'unauthenticated') {
     return <Navigate replace state={{ from: location }} to="/login" />;
+  }
+
+  if (currentUser?.mustChangePassword) {
+    return <ForcedPasswordChange />;
   }
 
   if (authState === 'forbidden') {

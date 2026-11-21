@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
@@ -284,10 +284,12 @@ export class UsersService {
       throw new ConflictException('User email already exists in organization');
     }
 
-    const { password, ...userData } = input;
+    const { password, temporaryPassword: wantsTemporary, ...userData } = input;
     delete userData.departmentId;
+    if (wantsTemporary && password !== undefined) throw new BadRequestException('A temporary password and a chosen password cannot be combined');
+    if (wantsTemporary && !this.authService) throw new ConflictException('Temporary passwords are not available');
     delete userData.role;
-    const invite = password === undefined;
+    const invite = password === undefined && !wantsTemporary;
     if (password !== undefined) assertPasswordPolicy(password, await loadPasswordPolicy(this.prisma, input.organizationId), input);
     if (invite && !this.authService) throw new ConflictException('Invitations are not available');
     // An invited user has no usable password until they accept: hash of a random secret nobody sees.
@@ -312,6 +314,19 @@ export class UsersService {
       ...(registrar || departmentId || input.role ? { metadata: { departmentId, ...(registrar ? { delegated: registrar.scope } : {}) } } : {}),
     });
 
+    if (wantsTemporary) {
+      const issued = await this.authService!.issueTemporaryPasswordFor({ id: created.id, organizationId: input.organizationId, email: created.email, firstName: created.firstName, lastName: created.lastName });
+      await this.auditLog.record({
+        organizationId: input.organizationId,
+        actorId,
+        action: 'user.temporary_password_issued',
+        targetType: 'user',
+        targetId: created.id,
+        summary: `Issued a temporary password for ${created.email} at creation`,
+        metadata: { expiresAt: issued.expiresAt.toISOString() },
+      });
+      return { ...created, temporaryPassword: issued };
+    }
     if (!invite) return created;
 
     const invitation = await deliverInvitation!();
@@ -572,6 +587,32 @@ export class UsersService {
       targetId: userId,
       summary: `Issued a password reset for ${user.email}`,
       metadata: { delivered: issued.delivered, ...(registrar ? { delegated: registrar.scope } : {}) },
+    });
+    return issued;
+  }
+
+  /** PR 489: a temporary password for an active user in the caller's scope; shown once, never written to the audit log. */
+  async issueTemporaryPassword(userId: string, actor: TeamScopeActor) {
+    const organizationId = actor.organizationId;
+    const registrar = await this.registrars.resolve(actor);
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, organizationId, ...this.teamScope.user(actor), ...this.registrars.writeWhere(registrar, actor), deletedAt: null },
+      select: { id: true, organizationId: true, email: true, firstName: true, lastName: true, middleName: true, status: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    if (user.status !== 'active') throw new ConflictException('A temporary password can be issued only for an active user');
+    if (user.id === actor.id) throw new ConflictException('Use "change password" for your own account');
+    if (!this.authService) throw new ConflictException('Temporary passwords are not available');
+
+    const issued = await this.authService.issueTemporaryPasswordFor(user);
+    await this.auditLog.record({
+      organizationId,
+      actorId: actor.id,
+      action: 'user.temporary_password_issued',
+      targetType: 'user',
+      targetId: userId,
+      summary: `Issued a temporary password for ${user.email}`,
+      metadata: { expiresAt: issued.expiresAt.toISOString(), ...(registrar ? { delegated: registrar.scope } : {}) },
     });
     return issued;
   }

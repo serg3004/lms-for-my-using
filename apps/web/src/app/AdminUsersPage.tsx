@@ -9,7 +9,7 @@ import { ApiClientError } from '../shared/apiClient.js';
 import { PageState, Pagination } from '../shared/ui.js';
 import { DeactivateUserDialog, type PendingDeactivation } from '../features/admin-users/DeactivateUserDialog.js';
 import { UserRightsDialog } from '../features/admin-users/UserRightsDialog.js';
-import { InvitationResultDialog, ResetPasswordDialogs, type InvitationResult, type PasswordResetResult } from '../features/admin-users/ResetPasswordDialogs.js';
+import { InvitationResultDialog, ResetPasswordDialogs, TemporaryPasswordDialogs, type InvitationResult, type PasswordResetResult, type TemporaryPasswordResult } from '../features/admin-users/ResetPasswordDialogs.js';
 import { AdminUserDialog } from '../features/admin-users/AdminUserDialog.js';
 import { AdminUsersFilters } from '../features/admin-users/AdminUsersFilters.js';
 import { AdminUsersTable } from '../features/admin-users/AdminUsersTable.js';
@@ -36,6 +36,8 @@ export function AdminUsersPage() {
   const [pendingReset, setPendingReset] = useState<AdminUserSummary | null>(null);
   const [resetResult, setResetResult] = useState<PasswordResetResult | null>(null);
   const [inviteResult, setInviteResult] = useState<InvitationResult | null>(null);
+  const [pendingTemporary, setPendingTemporary] = useState<AdminUserSummary | null>(null);
+  const [temporaryResult, setTemporaryResult] = useState<TemporaryPasswordResult | null>(null);
 
   async function confirmReset() {
     const user = pendingReset;
@@ -45,6 +47,17 @@ export function AdminUsersPage() {
       setResetResult({ user, ...(await mutations.resetPassword(user)) });
     } catch (error) {
       setResetResult({ user, error: error instanceof ApiClientError ? error.message : t('admin.users.resetPasswordFailed', 'Could not reset the password. Try again.') });
+    }
+  }
+
+  async function confirmTemporary() {
+    const user = pendingTemporary;
+    setPendingTemporary(null);
+    if (!user) return;
+    try {
+      setTemporaryResult({ user, ...(await mutations.issueTemporaryPassword(user)) });
+    } catch {
+      setTemporaryResult({ user, error: t('security.tempError') });
     }
   }
 
@@ -74,7 +87,7 @@ export function AdminUsersPage() {
     setMessage(null);
     const result = await mutations.saveUser(form, mode, usersQuery.state.currentUser.organizationId);
     setForm((current) => withoutPassword(current));
-    if (result.ok) { close(); setInviteResult(result.invitation ?? null); }
+    if (result.ok) { close(); setInviteResult(result.invitation ?? null); setTemporaryResult(result.temporary ?? null); }
     else {
       if (result.formErrors) setErrors(result.formErrors);
       setMessage(result.message ?? null);
@@ -95,10 +108,11 @@ export function AdminUsersPage() {
     />
     <PendingInvitations />
     <AdminUsersFilters filters={usersQuery.filters} onChange={usersQuery.setFilters} />
-    <AdminUsersTable users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} onResetPassword={setPendingReset} onRights={setRightsUser} />
+    <AdminUsersTable users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} onResetPassword={setPendingReset} onTemporaryPassword={setPendingTemporary} onRights={setRightsUser} />
     {rightsUser ? <UserRightsDialog user={rightsUser} onClose={() => setRightsUser(null)} /> : null}
     <InvitationResultDialog result={inviteResult} onClose={() => setInviteResult(null)} />
     <ResetPasswordDialogs pending={pendingReset} result={resetResult} onConfirm={() => void confirmReset()} onCancel={() => setPendingReset(null)} onClose={() => setResetResult(null)} />
+    <TemporaryPasswordDialogs pending={pendingTemporary} result={temporaryResult} onConfirm={() => void confirmTemporary()} onCancel={() => setPendingTemporary(null)} onClose={() => setTemporaryResult(null)} />
     <DeactivateUserDialog pending={pendingDeactivation} onCancel={() => setPendingDeactivation(null)} onConfirm={() => void confirmDeactivation()} />
     <Pagination page={usersQuery.page} pageSize={loadedState.pageSize} total={loadedState.total} onPage={usersQuery.setPage} />
     <AdminUserDialog open={mode !== null} mode={mode ?? 'create'} form={form} errors={errors} message={message} isSaving={mutations.isSaving} onChange={setForm} onErrorsChange={setErrors} onSubmit={(event) => void submit(event)} onClose={close} />

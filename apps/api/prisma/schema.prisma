@@ -448,6 +448,9 @@ model User {
   locale                     String                     @default("ru")
   timezone                   String                     @default("Asia/Almaty")
   lastLoginAt                DateTime?                  @map("last_login_at") @db.Timestamptz
+  mustChangePassword         Boolean                    @default(false) @map("must_change_password")
+  temporaryPasswordExpiresAt DateTime?                  @map("temporary_password_expires_at") @db.Timestamptz
+  temporaryPasswordUsedAt    DateTime?                  @map("temporary_password_used_at") @db.Timestamptz
   createdAt                  DateTime                   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                  DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                  DateTime?                  @map("deleted_at") @db.Timestamptz

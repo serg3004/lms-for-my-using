@@ -12,6 +12,9 @@ const en = {
     contains_email: 'The password must not contain the email address.', contains_name: 'The password must not contain your name.', common: 'This password is too common.', reused: 'This password was used recently. Choose a new one.',
   },
   invalidPassword: 'The password does not meet the password policy.',
+  forcedTitle: 'Choose your own password', forcedHint: 'You signed in with a temporary password. Set your own password to continue; the temporary one stops working.',
+  tempIssueTitle: 'Temporary password', tempIssueHint: 'Make a new temporary password for {{name}}? Their old password stops working and all their sessions end. The new password is shown once and is valid for 7 days; at the first sign-in the person must choose their own.', tempIssue: 'Issue temporary password', tempIssuing: 'Issuing…', tempShownTitle: 'Temporary password', tempShownHint: 'Hand it over in person or by a private channel. It is shown only now, is valid until {{date}} and works for one sign-in.', tempError: 'Could not issue a temporary password. Try again.', tempAction: 'Temporary password',
+    accessTemporary: 'Temporary password (for people without email)',
 } as const;
 
 export const securityResources = {
@@ -30,6 +33,9 @@ export const securityResources = {
       contains_email: 'Пароль не должен содержать адрес почты.', contains_name: 'Пароль не должен содержать ваше имя.', common: 'Этот пароль слишком распространённый.', reused: 'Этот пароль использовался недавно. Выберите новый.',
     },
     invalidPassword: 'Пароль не соответствует политике паролей.',
+    forcedTitle: 'Задайте свой пароль', forcedHint: 'Вы вошли с временным паролем. Задайте свой пароль, чтобы продолжить; временный перестанет действовать.',
+    tempIssueTitle: 'Временный пароль', tempIssueHint: 'Выдать новый временный пароль для {{name}}? Прежний пароль перестанет действовать, все сеансы завершатся. Новый пароль показывается один раз и действует 7 дней; при первом входе человек обязан задать свой.', tempIssue: 'Выдать временный пароль', tempIssuing: 'Выдача…', tempShownTitle: 'Временный пароль', tempShownHint: 'Передайте его лично или по закрытому каналу. Он показан только сейчас, действует до {{date}} и подходит для одного входа.', tempError: 'Не удалось выдать временный пароль. Попробуйте снова.', tempAction: 'Временный пароль',
+    accessTemporary: 'Временный пароль (для людей без почты)',
   },
   kk: {
     navTitle: 'Қауіпсіздік', eyebrow: 'Қауіпсіздік', title: 'Қауіпсіздік', subtitle: 'Ұйымның құпиясөз саясаты және өз құпиясөзіңіз.',
@@ -45,6 +51,9 @@ export const securityResources = {
       contains_email: 'Құпиясөзде пошта мекенжайы болмауы керек.', contains_name: 'Құпиясөзде атыңыз болмауы керек.', common: 'Бұл құпиясөз тым кең таралған.', reused: 'Бұл құпиясөз жақында қолданылған. Жаңасын таңдаңыз.',
     },
     invalidPassword: 'Құпиясөз құпиясөз саясатына сай емес.',
+    forcedTitle: 'Өз құпиясөзіңізді орнатыңыз', forcedHint: 'Сіз уақытша құпиясөзбен кірдіңіз. Жалғастыру үшін өз құпиясөзіңізді орнатыңыз; уақытша құпиясөз жұмысын тоқтатады.',
+    tempIssueTitle: 'Уақытша құпиясөз', tempIssueHint: '{{name}} үшін жаңа уақытша құпиясөз беру керек пе? Бұрынғы құпиясөз жұмысын тоқтатады, барлық сеанстар аяқталады. Жаңа құпиясөз бір рет көрсетіледі және 7 күн жарамды; бірінші кіргенде адам өз құпиясөзін орнатуға міндетті.', tempIssue: 'Уақытша құпиясөз беру', tempIssuing: 'Берілуде…', tempShownTitle: 'Уақытша құпиясөз', tempShownHint: 'Оны жеке немесе жабық арна арқылы беріңіз. Ол тек қазір көрсетіледі, {{date}} дейін жарамды және бір рет кіруге жарайды.', tempError: 'Уақытша құпиясөзді беру мүмкін болмады. Қайталап көріңіз.', tempAction: 'Уақытша құпиясөз',
+    accessTemporary: 'Уақытша құпиясөз (поштасы жоқ адамдарға)',
   },
   zh: {
     navTitle: '安全', eyebrow: '安全', title: '安全', subtitle: '组织的密码策略和您自己的密码。',
@@ -60,5 +69,8 @@ export const securityResources = {
       contains_email: '密码不得包含邮箱地址。', contains_name: '密码不得包含您的姓名。', common: '此密码过于常见。', reused: '此密码最近使用过，请选择新密码。',
     },
     invalidPassword: '密码不符合密码策略。',
+    forcedTitle: '请设置您自己的密码', forcedHint: '您使用的是临时密码登录。请设置自己的密码后继续，临时密码将失效。',
+    tempIssueTitle: '临时密码', tempIssueHint: '为 {{name}} 发放新的临时密码？其原密码将失效，所有会话将结束。新密码只显示一次，有效期 7 天；首次登录时该人必须设置自己的密码。', tempIssue: '发放临时密码', tempIssuing: '正在发放…', tempShownTitle: '临时密码', tempShownHint: '请当面或通过私密渠道交给本人。它只显示这一次，有效期至 {{date}}，且只能用于一次登录。', tempError: '无法发放临时密码，请重试。', tempAction: '临时密码',
+    accessTemporary: '临时密码（适用于没有邮箱的人）',
   },
 } as const;

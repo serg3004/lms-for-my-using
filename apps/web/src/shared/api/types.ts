@@ -24,6 +24,8 @@ export type CurrentUser = {
   status: string;
   locale: string;
   timezone: string;
+  /** PR 489: a temporary password was used; only the change-password screen is available until it is set. */
+  mustChangePassword?: boolean;
   roles: UserRole[];
 };
 
