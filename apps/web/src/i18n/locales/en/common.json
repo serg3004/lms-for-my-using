@@ -3355,6 +3355,7 @@
       "empty": "No checklist sessions are assigned to you yet.",
       "toConduct": "To conduct",
       "toConductEmpty": "Nothing scheduled right now.",
+      "historyHeading": "History",
       "history": {
         "title": "Past sessions",
         "loading": "Loading past sessions...",
