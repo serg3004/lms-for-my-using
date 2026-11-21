@@ -23,6 +23,7 @@ export function PasswordResetPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
+  // Errors hold translation keys, so they follow the language when it is switched after an error.
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,10 +31,10 @@ export function PasswordResetPage() {
   async function submitRequest(event: FormEvent) {
     event.preventDefault();
     const nextErrors: Record<string, string> = {};
-    if (!organizationId.trim()) nextErrors.organizationId = t('passwordReset.required');
-    else if (!organizationPattern.test(organizationId.trim())) nextErrors.organizationId = t('passwordReset.organizationInvalid');
-    if (!email.trim()) nextErrors.email = t('passwordReset.required');
-    else if (!/^\S+@\S+\.\S+$/.test(email.trim())) nextErrors.email = t('passwordReset.emailInvalid');
+    if (!organizationId.trim()) nextErrors.organizationId = 'passwordReset.required';
+    else if (!organizationPattern.test(organizationId.trim())) nextErrors.organizationId = 'passwordReset.organizationInvalid';
+    if (!email.trim()) nextErrors.email = 'passwordReset.required';
+    else if (!/^\S+@\S+\.\S+$/.test(email.trim())) nextErrors.email = 'passwordReset.emailInvalid';
     setErrors(nextErrors);
     setErrorMessage(null);
     if (Object.keys(nextErrors).length) return;
@@ -43,7 +44,7 @@ export function PasswordResetPage() {
       await requestPasswordReset({ organizationId: organizationId.trim(), email: email.trim() });
       setView('sent');
     } catch {
-      setErrorMessage(t('passwordReset.requestError'));
+      setErrorMessage('passwordReset.requestError');
     } finally {
       setIsSubmitting(false);
     }
@@ -52,8 +53,8 @@ export function PasswordResetPage() {
   async function submitPassword(event: FormEvent) {
     event.preventDefault();
     const nextErrors: Record<string, string> = {};
-    if (!strongPasswordPattern.test(password)) nextErrors.password = t('passwordReset.passwordInvalid');
-    if (password !== passwordConfirmation) nextErrors.passwordConfirmation = t('passwordReset.passwordMismatch');
+    if (!strongPasswordPattern.test(password)) nextErrors.password = 'passwordReset.passwordInvalid';
+    if (password !== passwordConfirmation) nextErrors.passwordConfirmation = 'passwordReset.passwordMismatch';
     setErrors(nextErrors);
     setErrorMessage(null);
     if (Object.keys(nextErrors).length) return;
@@ -66,7 +67,7 @@ export function PasswordResetPage() {
       setView('success');
     } catch (error) {
       if (error instanceof ApiClientError && error.status === 400) setView('invalid');
-      else setErrorMessage(t('passwordReset.confirmError'));
+      else setErrorMessage('passwordReset.confirmError');
     } finally {
       setIsSubmitting(false);
     }
@@ -96,13 +97,13 @@ export function PasswordResetPage() {
             <header className="login-header"><h2>{t(view === 'confirm' ? 'passwordReset.confirmTitle' : 'passwordReset.requestTitle')}</h2><p>{t(view === 'confirm' ? 'passwordReset.confirmSubtitle' : 'passwordReset.requestSubtitle')}</p></header>
             <form className="login-form" onSubmit={view === 'confirm' ? submitPassword : submitRequest}>
               {view === 'request' ? <>
-                <ResetField id="reset-organization" label={t('passwordReset.organizationId')} error={errors.organizationId}><input id="reset-organization" autoComplete="organization" value={organizationId} onChange={(event) => setOrganizationId(event.target.value)} /></ResetField>
-                <ResetField id="reset-email" label={t('passwordReset.email')} error={errors.email}><input id="reset-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></ResetField>
+                <ResetField id="reset-organization" label={t('passwordReset.organizationId')} error={errors.organizationId ? t(errors.organizationId) : undefined}><input id="reset-organization" autoComplete="organization" value={organizationId} onChange={(event) => setOrganizationId(event.target.value)} /></ResetField>
+                <ResetField id="reset-email" label={t('passwordReset.email')} error={errors.email ? t(errors.email) : undefined}><input id="reset-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></ResetField>
               </> : <>
-                <ResetField id="reset-password" label={t('passwordReset.password')} error={errors.password}><PasswordInput id="reset-password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} /></ResetField>
-                <ResetField id="reset-password-confirmation" label={t('passwordReset.confirmPassword')} error={errors.passwordConfirmation}><PasswordInput id="reset-password-confirmation" autoComplete="new-password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} /></ResetField>
+                <ResetField id="reset-password" label={t('passwordReset.password')} error={errors.password ? t(errors.password) : undefined}><PasswordInput id="reset-password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} /></ResetField>
+                <ResetField id="reset-password-confirmation" label={t('passwordReset.confirmPassword')} error={errors.passwordConfirmation ? t(errors.passwordConfirmation) : undefined}><PasswordInput id="reset-password-confirmation" autoComplete="new-password" value={passwordConfirmation} onChange={(event) => setPasswordConfirmation(event.target.value)} /></ResetField>
               </>}
-              {errorMessage ? <p className="login-form__error" role="alert">{errorMessage}</p> : null}
+              {errorMessage ? <p className="login-form__error" role="alert">{t(errorMessage)}</p> : null}
               <button className="login-form__submit" disabled={isSubmitting} type="submit">{t(view === 'confirm' ? (isSubmitting ? 'passwordReset.submitting' : 'passwordReset.submit') : (isSubmitting ? 'passwordReset.requesting' : 'passwordReset.request'))}</button>
               <Link className="password-reset-secondary" to="/login">{t('passwordReset.backToLogin')}</Link>
             </form>
