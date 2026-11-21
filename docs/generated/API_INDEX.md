@@ -354,11 +354,16 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/users` | `Users` | `bearer` |
 | `POST` | `/api/v1/users/bulk` | `Users` | `bearer` |
 | `POST` | `/api/v1/users/import` | `Users` | `bearer` |
+| `GET` | `/api/v1/users/invitations` | `Users` | `bearer` |
+| `POST` | `/api/v1/users/invitations/resend` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}` | `Users` | `bearer` |
 | `PATCH` | `/api/v1/users/{id}` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}/department-memberships` | `DepartmentMemberships` | `bearer` |
 | `POST` | `/api/v1/users/{id}/department-transfer` | `DepartmentMemberships` | `bearer` |
 | `GET` | `/api/v1/users/{id}/effective-manager` | `ReportingLines` | `bearer` |
+| `POST` | `/api/v1/users/{id}/invitation/extend` | `Users` | `bearer` |
+| `POST` | `/api/v1/users/{id}/invitation/resend` | `Users` | `bearer` |
+| `POST` | `/api/v1/users/{id}/invitation/revoke` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}/reporting-lines` | `ReportingLines` | `bearer` |
 | `POST` | `/api/v1/users/{id}/reset-password` | `Users` | `bearer` |
 | `PATCH` | `/api/v1/users/{id}/status` | `Users` | `bearer` |

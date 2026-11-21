@@ -193,6 +193,96 @@ describe('email invitation — database', () => {
     } finally { spy.mockRestore(); }
   });
 
+  it('lists scoped invitations and serializes resends, extensions and revocation', async () => {
+    const [admin, manager, outsider, learner] = await Promise.all([
+      createUser('invitation-admin', 'admin'), createUser('invitation-manager', 'manager'),
+      createUser('invitation-outsider', 'admin', otherOrganizationId), createUser('invitation-learner', 'learner'),
+    ]);
+    const [adminHeaders, managerHeaders, outsiderHeaders, learnerHeaders] = await Promise.all([
+      headersFor(admin), headersFor(manager), headersFor(outsider), headersFor(learner),
+    ]);
+    const create = async (headers: Record<string, string>, targetOrg: string) => {
+      const response = await post('/users', {
+        organizationId: targetOrg, email: `pending-${randomUUID()}@example.test`, firstName: 'Pending', lastName: 'Employee',
+      }, headers);
+      expect(response.status).toBe(201);
+      return await response.json() as { id: string; invitation: { inviteUrl: string } };
+    };
+    const [target, hidden, foreign] = await Promise.all([
+      create(adminHeaders, organizationId), create(adminHeaders, organizationId),
+      create(outsiderHeaders, otherOrganizationId),
+    ]);
+    const group = await prisma.group.create({ data: { organizationId, name: 'Invitations', slug: 'invitations' } });
+    await prisma.managerGroup.create({ data: { groupId: group.id, managerId: manager.userId, organizationId } });
+    await prisma.groupMember.create({ data: { groupId: group.id, userId: target.id, organizationId } });
+    const list = (headers: Record<string, string>) => fetch(`${baseUrl}/api/v1/users/invitations`, { headers });
+    const rows = async (headers: Record<string, string>) => {
+      const response = await list(headers);
+      expect(response.status).toBe(200);
+      return (await response.json() as { items: Array<{ id: string; status: string; sendCount: number; expiresAt: string }> }).items;
+    };
+    const mutate = (id: string, action: 'resend' | 'revoke' | 'extend', headers = managerHeaders) =>
+      post(`/users/${id}/invitation/${action}`, {}, headers);
+    const accept = (inviteUrl: string) => post('/auth/invitation/accept', { token: tokenOf(inviteUrl), password: PASSWORD });
+
+    expect((await list(learnerHeaders)).status).toBe(403);
+    expect(await rows(managerHeaders)).toEqual([expect.objectContaining({ id: target.id, sendCount: 1, status: 'pending' })]);
+    expect(await rows(adminHeaders)).toEqual(expect.arrayContaining([expect.objectContaining({ id: hidden.id })]));
+    expect(await rows(adminHeaders)).not.toEqual(expect.arrayContaining([expect.objectContaining({ id: foreign.id })]));
+    expect((await mutate(target.id, 'resend', outsiderHeaders)).status).toBe(404);
+    expect((await mutate(hidden.id, 'revoke')).status).toBe(404);
+    expect((await mutate(foreign.id, 'extend', adminHeaders)).status).toBe(404);
+    expect((await mutate(target.id, 'resend')).status).toBe(429);
+
+    await prisma.userInvitation.updateMany({
+      where: { userId: target.id }, data: { createdAt: new Date(Date.now() - 61_000), expiresAt: new Date(0) },
+    });
+    expect(await rows(managerHeaders)).toEqual([expect.objectContaining({ status: 'expired' })]);
+    expect((await mutate(target.id, 'extend')).status).toBe(409);
+    await prisma.userInvitation.updateMany({ where: { userId: target.id }, data: { expiresAt: new Date(Date.now() + 60_000) } });
+
+    const sends = await Promise.all([mutate(target.id, 'resend'), mutate(target.id, 'resend')]);
+    expect(sends.map(({ status }) => status).sort()).toEqual([201, 429]);
+    const { inviteUrl, expiresAt } = await sends.find(({ status }) => status === 201)!.json() as { inviteUrl: string; expiresAt: string };
+    expect((await accept(target.invitation.inviteUrl)).status).toBe(400);
+    expect(await rows(managerHeaders)).toEqual([expect.objectContaining({ status: 'pending', sendCount: 2, expiresAt })]);
+
+    expect((await mutate(target.id, 'extend')).status).toBe(201);
+    const [extended] = await rows(managerHeaders);
+    expect(Date.parse(extended.expiresAt) - Date.parse(expiresAt)).toBe(7 * 24 * 60 * 60 * 1000);
+    expect((await mutate(target.id, 'revoke')).status).toBe(201);
+    expect((await accept(inviteUrl)).status).toBe(400);
+    expect(await rows(managerHeaders)).toEqual([expect.objectContaining({ status: 'revoked', sendCount: 2 })]);
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: target.id } })).status).toBe('invited');
+
+    await prisma.userInvitation.updateMany({ where: { userId: target.id }, data: { createdAt: new Date(0) } });
+    const batch = await post('/users/invitations/resend', { userIds: [target.id, hidden.id, target.id, foreign.id] }, managerHeaders);
+    expect(batch.status).toBe(201);
+    const { items } = await batch.json() as { items: Array<{ userId: string; status: string; inviteUrl?: string }> };
+    expect(items).toEqual([
+      expect.objectContaining({ userId: target.id, status: 'sent' }),
+      { userId: hidden.id, status: 'notFound' }, { userId: foreign.id, status: 'notFound' },
+    ]);
+    expect((await accept(items[0].inviteUrl!)).status).toBe(201);
+    expect(await rows(managerHeaders)).toEqual([]);
+    const department = await prisma.department.create({ data: { organizationId, name: 'Managed invitations' } });
+    await prisma.departmentManager.create({
+      data: { organizationId, departmentId: department.id, userId: manager.userId, type: 'DIRECT' },
+    });
+    const departmentInvite = await post('/users', {
+      organizationId, departmentId: department.id, email: `department-invite-${randomUUID()}@example.test`,
+      firstName: 'Department', lastName: 'Employee',
+    }, managerHeaders);
+    expect(departmentInvite.status).toBe(201);
+    const { id: departmentUserId } = await departmentInvite.json() as { id: string };
+    expect(await rows(managerHeaders)).toEqual([expect.objectContaining({ id: departmentUserId, status: 'pending' })]);
+    expect((await mutate(departmentUserId, 'revoke')).status).toBe(201);
+
+    const audit = await prisma.auditLog.findMany({ where: { targetId: target.id }, select: { action: true, actorId: true, metadata: true } });
+    expect(audit).toEqual(expect.arrayContaining(['resent', 'extended', 'revoked'].map((action) =>
+      expect.objectContaining({ action: `user.invitation.${action}`, actorId: manager.userId, metadata: null }),
+    )));
+  });
 
   type ImportReport = { createdCount: number; skippedCount: number; rows: Array<{ status: string; errors: string[]; invited?: boolean; invitationDelivered?: boolean }> };
   const reportOf = async (response: Response) => {

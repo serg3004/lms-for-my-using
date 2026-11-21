@@ -26,6 +26,7 @@ function createHarness(options: { status?: string; expired?: boolean } = {}) {
       Object.assign(record, data);
       return { count: 1 };
     }),
+    findFirst: jest.fn(async () => record),
     create: jest.fn(async ({ data }: { data: Omit<Record_, 'id' | 'usedAt' | 'revokedAt'> }) => {
       record = { id: 'inv-1', ...data, usedAt: null, revokedAt: null };
       if (options.expired) record.expiresAt = new Date(0);
@@ -35,9 +36,10 @@ function createHarness(options: { status?: string; expired?: boolean } = {}) {
       record && record.tokenHash === where.tokenHash ? { ...record, user: { status, deletedAt: null } } : null),
   };
   const transaction = {
+    $queryRaw: jest.fn(async () => []),
     passwordHistory: { findMany: jest.fn(async () => []), create: jest.fn(async () => ({})), deleteMany: jest.fn(async () => ({ count: 0 })) },
     userInvitation,
-    user: { update: jest.fn(async ({ data }: { data: { passwordHash: string; status: string } }) => { passwordHash = data.passwordHash; status = data.status; }) },
+    user: { findFirst: jest.fn(async () => status === 'invited' ? invitedUser : null), update: jest.fn(async ({ data }: { data: { passwordHash: string; status: string } }) => { passwordHash = data.passwordHash; status = data.status; }) },
     auditLog: { create: jest.fn(async ({ data }: { data: { action: string } }) => { audit.push(data); }) },
   };
   const prisma = {
@@ -47,7 +49,7 @@ function createHarness(options: { status?: string; expired?: boolean } = {}) {
     $transaction: jest.fn(async (input: unknown) => (typeof input === 'function' ? input(transaction) : Promise.all(input as Promise<unknown>[]))),
   } as unknown as PrismaService;
   const service = new AuthService(prisma, { send: jest.fn() } as never);
-  return { service, getRecord: () => record, getPasswordHash: () => passwordHash, getStatus: () => status, audit };
+  return { service, getRecord: () => record, getPasswordHash: () => passwordHash, getStatus: () => status, setActive: () => { status = 'active'; }, audit };
 }
 
 function tokenFrom(url: string | undefined) {
@@ -85,6 +87,18 @@ describe('user invitation (PR 487)', () => {
     await expect(harness.service.acceptInvitation({ token, password: 'AnotherPass123' })).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('limits resends and rotates the link once the cooldown passes', async () => {
+    const harness = createHarness();
+    const first = await harness.service.issueInvitationFor(invitedUser, null);
+    await expect(harness.service.sendInvitation(userId, organizationId, userId, {})).rejects.toMatchObject({ status: 429 });
+
+    Object.assign(harness.getRecord()!, { createdAt: new Date(Date.now() - 61_000) });
+    const next = await harness.service.sendInvitation(userId, organizationId, userId, {});
+    expect(next.inviteUrl).not.toBe(first.inviteUrl);
+    expect(harness.getRecord()).toMatchObject({ sendCount: 2, tokenHash: hashInvitationToken(tokenFrom(next.inviteUrl)) });
+    expect(harness.audit.map((entry) => entry.action)).toEqual(['user.invitation.resent']);
+  });
+
   it('rejects unknown, expired, and already-active cases with the same answer', async () => {
     const unknown = createHarness();
     await expect(unknown.service.acceptInvitation({ token: 'x'.repeat(43), password: 'NewPassword123' })).rejects.toBeInstanceOf(BadRequestException);
@@ -93,8 +107,9 @@ describe('user invitation (PR 487)', () => {
     const expiredToken = tokenFrom((await expired.service.issueInvitationFor(invitedUser, null)).inviteUrl);
     await expect(expired.service.acceptInvitation({ token: expiredToken, password: 'NewPassword123' })).rejects.toBeInstanceOf(BadRequestException);
 
-    const active = createHarness({ status: 'active' });
+    const active = createHarness();
     const activeToken = tokenFrom((await active.service.issueInvitationFor(invitedUser, null)).inviteUrl);
+    active.setActive();
     await expect(active.service.acceptInvitation({ token: activeToken, password: 'NewPassword123' })).rejects.toBeInstanceOf(BadRequestException);
   });
 

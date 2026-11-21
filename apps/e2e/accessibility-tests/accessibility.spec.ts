@@ -16,6 +16,7 @@ import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 import { installManagerReportMocks } from '../fixtures/checklist-manager-report.js';
 import { courseA, installCourseAnalyticsMocks, userA } from '../fixtures/course-analytics.js';
 import { freshTransferState, installTransferMocks, openTransferDialog } from '../fixtures/checklist-transfer.js';
+import { freshRolesState, installCustomRolesMocks } from '../fixtures/custom-roles.js';
 import { freshReportState, installReportMocks } from '../fixtures/checklist-instance-report.js';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
@@ -244,6 +245,27 @@ test.describe('WCAG AA browser baseline', () => {
       await auditAccessibility(page, testInfo);
     });
   }
+
+  test('admin can access pending invitation controls on mobile', async ({ page }, testInfo) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await installCustomRolesMocks(page, freshRolesState());
+    await page.route('**/api/v1/users/invitations?*', (route) => route.fulfill({ json: {
+      items: [{ id: 'pending-user', firstName: 'Анна', lastName: 'Иванова', middleName: null,
+        email: 'pending@example.invalid', sentAt: '2026-01-01T09:00:00Z', expiresAt: '2026-01-08T09:00:00Z',
+        sendCount: 1, status: 'pending' }],
+      page: 1, pageSize: 20, total: 1,
+    } }));
+    await page.goto('/admin/users');
+    await page.getByRole('button', { name: 'Ожидают входа' }).click();
+    const table = page.getByRole('table', { name: 'Ожидают входа' });
+    await table.getByRole('checkbox', { name: 'Выбрать: Иванова Анна' }).check();
+    await table.getByRole('button', { name: /Иванова Анна/ }).click();
+    await expect(table.getByRole('button', { name: 'Отозвать' })).toBeVisible();
+    await auditAccessibility(page, testInfo, 'pending-invitations');
+    await table.getByRole('button', { name: 'Отозвать' }).click();
+    await expect(page.getByRole('dialog', { name: 'Отозвать' })).toBeVisible();
+    await auditAccessibility(page, testInfo, 'revoke-invitation', 'dialog[open]');
+  });
 
   test('admin department tree page has an accessible rendered state', async ({ page }, testInfo) => {
     // This test does more round trips than the read-only workspace checks above (two extra

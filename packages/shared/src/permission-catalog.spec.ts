@@ -17,10 +17,10 @@ describe('permission catalog', () => {
     expect(findPermissionAction('nope')).toBeUndefined();
   });
 
-  it('offers only delegable actions for custom roles, and keeps the observer setting out', () => {
+  it('offers only delegable actions for custom roles', () => {
     const keys = delegablePermissionActions().map((item) => item.key);
-    expect(keys).not.toContain('checklist.access.settings');
-    expect(keys.length).toBe(PERMISSION_ACTIONS.length - 1);
+    const builtInOnly = ['checklist.access.settings', 'user.invitation.manage'];
+    expect(keys).toEqual(PERMISSION_ACTIONS.map((item) => item.key).filter((key) => !builtInOnly.includes(key)));
     for (const capability of NON_DELEGABLE_CAPABILITIES) expect(keys).not.toContain(capability);
   });
 
@@ -39,6 +39,7 @@ describe('permission catalog', () => {
   it('validates a grant set: unknown action, not delegable, scope outside the allowed list, missing dependency', () => {
     expect(validatePermissionGrants([{ action: 'made.up', scope: 'organization' }])).toEqual([{ code: 'unknown_action', action: 'made.up' }]);
     expect(validatePermissionGrants([{ action: 'checklist.access.settings', scope: 'organization' }])).toEqual([{ code: 'not_delegable', action: 'checklist.access.settings' }]);
+    expect(validatePermissionGrants([{ action: 'user.invitation.manage', scope: 'organization' }])).toEqual([{ code: 'not_delegable', action: 'user.invitation.manage' }]);
     expect(validatePermissionGrants([{ action: 'checklist.library.read', scope: 'own' }])).toEqual([{ code: 'scope_not_allowed', action: 'checklist.library.read', scope: 'own' }]);
     expect(validatePermissionGrants([{ action: 'user.create', scope: 'department' }])).toEqual([{ code: 'missing_dependency', action: 'user.create', missing: ['user.read'] }]);
   });

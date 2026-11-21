@@ -1,3 +1,4 @@
+import { PendingInvitations } from '../features/admin-users/PendingInvitations.js';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -105,6 +106,7 @@ export function AdminUsersPage() {
       subtitle={t('admin.users.subtitle', 'Manage organization users and their roles.')}
       action={<div className="td-actions"><a className="admin-btn admin-btn--secondary" href="/admin/users/import">{t('usersImport.button')}</a><button className="admin-btn admin-btn--primary" onClick={() => open('create')} type="button">{t('admin.users.createButton', 'Create user')}</button></div>}
     />
+    <PendingInvitations />
     <AdminUsersFilters filters={usersQuery.filters} onChange={usersQuery.setFilters} />
     <AdminUsersTable users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} onResetPassword={setPendingReset} onTemporaryPassword={setPendingTemporary} onRights={setRightsUser} />
     {rightsUser ? <UserRightsDialog user={rightsUser} onClose={() => setRightsUser(null)} /> : null}

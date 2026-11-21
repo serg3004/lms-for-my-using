@@ -27,6 +27,31 @@ import { expect, test, type Page } from '@playwright/test';
 const widths = [320, 375, 768, 1024, 1280, 1440] as const;
 const height = 900;
 
+for (const width of [390, 1280]) test(`pending invitations are responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height });
+  await installAdminMocks(page);
+  await page.route('**/api/v1/users/invitations?*', (route) => route.fulfill({
+    json: {
+      items: [
+        { id: 'invited', firstName: 'Айгуль', lastName: 'Каримова', middleName: null, email: 'aigul@example.invalid',
+          sentAt: '2026-01-14T09:00:00Z', expiresAt: '2026-01-21T09:00:00Z', sendCount: 2, status: 'pending' },
+        { id: 'expired', firstName: 'Иван', lastName: 'Новиков', middleName: null, email: 'ivan@example.invalid',
+          sentAt: '2026-01-01T09:00:00Z', expiresAt: '2026-01-08T09:00:00Z', sendCount: 1, status: 'expired' },
+      ],
+      page: 1, pageSize: 20, total: 2,
+    },
+  }));
+  await page.goto('/admin/users');
+  await page.getByRole('button', { name: 'Ожидают входа' }).click();
+  const table = page.getByRole('table', { name: 'Ожидают входа' });
+  await table.getByRole('checkbox', { name: 'Выбрать: Каримова Айгуль' }).check();
+  if (width === 390) await table.getByRole('button', { name: /Каримова Айгуль/ }).click();
+  await expect(table.getByRole('button', { name: 'Продлить на 7 дней' })).toBeVisible();
+  expect(await table.evaluate((element) => element.scrollWidth <= element.parentElement!.clientWidth + 1)).toBe(true);
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `pending-invitations-${width}`, false, { maxDiffPixels: 3000 });
+});
+
 for (const width of [390, 1280]) test(`hand-over of a check dialog is responsive at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height }); await installTransferMocks(page, 'executor', freshTransferState());
   await openTransferDialog(page);

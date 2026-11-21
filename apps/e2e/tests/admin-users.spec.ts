@@ -20,7 +20,7 @@ async function fillCreateForm(page: Page, email: string, password: string) {
   await dialog.getByLabel('Роль', { exact: true }).selectOption('learner');
 }
 
-test('admin creates, filters, edits, deactivates and reactivates a user', async ({ page, isolatedUser }) => {
+test('admin manages users and pending invitations', async ({ page, isolatedUser }) => {
   const login = await page.request.post('http://127.0.0.1:3000/api/v1/auth/login', { data: { organizationId: 'demo-company', email: 'admin@demo.com', password: 'Demo1234!' } });
   const loginBody = await login.json();
   const session = loginBody.data ?? loginBody;
@@ -83,4 +83,29 @@ test('admin creates, filters, edits, deactivates and reactivates a user', async 
   await expect(row.getByText('Заблокирован')).toBeVisible();
   await row.getByRole('button', { name: 'Активировать' }).click();
   await expect(row.getByText('Активен')).toBeVisible();
+
+  await test.step('extend, resend and revoke a pending invitation', async () => {
+    const inviteEmail = isolatedUser.email.replace('@', '-invite@');
+    await page.getByRole('button', { name: 'Создать пользователя' }).click();
+    await fillCreateForm(page, inviteEmail, '');
+    await page.getByRole('dialog', { name: 'Создать пользователя' }).getByRole('button', { name: 'Сохранить' }).click();
+
+    const result = page.getByRole('dialog', { name: 'Приглашение' });
+    await expect(result).toBeVisible();
+    await result.getByRole('button', { name: 'Закрыть' }).first().click();
+    await page.getByRole('button', { name: 'Ожидают входа' }).click();
+    const table = page.getByRole('table', { name: 'Ожидают входа' });
+    const row = table.getByRole('row').filter({ hasText: inviteEmail });
+    await expect(row.getByText('Ожидает', { exact: true })).toBeVisible();
+
+    await row.getByRole('button', { name: 'Продлить на 7 дней' }).click();
+    await expect(page.getByText('Срок приглашения продлён.')).toBeVisible();
+    await row.getByRole('checkbox').check();
+    await page.getByRole('button', { name: 'Отправить выбранным' }).click();
+    await expect(page.getByText('Приглашение уже отправляли. Повторите через минуту.')).toBeVisible();
+
+    await row.getByRole('button', { name: 'Отозвать' }).click();
+    await page.getByRole('dialog', { name: 'Отозвать' }).getByRole('button', { name: 'Отозвать' }).click();
+    await expect(row.getByText('Отозвано', { exact: true })).toBeVisible();
+  });
 });
