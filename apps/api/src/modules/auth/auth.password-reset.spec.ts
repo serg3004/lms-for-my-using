@@ -47,6 +47,7 @@ function createHarness(options: { userExists?: boolean; expired?: boolean } = {}
     passwordResetToken,
     user: { update: jest.fn(async ({ data }: { data: { passwordHash: string } }) => { passwordHash = data.passwordHash; }) },
     passwordHistory,
+    loginAttempt: { deleteMany: jest.fn(async () => ({ count: 0 })) },
     session: { updateMany: jest.fn(async () => { sessionsRevoked = true; return { count: 1 }; }) },
   };
   const prisma = {

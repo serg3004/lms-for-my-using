@@ -302,6 +302,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/organizations/{id}` | `Organizations` | `bearer` |
 | `GET` | `/api/v1/organizations/{id}/features` | `Organizations` | `bearer` |
 | `PATCH` | `/api/v1/organizations/{id}/features` | `Organizations` | `bearer` |
+| `GET` | `/api/v1/organizations/{id}/login-protection` | `Organizations` | `bearer` |
+| `PATCH` | `/api/v1/organizations/{id}/login-protection` | `Organizations` | `bearer` |
 | `POST` | `/api/v1/organizations/{id}/logo` | `Organizations` | `bearer` |
 | `GET` | `/api/v1/organizations/{id}/password-policy` | `Organizations` | `bearer` |
 | `PATCH` | `/api/v1/organizations/{id}/password-policy` | `Organizations` | `bearer` |
@@ -356,6 +358,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/users/import` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/invitations` | `Users` | `bearer` |
 | `POST` | `/api/v1/users/invitations/resend` | `Users` | `bearer` |
+| `GET` | `/api/v1/users/locked` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}` | `Users` | `bearer` |
 | `PATCH` | `/api/v1/users/{id}` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}/department-memberships` | `DepartmentMemberships` | `bearer` |
@@ -369,3 +372,4 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `PATCH` | `/api/v1/users/{id}/status` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}/status-impact` | `Users` | `bearer` |
 | `POST` | `/api/v1/users/{id}/temporary-password` | `Users` | `bearer` |
+| `POST` | `/api/v1/users/{id}/unlock` | `Users` | `bearer` |

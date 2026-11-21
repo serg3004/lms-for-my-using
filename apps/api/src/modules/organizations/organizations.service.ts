@@ -3,10 +3,11 @@ import { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
+import { loadLoginProtection, type LoginProtection } from '../../common/login-protection.js';
 import { assertPasswordPolicy, defaultPasswordPolicy } from '../../common/password-policy.js';
 import { hashPassword } from '../auth/public.js';
 import { UploadService } from '../upload/public.js';
-import { CreateOrganizationInput, OrganizationFeaturesInput, PasswordPolicyInput, RegisterOrganizationInput, ThemeSettingsInput } from './organizations.schemas.js';
+import { CreateOrganizationInput, LoginProtectionInput, OrganizationFeaturesInput, PasswordPolicyInput, RegisterOrganizationInput, ThemeSettingsInput } from './organizations.schemas.js';
 
 type StoredThemeSettings = Partial<ThemeSettingsInput> & { logoObjectKey?: string; logoMimeType?: string };
 
@@ -203,6 +204,36 @@ export class OrganizationsService {
       });
     }
     return policy;
+  }
+
+  async getLoginProtection(organizationId: string) {
+    const organization = await this.prisma.organization.findFirst({ where: { id: organizationId }, select: { id: true } });
+    if (!organization) throw new NotFoundException('Organization not found');
+
+    return loadLoginProtection(this.prisma, organizationId);
+  }
+
+  /** PR 493: new limits apply to the next failed attempt; accounts that are already locked keep their lock until an administrator lifts it. */
+  async updateLoginProtection(organizationId: string, input: LoginProtectionInput, actorId: string | null = null) {
+    const existing = await this.getLoginProtection(organizationId);
+    await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: { loginMaxFailures: input.maxFailures, loginFailureWindowMinutes: input.windowMinutes, loginLockMinutes: input.lockMinutes },
+    });
+    const updated: LoginProtection = { maxFailures: input.maxFailures, windowMinutes: input.windowMinutes, lockMinutes: input.lockMinutes };
+
+    if (existing.maxFailures !== updated.maxFailures || existing.windowMinutes !== updated.windowMinutes || existing.lockMinutes !== updated.lockMinutes) {
+      await this.auditLog.record({
+        organizationId,
+        actorId,
+        action: 'organization.login_protection_updated',
+        targetType: 'organization',
+        targetId: organizationId,
+        summary: `Sign-in protection: ${updated.maxFailures} failures in ${updated.windowMinutes} min lock for ${updated.lockMinutes} min`,
+        metadata: { before: existing, after: updated },
+      });
+    }
+    return updated;
   }
 
   async getThemeSettings(organizationId: string) {

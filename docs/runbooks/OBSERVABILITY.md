@@ -27,9 +27,17 @@ prisma_pool_connections_busy
 rate(lms_redis_errors_total[5m])
 rate(lms_rate_limit_rejects_total[5m])
 rate(lms_auth_refresh_reuse_total[5m])
+sum by (event) (rate(lms_auth_login_protection_total[15m]))
 histogram_quantile(0.95, sum by (le, operation) (rate(lms_s3_operation_duration_seconds_bucket[5m])))
 lms_queue_depth
 ```
+
+### Sign-in protection (PR 493)
+
+`lms_auth_login_protection_total{event}` counts account locks (`locked`), sign-ins refused during a lock (`blocked`)
+and manual unlocks (`unlocked`). It has no account or address labels. A sudden rise of `locked` or `blocked` means
+password guessing against several accounts: look at the audit entries `user.login_locked`, not at the metric. An
+administrator sets the limits (default 5 wrong passwords in 15 minutes, lock 15 minutes) on the "Security" page.
 
 ### Organization structure
 

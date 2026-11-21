@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { loginFailureWindowRange, loginLockRange, loginMaxFailuresRange } from '../../common/login-protection.js';
 import { passwordHistoryRange, passwordMinLengthRange } from '../../common/password-policy.js';
 
 export const organizationStatusSchema = z.enum(['active', 'suspended', 'archived']);
@@ -65,6 +66,14 @@ export const passwordPolicySchema = z.object({
   historyCount: z.number().int().min(passwordHistoryRange.min).max(passwordHistoryRange.max),
 }).strict();
 export type PasswordPolicyInput = z.infer<typeof passwordPolicySchema>;
+
+/** PR 493: thresholds of the sign-in protection; the ranges live in common/login-protection.ts. */
+export const loginProtectionSchema = z.object({
+  maxFailures: z.number().int().min(loginMaxFailuresRange.min).max(loginMaxFailuresRange.max),
+  windowMinutes: z.number().int().min(loginFailureWindowRange.min).max(loginFailureWindowRange.max),
+  lockMinutes: z.number().int().min(loginLockRange.min).max(loginLockRange.max),
+}).strict();
+export type LoginProtectionInput = z.infer<typeof loginProtectionSchema>;
 
 /** PR 381: organization feature switches; each one defaults to off and is changed only by an admin. */
 export const organizationFeaturesSchema = z.object({

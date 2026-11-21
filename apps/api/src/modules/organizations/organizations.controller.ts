@@ -13,6 +13,8 @@ import {
   CreateOrganizationInput,
   RegisterOrganizationInput,
   OrganizationFeaturesInput,
+  LoginProtectionInput,
+  loginProtectionSchema,
   PasswordPolicyInput,
   passwordPolicySchema,
   organizationFeaturesSchema,
@@ -119,6 +121,24 @@ export class OrganizationsController {
     const input: PasswordPolicyInput = passwordPolicySchema.parse(body);
 
     return this.organizationsService.updatePasswordPolicy(organizationId, input, request.currentUser?.id ?? null);
+  }
+
+  @Get(':id/login-protection')
+  @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
+  @Roles(...rolePolicies.loginProtection)
+  @OrganizationScope('param', 'id')
+  getLoginProtection(@Param('id') organizationId: string) {
+    return this.organizationsService.getLoginProtection(organizationId);
+  }
+
+  @Patch(':id/login-protection')
+  @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
+  @Roles(...rolePolicies.loginProtection)
+  @OrganizationScope('param', 'id')
+  updateLoginProtection(@Param('id') organizationId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input: LoginProtectionInput = loginProtectionSchema.parse(body);
+
+    return this.organizationsService.updateLoginProtection(organizationId, input, request.currentUser?.id ?? null);
   }
 
   @Post(':id/logo')

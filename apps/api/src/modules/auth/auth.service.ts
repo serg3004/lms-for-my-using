@@ -10,9 +10,11 @@ import { hashPassword, verifyPassword } from './passwords.js';
 import { buildPasswordChangedMail } from './password-changed-mail.js';
 import { buildInvitationMail, createInvitationToken, hashInvitationToken, invitationLifetimeDays, invitationLifetimeMs } from './user-invitation.js';
 import { isMailConfigured, sendMail } from '../../common/mail/mailer.js';
+import { loginProtection } from '../../common/observability/metrics.js';
 import { assertPasswordPolicy, passwordPolicyError } from '../../common/password-policy.js';
 import { generateTemporaryPassword, temporaryPasswordLifetimeMs } from '../../common/temporary-password.js';
 import { isPasswordReused, loadPasswordPolicy, rememberReplacedPassword } from './password-policy.js';
+import { LoginLockout } from './login-lockout.js';
 import { createPasswordResetToken, hashPasswordResetToken, PasswordResetDelivery, passwordResetLifetimeMs } from './password-reset.js';
 
 const currentUserSelect = {
@@ -36,6 +38,7 @@ const loginUserSelect = {
   passwordHash: true,
   temporaryPasswordExpiresAt: true,
   temporaryPasswordUsedAt: true,
+  loginLockedUntil: true,
 } as const;
 
 const invitationResendIntervalMs = 60_000;
@@ -69,10 +72,14 @@ function invalidCredentialsException() {
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
+  private readonly lockout: LoginLockout;
+
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly passwordResetDelivery?: PasswordResetDelivery,
-  ) {}
+  ) {
+    this.lockout = new LoginLockout(prisma);
+  }
 
   async findActiveUserByLoginIdentity(input: Pick<LoginInput, 'organizationId' | 'email'>) {
     const organizationId = await this.resolveLoginOrganizationId(input.organizationId);
@@ -130,11 +137,19 @@ export class AuthService {
       throw invalidCredentialsException();
     }
 
+    // PR 493: a locked account answers exactly like a wrong password, even for the right one, and does not count further.
+    if (this.lockout.isLocked(user)) {
+      loginProtection.inc({ event: 'blocked' });
+      throw invalidCredentialsException();
+    }
+
     const isPasswordValid = await verifyPassword(input.password, user.passwordHash);
 
     if (!isPasswordValid) {
+      await this.lockout.registerFailure(user);
       throw invalidCredentialsException();
     }
+    await this.lockout.clear(user.id);
 
     // PR 489: a temporary password works once and only within its term; a second try looks like a wrong password.
     if (user.mustChangePassword && user.temporaryPasswordExpiresAt) {
@@ -224,7 +239,7 @@ export class AuthService {
       await rememberReplacedPassword(transaction, user, current.passwordHash);
       await transaction.user.update({
         where: { id: user.id },
-        data: { passwordHash, mustChangePassword: true, temporaryPasswordExpiresAt: expiresAt, temporaryPasswordUsedAt: null },
+        data: { passwordHash, mustChangePassword: true, temporaryPasswordExpiresAt: expiresAt, temporaryPasswordUsedAt: null, loginLockedUntil: null },
       });
       await transaction.passwordResetToken.updateMany({ where: { userId: user.id, usedAt: null }, data: { usedAt: now } });
       await transaction.session.updateMany({ where: { userId: user.id, organizationId: user.organizationId, revokedAt: null }, data: { revokedAt: now } });
@@ -438,7 +453,8 @@ export class AuthService {
       if (consumed.count !== 1) throw new BadRequestException('Invalid or expired password reset token');
 
       await rememberReplacedPassword(transaction, resetUser, resetUser.passwordHash);
-      await transaction.user.update({ where: { id: token.userId }, data: { passwordHash, mustChangePassword: false, temporaryPasswordExpiresAt: null, temporaryPasswordUsedAt: null } });
+      await transaction.user.update({ where: { id: token.userId }, data: { passwordHash, mustChangePassword: false, temporaryPasswordExpiresAt: null, temporaryPasswordUsedAt: null, loginLockedUntil: null } });
+      await transaction.loginAttempt.deleteMany({ where: { userId: token.userId } });
       await transaction.session.updateMany({
         where: { userId: token.userId, organizationId: token.organizationId, revokedAt: null },
         data: { revokedAt: now },

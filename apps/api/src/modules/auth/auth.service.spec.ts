@@ -287,7 +287,7 @@ describe('AuthService login', () => {
     userResult?: (typeof currentUser & { passwordHash: string }) | null;
     roles?: string[];
   }) {
-    const orgDefault = { id: orgId };
+    const orgDefault = { id: orgId, loginMaxFailures: 5, loginFailureWindowMinutes: 15, loginLockMinutes: 15 };
     const rolesDefault = ['learner'];
 
     return {
@@ -302,6 +302,11 @@ describe('AuthService login', () => {
       },
       session: {
         create: async () => ({ id: 'session-id' }),
+      },
+      loginAttempt: {
+        create: async () => ({}),
+        count: async () => 1,
+        deleteMany: async () => ({ count: 0 }),
       },
     } as unknown as PrismaService;
   }
@@ -365,6 +370,7 @@ describe('AuthService login', () => {
           return { id: 'session-id' };
         },
       },
+      loginAttempt: { deleteMany: async () => ({ count: 0 }) },
     } as unknown as PrismaService;
     const authService = new AuthService(prisma);
 
@@ -430,6 +436,7 @@ describe('AuthService login', () => {
       },
       membership: { findMany: async () => [{ role: 'learner' }] },
       session: { create: async () => ({ id: 'session-id' }) },
+      loginAttempt: { deleteMany: async () => ({ count: 0 }) },
     } as unknown as PrismaService;
     const authService = new AuthService(prisma);
 

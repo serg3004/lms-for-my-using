@@ -339,6 +339,7 @@ describe('UsersService updateUserStatus', () => {
   function statusHarness(options: { previous?: string; next: string; openSessions?: number; admins?: string[] }) {
     const tx = {
       user: { update: jest.fn(async () => ({ id: userId, status: options.next })) },
+      session: { updateMany: jest.fn(async () => ({ count: 2 })) },
       checklistSession: { count: jest.fn(async () => options.openSessions ?? 0) },
       membership: { findMany: jest.fn(async () => (options.admins ?? []).map((id) => ({ userId: id }))) },
       notification: { create: jest.fn(async () => ({ id: 'notice' })) },
@@ -351,6 +352,19 @@ describe('UsersService updateUserStatus', () => {
     } as unknown as PrismaService;
     return { tx, service: new UsersService(prisma) };
   }
+
+  it('ends every session of a user who is suspended or archived, and none on activation (PR 493)', async () => {
+    const suspended = statusHarness({ next: 'suspended' });
+    await suspended.service.updateUserStatus(userId, actor, 'suspended');
+    expect(suspended.tx.session.updateMany).toHaveBeenCalledWith({
+      where: { userId, organizationId, revokedAt: null },
+      data: { revokedAt: expect.any(Date) },
+    });
+
+    const reactivated = statusHarness({ previous: 'suspended', next: 'active' });
+    await reactivated.service.updateUserStatus(userId, actor, 'active');
+    expect(reactivated.tx.session.updateMany).not.toHaveBeenCalled();
+  });
 
   it('returns no orphaned courses when the user stays active', async () => {
     const prisma = {
