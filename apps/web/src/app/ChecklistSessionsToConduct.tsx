@@ -80,7 +80,7 @@ export function ChecklistSessionsToConduct({ onOpenSession, t, hideEmpty = false
       </div>
       {history.length > 0 && (
         <div>
-          <h2 style={{ fontSize: 14, color: COLORS.muted, margin: '0 0 8px' }}>{t('checklistSessions.conduct.history', 'History')}</h2>
+          <h2 style={{ fontSize: 14, color: COLORS.muted, margin: '0 0 8px' }}>{t('checklistSessions.conduct.historyHeading', 'History')}</h2>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
             {history.map((session) => (
               <SessionCard key={session.id} session={session} onOpen={makeOpenHandler(onOpenSession, session.id)} onMarkUnavailable={() => setUnavailableTarget(session)} t={t} />

@@ -70,4 +70,21 @@ describe('checklist module i18n key coverage (UI refresh PR 316)', () => {
 
     expect(missing).toEqual([]);
   });
+
+  it('never points a literal t(...) key at a group of keys instead of one text', () => {
+    // A key that is both a text and a parent of other keys (`a.b` and `a.b.c`) makes i18next
+    // return an object and show "returned an object instead of string" on screen.
+    const groups: string[] = [];
+    for (const [path, source] of Object.entries(moduleFiles)) {
+      if (/\.spec\.tsx?$/.test(path)) continue;
+      for (const key of extractTranslationKeys(source)) {
+        let cursor: unknown = ru;
+        for (const segment of key.split('.')) {
+          cursor = typeof cursor === 'object' && cursor !== null ? (cursor as Record<string, unknown>)[segment] : undefined;
+        }
+        if (typeof cursor === 'object' && cursor !== null) groups.push(`${key} (${path.split('/').pop()})`);
+      }
+    }
+    expect(groups).toEqual([]);
+  });
 });

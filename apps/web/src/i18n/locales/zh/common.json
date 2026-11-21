@@ -3355,6 +3355,7 @@
       "empty": "尚未分配任何会话。",
       "toConduct": "待开展",
       "toConductEmpty": "目前没有安排。",
+      "historyHeading": "历史",
       "history": {
         "title": "过往会话",
         "loading": "正在加载过往会话...",
