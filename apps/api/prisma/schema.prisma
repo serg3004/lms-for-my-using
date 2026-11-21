@@ -357,6 +357,10 @@ model Organization {
   /// PR 488: password policy of the organization, set by an administrator.
   passwordMinLength          Int                         @default(10) @map("password_min_length")
   passwordHistoryCount       Int                         @default(3) @map("password_history_count")
+  /// PR 493: a series of failed sign-ins locks the account for a while; thresholds are set by an administrator.
+  loginMaxFailures           Int                         @default(5) @map("login_max_failures")
+  loginFailureWindowMinutes  Int                         @default(15) @map("login_failure_window_minutes")
+  loginLockMinutes           Int                         @default(15) @map("login_lock_minutes")
   createdAt                  DateTime                    @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                  DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                  DateTime?                   @map("deleted_at") @db.Timestamptz
@@ -451,6 +455,9 @@ model User {
   mustChangePassword         Boolean                    @default(false) @map("must_change_password")
   temporaryPasswordExpiresAt DateTime?                  @map("temporary_password_expires_at") @db.Timestamptz
   temporaryPasswordUsedAt    DateTime?                  @map("temporary_password_used_at") @db.Timestamptz
+  /// PR 493: sign-in is refused until this moment after too many failed attempts; an administrator can lift it earlier.
+  loginLockedUntil           DateTime?                  @map("login_locked_until") @db.Timestamptz
+  loginAttempts              LoginAttempt[]
   createdAt                  DateTime                   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                  DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                  DateTime?                  @map("deleted_at") @db.Timestamptz
@@ -1919,6 +1926,19 @@ model Session {
   @@index([expiresAt])
   @@index([refreshExpiresAt])
   @@map("sessions")
+}
+
+/// PR 493: one failed sign-in of an existing account; the series of them inside the window decides the lock.
+model LoginAttempt {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("login_attempts")
 }
 
 model MaterialFileDeletionAudit {

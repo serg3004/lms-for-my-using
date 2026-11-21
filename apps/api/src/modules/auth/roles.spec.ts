@@ -99,6 +99,7 @@ describe('rolePolicies', () => {
     organizationFeaturesWrite: ['admin'],
     passwordPolicyRead: ['admin', 'manager', 'instructor', 'mentor', 'learner'],
     passwordPolicyWrite: ['admin'],
+    loginProtection: ['admin'],
     usersRead: ['admin', 'manager'],
     usersCreate: ['admin', 'manager'],
     usersImport: ['admin', 'manager'],

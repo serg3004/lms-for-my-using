@@ -83,6 +83,9 @@ function createPrismaMock() {
     user: {
       findFirst: createAsyncMock<unknown>(),
     },
+    loginAttempt: {
+      deleteMany: createAsyncMock<unknown>(),
+    },
   };
 
   return mock;

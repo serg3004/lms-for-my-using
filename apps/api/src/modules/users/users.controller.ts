@@ -72,6 +72,20 @@ export class UsersController {
     return this.usersService.changeInvitation(request.currentUser!, invitationUserIdSchema.parse(id), 'extended');
   }
 
+  @Get('locked')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersResetPassword)
+  listLockedUsers(@Req() request: AuthenticatedRequest) {
+    return this.usersService.listLockedUsers(request.currentUser!);
+  }
+
+  @Post(':id/unlock')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersResetPassword)
+  unlockUser(@Param('id') userId: string, @Req() request: AuthenticatedRequest) {
+    return this.usersService.unlockUser(userId, request.currentUser!);
+  }
+
   @Get(':id')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(...rolePolicies.usersRead)

@@ -44,6 +44,14 @@ export const refreshReuse = new Counter({
   registers: [metricsRegistry],
 });
 
+/** PR 493: account locks, refused attempts during a lock and manual unlocks; no account labels. */
+export const loginProtection = new Counter({
+  name: 'lms_auth_login_protection_total',
+  help: 'Sign-in protection events: locked, blocked, unlocked.',
+  labelNames: ['event'] as const,
+  registers: [metricsRegistry],
+});
+
 export const s3Duration = new Histogram({
   name: 'lms_s3_operation_duration_seconds',
   help: 'S3 operation latency without bucket or object-key labels.',

@@ -3,6 +3,7 @@ import { BadRequestException, ConflictException, ForbiddenException, HttpExcepti
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
+import { loginProtection } from '../../common/observability/metrics.js';
 import { assertPasswordPolicy, checkPassword, describePasswordViolations } from '../../common/password-policy.js';
 import { AuthService, hashPassword, loadPasswordPolicy } from '../auth/public.js';
 import { countOpenObserverSessions, notifyObserverDeactivated } from '../checklists/public.js';
@@ -594,6 +595,10 @@ export class UsersService {
         data: { status },
         select: userSelect,
       });
+      // PR 493: a blocked user is signed out of every device at once, not when the access token runs out.
+      if (status !== 'active') {
+        await tx.session.updateMany({ where: { userId, organizationId, revokedAt: null }, data: { revokedAt: new Date() } });
+      }
       const open = status !== 'active' ? await countOpenObserverSessions(tx, organizationId, userId) : 0;
       if (open > 0 && user.status === 'active') {
         await notifyObserverDeactivated(tx, { organizationId, observerId: userId, sessionCount: open });
@@ -639,6 +644,50 @@ export class UsersService {
       metadata: { delivered: issued.delivered, ...(registrar ? { delegated: registrar.scope } : {}) },
     });
     return issued;
+  }
+
+  /** PR 493: accounts locked by failed sign-ins right now, inside the caller's scope. */
+  async listLockedUsers(actor: TeamScopeActor) {
+    const registrar = await this.registrars.resolve(actor);
+    return this.prisma.user.findMany({
+      where: {
+        organizationId: actor.organizationId,
+        ...this.teamScope.user(actor),
+        ...this.registrars.writeWhere(registrar, actor),
+        deletedAt: null,
+        loginLockedUntil: { gt: new Date() },
+      },
+      select: { id: true, email: true, firstName: true, lastName: true, middleName: true, loginLockedUntil: true },
+      orderBy: { loginLockedUntil: 'desc' },
+      take: 200,
+    });
+  }
+
+  /** PR 493: lifts the lock early and forgets the failed attempts; the person can sign in with the right password at once. */
+  async unlockUser(userId: string, actor: TeamScopeActor) {
+    const organizationId = actor.organizationId;
+    const registrar = await this.registrars.resolve(actor);
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, organizationId, ...this.teamScope.user(actor), ...this.registrars.writeWhere(registrar, actor), deletedAt: null },
+      select: { id: true, email: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({ where: { id: userId, organizationId }, data: { loginLockedUntil: null } }),
+      this.prisma.loginAttempt.deleteMany({ where: { userId } }),
+    ]);
+    loginProtection.inc({ event: 'unlocked' });
+    await this.auditLog.record({
+      organizationId,
+      actorId: actor.id,
+      action: 'user.login_unlocked',
+      targetType: 'user',
+      targetId: userId,
+      summary: `Lifted the sign-in lock of ${user.email}`,
+      metadata: registrar ? { delegated: registrar.scope } : {},
+    });
+    return { unlocked: true };
   }
 
   /** PR 489: a temporary password for an active user in the caller's scope; shown once, never written to the audit log. */
