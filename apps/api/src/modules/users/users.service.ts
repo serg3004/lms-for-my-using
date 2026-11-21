@@ -9,8 +9,9 @@ import { countOpenObserverSessions, notifyObserverDeactivated } from '../checkli
 import { ManagerTeamScope } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import { assertNoRoleChange, UserRegistrarAccess, type Registrar } from './user-registrar-access.js';
+import { lookupImportDepartment, resolveImportRole, type ImportRole } from './user-import.js';
 import {
-  createBulkUserItemSchema,
+  importUserItemSchema,
   CreateBulkUsersInput,
   CreateUserInput,
   CreateUserRequestInput,
@@ -42,7 +43,7 @@ const userSelect = {
   },
 } as const;
 
-type ImportUserData = Omit<CreateUserInput, 'organizationId'>;
+type ImportUserData = Omit<CreateUserInput, 'organizationId' | 'password'> & { password?: string | undefined };
 type ImportRowStatus = 'created' | 'valid' | 'skipped';
 
 type ImportRowReport = {
@@ -51,12 +52,19 @@ type ImportRowReport = {
   status: ImportRowStatus;
   userId: string | null;
   errors: string[];
+  /** PR 492: the row has no password, so the person gets an email invitation. */
+  invited?: boolean;
+  /** PR 492: whether the invitation mail was sent; false means the link must be passed on by hand. */
+  invitationDelivered?: boolean;
 };
 
 type ImportRow = {
   index: number;
   data: ImportUserData | null;
   report: ImportRowReport;
+  /** PR 492: department and role named in the row itself; they win over the batch values. */
+  departmentId?: string | null;
+  role?: ImportRole;
 };
 
 @Injectable()
@@ -339,10 +347,18 @@ export class UsersService {
     if (input.role !== undefined && !actor?.roles.includes('admin')) throw new ForbiddenException('Roles are granted by an administrator');
     await this.ensureOrganizationExists(input.organizationId);
     const registrar = await this.registrars.resolveCreation(actor);
-    const departmentId = await this.resolvePlacement(registrar, input.organizationId, input.departmentId);
+    // A registrar limited to a department may leave the batch department empty when every row names its own.
+    const rowsNameDepartments = input.users.some((rawUser) => typeof rawUser['department'] === 'string' && rawUser['department'].trim() !== '');
+    const deferPlacement = rowsNameDepartments && !input.departmentId && registrar?.departmentIds != null;
+    const departmentId = deferPlacement ? null : await this.resolvePlacement(registrar, input.organizationId, input.departmentId);
+
+    const departments = rowsNameDepartments
+      ? await this.prisma.department.findMany({ where: { organizationId: input.organizationId, status: 'active' }, select: { id: true, name: true } })
+      : [];
+    const isAdmin = actor === undefined || actor.roles.includes('admin');
 
     const rows: ImportRow[] = input.users.map((rawUser, index) => {
-      const parsed = createBulkUserItemSchema.safeParse(rawUser);
+      const parsed = importUserItemSchema.safeParse(rawUser);
 
       if (!parsed.success) {
         return {
@@ -358,17 +374,36 @@ export class UsersService {
         };
       }
 
-      return {
+      const { department, role, ...data } = parsed.data;
+      const row: ImportRow = {
         index,
-        data: parsed.data,
+        data,
         report: {
           index,
-          email: parsed.data.email,
+          email: data.email,
           status: 'valid',
           userId: null,
           errors: [],
         },
       };
+
+      if (department !== undefined) {
+        const found = lookupImportDepartment(department, departments, registrar?.departmentIds ?? null);
+        if (found.kind === 'found') row.departmentId = found.id;
+        else row.report.errors.push(found.kind === 'missing' ? 'Department not found' : found.kind === 'outside' ? 'The department is outside your area' : 'Department name is ambiguous');
+      }
+      if (role !== undefined) {
+        const resolved = resolveImportRole(role);
+        if (!resolved) row.report.errors.push('Role not found');
+        else if (!isAdmin) row.report.errors.push('Roles are granted by an administrator');
+        else row.role = resolved;
+      }
+      // A department-limited registrar places every row in the own tree: by the row's own department or the batch one.
+      if (registrar?.departmentIds && row.departmentId === undefined && !departmentId && !row.report.errors.some((message) => message.startsWith('Department') || message.startsWith('The department'))) {
+        row.report.errors.push('Department is required');
+      }
+      if (row.report.errors.length > 0) row.report.status = 'skipped';
+      return row;
     });
 
     const emailCounts = new Map<string, number>();
@@ -387,7 +422,7 @@ export class UsersService {
 
     const importPolicy = await loadPasswordPolicy(this.prisma, input.organizationId);
     rows.forEach((row) => {
-      const violations = row.data ? checkPassword(row.data.password, importPolicy, row.data) : [];
+      const violations = row.data?.password !== undefined ? checkPassword(row.data.password, importPolicy, row.data) : [];
       if (violations.length > 0) {
         row.report.status = 'skipped';
         row.report.errors.push(`Password: ${describePasswordViolations(violations, importPolicy)}`);
@@ -407,12 +442,27 @@ export class UsersService {
     });
 
     const creatableRows = rows.filter((row) => row.data && row.report.errors.length === 0);
+    const rich = creatableRows.some((row) => row.data!.password === undefined || row.departmentId !== undefined || row.role !== undefined);
+    if (rich && creatableRows.some((row) => row.data!.password === undefined) && !this.authService && input.mode === 'create') {
+      throw new ConflictException('Invitations are not available');
+    }
 
-    if (input.mode === 'create' && creatableRows.length > 0) {
+    if (input.mode === 'create' && creatableRows.length > 0 && rich) {
+      await this.createImportedRows(creatableRows, input.organizationId, departmentId, input.role ?? (registrar ? 'learner' : undefined), actor?.id ?? null);
+      await this.auditLog.record({
+        organizationId: input.organizationId,
+        actorId: actor?.id ?? null,
+        action: 'user.created',
+        targetType: 'user',
+        targetId: creatableRows[0]?.report.userId ?? null,
+        summary: `Imported ${creatableRows.length} users`,
+        metadata: { departmentId, count: creatableRows.length, invited: creatableRows.filter((row) => row.report.invited).length, ...(registrar ? { delegated: registrar.scope } : {}) },
+      });
+    } else if (input.mode === 'create' && creatableRows.length > 0) {
       const usersData = await Promise.all(
         creatableRows.map(async (row) => {
           const { password, ...userData } = row.data!;
-          const passwordHash = await hashPassword(password);
+          const passwordHash = await hashPassword(password!);
 
           return {
             ...userData,
@@ -613,6 +663,45 @@ export class UsersService {
     }
     if (departmentId) {
       await tx.departmentMembership.createMany({ data: userIds.map((userId) => ({ organizationId, userId, departmentId, isPrimary: true })) });
+    }
+  }
+
+  /**
+   * PR 492: rows of an import file in one transaction. A row without a password becomes an `invited` user with an invitation
+   * (sent after the commit, in small groups); a row with its own department or role is placed there instead of the batch values.
+   */
+  private async createImportedRows(
+    creatable: ImportRow[],
+    organizationId: string,
+    batchDepartmentId: string | null,
+    batchRole: ImportRole | undefined,
+    actorId: string | null,
+  ) {
+    const prepared = await Promise.all(creatable.map(async (row) => {
+      const { password, ...userData } = row.data!;
+      const invite = password === undefined;
+      // An invited user has no usable password until they accept: hash of a random secret nobody sees.
+      const passwordHash = await hashPassword(password ?? randomBytes(32).toString('hex'));
+      return { row, invite, data: { ...userData, ...(invite ? { status: 'invited' as const } : {}), organizationId, passwordHash } };
+    }));
+
+    const deliveries = await this.prisma.$transaction(async (tx) => {
+      const pending: Array<{ row: ImportRow; deliver: () => Promise<{ delivered: boolean }> }> = [];
+      for (const item of prepared) {
+        const user = await tx.user.create({ data: item.data, select: { id: true, email: true, firstName: true, locale: true } });
+        item.row.report.userId = user.id;
+        await this.placeNewUsers(tx, organizationId, [user.id], item.row.departmentId ?? batchDepartmentId, item.row.role ?? batchRole, actorId);
+        if (item.invite) pending.push({ row: item.row, deliver: await this.authService!.prepareInvitationFor({ ...user, organizationId }, actorId, tx) });
+      }
+      return pending;
+    });
+
+    creatable.forEach((row) => { row.report.status = 'created'; });
+    for (let start = 0; start < deliveries.length; start += 10) {
+      await Promise.all(deliveries.slice(start, start + 10).map(async ({ row, deliver }) => {
+        row.report.invited = true;
+        row.report.invitationDelivered = (await deliver()).delivered;
+      }));
     }
   }
 
