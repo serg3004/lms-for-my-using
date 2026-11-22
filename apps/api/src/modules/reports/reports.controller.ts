@@ -17,10 +17,11 @@ export class ReportsController {
   @Get('summary')
   @Roles(...rolePolicies.reportsRead)
   getSummary(@Query() query: unknown, @Req() request: AuthenticatedRequest) {
-    const { departmentId, includeDescendants } = reportsSummaryQuerySchema.parse(query);
+    const { departmentId, includeDescendants, fieldFilters, groupByField } = reportsSummaryQuerySchema.parse(query);
     return this.reportsService.getSummary(
       request.currentUser!,
       departmentId ? { departmentId, includeDescendants } : undefined,
+      ...(fieldFilters || groupByField ? [{ fieldFilters, groupByField }] as const : []),
     );
   }
 

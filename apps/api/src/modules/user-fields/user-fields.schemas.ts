@@ -66,3 +66,16 @@ export const customFieldValuesSchema = z.record(fieldKeySchema, z.union([z.strin
 export type CustomFieldValues = z.infer<typeof customFieldValuesSchema>;
 export type CreateUserFieldInput = z.infer<typeof createUserFieldSchema>;
 export type UpdateUserFieldInput = z.infer<typeof updateUserFieldSchema>;
+
+// Compact JSON tuples allow several independent filters without ambiguous delimiters.
+export const analyticsFieldFiltersSchema = z.string().max(4096).optional().transform((value, ctx) => {
+  if (value === undefined) return undefined;
+  try {
+    return z.array(z.tuple([fieldKeySchema, z.string().trim().min(1).max(500)])).min(1).max(10).parse(JSON.parse(value));
+  } catch {
+    ctx.addIssue({ code: 'custom', message: 'Invalid user field filters' });
+    return z.NEVER;
+  }
+});
+
+export type AnalyticsFieldFilters = z.output<typeof analyticsFieldFiltersSchema>;

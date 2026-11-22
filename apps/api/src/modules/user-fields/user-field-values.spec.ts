@@ -1,7 +1,8 @@
+import type { PrismaService } from '../../database/prisma.service.js';
 import { canEditField, canSeeField, fieldAuditMetadata, normalizeFieldValue, normalizePhone, presentFieldValue, searchTerms } from './user-field-values.js';
 import type { FieldDefinition } from './user-field-values.js';
 import { createUserFieldSchema, customFieldValuesSchema, fieldKeySchema, reorderUserFieldsSchema, updateUserFieldSchema } from './user-fields.schemas.js';
-import { validateFieldValues } from './user-fields.service.js';
+import { analyticsFieldFilter, validateFieldValues } from './user-fields.service.js';
 
 const labels = { ru: 'Поле', en: 'Field', kk: 'Өріс', zh: '字段' };
 let counter = 0;
@@ -109,5 +110,36 @@ describe('custom user field schemas (PR 499)', () => {
     expect(customFieldValuesSchema.safeParse({ a1: 'x', b2: 1, c3: true, d4: null }).success).toBe(true);
     expect(customFieldValuesSchema.safeParse({ a1: { nested: 1 } }).success).toBe(false);
     expect(customFieldValuesSchema.safeParse({ 'Bad Key': 'x' }).success).toBe(false);
+  });
+});
+
+describe('analytics field filters (PR 502)', () => {
+  it('compares canonical values and treats wildcard characters in text literally', async () => {
+    const note = definition({ key: 'note', type: 'text', searchable: true });
+    const grade = definition({ key: 'grade', type: 'number' });
+    const prisma = {
+      userFieldDefinition: { findMany: async () => [note, grade] },
+    } as unknown as PrismaService;
+
+    const result = await analyticsFieldFilter(prisma, 'org', ['manager'], [['note', ' A%_ '], ['grade', '01.50']]);
+    expect(result).toEqual({ AND: [
+      { userFieldValues: { some: { organizationId: 'org', fieldId: note.id, normalizedValue: { contains: 'a\\%\\_' }, field: { organizationId: 'org', archivedAt: null, visibleTo: { has: 'manager' }, searchable: true } } } },
+      { userFieldValues: { some: { organizationId: 'org', fieldId: grade.id, normalizedValue: '1.5', field: { organizationId: 'org', archivedAt: null, visibleTo: { has: 'manager' } } } } },
+    ] });
+  });
+
+  it('looks up only visible active tenant fields and rejects an unknown key', async () => {
+    const prisma = {
+      userFieldDefinition: {
+        findMany: async (query: unknown) => {
+          expect(query).toEqual({ where: {
+            organizationId: 'org', archivedAt: null, visibleTo: { has: 'manager' }, key: { in: ['private_field'] },
+          } });
+          return [];
+        },
+      },
+    } as unknown as PrismaService;
+    await expect(analyticsFieldFilter(prisma, 'org', ['manager'], [['private_field', 'guess']])).rejects.toThrow('Unknown user field');
+    await expect(analyticsFieldFilter(prisma, 'org', ['instructor'], [['private_field', 'guess']])).rejects.toThrow('Unknown user field');
   });
 });

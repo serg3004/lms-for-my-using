@@ -1,3 +1,4 @@
+import { AnalyticsFieldFilter } from '../features/user-fields/AnalyticsFieldFilter.js';
 import { plainText } from '@lms/shared/rich-text';
 import { useMemo, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -65,9 +66,10 @@ function SummaryCards({ metrics, t }: { metrics: SheetAnalyticsMetrics; t: (key:
 
 type Row = SheetAnalytics['sheets'][number];
 
-function SheetsTable({ rows, t }: { rows: Row[]; t: (key: string, fallback: string) => string }) {
+function SheetsTable({ rows, fieldColumn, t }: { rows: Row[]; fieldColumn?: string; t: (key: string, fallback: string) => string }) {
   const columns: Column<Row>[] = [
     { key: 'title', label: t('sheetAnalytics.colSheet', 'Checklist'), priority: 'primary', render: (row) => plainText(row.title) },
+    ...(fieldColumn ? [{ key: 'userField', label: fieldColumn, priority: 'primary' as const, render: (row: Row) => row.fieldLabel || '—' }] : []),
     { key: 'plan', label: t('sheetAnalytics.colPlan', 'Plan'), priority: 'secondary', align: 'end', render: (row) => row.plan.planned },
     { key: 'fact', label: t('sheetAnalytics.colFact', 'Done'), priority: 'secondary', align: 'end', render: (row) => row.plan.completed },
     { key: 'overdue', label: t('sheetAnalytics.overdue', 'Overdue'), priority: 'tertiary', align: 'end', render: (row) => row.plan.overdue },
@@ -76,7 +78,7 @@ function SheetsTable({ rows, t }: { rows: Row[]; t: (key: string, fallback: stri
     { key: 'answered', label: t('sheetAnalytics.answered', 'Answered'), priority: 'tertiary', align: 'end', render: (row) => `${row.criteria.answered} / ${row.criteria.answered + row.criteria.remaining + row.criteria.skipped}` },
     { key: 'queue', label: t('sheetAnalytics.queue', 'Not started'), priority: 'tertiary', align: 'end', render: (row) => row.queue.notStarted },
   ];
-  return <DataTable<Row> label={t('sheetAnalytics.tableLabel', 'Metrics by checklist')} columns={columns} rows={rows} keyExtractor={(row) => row.checklistId} responsiveDetails={{ label: t('courses.details', 'Details'), expandLabel: (row) => `${t('courses.details', 'Details')}: ${plainText(row.title)}`, collapseLabel: (row) => `${t('courses.details', 'Details')}: ${plainText(row.title)}` }} emptyMessage={t('sheetAnalytics.noSheets', 'No checklists available.')} />;
+  return <DataTable<Row> label={t('sheetAnalytics.tableLabel', 'Metrics by checklist')} columns={columns} rows={rows} keyExtractor={(row) => JSON.stringify([row.checklistId, row.groupKey])} responsiveDetails={{ label: t('courses.details', 'Details'), expandLabel: (row) => `${t('courses.details', 'Details')}: ${plainText(row.title)}`, collapseLabel: (row) => `${t('courses.details', 'Details')}: ${plainText(row.title)}` }} emptyMessage={t('sheetAnalytics.noSheets', 'No checklists available.')} />;
 }
 
 /** The tab itself; each role mounts it in its own layout and with its own tab strip. */
@@ -88,6 +90,8 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
   const customTo = searchParams.get('to') ?? '';
   const departmentId = searchParams.get('departmentId') ?? '';
   const managerId = searchParams.get('managerId') ?? '';
+  const fieldFilters = searchParams.get('fieldFilters') || undefined;
+  const groupByField = searchParams.get('groupByField') || undefined;
   const search = searchParams.get('q') ?? '';
   const selected = parseSelectedSheets(searchParams.get('sheets'));
   const { from, to } = useMemo(() => resolvePeriodRange(period, new Date(), customFrom, customTo), [period, customFrom, customTo]);
@@ -103,8 +107,8 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
   const { state: optionsState } = useAsyncData(() => getManagerChecklistAnalytics({ from, to }).then((data) => ({ departments: data.departmentOptions, managers: data.managerOptions ?? [] })), [from, to], { unauthenticated: '', error: '' });
   const key = selected.join(',');
   const { state } = useAsyncData<SheetAnalytics>(
-    () => getSheetAnalytics({ from, to, checklistIds: selected.length ? selected : undefined, departmentId: departmentId || undefined, managerId: managerId || undefined }),
-    [from, to, key, departmentId, managerId],
+    () => getSheetAnalytics({ from, to, checklistIds: selected.length ? selected : undefined, departmentId: departmentId || undefined, managerId: managerId || undefined, fieldFilters, groupByField }),
+    [from, to, key, departmentId, managerId, fieldFilters, groupByField],
     { unauthenticated: loadError, error: loadError },
   );
 
@@ -124,6 +128,7 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
       </header>
 
       <Card style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,200px),1fr))', gap: 16, marginBottom: 20 }}>
+        <AnalyticsFieldFilter value={fieldFilters} onChange={(value) => update('fieldFilters', value)} groupBy={groupByField} onGroupBy={(value) => update('groupByField', value)} />
         <label style={field}>
           {t('manager.checklists.periodFilter', 'Period')}
           <select className="ds-input" value={period} onChange={(event) => update('period', event.target.value)}>
@@ -201,8 +206,8 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
           )}
           <section aria-labelledby="sheet-analytics-table" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 8 }}>
             <h2 id="sheet-analytics-table" style={{ fontSize: 20, margin: 0 }}>{t('sheetAnalytics.tableLabel', 'Metrics by checklist')}</h2>
-            <SheetAnalyticsExport query={{ view: 'sheets', from, to, checklistIds: selected.length ? selected : undefined, departmentId: departmentId || undefined, managerId: managerId || undefined }} sheetName={t('sheetAnalytics.tableLabel', 'Metrics by checklist')} />
-            <SheetsTable rows={state.data.sheets} t={t} />
+            <SheetAnalyticsExport query={{ view: 'sheets', from, to, checklistIds: selected.length ? selected : undefined, departmentId: departmentId || undefined, managerId: managerId || undefined, fieldFilters, groupByField }} sheetName={t('sheetAnalytics.tableLabel', 'Metrics by checklist')} />
+            <SheetsTable rows={state.data.sheets} fieldColumn={state.data.fieldColumn} t={t} />
           </section>
         </div>
       ))}
@@ -212,6 +217,7 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
             departmentId={departmentId || undefined}
             from={from}
             managerId={managerId || undefined}
+            fieldFilters={fieldFilters}
             sessionPath={sessionPath}
             sheetId={selected[0]!}
             title={plainText(sheets.find((sheet) => sheet.id === selected[0])?.title ?? '') || t('sheetAnalytics.unknownSheet', 'Checklist')}

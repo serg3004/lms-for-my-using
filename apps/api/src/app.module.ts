@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
 
-import { PINO_REDACT_PATHS } from './common/logger/redact-paths.js';
+import { PINO_REDACT_PATHS, redactAnalyticsFilters } from './common/logger/redact-paths.js';
 import { ObservabilityModule } from './common/observability/observability.module.js';
 import { getTelemetryContext, resolveRequestId } from './common/telemetry/telemetry-context.js';
 import { DatabaseModule } from './database/database.module.js';
@@ -56,6 +56,15 @@ import { UserFieldsModule } from './modules/user-fields/public.js';
             ? { target: 'pino-pretty', options: { colorize: true, singleLine: true } }
             : undefined,
         redact: { paths: PINO_REDACT_PATHS, censor: '[REDACTED]' },
+        serializers: {
+          req: (req) => ({
+            ...req,
+            url: typeof req.url === 'string' ? redactAnalyticsFilters(req.url) : req.url,
+            headers: typeof req.headers?.referer === 'string'
+              ? { ...req.headers, referer: redactAnalyticsFilters(req.headers.referer) }
+              : req.headers,
+          }),
+        },
         genReqId: (req) => {
           const requestId = resolveRequestId(req.headers['x-request-id']);
           // Reuse the logger's ID in the application telemetry middleware instead

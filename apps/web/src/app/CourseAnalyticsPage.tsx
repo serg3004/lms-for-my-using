@@ -1,3 +1,4 @@
+import { AnalyticsFieldFilter } from '../features/user-fields/AnalyticsFieldFilter.js';
 import { useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Route, Routes, useParams, useSearchParams } from 'react-router-dom';
@@ -72,6 +73,8 @@ function useFilters() {
   const courseId = params.get('course') ?? '';
   const periodInvalid = Boolean(from && to && from > to);
   const query: CourseAnalyticsQuery = {
+    fieldFilters: params.get('fieldFilters') || undefined,
+    groupByField: params.get('groupByField') || undefined,
     from: from ? dayStart(from) : undefined,
     to: to ? dayEnd(to) : undefined,
     departmentId: departmentId || undefined,
@@ -160,17 +163,18 @@ function dateCell(t: TFunction, value: string | null) {
   return formatNullableDate(value, '—', undefined, { dateStyle: 'medium' });
 }
 
-function State<T>({ state, children, Layout, currentPath }: {
+function State<T>({ state, children, Layout, currentPath, fallbackControls }: {
   state: AsyncDataState<Loaded<T>>;
   children: (data: T) => ReactNode;
   Layout: CourseAnalyticsLayout;
   currentPath: string;
+  fallbackControls?: ReactNode;
 }) {
   const { t } = useTranslation();
-  if (state.status === 'loading') return <Layout currentPath={currentPath}><PageState message={t('courseAnalytics.loading')} variant="loading" /></Layout>;
-  if (state.status === 'notFound') return <Layout currentPath={currentPath}><PageState message={t('courseAnalytics.notFound')} variant="error" /></Layout>;
-  if (state.status !== 'loaded') return <Layout currentPath={currentPath}><PageState message={t('courseAnalytics.loadError')} variant="error" /></Layout>;
-  if (state.data.kind === 'forbidden') return <Layout currentPath={currentPath}><PageState message={t('courseAnalytics.forbidden')} variant="error" /></Layout>;
+  if (state.status === 'loading') return <Layout currentPath={currentPath}>{fallbackControls}<PageState message={t('courseAnalytics.loading')} variant="loading" /></Layout>;
+  if (state.status === 'notFound') return <Layout currentPath={currentPath}>{fallbackControls}<PageState message={t('courseAnalytics.notFound')} variant="error" /></Layout>;
+  if (state.status !== 'loaded') return <Layout currentPath={currentPath}>{fallbackControls}<PageState message={t('courseAnalytics.loadError')} variant="error" /></Layout>;
+  if (state.data.kind === 'forbidden') return <Layout currentPath={currentPath}>{fallbackControls}<PageState message={t('courseAnalytics.forbidden')} variant="error" /></Layout>;
   return <Layout currentPath={currentPath}>{children(state.data.data)}</Layout>;
 }
 
@@ -206,6 +210,7 @@ function CoursesView({ Layout, basePath }: { Layout: CourseAnalyticsLayout; base
 
   const filterBar = <Card style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,200px),1fr))', gap: 16, marginBottom: 20 }}>
     <PeriodFields filters={filters} />
+    <AnalyticsFieldFilter value={filters.query.fieldFilters} onChange={(value) => filters.update('fieldFilters', value)} groupBy={filters.query.groupByField} onGroupBy={(value) => filters.update('groupByField', value)} />
     {courseOptions.length > 0 && <label style={labelStyle}>{t('courseAnalytics.course')}<select className="ds-input" value={filters.courseId} onChange={(event) => filters.update('course', event.target.value)}>
       <option value="">{t('courseAnalytics.allCourses')}</option>{courseOptions.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</select></label>}
     {filterOptions.departments.length > 0 && <label style={labelStyle}>{t('courseAnalytics.department')}<select className="ds-input" value={filters.departmentId} onChange={(event) => filters.update('departmentId', event.target.value)}>
@@ -219,12 +224,16 @@ function CoursesView({ Layout, basePath }: { Layout: CourseAnalyticsLayout; base
   if (filters.periodInvalid) {
     return <Layout currentPath={basePath}><Header title={t('courseAnalytics.title')} subtitle={t('courseAnalytics.subtitle')} />{filterBar}<NoticeValidation /></Layout>;
   }
-  return <State state={state} Layout={Layout} currentPath={basePath}>{(data: CourseAnalyticsList) => {
+  return <State state={state} Layout={Layout} currentPath={basePath} fallbackControls={filterBar}>{(data: CourseAnalyticsList) => {
     const totals = data.courses.reduce((sum, course) => ({
       assigned: sum.assigned + course.assigned, completed: sum.completed + course.completed, passed: sum.passed + course.passed,
       failed: sum.failed + course.failed, overdue: sum.overdue + course.overdue,
     }), { assigned: 0, completed: 0, passed: 0, failed: 0, overdue: 0 });
     const columns: Column<CourseAnalyticsList['courses'][number]>[] = [
+      ...(data.fieldColumn ? [{
+        key: 'userField', label: data.fieldColumn, priority: 'primary' as const,
+        render: (row: CourseAnalyticsList['courses'][number]) => row.fieldLabel || '—',
+      }] : []),
       { key: 'course', label: t('courseAnalytics.course'), priority: 'primary', render: (row) => <Link to={`${basePath}/course/${row.courseId}${filters.params.toString() ? `?${filters.params.toString()}` : ''}`}>{row.title}</Link> },
       { key: 'assigned', label: t('courseAnalytics.assigned'), priority: 'primary', align: 'end', render: (row) => row.assigned },
       { key: 'completed', label: t('courseAnalytics.completed'), priority: 'primary', align: 'end', render: (row) => `${row.completed} (${row.completedPercent}%)` },
@@ -246,7 +255,7 @@ function CoursesView({ Layout, basePath }: { Layout: CourseAnalyticsLayout; base
         <StatCard label={t('courseAnalytics.overdue')} value={totals.overdue} />
       </StatsGrid>
       <Notes truncated={data.truncated} />
-      <DataTable columns={columns} density="dense" emptyMessage={t('courseAnalytics.empty')} keyExtractor={(row) => row.courseId} label={t('courseAnalytics.tableLabel')} rows={data.courses}
+      <DataTable columns={columns} density="dense" emptyMessage={t('courseAnalytics.empty')} keyExtractor={(row) => JSON.stringify([row.courseId, row.groupKey])} label={t('courseAnalytics.tableLabel')} rows={data.courses}
         responsiveDetails={{ label: t('courseAnalytics.details'), expandLabel: (row) => `${t('courseAnalytics.details')}: ${row.title}`, collapseLabel: (row) => `${t('courseAnalytics.details')}: ${row.title}` }} />
     </>;
   }}</State>;
@@ -267,8 +276,13 @@ function CourseView({ Layout, basePath }: { Layout: CourseAnalyticsLayout; baseP
     { unauthenticated: t('courseAnalytics.loadError'), error: t('courseAnalytics.loadError'), notFound: t('courseAnalytics.notFound') },
   );
   if (filters.periodInvalid) return <Layout currentPath={basePath}><Header title={t('courseAnalytics.courseReport')} /><NoticeValidation /></Layout>;
-  return <State state={state} Layout={Layout} currentPath={basePath}>{(data: CourseReport) => {
+  const fieldControl = <AnalyticsFieldFilter value={filters.query.fieldFilters} onChange={(value) => filters.update('fieldFilters', value)} groupBy={filters.query.groupByField} onGroupBy={(value) => filters.update('groupByField', value)} />;
+  return <State state={state} Layout={Layout} currentPath={basePath} fallbackControls={fieldControl}>{(data: CourseReport) => {
     const columns: Column<CourseReport['rows'][number]>[] = [
+      ...(data.fieldColumn ? [{
+        key: 'userField', label: data.fieldColumn, priority: 'primary' as const,
+        render: (row: CourseReport['rows'][number]) => row.fieldLabel || '—',
+      }] : []),
       { key: 'user', label: t('courseAnalytics.employee'), priority: 'primary', render: (row) => <Link to={`${basePath}/user/${row.userId}${search}`}>{personName(row.user)}</Link> },
       { key: 'status', label: t('courseAnalytics.statusLabel'), priority: 'primary', render: (row) => statusLabel(t, row.status) },
       { key: 'lessons', label: t('courseAnalytics.lessons'), priority: 'primary', align: 'end', render: (row) => `${row.lessonsCompleted}/${row.lessonsTotal} (${row.lessonsPercent}%)` },
@@ -283,6 +297,7 @@ function CourseView({ Layout, basePath }: { Layout: CourseAnalyticsLayout; baseP
     const summary = data.summary;
     return <>
       <Header title={data.course.title} subtitle={t('courseAnalytics.courseReport')} back={<BackLink to={`${basePath}${search}`} label={t('courseAnalytics.backToCourses')} />} actions={<ExportButtons view="course" ids={{ courseId }} query={filters.query} disabled={data.rows.length === 0} />} />
+      {fieldControl}
       {summary ? <StatsGrid>
         <StatCard label={t('courseAnalytics.assigned')} value={summary.assigned} />
         <StatCard label={t('courseAnalytics.completed')} value={`${summary.completed} (${summary.completedPercent}%)`} />
@@ -309,8 +324,13 @@ function UserView({ Layout, basePath }: { Layout: CourseAnalyticsLayout; basePat
     { unauthenticated: t('courseAnalytics.loadError'), error: t('courseAnalytics.loadError'), notFound: t('courseAnalytics.notFound') },
   );
   if (filters.periodInvalid) return <Layout currentPath={basePath}><Header title={t('courseAnalytics.userReport')} /><NoticeValidation /></Layout>;
-  return <State state={state} Layout={Layout} currentPath={basePath}>{(data: UserReport) => {
+  const fieldControl = <AnalyticsFieldFilter value={filters.query.fieldFilters} onChange={(value) => filters.update('fieldFilters', value)} groupBy={filters.query.groupByField} onGroupBy={(value) => filters.update('groupByField', value)} />;
+  return <State state={state} Layout={Layout} currentPath={basePath} fallbackControls={fieldControl}>{(data: UserReport) => {
     const columns: Column<UserReport['rows'][number]>[] = [
+      ...(data.fieldColumn ? [{
+        key: 'userField', label: data.fieldColumn, priority: 'primary' as const,
+        render: (row: UserReport['rows'][number]) => row.fieldLabel || '—',
+      }] : []),
       { key: 'course', label: t('courseAnalytics.course'), priority: 'primary', render: (row) => <Link to={`${basePath}/course/${row.courseId}${search}`}>{row.courseTitle}</Link> },
       { key: 'status', label: t('courseAnalytics.statusLabel'), priority: 'primary', render: (row) => statusLabel(t, row.status) },
       { key: 'lessons', label: t('courseAnalytics.lessons'), priority: 'primary', align: 'end', render: (row) => `${row.lessonsCompleted}/${row.lessonsTotal} (${row.lessonsPercent}%)` },
@@ -325,6 +345,7 @@ function UserView({ Layout, basePath }: { Layout: CourseAnalyticsLayout; basePat
     ];
     return <>
       <Header title={personName(data.user)} subtitle={t('courseAnalytics.userReport')} back={<BackLink to={`${basePath}${search}`} label={t('courseAnalytics.backToCourses')} />} actions={<ExportButtons view="user" ids={{ userId }} query={filters.query} disabled={data.rows.length === 0} />} />
+      {fieldControl}
       <StatsGrid>
         <StatCard label={t('courseAnalytics.assignedCourses')} value={data.summary.assigned} />
         <StatCard label={t('courseAnalytics.completed')} value={data.summary.completed} />

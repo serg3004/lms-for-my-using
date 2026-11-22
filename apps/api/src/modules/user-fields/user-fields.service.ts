@@ -3,7 +3,7 @@ import type { Prisma } from '@prisma/client';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
-import type { CreateUserFieldInput, CustomFieldValues, UpdateUserFieldInput } from './user-fields.schemas.js';
+import type { AnalyticsFieldFilters, CreateUserFieldInput, CustomFieldValues, UpdateUserFieldInput } from './user-fields.schemas.js';
 import {
   canEditField, canSeeField, isEmptyInput, normalizeFieldValue, normalizeText, optionKeyFromTitle, optionTitle, presentFieldValue, searchTerms,
   FIELD_LANGUAGES, WORK_SCHEDULE_KEY,
@@ -444,4 +444,74 @@ export class UserFieldsService {
     if (!result.ok) throw new BadRequestException(`The value of "${key}" is not valid`);
     return { userFieldValues: { some: { organizationId, fieldId: definition.id, normalizedValue: result.normalized } } };
   }
+}
+
+/** Build a population predicate without reading or exposing employee values. */
+export async function analyticsFieldFilter(
+  prisma: PrismaService,
+  organizationId: string,
+  roles: readonly string[],
+  filters: AnalyticsFieldFilters,
+): Promise<Prisma.UserWhereInput> {
+  if (!filters?.length) return {};
+  const visible = analyticsFieldVisibility(organizationId, roles);
+  const definitions = await prisma.userFieldDefinition.findMany({
+    where: { ...visible, key: { in: filters.map(([key]) => key) } },
+  });
+  const byKey = new Map(definitions.map((row) => [row.key, toDefinition(row)]));
+  return {
+    AND: filters.map(([key, value]) => {
+      const definition = byKey.get(key);
+      if (!definition || definition.type === 'phone' || (definition.type === 'text' && !definition.searchable)) {
+        throw new BadRequestException('Unknown user field');
+      }
+      const result = normalizeFieldValue(definition, value, value);
+      if (!result.ok) throw new BadRequestException('Invalid user field value');
+      const normalizedValue = definition.type === 'text'
+        ? { contains: result.normalized.replace(/[\\%_]/g, (character) => '\\' + character) }
+        : result.normalized;
+      return {
+        userFieldValues: {
+          some: {
+            organizationId, fieldId: definition.id, normalizedValue,
+            field: { ...visible, ...(definition.type === 'text' ? { searchable: true } : {}) },
+          },
+        },
+      };
+    }),
+  };
+}
+
+function analyticsFieldVisibility(organizationId: string, roles: readonly string[]): Prisma.UserFieldDefinitionWhereInput {
+  const admin = roles.includes('admin');
+  if (!admin && !roles.includes('manager')) throw new BadRequestException('Unknown user field');
+  return { organizationId, archivedAt: null, ...(admin ? {} : { visibleTo: { has: 'manager' } }) };
+}
+
+export async function analyticsFieldPresentation(
+  prisma: PrismaService, organizationId: string, actor: { roles: readonly string[]; locale?: string | null }, key: string,
+) {
+  const where = { ...analyticsFieldVisibility(organizationId, actor.roles), key };
+  const row = await prisma.userFieldDefinition.findFirst({ where });
+  if (!row) throw new BadRequestException('Unknown user field');
+  const definition = toDefinition(row);
+  const locale = FIELD_LANGUAGES.find((language) => language === actor.locale?.split(/[-_]/)[0]) ?? 'ru';
+  const label = definition.labels[locale] || definition.labels.ru || key;
+  const options = new Map(definition.options?.map((option) => [option.key, option.labels[locale] || optionTitle(option)]));
+  const yes = { ru: 'Да', en: 'Yes', kk: 'Иә', zh: '是' };
+  const no = { ru: 'Нет', en: 'No', kk: 'Жоқ', zh: '否' };
+  return {
+    label,
+    async values(userIds: string[]) {
+      if (!userIds.length) return new Map<string, { key: string; label: string }>();
+      const rows = await prisma.userFieldValue.findMany({
+        where: { organizationId, fieldId: row.id, field: where, userId: { in: userIds } },
+        select: { userId: true, value: true, normalizedValue: true },
+      });
+      return new Map(rows.map((value) => [value.userId, {
+        key: value.normalizedValue,
+        label: definition.type === 'boolean' ? (value.value === 'true' ? yes[locale] : no[locale]) : options.get(value.value) ?? value.value,
+      }]));
+    },
+  };
 }

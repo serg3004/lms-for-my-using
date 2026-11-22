@@ -1,4 +1,4 @@
-import { PINO_REDACT_PATHS } from './redact-paths';
+import { PINO_REDACT_PATHS, redactAnalyticsFilters } from './redact-paths';
 
 describe('PINO_REDACT_PATHS', () => {
   it('covers authorization header', () => {
@@ -22,4 +22,11 @@ describe('PINO_REDACT_PATHS', () => {
     expect(PINO_REDACT_PATHS).toContain('req.body.resetToken');
     expect(PINO_REDACT_PATHS).toContain('req.body.csrfToken');
   });
+});
+
+
+it('removes custom field values from logged URLs and referrers', () => {
+  expect(PINO_REDACT_PATHS).toContain('req.query.fieldFilters');
+  expect(redactAnalyticsFilters('/reports/summary?field%46ilters=x&groupByField=shift')).toBe('/reports/summary?groupByField=shift');
+  expect(redactAnalyticsFilters('https://example.test/analytics?fieldFilters=x&fieldFilters=y')).toBe('https://example.test/analytics');
 });
