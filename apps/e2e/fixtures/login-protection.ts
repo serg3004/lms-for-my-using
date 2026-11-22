@@ -25,6 +25,7 @@ export async function installLoginProtectionMocks(page: Page): Promise<Protectio
       }
       return route.fulfill({ json: { maxFailures: 5, windowMinutes: 15, lockMinutes: 15, logRetentionDays: 90 } });
     }
+    if (path === '/auth/me/profile') return route.fulfill({ json: { phone: null, locale: 'ru', timezone: 'Asia/Almaty', aboutMe: null, hasPhoto: false, version: 0 } });
     if (path === '/auth/me/sessions') return route.fulfill({ json: [{ id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', deviceLabel: 'Chrome · Windows', ipMasked: '203.0.x.x', createdAt: '2030-01-01T09:00:00.000Z', lastActiveAt: '2030-01-01T10:00:00.000Z', current: true }] });
     if (path === '/users/locked') return route.fulfill({ json: locked });
     if (path.endsWith('/unlock') && request.method() === 'POST') {

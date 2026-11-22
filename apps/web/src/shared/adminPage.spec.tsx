@@ -90,8 +90,8 @@ describe('admin shell navigation (UI refresh PR 310)', () => {
   it('renders an icon for every sidebar destination', () => {
     const html = renderAt('/admin/users');
 
-    expect(html.match(/class="admin-nav-link"/g)).toHaveLength(15);
-    expect(html.match(/class="nav-icon"/g)).toHaveLength(15);
+    expect(html.match(/class="admin-nav-link"/g)).toHaveLength(16);
+    expect(html.match(/class="nav-icon"/g)).toHaveLength(16);
   });
 
   it('keeps Checklists active on nested session routes', () => {

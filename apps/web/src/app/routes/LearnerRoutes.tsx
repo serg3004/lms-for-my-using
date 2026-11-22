@@ -1,5 +1,5 @@
 import { lazy, type ComponentType } from 'react';
-import { Outlet, Route, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, Outlet, Route, useParams, useSearchParams } from 'react-router-dom';
 
 import { NotFoundPage } from '../NotFoundPage.js';
 import { LearnerPageLayout } from '../../shared/learnerLayout.js';
@@ -21,7 +21,6 @@ const LearnerLessonMaterialsPage = lazy(() => import('../LearnerLessonMaterialsP
 const LearnerLessonsPage = lazy(() => import('../LearnerLessonsPage.js').then((m) => ({ default: m.LearnerLessonsPage })));
 const LearnerNotificationsPage = lazy(() => import('../LearnerNotificationsPage.js').then((m) => ({ default: m.LearnerNotificationsPage })));
 const LearnerProgressPage = lazy(() => import('../LearnerProgressPage.js').then((m) => ({ default: m.LearnerProgressPage })));
-const LearnerProfilePage = lazy(() => import('../LearnerProfilePage.js').then((m) => ({ default: m.LearnerProfilePage })));
 
 function ParamRoute<Param extends string>({ param, Page }: { param: Param; Page: ComponentType<Record<Param, string>> }) {
   const params = useParams();
@@ -51,7 +50,7 @@ export function LearnerRoutes() {
       <Route path="/learn/checklists" element={<LearnerChecklistsRoute />} />
       <Route path="/learn/certificates" element={<LearnerCertificatesPage />} />
       <Route path="/learn/notifications" element={<LearnerNotificationsPage />} />
-      <Route path="/learn/profile" element={<LearnerProfilePage />} />
+      <Route path="/learn/profile" element={<Navigate replace to="/profile" />} />
       <Route path="/learn/certificates/:certificateId" element={<ParamRoute param="certificateId" Page={LearnerCertificateDetailPage} />} />
       <Route path="/learn/assessments/:assessmentId/take" element={<ParamRoute param="assessmentId" Page={LearnerAssessmentTakingPage} />} />
       <Route path="/learn/assessments/:assessmentId" element={<ParamRoute param="assessmentId" Page={LearnerAssessmentDetailPage} />} />

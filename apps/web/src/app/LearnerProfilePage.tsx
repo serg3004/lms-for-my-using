@@ -5,6 +5,7 @@ import { supportedLocales } from '../i18n/index.js';
 import { updateCurrentUserPreferences } from '../shared/apiClient.js';
 import { ChangePasswordForm } from '../shared/ChangePasswordForm.js';
 import { MyDevicesCard } from '../shared/MyDevicesCard.js';
+import { OwnProfileCard } from '../shared/OwnProfileCard.js';
 import { useSession } from '../shared/session.js';
 
 const localeNames = { ru: 'Русский', en: 'English', kk: 'Қазақша', zh: '中文' } as const;
@@ -54,6 +55,7 @@ export function LearnerProfilePage() {
           <div><dt>{t('profile.name')}</dt><dd>{fullName}</dd></div>
           <div><dt>{t('profile.email')}</dt><dd>{currentUser.email}</dd></div>
           <div><dt>{t('profile.position')}</dt><dd>{currentUser.position || t('profile.notSpecified')}</dd></div>
+          <div><dt>{t('security.profileRoles')}</dt><dd>{currentUser.roles.map((role) => t(`admin.roles.options.${role}`, role)).join(', ') || t('profile.notSpecified')}</dd></div>
         </dl>
         <p className="learner-profile__readonly">{t('profile.readonlyHint')}</p>
       </div>
@@ -71,6 +73,7 @@ export function LearnerProfilePage() {
           {saveState === 'error' ? <span role="alert">{t('profile.saveError')}</span> : null}
         </div>
       </form>
+      <OwnProfileCard />
       <ChangePasswordForm />
       <MyDevicesCard />
     </section>

@@ -1,4 +1,9 @@
 const en = {
+  profileCardTitle: 'About me', profileRoles: 'Roles', profileCardHint: 'Your photo, phone, time zone and a short note. Colleagues who may see your profile see the photo.',
+  profilePhone: 'Phone', profilePhoneInvalid: 'Enter the phone number with digits only, for example +7 701 123 45 67.', profileTimezone: 'Time zone', profileAbout: 'About me', profileAboutCounter: '{{count}} of {{max}} characters',
+  profileReadonly: 'Your name, email, position, shift and role are changed by an administrator or manager.', profileSave: 'Save', profileSaving: 'Saving…', profileSaved: 'Profile saved.',
+  profileConflict: 'The profile was changed elsewhere. The current data is loaded again, check it and save once more.', profileSaveError: 'Could not save the profile. Check the values and try again.', profileLoadError: 'Could not load the profile.',
+  photoAlt: 'Your photo', photoChoose: 'Photo', photoHint: 'JPEG, PNG or WebP, up to 1 MB.', photoRemove: 'Remove photo', photoBadType: 'The photo must be a JPEG, PNG or WebP image.', photoTooBig: 'The photo must not be larger than 1 MB.', photoError: 'Could not change the photo. Try again.',
   archiveAction: 'Archive', restoreAction: 'Restore', archiveTitle: 'Archive user', archiveConfirm: 'Archive',
   archiveIntro: 'Archive {{name}}? The person can no longer sign in and disappears from choices. Reports and history stay. The email stays reserved for this account. You can restore the account later.',
   impactNone: 'Nothing unfinished is tied to this person.', impactUnknown: 'Could not check what the archiving affects. Try again later.',
@@ -37,6 +42,11 @@ const en = {
 export const securityResources = {
   en,
   ru: {
+    profileCardTitle: 'О себе', profileRoles: 'Роли', profileCardHint: 'Ваше фото, телефон, часовой пояс и короткая заметка. Фото видят коллеги, которым доступен ваш профиль.',
+    profilePhone: 'Телефон', profilePhoneInvalid: 'Введите номер цифрами, например +7 701 123 45 67.', profileTimezone: 'Часовой пояс', profileAbout: 'О себе', profileAboutCounter: '{{count}} из {{max}} знаков',
+    profileReadonly: 'ФИО, почту, должность, смену и роль меняет администратор или руководитель.', profileSave: 'Сохранить', profileSaving: 'Сохраняем…', profileSaved: 'Профиль сохранён.',
+    profileConflict: 'Профиль изменили в другом месте. Актуальные данные загружены заново, проверьте их и сохраните ещё раз.', profileSaveError: 'Не удалось сохранить профиль. Проверьте значения и попробуйте ещё раз.', profileLoadError: 'Не удалось загрузить профиль.',
+    photoAlt: 'Ваше фото', photoChoose: 'Фото', photoHint: 'JPEG, PNG или WebP, до 1 МБ.', photoRemove: 'Удалить фото', photoBadType: 'Фото должно быть в формате JPEG, PNG или WebP.', photoTooBig: 'Фото должно быть не больше 1 МБ.', photoError: 'Не удалось изменить фото. Попробуйте ещё раз.',
     archiveAction: 'Архивировать', restoreAction: 'Восстановить', archiveTitle: 'Архивировать пользователя', archiveConfirm: 'Архивировать',
     archiveIntro: 'Архивировать {{name}}? Человек больше не сможет войти и исчезнет из выбора. Отчёты и история сохранятся. Адрес почты останется занятым за этой записью. Позже запись можно восстановить.',
     impactNone: 'С этим человеком не связано ничего незавершённого.', impactUnknown: 'Не удалось проверить, на что повлияет архивирование. Попробуйте позже.',
@@ -72,6 +82,11 @@ export const securityResources = {
     accessTemporary: 'Временный пароль (для людей без почты)',
   },
   kk: {
+    profileCardTitle: 'Өзім туралы', profileRoles: 'Рөлдер', profileCardHint: 'Сіздің фотоңыз, телефоныңыз, уақыт белдеуіңіз және қысқаша жазба. Фотоны профиліңізді көре алатын әріптестер көреді.',
+    profilePhone: 'Телефон', profilePhoneInvalid: 'Нөмірді цифрлармен енгізіңіз, мысалы +7 701 123 45 67.', profileTimezone: 'Уақыт белдеуі', profileAbout: 'Өзім туралы', profileAboutCounter: '{{count}} / {{max}} таңба',
+    profileReadonly: 'Аты-жөніңізді, поштаңызды, лауазымыңызды, ауысымыңызды және рөліңізді әкімші немесе басшы өзгертеді.', profileSave: 'Сақтау', profileSaving: 'Сақталуда…', profileSaved: 'Профиль сақталды.',
+    profileConflict: 'Профильді басқа жерде өзгерткен. Өзекті деректер қайта жүктелді, тексеріп, қайта сақтаңыз.', profileSaveError: 'Профильді сақтау мүмкін болмады. Мәндерді тексеріп, қайталап көріңіз.', profileLoadError: 'Профильді жүктеу мүмкін болмады.',
+    photoAlt: 'Сіздің фотоңыз', photoChoose: 'Фото', photoHint: 'JPEG, PNG немесе WebP, 1 МБ-қа дейін.', photoRemove: 'Фотоны жою', photoBadType: 'Фото JPEG, PNG немесе WebP форматында болуы керек.', photoTooBig: 'Фото 1 МБ-тан үлкен болмауы керек.', photoError: 'Фотоны өзгерту мүмкін болмады. Қайталап көріңіз.',
     archiveAction: 'Мұрағаттау', restoreAction: 'Қалпына келтіру', archiveTitle: 'Пайдаланушыны мұрағаттау', archiveConfirm: 'Мұрағаттау',
     archiveIntro: '{{name}} мұрағатталсын ба? Адам енді кіре алмайды және таңдау тізімдерінен жоғалады. Есептер мен тарих сақталады. Пошта мекенжайы осы жазбаға бекітулі қалады. Жазбаны кейін қалпына келтіруге болады.',
     impactNone: 'Бұл адаммен байланысты аяқталмаған ештеңе жоқ.', impactUnknown: 'Мұрағаттау нені қозғайтыны тексерілмеді. Кейінірек қайталаңыз.',
@@ -107,6 +122,11 @@ export const securityResources = {
     accessTemporary: 'Уақытша құпиясөз (поштасы жоқ адамдарға)',
   },
   zh: {
+    profileCardTitle: '关于我', profileRoles: '角色', profileCardHint: '您的照片、电话、时区和一段简短说明。可以查看您资料的同事能看到照片。',
+    profilePhone: '电话', profilePhoneInvalid: '请用数字输入号码，例如 +7 701 123 45 67。', profileTimezone: '时区', profileAbout: '关于我', profileAboutCounter: '{{count}} / {{max}} 个字符',
+    profileReadonly: '姓名、邮箱、职位、班次和角色由管理员或主管修改。', profileSave: '保存', profileSaving: '保存中…', profileSaved: '资料已保存。',
+    profileConflict: '资料在其他地方被修改。已重新加载最新数据，请检查后再次保存。', profileSaveError: '无法保存资料。请检查输入后重试。', profileLoadError: '无法加载资料。',
+    photoAlt: '您的照片', photoChoose: '照片', photoHint: 'JPEG、PNG 或 WebP，最大 1 MB。', photoRemove: '删除照片', photoBadType: '照片必须是 JPEG、PNG 或 WebP 格式。', photoTooBig: '照片不能超过 1 MB。', photoError: '无法更改照片，请重试。',
     archiveAction: '归档', restoreAction: '恢复', archiveTitle: '归档用户', archiveConfirm: '归档',
     archiveIntro: '归档 {{name}}？此人将无法再登录，并从各类选择列表中消失。报告和历史记录保留。邮箱仍归此账号占用。之后可以恢复该账号。',
     impactNone: '没有与此人相关的未完成事项。', impactUnknown: '无法检查归档的影响，请稍后重试。',

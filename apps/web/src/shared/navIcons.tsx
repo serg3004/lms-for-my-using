@@ -149,6 +149,7 @@ const ICON_BY_HREF: Record<string, NavIconName> = {
   '/learn/certificates': 'certificates',
   '/learn/notifications': 'notifications',
   '/learn/profile': 'profile',
+  '/profile': 'profile',
   '/instructor/dashboard': 'dashboard',
   '/instructor/courses': 'courses',
   '/instructor/checklists': 'checklists',

@@ -198,6 +198,27 @@ export class UploadService {
     return key;
   }
 
+  /** PR 496: one processed variant of a person's photo, stored under a tenant/user-scoped key; keys never leave the server, pictures are read through `GET /users/:id/photo`. */
+  async uploadUserPhoto(bytes: Buffer, mimeType: string, organizationId: string, userId: string, variant: 'full' | 'thumb'): Promise<string> {
+    if (!this.s3 || !this.bucket) {
+      throw new ServiceUnavailableException('File storage is not configured');
+    }
+
+    const key = `organizations/${organizationId}/users/${userId}/photo/${variant}-${randomUUID()}`;
+
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: bytes,
+        ContentType: mimeType,
+        ContentLength: bytes.length,
+      }),
+    );
+
+    return key;
+  }
+
   /** Presigned GET URL for inline display (e.g. <img src>) — sets the real content type, no attachment disposition. */
   async getInlinePresignedUrl(key: string, mimeType: string, expiresIn = 300): Promise<string> {
     if (!this.downloadS3 || !this.bucket) {
