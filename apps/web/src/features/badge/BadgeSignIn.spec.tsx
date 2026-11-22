@@ -11,6 +11,7 @@ const api = vi.hoisted(() => ({ badgeLogin: vi.fn() }));
 vi.mock('../../shared/api/badge.js', () => api);
 
 import { ApiClientError } from '../../shared/apiClient';
+import type { CurrentUser } from '../../shared/api/types';
 import { BadgeSignIn } from './BadgeSignIn';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -20,9 +21,10 @@ const token = 'B'.repeat(43);
 const user = { id: 'u1', roles: ['learner'], kiosk: true };
 afterEach(() => { act(() => root?.unmount()); host?.remove(); vi.clearAllMocks(); delete (window as { BarcodeDetector?: unknown }).BarcodeDetector; });
 beforeEach(async () => { await i18n.changeLanguage('ru'); });
+const signedInMock = () => vi.fn<(user: CurrentUser) => void>();
 const flush = (ms = 20) => act(async () => { await new Promise((resolve) => setTimeout(resolve, ms)); });
-async function show(props: { initialToken?: string | null; onSignedIn?: ReturnType<typeof vi.fn> } = {}) {
-  const onSignedIn = props.onSignedIn ?? vi.fn();
+async function show(props: { initialToken?: string | null; onSignedIn?: ReturnType<typeof signedInMock> } = {}) {
+  const onSignedIn = props.onSignedIn ?? signedInMock();
   host = document.createElement('div'); document.body.append(host); root = createRoot(host);
   await act(async () => root?.render(<MemoryRouter><BadgeSignIn initialToken={props.initialToken ?? null} onSignedIn={onSignedIn} scanMs={10} /></MemoryRouter>));
   await flush();
