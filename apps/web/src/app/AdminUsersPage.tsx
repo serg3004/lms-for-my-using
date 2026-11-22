@@ -9,6 +9,9 @@ import { ApiClientError } from '../shared/apiClient.js';
 import { PageState, Pagination } from '../shared/ui.js';
 import { DeactivateUserDialog, type PendingDeactivation } from '../features/admin-users/DeactivateUserDialog.js';
 import { ArchiveUserDialog, type PendingArchive } from '../features/admin-users/ArchiveUserDialog.js';
+import { BulkArchiveDialog, BulkMoveDialog, BulkResultDialog } from '../features/admin-users/BulkDialogs.js';
+import { BulkUserBar } from '../features/admin-users/BulkUserBar.js';
+import { useBulkUserActions } from '../features/admin-users/useBulkUserActions.js';
 import { UserRightsDialog } from '../features/admin-users/UserRightsDialog.js';
 import { InvitationResultDialog, ResetPasswordDialogs, TemporaryPasswordDialogs, type InvitationResult, type PasswordResetResult, type TemporaryPasswordResult } from '../features/admin-users/ResetPasswordDialogs.js';
 import { AdminUserDialog } from '../features/admin-users/AdminUserDialog.js';
@@ -27,6 +30,7 @@ export function AdminUsersPage() {
   ];
   const usersQuery = useAdminUsers();
   const mutations = useAdminUserMutations(usersQuery.reload);
+  const bulk = useBulkUserActions({ users: usersQuery.users, filters: usersQuery.filters, resetKey: `${usersQuery.page}|${usersQuery.filters.query}|${usersQuery.filters.role}|${usersQuery.filters.status}`, reload: usersQuery.reload });
   const [form, setForm] = useState<UserForm>(EMPTY_USER_FORM);
   const [mode, setMode] = useState<UserFormMode | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -129,7 +133,10 @@ export function AdminUsersPage() {
     />
     <PendingInvitations />
     <AdminUsersFilters filters={usersQuery.filters} onChange={usersQuery.setFilters} />
-    <AdminUsersTable users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} onResetPassword={setPendingReset} onTemporaryPassword={setPendingTemporary} onRights={setRightsUser} onArchive={canArchive ? (user) => void startArchive(user) : undefined} onRestore={canArchive ? setPendingRestore : undefined} />
+    <AdminUsersTable selection={{ selectedKeys: bulk.selectedKeys, onChange: bulk.setSelectedKeys, selectedLabel: (count) => t('common.selectedCount', { count }), selectAllLabel: t('security.bulkSelectAllRows'), rowLabel: (user) => userName(user) }} batchActions={<BulkUserBar scope={bulk.scope} canArchive={canArchive} canSelectAll={bulk.canSelectAll} matching={bulk.matching} busy={bulk.busy} onAction={(action) => void bulk.start(action)} onSelectAll={bulk.selectAllMatching} onClear={bulk.clear} />} users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} onResetPassword={setPendingReset} onTemporaryPassword={setPendingTemporary} onRights={setRightsUser} onArchive={canArchive ? (user) => void startArchive(user) : undefined} onRestore={canArchive ? setPendingRestore : undefined} />
+    <BulkArchiveDialog pending={bulk.pendingArchive} error={bulk.error} onCancel={bulk.cancelArchive} onConfirm={() => void bulk.confirmArchive()} />
+    {bulk.moveOpen ? <BulkMoveDialog open count={bulk.count} busy={bulk.busy} error={bulk.error} onCancel={bulk.cancelMove} onConfirm={(id) => void bulk.confirmMove(id)} /> : null}
+    <BulkResultDialog report={bulk.report} names={bulk.names} onClose={bulk.closeReport} />
     {rightsUser ? <UserRightsDialog user={rightsUser} onClose={() => setRightsUser(null)} /> : null}
     <InvitationResultDialog result={inviteResult} onClose={() => setInviteResult(null)} />
     <ResetPasswordDialogs pending={pendingReset} result={resetResult} onConfirm={() => void confirmReset()} onCancel={() => setPendingReset(null)} onClose={() => setResetResult(null)} />

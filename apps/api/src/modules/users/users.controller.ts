@@ -21,12 +21,15 @@ import {
   updateUserSchema,
   UpdateUserInput,
   updateUserStatusSchema,
+  bulkActionSchema,
+  bulkImpactSchema,
 } from './users.schemas.js';
+import { UsersBulkService } from './users-bulk.service.js';
 import { UsersService } from './users.service.js';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService, private readonly bulkService: UsersBulkService) {}
 
   @Get()
   @UseGuards(AuthGuard, RolesGuard)
@@ -42,6 +45,21 @@ export class UsersController {
   listInvitations(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
     const { page, pageSize } = paginationQuerySchema.parse(query);
     return this.usersService.listInvitations(request.currentUser!, page, pageSize);
+  }
+
+  /** PR 497: one action over many users, with a report per person. A manager is limited to their team and cannot archive. */
+  @Post('bulk-actions')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersDeactivate)
+  runBulkAction(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    return this.bulkService.run(request.currentUser!, bulkActionSchema.parse(body));
+  }
+
+  @Post('bulk-actions/impact')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersDeactivate)
+  bulkImpact(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    return this.bulkService.impact(request.currentUser!, bulkImpactSchema.parse(body));
   }
 
   @Post('invitations/resend')

@@ -13,6 +13,8 @@ export type AuditLogAction =
   | 'user.photo_changed'
   | 'user.photo_removed'
   | 'user.restored'
+  | 'user.department_changed'
+  | 'user.bulk_action'
   | 'user.password_reset_issued'
   | 'user.invited'
   | 'user.invitation.accepted'

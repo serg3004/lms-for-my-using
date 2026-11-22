@@ -406,5 +406,7 @@ read permissions and team/course filters apply to the server-written version/cha
 
 ## Temporary password (PR 489)
 
+`POST /users/bulk-actions` and `POST /users/bulk-actions/impact` (PR 497) use the `user.deactivate` permission (`admin`, `manager`, custom roles through the catalog action) and apply, per person, the same object filters as `PATCH /users/:id/status` (administrator: whole organization; manager: own team; delegated registrar: own department tree, never above `learner`); a person outside the scope is reported `notFound` in the batch, never disclosed. `archive` stays administrator-only (`403` for everyone else), `move` additionally needs the target department inside the caller's area. The caller never blocks or archives themselves, and nobody blocks or archives the last active administrator.
+
 `POST /users/:id/temporary-password` uses the `user.reset-password` permission and the same object filters as `POST /users/{id}/reset-password` (administrator: whole organization; manager: own team; delegated registrar: own department tree, never above `learner`); the caller cannot issue one for themselves. `POST /users` with `temporaryPassword: true` follows the existing `user.create` rules. While `mustChangePassword` is set, `AuthGuard` refuses every guarded route with `403 PASSWORD_CHANGE_REQUIRED` whatever the role; custom roles do not change this.
 

@@ -347,6 +347,7 @@ describe('UsersService updateUserStatus', () => {
     };
     const prisma = {
       user: { findFirst: async () => ({ id: userId, status: options.previous ?? 'active' }) },
+      membership: { count: async () => 0 },
       course: { findMany: async () => [] },
       $transaction: async (run: (client: typeof tx) => Promise<unknown>) => run(tx),
     } as unknown as PrismaService;
@@ -364,6 +365,16 @@ describe('UsersService updateUserStatus', () => {
     const reactivated = statusHarness({ previous: 'suspended', next: 'active' });
     await reactivated.service.updateUserStatus(userId, actor, 'active');
     expect(reactivated.tx.session.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('refuses to block yourself or the last active administrator (PR 497)', async () => {
+    const make = (isAdmin: boolean, otherAdmins: number) => new UsersService({
+      user: { findFirst: async () => ({ id: userId, status: 'active' }) },
+      membership: { count: async ({ where }: { where: { userId?: unknown } }) => (where.userId === userId ? (isAdmin ? 1 : 0) : otherAdmins) },
+    } as unknown as PrismaService);
+
+    await expect(make(false, 0).updateUserStatus(userId, { ...actor, id: userId }, 'suspended')).rejects.toThrow('You cannot block yourself');
+    await expect(make(true, 0).updateUserStatus(userId, actor, 'suspended')).rejects.toThrow('The last active administrator cannot be blocked');
   });
 
   it('returns no orphaned courses when the user stays active', async () => {

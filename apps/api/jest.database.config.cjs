@@ -26,6 +26,7 @@ module.exports = {
     '<rootDir>/src/integration/login-lockout.database.spec.ts',
     '<rootDir>/src/integration/login-journal.database.spec.ts',
     '<rootDir>/src/integration/user-archive.database.spec.ts',
+    '<rootDir>/src/integration/user-bulk-actions.database.spec.ts',
     '<rootDir>/src/integration/user-profile.database.spec.ts',
     '<rootDir>/src/integration/checklist-session-history.database.spec.ts',
     '<rootDir>/src/integration/checklist-session-delete-message.database.spec.ts',

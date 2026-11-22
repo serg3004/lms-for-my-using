@@ -40,6 +40,7 @@ module.exports = {
     '/src/integration/login-lockout\\.database\\.spec\\.ts$',
     '/src/integration/login-journal\\.database\\.spec\\.ts$',
     '/src/integration/user-archive\\.database\\.spec\\.ts$',
+    '/src/integration/user-bulk-actions\\.database\\.spec\\.ts$',
     '/src/integration/user-profile\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-history\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-delete-message\\.database\\.spec\\.ts$',
