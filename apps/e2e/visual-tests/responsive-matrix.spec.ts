@@ -23,6 +23,7 @@ import { freshReportState, installReportMocks } from '../fixtures/checklist-inst
 import { freshRolesState, installCustomRolesMocks, registrar } from '../fixtures/custom-roles.js';
 import { importFileCsv, installUsersImportMocks } from '../fixtures/users-import.js';
 import { installLoginJournalMocks, journalUserId } from '../fixtures/login-journal.js';
+import { installUserFieldsMocks } from '../fixtures/user-fields.js';
 import { installUserBulkMocks } from '../fixtures/user-bulk-actions.js';
 import { installUserProfileMocks } from '../fixtures/user-profile.js';
 import { expect, test, type Page } from '@playwright/test';
@@ -117,6 +118,23 @@ for (const width of [390, 1280]) test(`own profile card is responsive at ${width
   await card.scrollIntoViewIfNeeded();
   await expectNoPageOverflow(page);
   await expectVisualMatch(page, `own-profile-${width}`, false, { maxDiffPixels: 3000 });
+});
+
+for (const width of [390, 1280]) test(`user fields settings are responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installUserFieldsMocks(page);
+  await page.goto('/admin/user-fields');
+  await expect(page.getByText('Табельный номер').first()).toBeVisible();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `user-fields-${width}`, false, { maxDiffPixels: 3000 });
+});
+
+for (const width of [390, 1280]) test(`user field editor is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installUserFieldsMocks(page);
+  await page.goto('/admin/user-fields');
+  await page.getByRole('button', { name: 'Добавить поле' }).click();
+  await page.getByRole('dialog', { name: 'Новое поле' }).getByLabel('Русский').fill('Размер обуви');
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `user-field-editor-${width}`, false, { maxDiffPixels: 3000 });
 });
 
 for (const width of [390, 1280]) test(`users bulk bar and report are responsive at ${width}px`, async ({ page }) => {

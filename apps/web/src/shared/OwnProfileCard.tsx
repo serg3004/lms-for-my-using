@@ -4,6 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { ApiClientError, apiDownloadRequest } from './apiClient.js';
 import { getOwnProfile, removeOwnPhoto, updateOwnProfile, uploadOwnPhoto, type OwnProfile } from './api/auth.js';
 import { useSession } from './session.js';
+import { CustomFieldInputs } from '../features/user-fields/CustomFieldInputs.js';
+import { customFieldsPayload, missingRequired, languageOf, toFormValues, type FormValues } from '../features/user-fields/model.js';
+import { useUserFieldViews } from '../features/user-fields/useUserFieldViews.js';
 
 const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const PHOTO_MAX_BYTES = 1_048_576;
@@ -23,8 +26,10 @@ function timeZones(current: string): string[] {
 
 /** PR 496: the person's own profile: photo, phone, time zone and a short note. Name, email, position and role are not editable here. */
 export function OwnProfileCard({ className = 'learner-profile__card' }: { className?: string }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const session = useSession();
+  const userFields = useUserFieldViews('own');
+  const [customValues, setCustomValues] = useState<FormValues>({});
   const [profile, setProfile] = useState<OwnProfile | null>(null);
   const [phone, setPhone] = useState('');
   const [timezone, setTimezone] = useState('');
@@ -44,6 +49,7 @@ export function OwnProfileCard({ className = 'learner-profile__card' }: { classN
     setPhone(next.phone ?? '');
     setTimezone(next.timezone);
     setAboutMe(next.aboutMe ?? '');
+    setCustomValues(toFormValues(next.customFields));
   }, []);
 
   const load = useCallback(() => {
@@ -70,10 +76,13 @@ export function OwnProfileCard({ className = 'learner-profile__card' }: { classN
     if (!profile) return;
     const trimmedPhone = phone.trim();
     if (trimmedPhone && !PHONE_PATTERN.test(trimmedPhone)) { setFieldError('phone'); setMessage(null); return; }
+    const missing = missingRequired(userFields.fields, customValues, languageOf(i18n.language));
+    if (missing.length > 0) { setFieldError(null); setMessage({ kind: 'error', text: t('userFields.requiredMissing', { fields: missing.join(', ') }) }); return; }
     setFieldError(null);
     setBusy(true);
     try {
-      const next = await updateOwnProfile({ version: profile.version, phone: trimmedPhone || null, timezone, aboutMe: aboutMe.trim() || null });
+      const customFields = customFieldsPayload(userFields.fields, customValues, toFormValues(profile.customFields));
+      const next = await updateOwnProfile({ version: profile.version, phone: trimmedPhone || null, timezone, aboutMe: aboutMe.trim() || null, ...(customFields ? { customFields } : {}) });
       const sessionChanged = next.phone !== profile.phone || next.timezone !== profile.timezone;
       apply(next);
       setMessage({ kind: 'ok', text: t('security.profileSaved') });
@@ -140,6 +149,7 @@ export function OwnProfileCard({ className = 'learner-profile__card' }: { classN
           <label htmlFor="own-profile-about">{t('security.profileAbout')}</label>
           <textarea id="own-profile-about" maxLength={ABOUT_MAX} onChange={(event) => setAboutMe(event.target.value)} rows={4} value={aboutMe} />
           <p>{t('security.profileAboutCounter', { count: aboutMe.length, max: ABOUT_MAX })}</p>
+          {userFields.fields.length > 0 ? <fieldset style={{ border: 0, padding: 0, margin: 0 }}><legend>{t('userFields.profileSection')}</legend><CustomFieldInputs fields={userFields.fields} values={customValues} idPrefix="own-field" onChange={(key, value) => setCustomValues((current) => ({ ...current, [key]: value }))} /></fieldset> : null}
           <p>{t('security.profileReadonly')}</p>
           <div className="admin-form__actions">
             <button className="admin-btn admin-btn--primary" disabled={busy} type="submit">{busy ? t('security.profileSaving') : t('security.profileSave')}</button>

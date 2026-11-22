@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { ApiClientError, apiRequest } from '../../shared/apiClient.js';
+import type { UserFieldView } from '../../shared/api/userFields.js';
 import { checkRowsLocally, importLimits, readWorkbook, parseCsv, serverProblem, tableToRows, toApiRow, type FileFailure, type ImportColumn, type ImportProblem, type ImportRow, type Table } from './importFile.js';
 
 export type RowStatus = 'ok' | 'bad' | 'created';
@@ -11,7 +12,7 @@ export type ImportFailure = FileFailure | 'checkFailed' | 'createFailed' | 'forb
 type ServerReport = { rows: Array<{ index: number; status: string; errors: string[]; invitationDelivered?: boolean }> };
 
 /** PR 492: the import flow: read the file, check it by the server without saving, create in parts of 100 rows. */
-export function useUsersImport(organizationId: string, fieldNames: (column: ImportColumn) => string) {
+export function useUsersImport(organizationId: string, fieldNames: (column: ImportColumn) => string, customFields: UserFieldView[] = []) {
   const [phase, setPhase] = useState<ImportPhase>('empty');
   const [rows, setRows] = useState<ImportRowState[]>([]);
   const [failure, setFailure] = useState<ImportFailure | null>(null);
@@ -28,7 +29,7 @@ export function useUsersImport(organizationId: string, fieldNames: (column: Impo
     } catch {
       return setFailure('fileUnreadable');
     }
-    const parsed = tableToRows(table);
+    const parsed = tableToRows(table, customFields);
     if ('failure' in parsed) return setFailure(parsed.failure);
     setRows(checkRowsLocally(parsed.rows, fieldNames).map((row) => ({ ...row, status: row.problems.length > 0 ? 'bad' : 'ok' })));
     setPhase('parsed');

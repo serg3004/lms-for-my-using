@@ -1,9 +1,13 @@
+import type { UserFieldView } from '../../shared/api/userFields.js';
+import { customFieldsPayload } from '../user-fields/model.js';
 import type { UserForm } from './model.js';
 
 const optional = (value: string) => value.trim() || undefined;
 
-export function toCreateUserPayload(form: UserForm, organizationId: string) {
+export function toCreateUserPayload(form: UserForm, organizationId: string, fields: UserFieldView[] = []) {
+  const customFields = customFieldsPayload(fields, form.customFields);
   return {
+    ...(customFields ? { customFields } : {}),
     organizationId,
     ...(form.role ? { role: form.role } : {}),
     ...(form.departmentId ? { departmentId: form.departmentId } : {}),
@@ -16,8 +20,10 @@ export function toCreateUserPayload(form: UserForm, organizationId: string) {
   };
 }
 
-export function toUpdateUserPayload(form: UserForm) {
+export function toUpdateUserPayload(form: UserForm, fields: UserFieldView[] = []) {
+  const customFields = customFieldsPayload(fields, form.customFields, form.customFieldsOriginal ?? {});
   return {
+    ...(customFields ? { customFields } : {}),
     email: form.email.trim().toLowerCase(), firstName: form.firstName.trim(), lastName: form.lastName.trim(),
     middleName: optional(form.middleName), position: optional(form.position), shift: optional(form.shift),
     phone: optional(form.phone), status: form.status, locale: form.locale.trim(), timezone: form.timezone.trim(),

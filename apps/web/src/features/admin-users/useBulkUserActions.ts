@@ -16,8 +16,8 @@ export function useBulkUserActions({ users, filters, resetKey, reload }: { users
   const [report, setReport] = useState<BulkReport | null>(null);
 
   const filter: BulkFilter = useMemo(() => ({ ...(filters.query.trim() ? { search: filters.query.trim() } : {}), ...(filters.status ? { status: filters.status } : {}) }), [filters.query, filters.status]);
-  /** Everyone-matching works on the server's filters (search, status); the role filter is applied on the page only. */
-  const canSelectAll = !filters.role;
+  /** Everyone-matching works on the server's filters (search, status); the role and custom field filters are applied on the page only. */
+  const canSelectAll = !filters.role && !filters.fieldKey;
   const names = useMemo(() => new Map(users.map((user) => [user.id, userName(user)])), [users]);
 
   function clear() { setSelectedKeys(new Set()); setAllMatching(false); setError(false); }

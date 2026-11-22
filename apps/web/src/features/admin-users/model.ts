@@ -1,5 +1,8 @@
 import type { UserRole } from '@lms/shared/constants/roles';
 
+import type { CustomFieldValues } from '../../shared/api/userFields.js';
+import { toFormValues } from '../user-fields/model.js';
+
 export type { UserRole } from '@lms/shared/constants/roles';
 export type UserStatus = 'active' | 'invited' | 'suspended' | 'archived';
 
@@ -20,6 +23,8 @@ export type AdminUserSummary = {
   createdAt: string;
   updatedAt: string;
   memberships: Array<{ role: UserRole }>;
+  /** PR 500: custom field values the caller may see. */
+  customFields?: CustomFieldValues;
 };
 
 export type UserForm = {
@@ -39,12 +44,15 @@ export type UserForm = {
   locale: string;
   timezone: string;
   role: UserRole | '';
+  /** PR 500: custom field values as input text, and as they were loaded (only changes are sent). */
+  customFields?: Record<string, string>;
+  customFieldsOriginal?: Record<string, string>;
 };
 
 export type UserFormField = 'firstName' | 'lastName' | 'email' | 'password';
 export type UserFormMode = 'create' | 'edit';
 
-export type AdminUsersFilters = { query: string; role: UserRole | ''; status: UserStatus | '' };
+export type AdminUsersFilters = { query: string; role: UserRole | ''; status: UserStatus | ''; /** PR 500: show only people whose custom field `fieldKey` equals `fieldValue`. */ fieldKey?: string; fieldValue?: string };
 
 export const EMPTY_USER_FORM: UserForm = {
   email: '', password: '', firstName: '', lastName: '', middleName: '', position: '', shift: '', phone: '',
@@ -68,6 +76,7 @@ export function toEditUserForm(user: AdminUserSummary): UserForm {
     id: user.id, email: user.email, password: '', firstName: user.firstName, lastName: user.lastName,
     middleName: user.middleName ?? '', position: user.position ?? '', shift: user.shift ?? '', phone: user.phone ?? '',
     status: user.status, locale: user.locale, timezone: user.timezone, role: userRole(user),
+    customFields: toFormValues(user.customFields), customFieldsOriginal: toFormValues(user.customFields),
   };
 }
 

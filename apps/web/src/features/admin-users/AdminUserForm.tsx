@@ -3,10 +3,14 @@ import { useTranslation } from 'react-i18next';
 
 import { FormField } from '../../shared/adminPage.js';
 import { PasswordInput } from '../../shared/PasswordInput.js';
+import type { UserFieldView } from '../../shared/api/userFields.js';
+import { CustomFieldInputs } from '../user-fields/CustomFieldInputs.js';
 import { clearFieldError, type FormValidationErrors } from '../../shared/formValidation.js';
 import { USER_ROLES, USER_STATUSES, type UserForm, type UserFormField, type UserFormMode } from './model.js';
 
 type Props = {
+  /** PR 500: custom fields the caller may see; their inputs follow the standard ones. */
+  fields?: UserFieldView[];
   departments?: Array<{ id: string; name: string }>;
   departmentsLoading?: boolean;
   departmentsError?: string | null;
@@ -15,7 +19,7 @@ type Props = {
   onSubmit: (event: FormEvent) => void; onCancel: () => void;
 };
 
-export function AdminUserForm({ departments = [], departmentsLoading = false, departmentsError, form, mode, errors, message, isSaving, onChange, onErrorsChange, onSubmit, onCancel }: Props) {
+export function AdminUserForm({ fields = [], departments = [], departmentsLoading = false, departmentsError, form, mode, errors, message, isSaving, onChange, onErrorsChange, onSubmit, onCancel }: Props) {
   const { t } = useTranslation();
   const field = (name: UserFormField, value: string) => {
     onChange({ ...form, [name]: value });
@@ -48,6 +52,10 @@ export function AdminUserForm({ departments = [], departmentsLoading = false, de
       {departmentsLoading && <p role="status">{t('admin.users.departmentsLoading', 'Loading departments…')}</p>}
       {departmentsError && <p role="alert">{departmentsError}</p>}
     </FormField>}
+    {fields.length > 0 && <fieldset style={{ border: 0, padding: 0, margin: 0, display: 'grid', gap: '0.75rem' }}>
+      <legend>{t('userFields.formSection')}</legend>
+      <CustomFieldInputs fields={fields} values={form.customFields ?? {}} idPrefix="user-field" onChange={(key, value) => onChange({ ...form, customFields: { ...form.customFields, [key]: value } })} />
+    </fieldset>}
     {message && <p className="admin-form__error" role="alert">{message}</p>}
     <div className="admin-form__actions"><button className="admin-btn admin-btn--secondary" onClick={onCancel} type="button">{t('admin.users.cancel', 'Cancel')}</button><button className="admin-btn admin-btn--primary" disabled={isSaving} type="submit">{isSaving ? t('admin.users.saving', 'Saving...') : t('admin.users.save', 'Save')}</button></div>
   </form>;
