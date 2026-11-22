@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { badgeIdleMinutesRange } from '../../common/badge.js';
 import { qrLoginRoleValues, qrLoginSessionHoursRange } from '../../common/qr-login.js';
 import { loginFailureWindowRange, loginLockRange, loginLogRetentionRange, loginMaxFailuresRange } from '../../common/login-protection.js';
 import { passwordHistoryRange, passwordMinLengthRange } from '../../common/password-policy.js';
@@ -84,6 +85,13 @@ export const qrLoginPolicySchema = z.object({
   roles: z.array(z.enum(qrLoginRoleValues)).max(qrLoginRoleValues.length).transform((roles) => [...new Set(roles)]),
 }).strict();
 export type QrLoginPolicyInput = z.infer<typeof qrLoginPolicySchema>;
+
+/** PR 506: the PIN asked after a badge scan and how long a kiosk session may stay idle. */
+export const badgePolicySchema = z.object({
+  pinRequired: z.boolean(),
+  idleMinutes: z.number().int().min(badgeIdleMinutesRange.min).max(badgeIdleMinutesRange.max),
+}).strict();
+export type BadgePolicyInput = z.infer<typeof badgePolicySchema>;
 
 /** PR 381: organization feature switches; each one defaults to off and is changed only by an admin. */
 export const organizationFeaturesSchema = z.object({

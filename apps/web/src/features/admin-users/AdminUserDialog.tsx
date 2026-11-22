@@ -1,4 +1,5 @@
 import { ActivationQrSheet } from './ActivationQrSheet.js';
+import { BadgeSheet } from './BadgeSheet.js';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -10,6 +11,8 @@ import type { UserForm, UserFormField, UserFormMode } from './model.js';
 
 type Props = {
   activationQrUserId?: string | undefined;
+  /** PR 506: an active person who may carry a badge (ordinary roles); the sheet issues, revokes and resets the PIN. */
+  badgeUserId?: string | undefined;
   fields?: UserFieldView[];
   open: boolean; mode: UserFormMode; form: UserForm; errors: FormValidationErrors<UserFormField>;
   message: string | null; isSaving: boolean; onChange: (form: UserForm) => void;
@@ -61,6 +64,7 @@ export function AdminUserDialog(props: Props) {
   return <dialog aria-labelledby={titleId} className="admin-dialog admin-user-dialog" ref={dialogRef} onCancel={(e) => { e.preventDefault(); close(); }} onClose={() => { if (props.open) close(); }}>
     <div className="admin-dialog__header"><h2 id={titleId}>{props.mode === 'create' ? t('admin.users.createDialogTitle', 'Create user') : t('admin.users.editDialogTitle', 'Edit user')}</h2><button aria-label={t('admin.users.closeDialog', 'Close user dialog')} className="admin-dialog__close" onClick={close} type="button">✕</button></div>
     {props.open && props.activationQrUserId ? <ActivationQrSheet key={props.activationQrUserId} userIds={[props.activationQrUserId]} canRevoke /> : null}
+    {props.open && props.badgeUserId ? <BadgeSheet key={props.badgeUserId} userIds={[props.badgeUserId]} single /> : null}
     <AdminUserForm fields={props.fields ?? []} departments={departments} departmentsLoading={departmentsLoading} departmentsError={departmentsError} form={props.form} mode={props.mode} errors={props.errors} message={props.message} isSaving={props.isSaving} onChange={props.onChange} onErrorsChange={props.onErrorsChange} onSubmit={props.onSubmit} onCancel={close} />
   </dialog>;
 }

@@ -75,6 +75,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `Session` |
 | `TelegramLinkCode` |
 | `User` |
+| `UserBadge` |
 | `UserCustomRoleAssignment` |
 | `UserFieldDefinition` |
 | `UserFieldValue` |

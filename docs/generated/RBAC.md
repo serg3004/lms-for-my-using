@@ -31,6 +31,8 @@ Permissions owner: `apps/api/src/modules/auth/roles.ts` (`rolePolicies`). Role e
 | `assignmentsCreate` | `admin`, `manager`, `instructor` |
 | `assignmentsRead` | `admin`, `manager`, `instructor`, `learner` |
 | `auditLogRead` | `admin` |
+| `badgePolicy` | `admin` |
+| `badgesManage` | `admin`, `manager` |
 | `certificatesCreate` | `admin`, `manager`, `instructor` |
 | `certificatesRead` | `admin`, `manager`, `instructor`, `learner` |
 | `checklistAccessSettingsWrite` | `admin` |
@@ -163,6 +165,6 @@ Owner: `packages/shared/src/permission-catalog.ts`; the route table is `apps/api
 | `user.update` | users | `department`, `organization` | yes | `user.read` | `usersUpdate` | `admin`, `manager` | 1 |
 | `user.deactivate` | users | `department`, `organization` | yes | `user.read` | `usersDeactivate` | `admin`, `manager` | 4 |
 | `user.reset-password` | users | `department`, `organization` | yes | `user.read` | `usersResetPassword` | `admin`, `manager` | 8 |
-| `user.invitation.manage` | users | `organization` | no | - | `usersCreate` | `admin`, `manager` | 10 |
+| `user.invitation.manage` | users | `organization` | no | - | `usersCreate` | `admin`, `manager` | 14 |
 | `user.activation-qr.shared` | users | `organization` | no | - | `departmentsWrite` | `admin` | 2 |
 | `checklist.access.settings` | checklists | `organization` | no | - | `checklistAccessSettingsWrite` | `admin` | 2 |

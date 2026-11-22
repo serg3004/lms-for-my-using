@@ -16,6 +16,7 @@ import {
   LoginProtectionInput,
   loginProtectionSchema,
   qrLoginPolicySchema,
+  badgePolicySchema,
   PasswordPolicyInput,
   passwordPolicySchema,
   organizationFeaturesSchema,
@@ -156,6 +157,22 @@ export class OrganizationsController {
   @OrganizationScope('param', 'id')
   updateQrLoginPolicy(@Param('id') organizationId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     return this.organizationsService.updateQrLoginPolicy(organizationId, qrLoginPolicySchema.parse(body), request.currentUser?.id ?? null);
+  }
+
+  @Get(':id/badge')
+  @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
+  @Roles(...rolePolicies.badgePolicy)
+  @OrganizationScope('param', 'id')
+  getBadgePolicy(@Param('id') organizationId: string) {
+    return this.organizationsService.getBadgePolicy(organizationId);
+  }
+
+  @Patch(':id/badge')
+  @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
+  @Roles(...rolePolicies.badgePolicy)
+  @OrganizationScope('param', 'id')
+  updateBadgePolicy(@Param('id') organizationId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.organizationsService.updateBadgePolicy(organizationId, badgePolicySchema.parse(body), request.currentUser?.id ?? null);
   }
 
   @Post(':id/logo')

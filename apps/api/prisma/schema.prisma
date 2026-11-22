@@ -370,6 +370,9 @@ model Organization {
   qrLoginEnabled             Boolean                     @default(false) @map("qr_login_enabled")
   qrLoginSessionHours        Int                         @default(8) @map("qr_login_session_hours")
   qrLoginRoles               String[]                    @default(["learner", "mentor", "instructor"]) @map("qr_login_roles")
+  /// PR 506: the PIN asked after a badge is scanned (on by default) and how long a kiosk session may stay idle.
+  badgePinRequired           Boolean                     @default(true) @map("badge_pin_required")
+  badgeIdleMinutes           Int                         @default(30) @map("badge_idle_minutes")
   /// PR 488: password policy of the organization, set by an administrator.
   passwordMinLength          Int                         @default(10) @map("password_min_length")
   passwordHistoryCount       Int                         @default(3) @map("password_history_count")
@@ -508,6 +511,7 @@ model User {
   passwordResetTokens        PasswordResetToken[]
   invitations                UserInvitation[]
   qrLoginRequests QrLoginRequest[]
+  badges          UserBadge[]
   telegramLink               UserTelegramLink?
   telegramLinkCodes          TelegramLinkCode[]
   messageDeliveries          MessageDelivery[]
@@ -2013,6 +2017,8 @@ model Session {
   ipMasked         String?      @map("ip_masked")
   /// PR 505: a session obtained by QR is short, never extended past `maxExpiresAt`, and cannot approve another QR sign-in.
   viaQr            Boolean      @default(false) @map("via_qr")
+  /// PR 506: a kiosk session opened by a badge; it reaches only the person's own assigned work and ends when idle.
+  viaBadge         Boolean      @default(false) @map("via_badge")
   maxExpiresAt     DateTime?    @map("max_expires_at") @db.Timestamptz
   user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -2281,4 +2287,26 @@ model LongreadRevision {
   @@unique([documentId, number])
   @@index([organizationId])
   @@map("longread_revisions")
+}
+
+/// PR 506: the QR badge of an employee. The token on the badge and the PIN are stored only as hashes; one active badge per person.
+model UserBadge {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  tokenHash      String    @unique @map("token_hash")
+  pinHash        String?   @map("pin_hash")
+  /// active | revoked | lost
+  state          String    @default("active")
+  issuedAt       DateTime  @default(now()) @map("issued_at") @db.Timestamptz
+  issuedById     String?   @map("issued_by_id") @db.Uuid
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz
+  revokedById    String?   @map("revoked_by_id") @db.Uuid
+  lastUsedAt     DateTime? @map("last_used_at") @db.Timestamptz
+  pinFailures    Int       @default(0) @map("pin_failures")
+  pinLockedUntil DateTime? @map("pin_locked_until") @db.Timestamptz
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, organizationId])
+  @@map("user_badges")
 }

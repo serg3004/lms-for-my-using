@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AccountSwitcher } from './accountSwitcher.js';
-import { getUnreadNotificationCount, listNotifications, markAllNotificationsAsRead, markNotificationAsRead } from './apiClient.js';
+import { SESSION_ENDED_EVENT, getUnreadNotificationCount, listNotifications, markAllNotificationsAsRead, markNotificationAsRead } from './apiClient.js';
 import type { NotificationSummary } from './apiClient.js';
 import { logout } from './logout.js';
 import { describeNotification, markAllReadLocally, markReadLocally, NOTIFICATION_COUNT_EVENT } from './notifications.js';
@@ -195,6 +195,9 @@ const LEARNER_NAV_DEFS = [
   { key: 'learner.profileTitle', href: '/profile' },
 ] as const;
 
+/** PR 506: a session opened by a badge reaches only assigned work, so the menu shows only that. */
+const KIOSK_NAV_HREFS: readonly string[] = ['/learn', '/learn/courses', '/learn/assignments', '/learn/assessments', '/learn/checklists'];
+
 const LEARNER_MOBILE_NAV_DEFS = [
   { key: 'nav.home', href: '/learn', icon: 'home' },
   { key: 'courses.title', href: '/learn/courses', icon: 'courses' },
@@ -228,15 +231,25 @@ export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutPr
   const firstName = currentUser?.firstName;
   const lastName = currentUser?.lastName ?? undefined;
 
+  const kiosk = currentUser?.kiosk === true;
+
   async function handleLogout() {
     try { await logout(); } catch { /* ignore */ }
     session?.clearSession();
-    window.location.href = '/login';
+    window.location.href = kiosk ? '/badge' : '/login';
   }
+
+  // A kiosk session ends by itself (work handed in, idle, lost badge): the next call fails and the screen returns to the scan.
+  useEffect(() => {
+    if (!kiosk) return;
+    const back = () => { window.location.assign('/badge'); };
+    window.addEventListener(SESSION_ENDED_EVENT, back);
+    return () => window.removeEventListener(SESSION_ENDED_EVENT, back);
+  }, [kiosk]);
 
   const mobileNavigation = (
     <nav className="learner-mobile-nav" aria-label={t('learner.mobileNavigation')}>
-      {LEARNER_MOBILE_NAV_DEFS.map((item) => {
+      {LEARNER_MOBILE_NAV_DEFS.filter((item) => !kiosk || KIOSK_NAV_HREFS.includes(item.href)).map((item) => {
         const isCurrent = item.href.startsWith('/')
           && (path === item.href || (item.href !== '/learn' && path.startsWith(`${item.href}/`)));
         return (
@@ -258,7 +271,7 @@ export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutPr
       lastName={lastName}
       email={currentUser?.email}
       mobileNavigation={mobileNavigation}
-      navigation={LEARNER_NAV_DEFS.map((item) => ({
+      navigation={LEARNER_NAV_DEFS.filter((item) => !kiosk || KIOSK_NAV_HREFS.includes(item.href)).map((item) => ({
         href: item.href,
         label: t(item.key),
         isCurrent: path === item.href || (item.href !== '/learn' && path.startsWith(item.href)),
@@ -268,13 +281,13 @@ export function LearnerPageLayout({ children, currentPath }: LearnerPageLayoutPr
       openNavigationLabel={t('a11y.openNav', 'Open navigation')}
       closeNavigationLabel={t('a11y.closeNav', 'Close navigation')}
       skipLinkLabel={t('a11y.skipToContent')}
-      headerActions={<NotificationBell />}
+      headerActions={kiosk ? <span role="status">{t('badge.kiosk.notice')}</span> : <NotificationBell />}
       accountActions={
         <>
-          <AccountSwitcher />
+          {kiosk ? null : <AccountSwitcher />}
           <LanguageSwitcher />
-          <button className="learner-topnav__logout" type="button" onClick={() => { void handleLogout(); }}>
-            {t('nav.logout')}
+          <button className="learner-topnav__logout" type="button" style={kiosk ? { minHeight: 56, fontSize: '1.1rem' } : undefined} onClick={() => { void handleLogout(); }}>
+            {t(kiosk ? 'badge.kiosk.finish' : 'nav.logout')}
           </button>
         </>
       }

@@ -19,6 +19,8 @@ export const rolePolicies = {
   passwordPolicyWrite: ['admin'],
   loginProtection: ['admin'],
   qrLoginPolicy: ['admin'],
+  badgePolicy: ['admin'],
+  badgesManage: ['admin', 'manager'],
   usersRead: ['admin', 'manager'],
   usersCreate: ['admin', 'manager'],
   usersImport: ['admin', 'manager'],

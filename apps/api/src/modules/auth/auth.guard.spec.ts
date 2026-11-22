@@ -174,3 +174,27 @@ describe('AuthGuard with a temporary password (PR 489)', () => {
     });
   });
 });
+
+describe('AuthGuard with a kiosk session (PR 506)', () => {
+  const kioskService = { getCurrentUser: async () => ({ ...currentUser, kiosk: true }) } as unknown as AuthService;
+
+  it('closes every route outside the allowed list, also when only `url` is set', async () => {
+    const request: AuthenticatedRequest = { headers: { authorization: 'Bearer token' }, method: 'GET', url: '/api/v1/users?page=1' };
+
+    await expect(new AuthGuard(kioskService).canActivate(createContext(request))).rejects.toMatchObject({
+      response: { error: { details: [{ code: 'KIOSK_SESSION_RESTRICTED' }] } },
+    });
+  });
+
+  it('closes a request without any path', async () => {
+    const request: AuthenticatedRequest = { headers: { authorization: 'Bearer token' }, method: 'GET' };
+
+    await expect(new AuthGuard(kioskService).canActivate(createContext(request))).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('lets an allowed route through', async () => {
+    const request: AuthenticatedRequest = { headers: { authorization: 'Bearer token' }, method: 'GET', originalUrl: '/api/v1/learner-dashboard?x=1' };
+
+    await expect(new AuthGuard(kioskService).canActivate(createContext(request))).resolves.toBe(true);
+  });
+});

@@ -13,11 +13,14 @@ import { isMailConfigured, sendMail } from '../../common/mail/mailer.js';
 import type { ClientContext } from '../../common/device-info.js';
 import { loginProtection } from '../../common/observability/metrics.js';
 import { loadQrLoginPolicy } from '../../common/qr-login.js';
+import { badgeSessionMaxHours, loadBadgePolicy } from '../../common/badge.js';
 import { assertPasswordPolicy, passwordPolicyError } from '../../common/password-policy.js';
 import { generateTemporaryPassword, temporaryPasswordLifetimeMs } from '../../common/temporary-password.js';
 import { isPasswordReused, loadPasswordPolicy, rememberReplacedPassword } from './password-policy.js';
 import { LoginJournal } from './login-journal.js';
 import { LoginLockout } from './login-lockout.js';
+import { Badges } from './badge.js';
+import { kioskRestrictedBody } from './kiosk-routes.js';
 import { QrLogin } from './qr-login.js';
 import { EMPLOYEE_NUMBER_KEY, findUserIdByEmployeeNumber, namesMatch } from './employee-identity.js';
 import { createPasswordResetToken, hashPasswordResetToken, PasswordResetDelivery, passwordResetLifetimeMs } from './password-reset.js';
@@ -85,6 +88,7 @@ export class AuthService {
   private readonly lockout: LoginLockout;
   private readonly journal: LoginJournal;
   private readonly qr: QrLogin;
+  private readonly badges: Badges;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -93,6 +97,7 @@ export class AuthService {
     this.lockout = new LoginLockout(prisma);
     this.journal = new LoginJournal(prisma);
     this.qr = new QrLogin(prisma);
+    this.badges = new Badges(prisma);
   }
 
   async findActiveUserByLoginIdentity(input: Pick<LoginInput, 'organizationId' | 'email'>) {
@@ -689,8 +694,9 @@ export class AuthService {
     let claims: JwtClaims;
     try {
       claims = await verifyJwt(accessToken);
-      await this.validateSession(claims.jti);
-    } catch {
+      if ((await this.validateSession(claims.jti)).viaBadge) throw new ForbiddenException(kioskRestrictedBody());
+    } catch (error) {
+      if (error instanceof ForbiddenException) throw error;
       throw new UnauthorizedException('Invalid token');
     }
     const user = await this.prisma.user.findFirst({
@@ -754,14 +760,16 @@ export class AuthService {
   }
 
   /** Opens a session for a person who has proved who they are. A session by QR is short and is never extended past its term. */
-  private async startSession(user: CurrentUser, context: ClientContext | undefined, qr?: { hours: number }) {
+  private async startSession(user: CurrentUser, context: ClientContext | undefined, qr?: { hours: number }, badge?: { idleMinutes: number }) {
     const { token, jti, expiresAt } = await signJwt({
       sub: user.id,
       organizationId: user.organizationId,
       email: user.email,
     });
     const refresh = createRefreshToken();
-    const refreshExpiresAt = qr ? new Date(Date.now() + qr.hours * 60 * 60 * 1000) : new Date(Date.now() + refreshTokenLifetimeMs);
+    const refreshExpiresAt = badge
+      ? new Date(Date.now() + badge.idleMinutes * 60_000)
+      : qr ? new Date(Date.now() + qr.hours * 60 * 60 * 1000) : new Date(Date.now() + refreshTokenLifetimeMs);
 
     await this.prisma.session.create({
       data: {
@@ -772,6 +780,7 @@ export class AuthService {
         refreshTokenHash: refresh.hash,
         refreshExpiresAt,
         ...(qr ? { viaQr: true, maxExpiresAt: refreshExpiresAt } : {}),
+        ...(badge ? { viaBadge: true, maxExpiresAt: new Date(Date.now() + badgeSessionMaxHours * 60 * 60 * 1000) } : {}),
         ...this.journal.device(context),
       },
     });
@@ -821,6 +830,56 @@ export class AuthService {
     return this.qr.decide(person, code, decision);
   }
 
+  /**
+   * PR 506: one scan of a badge, with the PIN when the organization asks for it. The answer is "a PIN is needed", a kiosk
+   * session, or the same refusal for every wrong thing. The session reaches only assigned work (see `kiosk-routes.ts`).
+   */
+  async badgeLogin(token: string, pin: string | undefined, context?: ClientContext) {
+    const result = await this.badges.login(token, pin, {
+      record: async (person, outcome) => { await this.journal.record(person, outcome, context); },
+    });
+    if (result.status === 'pinRequired') return result;
+    const record = await this.prisma.user.findFirst({ where: { id: result.userId, status: 'active', deletedAt: null }, select: currentUserSelect });
+    if (!record) throw new UnauthorizedException({ error: { code: 'BADGE_INVALID', message: 'The badge or the PIN is not valid' } });
+    const user = await this.withRoles(record);
+    const policy = await loadBadgePolicy(this.prisma, user.organizationId);
+    const session = await this.startSession(user, context, undefined, { idleMinutes: policy.idleMinutes });
+    await this.journal.record(user, 'badge', context);
+    return { status: 'ok' as const, ...session, user: { ...session.user, kiosk: true } };
+  }
+
+  /** The employee's own badge: the state, a lost report, a new PIN. A kiosk session can do none of it. */
+  async ownBadgeState(accessToken: string) {
+    const claims = await this.verifiedClaims(accessToken);
+    return this.badges.ownState(claims.sub, claims.organizationId);
+  }
+
+  async reportOwnBadgeLost(accessToken: string) {
+    const claims = await this.verifiedClaims(accessToken);
+    return this.badges.markLost(claims.sub, claims.organizationId);
+  }
+
+  async changeOwnBadgePin(accessToken: string, pin: string) {
+    const claims = await this.verifiedClaims(accessToken);
+    return this.badges.changeOwnPin(claims.sub, claims.organizationId, pin);
+  }
+
+  issueBadge(userId: string, organizationId: string, actorId: string, scope?: Prisma.UserWhereInput) {
+    return this.badges.issue(userId, organizationId, actorId, scope);
+  }
+
+  revokeBadge(userId: string, organizationId: string, actorId: string, scope?: Prisma.UserWhereInput) {
+    return this.badges.revoke(userId, organizationId, actorId, scope);
+  }
+
+  resetBadgePin(userId: string, organizationId: string, actorId: string, scope?: Prisma.UserWhereInput) {
+    return this.badges.resetPin(userId, organizationId, actorId, scope);
+  }
+
+  badgeStateFor(userId: string, organizationId: string, scope?: Prisma.UserWhereInput) {
+    return this.badges.stateFor(userId, organizationId, scope);
+  }
+
   /** PR 494: the signed-in person's own open sessions; the one that asks is marked as current. */
   async listOwnSessions(accessToken: string) {
     const claims = await this.verifiedClaims(accessToken);
@@ -845,14 +904,18 @@ export class AuthService {
     return { revoked: true };
   }
 
+  /** A kiosk session (badge) has no access to the person's own account functions: sessions, PIN, password, QR approvals. */
   private async verifiedClaims(accessToken: string) {
+    let claims: JwtClaims;
+    let kiosk: boolean;
     try {
-      const claims = await verifyJwt(accessToken);
-      await this.validateSession(claims.jti);
-      return claims;
+      claims = await verifyJwt(accessToken);
+      kiosk = (await this.validateSession(claims.jti)).viaBadge;
     } catch {
       throw new UnauthorizedException('Invalid token');
     }
+    if (kiosk) throw new ForbiddenException(kioskRestrictedBody());
+    return claims;
   }
 
   async refreshSession(sessionId: string, userId: string, organizationId: string) {
@@ -873,8 +936,10 @@ export class AuthService {
 
     const newRefresh = createRefreshToken();
     // PR 505: a session by QR is never extended past its term.
-    const current = await this.prisma.session.findUnique({ where: { id: sessionId }, select: { maxExpiresAt: true } });
-    const wanted = new Date(Date.now() + refreshTokenLifetimeMs);
+    const current = await this.prisma.session.findUnique({ where: { id: sessionId }, select: { maxExpiresAt: true, viaBadge: true } });
+    // PR 506: a kiosk session is renewed only for its idle time, and never past its own limit.
+    const idleMinutes = current?.viaBadge ? (await loadBadgePolicy(this.prisma, organizationId)).idleMinutes : null;
+    const wanted = new Date(Date.now() + (idleMinutes === null ? refreshTokenLifetimeMs : idleMinutes * 60_000));
     const refreshExpiresAt = current?.maxExpiresAt && current.maxExpiresAt < wanted ? current.maxExpiresAt : wanted;
 
     await this.prisma.session.update({
@@ -894,13 +959,14 @@ export class AuthService {
     try {
       const claims = await verifyJwt(accessToken);
 
-      await this.validateSession(claims.jti);
+      const session = await this.validateSession(claims.jti);
 
-      return this.findActiveUserByCurrentUserClaims({
+      const user = await this.findActiveUserByCurrentUserClaims({
         sub: claims.sub,
         organizationId: claims.organizationId,
         email: claims.email,
       });
+      return session.viaBadge ? { ...user, kiosk: true } : user;
     } catch {
       throw new UnauthorizedException('Invalid token');
     }
@@ -928,6 +994,8 @@ export class AuthService {
     if (!session) {
       throw new Error('Session not found or expired');
     }
+
+    return session;
   }
 
   private async resolveLoginOrganizationId(organizationIdOrSlug: string) {

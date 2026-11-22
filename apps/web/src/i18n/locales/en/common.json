@@ -3076,6 +3076,10 @@
         "title": "Training session deleted",
         "message": "A session that had not started was deleted. Participation is no longer required."
       },
+      "badge_lost": {
+        "title": "Badge reported lost",
+        "message": "{{name}} reported the badge as lost. The badge is revoked. Issue and print a new one."
+      },
       "checklist_session_completed": {
         "title": "Training session completed",
         "message": "The session is complete. Open it to view the feedback available to you."

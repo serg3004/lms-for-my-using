@@ -220,6 +220,33 @@ export class UsersService {
     return { items, skipped: seen.length - items.length };
   }
 
+  /** PR 506: a person outside the actor's scope, or one who cannot carry a badge (management roles, custom roles), is skipped. */
+  async issueBadges(actor: TeamScopeActor, userIds: string[]) {
+    const scope = await this.invitationScope.user(actor);
+    const seen = [...new Set(userIds)];
+    const items = [];
+    for (const userId of seen) {
+      try {
+        items.push(await this.authService!.issueBadge(userId, actor.organizationId, actor.id, scope));
+      } catch (error) {
+        if (!(error instanceof NotFoundException || error instanceof ConflictException)) throw error;
+      }
+    }
+    return { items, skipped: seen.length - items.length };
+  }
+
+  async badgeState(actor: TeamScopeActor, userId: string) {
+    return this.authService!.badgeStateFor(userId, actor.organizationId, await this.invitationScope.user(actor));
+  }
+
+  revokeBadge(actor: TeamScopeActor, userId: string) {
+    return this.invitationScope.user(actor).then((scope) => this.authService!.revokeBadge(userId, actor.organizationId, actor.id, scope));
+  }
+
+  resetBadgePin(actor: TeamScopeActor, userId: string) {
+    return this.invitationScope.user(actor).then((scope) => this.authService!.resetBadgePin(userId, actor.organizationId, actor.id, scope));
+  }
+
   async resendInvitation(actor: TeamScopeActor, userId: string) {
     return this.authService!.sendInvitation(userId, actor.organizationId, actor.id, await this.invitationScope.user(actor));
   }
