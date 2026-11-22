@@ -62,7 +62,7 @@ export function normalizePhone(value: string): string {
 
 /** The comparable form of free text: trimmed, inner whitespace collapsed, lower case. */
 export function normalizeText(value: string): string {
-  return value.trim().replace(/\s+/g, ' ').toLowerCase();
+  return value.trim().split(/\s+/).join(' ').toLowerCase();
 }
 
 /**
@@ -129,7 +129,12 @@ export function optionTitle(option: FieldOption): string {
 
 /** An option key made from a title: lower-case letters and digits, always starting with a letter or digit. */
 export function optionKeyFromTitle(title: string, taken: ReadonlySet<string>): string {
-  const base = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 30);
+  const dashed = title.slice(0, 200).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  let from = 0;
+  let to = dashed.length;
+  while (from < to && dashed[from] === '-') from += 1;
+  while (to > from && dashed[to - 1] === '-') to -= 1;
+  const base = dashed.slice(from, to).slice(0, 30);
   const start = base.length > 0 ? base : 'option';
   let key = start;
   for (let index = 2; taken.has(key); index += 1) key = `${start}-${index}`;
