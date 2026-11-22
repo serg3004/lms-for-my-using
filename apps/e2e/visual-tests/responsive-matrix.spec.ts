@@ -177,8 +177,12 @@ for (const width of [390, 1280]) test(`user rights dialog is responsive at ${wid
   if (width < 768) await page.getByRole('button', { name: /Подробнее: Петров/ }).click();
   await page.getByRole('button', { name: 'Права', exact: true }).last().click();
   await page.getByRole('dialog').getByText('Итоговые права').waitFor();
-  // Clicking a button below the fold scrolls the page, and whether it scrolled depends on timing; the baseline is the unscrolled page.
-  await page.evaluate(() => window.scrollTo(0, 0));
+  // Clicking a button below the fold scrolls the page, and a button inside the wide users table scrolls that table sideways;
+  // whether either happened depends on timing, so the baseline is the page and every scroll container at their start.
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    for (const element of document.querySelectorAll<HTMLElement>('*')) if (element.scrollLeft !== 0) element.scrollLeft = 0;
+  });
   await expectNoPageOverflow(page);
   await expectVisualMatch(page, `user-rights-dialog-${width}`, false, { maxDiffPixels: 3000 });
 });
