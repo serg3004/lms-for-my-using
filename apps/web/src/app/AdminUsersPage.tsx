@@ -135,7 +135,7 @@ export function AdminUsersPage() {
     <AdminUsersFilters filters={usersQuery.filters} onChange={usersQuery.setFilters} />
     <AdminUsersTable selection={{ selectedKeys: bulk.selectedKeys, onChange: bulk.setSelectedKeys, selectedLabel: (count) => t('common.selectedCount', { count }), selectAllLabel: t('security.bulkSelectAllRows'), rowLabel: (user) => userName(user) }} batchActions={<BulkUserBar scope={bulk.scope} canArchive={canArchive} canSelectAll={bulk.canSelectAll} matching={bulk.matching} busy={bulk.busy} onAction={(action) => void bulk.start(action)} onSelectAll={bulk.selectAllMatching} onClear={bulk.clear} />} users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} onResetPassword={setPendingReset} onTemporaryPassword={setPendingTemporary} onRights={setRightsUser} onArchive={canArchive ? (user) => void startArchive(user) : undefined} onRestore={canArchive ? setPendingRestore : undefined} />
     <BulkArchiveDialog pending={bulk.pendingArchive} error={bulk.error} onCancel={bulk.cancelArchive} onConfirm={() => void bulk.confirmArchive()} />
-    <BulkMoveDialog open={bulk.moveOpen} count={bulk.count} busy={bulk.busy} error={bulk.error} onCancel={bulk.cancelMove} onConfirm={(id) => void bulk.confirmMove(id)} />
+    {bulk.moveOpen ? <BulkMoveDialog open count={bulk.count} busy={bulk.busy} error={bulk.error} onCancel={bulk.cancelMove} onConfirm={(id) => void bulk.confirmMove(id)} /> : null}
     <BulkResultDialog report={bulk.report} names={bulk.names} onClose={bulk.closeReport} />
     {rightsUser ? <UserRightsDialog user={rightsUser} onClose={() => setRightsUser(null)} /> : null}
     <InvitationResultDialog result={inviteResult} onClose={() => setInviteResult(null)} />
