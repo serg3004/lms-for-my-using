@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="color-scheme" content="light dark" />
+    <title>LMS</title>
+    <style>
+      :root { --bg: #ffffff; --fg: #1e1b4b; --muted: #4b5563; --accent: #4f46e5; }
+      @media (prefers-color-scheme: dark) { :root { --bg: #0f1020; --fg: #eef2ff; --muted: #c7d2fe; --accent: #a5b4fc; } }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: var(--fg); font-family: ui-sans-serif, system-ui, sans-serif; }
+      main { max-width: 32rem; padding: 1.5rem; display: grid; gap: 1rem; }
+      h1 { margin: 0; font-size: 1.5rem; color: var(--accent); }
+      section { display: grid; gap: 0.25rem; }
+      p { margin: 0; line-height: 1.5; }
+      .muted { color: var(--muted); font-size: 0.9375rem; }
+    </style>
+  </head>
+  <body>
+    <main id="main-content">
+      <h1>LMS</h1>
+      <section lang="ru"><p><strong>Нет подключения к сети.</strong></p><p class="muted">Данные не сохраняются на устройстве. Проверьте интернет и откройте приложение снова.</p></section>
+      <section lang="en"><p><strong>No network connection.</strong></p><p class="muted">No data is kept on this device. Check your internet and open the app again.</p></section>
+      <section lang="kk"><p><strong>Желі байланысы жоқ.</strong></p><p class="muted">Деректер құрылғыда сақталмайды. Интернетті тексеріп, қолданбаны қайта ашыңыз.</p></section>
+      <section lang="zh"><p><strong>没有网络连接。</strong></p><p class="muted">设备上不保存任何数据。请检查网络后重新打开应用。</p></section>
+    </main>
+  </body>
+</html>

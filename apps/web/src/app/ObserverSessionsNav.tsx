@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
+import { InstallHint } from '../shared/InstallHint.js';
 import { useOptionalSession } from '../shared/session.js';
 
 type SessionsNavUser = { roles: readonly string[] } | null | undefined;
@@ -56,10 +57,13 @@ export function ObserverSessionsNav({ current }: { current: 'conduct' | 'all' | 
     { key: 'sheetAnalytics' as const, href: sheetAnalyticsPath(user) ?? allPath, label: t('sheetAnalytics.navTab', 'Analytics by checklist') },
   ];
   return (
-    <nav aria-label={t('checklistSessions.nav.label', 'Session sections')} className="admin-org-tabs">
-      {tabs.map((tab) => (
-        <Link aria-current={tab.key === current ? 'page' : undefined} className="admin-org-tabs__tab" key={tab.key} to={tab.href}>{tab.label}</Link>
-      ))}
-    </nav>
+    <>
+      <nav aria-label={t('checklistSessions.nav.label', 'Session sections')} className="admin-org-tabs">
+        {tabs.map((tab) => (
+          <Link aria-current={tab.key === current ? 'page' : undefined} className="admin-org-tabs__tab" key={tab.key} to={tab.href}>{tab.label}</Link>
+        ))}
+      </nav>
+      {current === 'conduct' ? <InstallHint /> : null}
+    </>
   );
 }
