@@ -69,6 +69,34 @@ export class UsersController {
     return this.usersService.resendInvitations(request.currentUser!, resendInvitationsSchema.parse(body).userIds);
   }
 
+  @Get('telegram-delivery')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersCreate)
+  getTelegramStatus(@Req() request: AuthenticatedRequest) {
+    return this.usersService.telegramStatus(request.currentUser!);
+  }
+
+  @Get(':id/deliveries')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersCreate)
+  listDeliveries(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    return this.usersService.telegramHistory(request.currentUser!, invitationUserIdSchema.parse(id));
+  }
+
+  @Post(':id/telegram/invitation')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersCreate)
+  sendInvitationToTelegram(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    return this.usersService.sendToTelegram(request.currentUser!, invitationUserIdSchema.parse(id), 'invitation');
+  }
+
+  @Post(':id/telegram/temporary-password')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersResetPassword)
+  sendTemporaryPasswordToTelegram(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    return this.usersService.sendToTelegram(request.currentUser!, invitationUserIdSchema.parse(id), 'temporary_password');
+  }
+
   @Post(':id/invitation/resend')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(...rolePolicies.usersCreate)

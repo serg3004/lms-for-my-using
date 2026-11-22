@@ -128,11 +128,11 @@ export class OrganizationsService {
   async getFeatures(organizationId: string) {
     const organization = await this.prisma.organization.findFirst({
       where: { id: organizationId },
-      select: { longreadEnabled: true, customRolesEnabled: true },
+      select: { longreadEnabled: true, customRolesEnabled: true, telegramDeliveryEnabled: true },
     });
     if (!organization) throw new NotFoundException('Organization not found');
 
-    return { longreadEnabled: organization.longreadEnabled, customRolesEnabled: organization.customRolesEnabled };
+    return { longreadEnabled: organization.longreadEnabled, customRolesEnabled: organization.customRolesEnabled, telegramDeliveryEnabled: organization.telegramDeliveryEnabled };
   }
 
   async updateFeatures(organizationId: string, input: OrganizationFeaturesInput, actorId: string | null = null) {
@@ -142,8 +142,9 @@ export class OrganizationsService {
       data: {
         longreadEnabled: input.longreadEnabled,
         ...(input.customRolesEnabled === undefined ? {} : { customRolesEnabled: input.customRolesEnabled }),
+        ...(input.telegramDeliveryEnabled === undefined ? {} : { telegramDeliveryEnabled: input.telegramDeliveryEnabled }),
       },
-      select: { longreadEnabled: true, customRolesEnabled: true },
+      select: { longreadEnabled: true, customRolesEnabled: true, telegramDeliveryEnabled: true },
     });
 
     if (existing.longreadEnabled !== updated.longreadEnabled) {
@@ -169,7 +170,19 @@ export class OrganizationsService {
       });
     }
 
-    return { longreadEnabled: updated.longreadEnabled, customRolesEnabled: updated.customRolesEnabled };
+    if (existing.telegramDeliveryEnabled !== updated.telegramDeliveryEnabled) {
+      await this.auditLog.record({
+        organizationId,
+        actorId,
+        action: 'organization.features_updated',
+        targetType: 'organization',
+        targetId: organizationId,
+        summary: `Telegram delivery ${updated.telegramDeliveryEnabled ? 'enabled' : 'disabled'}`,
+        metadata: { telegramDeliveryEnabled: updated.telegramDeliveryEnabled },
+      });
+    }
+
+    return { longreadEnabled: updated.longreadEnabled, customRolesEnabled: updated.customRolesEnabled, telegramDeliveryEnabled: updated.telegramDeliveryEnabled };
   }
 
   async getPasswordPolicy(organizationId: string) {

@@ -80,5 +80,6 @@ export type LoginProtectionInput = z.infer<typeof loginProtectionSchema>;
 export const organizationFeaturesSchema = z.object({
   longreadEnabled: z.boolean(),
   customRolesEnabled: z.boolean().optional(),
+  telegramDeliveryEnabled: z.boolean().optional(),
 }).strict();
 export type OrganizationFeaturesInput = z.infer<typeof organizationFeaturesSchema>;

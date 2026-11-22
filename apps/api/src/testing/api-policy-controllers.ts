@@ -35,6 +35,7 @@ import { ProgressController } from '../modules/progress/progress.controller.js';
 import { ReportingLinesController } from '../modules/reporting-lines/reporting-lines.controller.js';
 import { ReportsController } from '../modules/reports/reports.controller.js';
 import { ProfileController } from '../modules/users/profile.controller.js';
+import { TelegramWebhookController } from '../modules/users/telegram-webhook.controller.js';
 import { UsersController } from '../modules/users/users.controller.js';
 import { UserFieldsController } from '../modules/user-fields/user-fields.controller.js';
 
@@ -80,6 +81,7 @@ export const controllerEntries: ControllerEntry[] = [
   { file: 'reporting-lines/reporting-lines.controller.ts', Controller: ReportingLinesController },
   { file: 'reports/reports.controller.ts', Controller: ReportsController },
   { file: 'users/profile.controller.ts', Controller: ProfileController },
+  { file: 'users/telegram-webhook.controller.ts', Controller: TelegramWebhookController },
   { file: 'users/users.controller.ts', Controller: UsersController },
   { file: 'user-fields/user-fields.controller.ts', Controller: UserFieldsController },
 ];

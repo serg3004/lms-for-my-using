@@ -56,6 +56,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `ManagerGroup` |
 | `MaterialFileDeletionAudit` |
 | `Membership` |
+| `MessageDelivery` |
 | `MultipartUpload` |
 | `Notification` |
 | `OrgExternalReference` |
@@ -71,11 +72,13 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `Progress` |
 | `ReportingLine` |
 | `Session` |
+| `TelegramLinkCode` |
 | `User` |
 | `UserCustomRoleAssignment` |
 | `UserFieldDefinition` |
 | `UserFieldValue` |
 | `UserInvitation` |
+| `UserTelegramLink` |
 
 ## Enums
 

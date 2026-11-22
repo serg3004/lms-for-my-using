@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import { ApiClientError, apiRequest } from '../../shared/apiClient.js';
 import type { PaginatedResponse } from '../../shared/api/types.js';
+import { TelegramSendDialog } from './TelegramSendDialog.js';
 import { Badge, ConfirmDialog, DataTable, PageState, Pagination, type Column } from '../../shared/ui.js';
 import { useAsyncData } from '../../shared/useAsyncData.js';
 
@@ -30,7 +31,7 @@ function nameOf(user: Invitation) {
   return [user.lastName, user.firstName, user.middleName].filter(Boolean).join(' ');
 }
 
-export function PendingInvitations() {
+export function PendingInvitations({ organizationId = null, canEnableTelegram = false }: { organizationId?: string | null; canEnableTelegram?: boolean } = {}) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -40,17 +41,18 @@ export function PendingInvitations() {
       {t(`${keys}.title`)}
     </button>
     <div id={contentId} hidden={!open} style={{ marginBlockStart: 12 }}>
-      {open && <PendingInvitationsList busy={busy} setBusy={setBusy} />}
+      {open && <PendingInvitationsList busy={busy} setBusy={setBusy} organizationId={organizationId} canEnableTelegram={canEnableTelegram} />}
     </div>
   </section>;
 }
 
-function PendingInvitationsList({ busy, setBusy }: { busy: boolean; setBusy: (busy: boolean) => void }) {
+function PendingInvitationsList({ busy, setBusy, organizationId, canEnableTelegram }: { busy: boolean; setBusy: (busy: boolean) => void; organizationId: string | null; canEnableTelegram: boolean }) {
   const { t, i18n } = useTranslation();
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [telegramTarget, setTelegramTarget] = useState<Invitation | null>(null);
   const [revokeTarget, setRevokeTarget] = useState<Invitation | null>(null);
   const [report, setReport] = useState<Array<{ user: Invitation; result: BatchResult }>>([]);
   const { state, reload } = useAsyncData(
@@ -114,6 +116,7 @@ function PendingInvitationsList({ busy, setBusy }: { busy: boolean; setBusy: (bu
       key: 'actions', label: t('admin.users.col.actions'), priority: 'secondary', render: (user) =>
         <div className="admin-table-actions">
           <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" disabled={busy} onClick={() => void run('resend', [user])}>{t(`${keys}.resend`)}</button>
+          <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" disabled={busy} onClick={() => setTelegramTarget(user)}>{t('telegram.action')}</button>
           {user.status === 'pending' && <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" disabled={busy} onClick={() => void run('extend', [user])}>{t(`${keys}.extend`)}</button>}
           {(user.status === 'pending' || user.status === 'expired') && <button className="admin-btn admin-btn--sm admin-btn--danger" type="button" disabled={busy} onClick={() => setRevokeTarget(user)}>{t(`${keys}.revoke`)}</button>}
         </div>,
@@ -158,6 +161,7 @@ function PendingInvitationsList({ busy, setBusy }: { busy: boolean; setBusy: (bu
         setPage(next);
       }} />
     </>}
+    <TelegramSendDialog user={telegramTarget ? { ...telegramTarget, status: 'invited' } : null} organizationId={organizationId} canEnable={canEnableTelegram} onClose={() => setTelegramTarget(null)} />
     <ConfirmDialog open={revokeTarget !== null} title={t(`${keys}.revoke`)}
       message={t(`${keys}.revokeConfirm`, { name: revokeTarget ? nameOf(revokeTarget) : '' })}
       confirmLabel={t(`${keys}.revoke`)} cancelLabel={t('admin.users.cancel')} danger busy={busy}
