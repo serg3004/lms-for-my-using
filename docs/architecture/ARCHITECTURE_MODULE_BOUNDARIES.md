@@ -84,6 +84,8 @@ Backend policy/guard enforcement is security authority. Frontend route visibilit
 
 Custom roles: the `custom-roles` module (PR 480) owns the role tables and their data operations. The effective-rights calculation and the per-request lookup live in `auth` (`effective-permissions.ts`, `effective-permissions.loader.ts`, `custom-role-access.ts`, `access-scope.ts`) because `RolesGuard` needs them and `custom-roles` already depends on `auth`; the reverse import would be a cycle. Other modules never read the role tables.
 
+Custom user fields: the `user-fields` module (PR 499) owns `user_field_definitions` and `user_field_values`, the type rules and the per-field visibility rules. The `users` module (create, update, import, list search, own profile) calls it only through `user-fields/public.ts` (`UserFieldsService`, `validateFieldValues`, `fieldAuditMetadata`) and writes values inside its own transactions; no other module reads the field tables.
+
 Authorization changes require negative and positive tests at the owning layer.
 
 ## Testing and change placement
