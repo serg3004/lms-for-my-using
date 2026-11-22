@@ -355,6 +355,11 @@
   margin: 0;
 }
 
+/* The scrollbar's place is always reserved on wide screens, so the content does not jump sideways when a list grows past the screen (a new folder). Not on phones: there the 15px are needed by the narrow editor rows. */
+@media (min-width: 861px) {
+  .admin-shell { scrollbar-gutter: stable; }
+}
+
 .admin-shell__inner {
   width: 100%;
 }
@@ -365,7 +370,8 @@
   gap: 4px;
   overflow-x: auto;
   margin: 0 0 24px;
-  border-bottom: 1px solid var(--color-border);
+  /* The rule is drawn inside the strip: a tab pulled 1px over a real border made the strip 1px taller than its box and gave it a tiny vertical scrollbar. */
+  box-shadow: inset 0 -1px 0 var(--color-border);
 }
 
 .admin-org-tabs__tab {
@@ -374,7 +380,6 @@
   gap: 7px;
   flex: none;
   padding: 10px 14px 12px;
-  margin-bottom: -1px;
   /* Reset global.css's `button{border,background,color:#fff}` -- this class is also used on
      `<button role="tab">` elements (PR 318's session status tabs), not just the `<a>` nav strip
      it was written for. */
