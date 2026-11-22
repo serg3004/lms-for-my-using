@@ -15,6 +15,7 @@ import { MePermissionsController } from '../modules/custom-roles/me-permissions.
 import { DepartmentManagersController } from '../modules/department-managers/department-managers.controller.js';
 import { DepartmentMembershipsController } from '../modules/department-memberships/department-memberships.controller.js';
 import { DepartmentsController } from '../modules/departments/departments.controller.js';
+import { EmployeeCardController } from '../modules/employee-card/employee-card.controller.js';
 import { GroupsController } from '../modules/groups/groups.controller.js';
 import { HealthController } from '../modules/health/health.controller.js';
 import { LearnerDashboardController } from '../modules/learner-dashboard/learner-dashboard.controller.js';
@@ -64,6 +65,7 @@ export const controllerEntries: ControllerEntry[] = [
   { file: 'departments/departments.controller.ts', Controller: DepartmentsController },
   { file: 'groups/groups.controller.ts', Controller: GroupsController },
   { file: 'health/health.controller.ts', Controller: HealthController },
+  { file: 'employee-card/employee-card.controller.ts', Controller: EmployeeCardController },
   { file: 'learner-dashboard/learner-dashboard.controller.ts', Controller: LearnerDashboardController },
   { file: 'lessons/lessons.controller.ts', Controller: LessonsController },
   { file: 'longreads/longread-files.controller.ts', Controller: LongreadFilesController },

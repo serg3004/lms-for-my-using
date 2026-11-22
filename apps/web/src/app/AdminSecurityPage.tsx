@@ -5,6 +5,8 @@ import { getPasswordPolicy, savePasswordPolicy } from '../shared/api/organizatio
 import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { LoginProtectionCard } from '../shared/LoginProtectionCard.js';
 import { BadgePolicyCard } from '../shared/BadgePolicyCard.js';
+import { EmployeeCardPolicyCard } from '../shared/EmployeeCardPolicyCard.js';
+import { InspectorsCard } from '../shared/InspectorsCard.js';
 import { QrLoginPolicyCard } from '../shared/QrLoginPolicyCard.js';
 import { MyDevicesCard } from '../shared/MyDevicesCard.js';
 import { ChangePasswordForm } from '../shared/ChangePasswordForm.js';
@@ -72,6 +74,8 @@ export function AdminSecurityPage() {
       {currentUser ? <LoginProtectionCard organizationId={currentUser.organizationId} /> : null}
       {currentUser ? <QrLoginPolicyCard organizationId={currentUser.organizationId} /> : null}
       {currentUser ? <BadgePolicyCard organizationId={currentUser.organizationId} /> : null}
+      {currentUser ? <EmployeeCardPolicyCard organizationId={currentUser.organizationId} /> : null}
+      <InspectorsCard />
       <AdminCard>
         <ChangePasswordForm className="admin-form" />
       </AdminCard>

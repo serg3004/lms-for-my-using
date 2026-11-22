@@ -15,6 +15,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `AssessmentQuestion` |
 | `Assignment` |
 | `AuditLog` |
+| `BadgeScanLog` |
 | `Certificate` |
 | `Checklist` |
 | `ChecklistAnswerSet` |
@@ -44,6 +45,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `DepartmentManager` |
 | `DepartmentMembership` |
 | `DepartmentType` |
+| `ExternalInspector` |
 | `Group` |
 | `GroupMember` |
 | `Lesson` |

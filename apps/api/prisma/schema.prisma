@@ -372,6 +372,8 @@ model Organization {
   qrLoginRoles               String[]                    @default(["learner", "mentor", "instructor"]) @map("qr_login_roles")
   /// PR 506: the PIN asked after a badge is scanned (on by default) and how long a kiosk session may stay idle.
   badgePinRequired           Boolean                     @default(true) @map("badge_pin_required")
+  /// PR 507: the blocks of the employee card that every signed-in user of the organization sees; the rest needs rights.
+  employeeCardBlocks         String[]                    @default(["courses", "certificates", "checklists", "clearance"]) @map("employee_card_blocks")
   badgeIdleMinutes           Int                         @default(30) @map("badge_idle_minutes")
   /// PR 488: password policy of the organization, set by an administrator.
   passwordMinLength          Int                         @default(10) @map("password_min_length")
@@ -512,6 +514,7 @@ model User {
   invitations                UserInvitation[]
   qrLoginRequests QrLoginRequest[]
   badges          UserBadge[]
+  inspector       ExternalInspector?
   telegramLink               UserTelegramLink?
   telegramLinkCodes          TelegramLinkCode[]
   messageDeliveries          MessageDelivery[]
@@ -2309,4 +2312,34 @@ model UserBadge {
 
   @@index([userId, organizationId])
   @@map("user_badges")
+}
+
+/// PR 507: an outside inspector. The person signs in as an ordinary invited user but may open only the employee card, and only the blocks listed here, until `accessUntil`.
+model ExternalInspector {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  userId         String    @unique @map("user_id") @db.Uuid
+  visibleBlocks  String[]  @map("visible_blocks")
+  accessUntil    DateTime  @map("access_until") @db.Timestamptz
+  createdById    String?   @map("created_by_id") @db.Uuid
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, accessUntil])
+  @@map("external_inspectors")
+}
+
+/// PR 507: a scan of a badge by somebody who is not signed in. Nothing is revealed to them; the journal keeps time, address and device.
+model BadgeScanLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  ip             String?
+  userAgent      String?  @map("user_agent")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("badge_scan_logs")
 }

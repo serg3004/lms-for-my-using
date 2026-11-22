@@ -11,6 +11,8 @@ import { countOpenObserverSessions, notifyObserverDeactivated } from '../checkli
 import { ManagerTeamScope } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import { OrganizationAccessScopeService } from '../organization-access-scope/public.js';
+import { assertInspectorTerm } from '../employee-card/employee-card.js';
+import type { CreateInspectorInput } from '../employee-card/employee-card.schemas.js';
 import { UserFieldsService } from '../user-fields/public.js';
 import { fieldAuditMetadata, validateFieldValues, WORK_SCHEDULE_KEY } from '../user-fields/public.js';
 import type { CustomFieldValues, FieldChange, FieldViewer, FieldWrite } from '../user-fields/public.js';
@@ -18,6 +20,7 @@ import { TelegramDeliveryService, type DeliveryKind } from './telegram-delivery.
 import { assertNoRoleChange, UserRegistrarAccess, type Registrar } from './user-registrar-access.js';
 import { lookupImportDepartment, resolveImportRole, type ImportRole } from './user-import.js';
 import {
+  createUserRequestSchema,
   importUserItemSchema,
   CreateBulkUsersInput,
   CreateUserInput,
@@ -411,7 +414,7 @@ export class UsersService {
     return (await this.withCustomFields(actor.organizationId, viewerOf(actor), [updated]))[0]!;
   }
 
-  async createUser(input: CreateUserRequestInput, actorId: string | null = null, actor?: TeamScopeActor) {
+  async createUser(input: CreateUserRequestInput, actorId: string | null = null, actor?: TeamScopeActor, extras?: { inspector?: { visible: string[]; accessUntil: Date } }) {
     if (actor && actor.organizationId !== input.organizationId) throw new ForbiddenException('Organization mismatch');
     if (input.role !== undefined && !actor?.roles.includes('admin')) throw new ForbiddenException('Roles are granted by an administrator');
     await this.ensureOrganizationExists(input.organizationId);
@@ -449,6 +452,8 @@ export class UsersService {
       await this.fields.syncShiftToSchedule(tx, input.organizationId, user.id, userData.shift);
       fieldChanges = await this.fields.applyValues(tx, { organizationId: input.organizationId, userId: user.id, viewer: actor ? viewerOf(actor) : 'admin', input: customFields ?? {}, mode: 'create' });
       await this.placeNewUsers(tx, input.organizationId, [user.id], departmentId, input.role ?? (registrar ? 'learner' : undefined), actorId);
+      // PR 507: an outside inspector gets the limits in the same transaction, so no account exists without them.
+      if (extras?.inspector) await tx.externalInspector.create({ data: { organizationId: input.organizationId, userId: user.id, visibleBlocks: extras.inspector.visible, accessUntil: extras.inspector.accessUntil, createdById: actorId } });
       const created = await tx.user.findUniqueOrThrow({ where: { id: user.id, organizationId: input.organizationId }, select: userSelect });
       const deliverInvitation = invite ? await this.authService!.prepareInvitationFor({ ...created, organizationId: input.organizationId }, actorId, tx) : undefined;
       return { created, deliverInvitation };
@@ -491,6 +496,13 @@ export class UsersService {
       metadata: { delivered: invitation.delivered },
     });
     return { ...created, invitation };
+  }
+
+  /** PR 507: an outside inspector is an invited account that opens only the employee card; the administrator chooses what it sees and until when. */
+  async createInspector(input: CreateInspectorInput, actor: TeamScopeActor) {
+    assertInspectorTerm(input.accessUntil);
+    const request = createUserRequestSchema.parse({ organizationId: actor.organizationId, email: input.email, firstName: input.firstName, lastName: input.lastName, position: 'Inspector', role: 'learner' });
+    return this.createUser(request, actor.id, actor, { inspector: { visible: input.visible, accessUntil: input.accessUntil } });
   }
 
   async createBulkUsers(input: CreateBulkUsersInput, actor?: TeamScopeActor) {

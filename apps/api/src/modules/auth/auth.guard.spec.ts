@@ -198,3 +198,27 @@ describe('AuthGuard with a kiosk session (PR 506)', () => {
     await expect(new AuthGuard(kioskService).canActivate(createContext(request))).resolves.toBe(true);
   });
 });
+
+describe('AuthGuard with an outside inspector (PR 507)', () => {
+  const inspectorService = { getCurrentUser: async () => ({ ...currentUser, inspector: { visible: ['clearance'], accessUntil: '2030-01-01T00:00:00.000Z' } }) } as unknown as AuthService;
+
+  it('closes every route except the employee card', async () => {
+    const request: AuthenticatedRequest = { headers: { authorization: 'Bearer token' }, method: 'GET', originalUrl: '/api/v1/assignments' };
+
+    await expect(new AuthGuard(inspectorService).canActivate(createContext(request))).rejects.toMatchObject({
+      response: { error: { details: [{ code: 'INSPECTOR_SESSION_RESTRICTED' }] } },
+    });
+  });
+
+  it('closes a request without any path', async () => {
+    const request: AuthenticatedRequest = { headers: { authorization: 'Bearer token' }, method: 'POST' };
+
+    await expect(new AuthGuard(inspectorService).canActivate(createContext(request))).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('opens the card', async () => {
+    const request: AuthenticatedRequest = { headers: { authorization: 'Bearer token' }, method: 'POST', url: '/api/v1/employee-card/open' };
+
+    await expect(new AuthGuard(inspectorService).canActivate(createContext(request))).resolves.toBe(true);
+  });
+});

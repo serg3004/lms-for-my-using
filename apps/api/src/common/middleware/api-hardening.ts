@@ -46,6 +46,8 @@ const sensitiveRateLimitedRoutes = new Set([
   '/api/v1/auth/activate/qr',
   '/api/v1/auth/qr/start',
   '/api/v1/auth/badge/login',
+  '/api/v1/employee-card/anonymous-scan',
+  '/api/v1/employee-card/open',
   '/api/v1/auth/change-password',
   '/api/v1/organizations/register',
 ]);

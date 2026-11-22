@@ -3076,6 +3076,10 @@
         "title": "Training session deleted",
         "message": "A session that had not started was deleted. Participation is no longer required."
       },
+      "badge_scan_series": {
+        "title": "Series of badge scans",
+        "message": "The badge of {{name}} was scanned several times without signing in ({{count}} in 10 minutes). Check the scan journal."
+      },
       "badge_lost": {
         "title": "Badge reported lost",
         "message": "{{name}} reported the badge as lost. The badge is revoked. Issue and print a new one."

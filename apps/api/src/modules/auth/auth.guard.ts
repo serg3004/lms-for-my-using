@@ -3,6 +3,7 @@ import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@
 import { AuthHeaders, assertValidCsrf, resolveAccessToken } from './auth.cookies.js';
 import { CurrentUser } from './auth.schemas.js';
 import { AuthService } from './auth.service.js';
+import { isInspectorRoute, inspectorRestrictedBody } from './inspector-routes.js';
 import { isKioskRoute, kioskRestrictedBody } from './kiosk-routes.js';
 
 export type AuthenticatedRequest = {
@@ -27,11 +28,16 @@ export class AuthGuard implements CanActivate {
     request.currentUser = await this.authService.getCurrentUser(accessToken.token);
 
     // PR 506: a kiosk session (opened by a badge) reaches only the person's own assigned work; everything else is closed here.
+    const path = (request.originalUrl ?? request.url ?? '').split('?')[0];
     if (request.currentUser.kiosk) {
-      const path = (request.originalUrl ?? request.url ?? '').split('?')[0];
       if (!isKioskRoute(request.method, path)) {
         throw new ForbiddenException(kioskRestrictedBody());
       }
+    }
+
+    // PR 507: an outside inspector reaches only the employee card.
+    if (request.currentUser.inspector && !isInspectorRoute(request.method, path)) {
+      throw new ForbiddenException(inspectorRestrictedBody());
     }
 
     // PR 489: a temporary password opens only the change-password screen (`/auth/*` handlers do not pass through this guard).

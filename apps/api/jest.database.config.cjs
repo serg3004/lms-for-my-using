@@ -24,6 +24,7 @@ module.exports = {
     '<rootDir>/src/integration/identity-activation.database.spec.ts',
     '<rootDir>/src/integration/qr-login.database.spec.ts',
     '<rootDir>/src/integration/badge.database.spec.ts',
+    '<rootDir>/src/integration/employee-card.database.spec.ts',
     '<rootDir>/src/integration/telegram-delivery.database.spec.ts',
     '<rootDir>/src/integration/password-policy.database.spec.ts',
     '<rootDir>/src/integration/temporary-password.database.spec.ts',

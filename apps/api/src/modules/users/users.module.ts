@@ -15,5 +15,6 @@ import { UsersService } from './users.service.js';
   imports: [AuthModule, UploadModule, UserFieldsModule],
   controllers: [UsersController, ProfileController, TelegramWebhookController],
   providers: [UsersService, UsersBulkService, ProfileService, TelegramDeliveryService],
+  exports: [UsersService],
 })
 export class UsersModule {}
