@@ -4,21 +4,31 @@ open-source packages, each of which remains under its own license.
 ## License scan summary
 
 Generated with `pnpm licenses list` against the full workspace (api, web,
-shared, e2e, malware-scanner) on 2026-08-23. Full output kept for reference
-in the PR that introduced this file.
+shared, e2e, malware-scanner) on 2026-11-23: 1057 packages (direct and
+transitive). Full output is not stored in the repository.
 
-License families observed across all direct and transitive dependencies:
-MIT, MIT-0, MIT/X11, Apache-2.0, BSD-2-Clause, BSD-3-Clause, 0BSD, ISC,
-MPL-2.0, BlueOak-1.0.0, CC0-1.0, CC-BY-4.0, OFL-1.1, Python-2.0, Unlicense.
+License families observed: MIT, MIT-0, MIT/X11, Apache-2.0, BSD-2-Clause,
+BSD-3-Clause, 0BSD, ISC, MPL-2.0, BlueOak-1.0.0, CC0-1.0, CC-BY-4.0, OFL-1.1,
+PSF-2.0, Unlicense, Zlib (in `MIT AND Zlib`), LGPL-3.0-or-later (see below).
 
-No dependency is GPL-only or AGPL-only — nothing in the dependency tree
+No dependency is GPL-only or AGPL-only: nothing in the dependency tree
 requires this project's own source to be disclosed or relicensed.
 
-Two entries worth noting explicitly:
+Entries worth noting explicitly:
 
-- **jszip** — dual-licensed `(MIT OR GPL-3.0-or-later)`. This project uses it
+- **@img/sharp-libvips-linux-x64** and **@img/sharp-libvips-linuxmusl-x64**
+  (prebuilt libvips binaries used by `sharp`) - `LGPL-3.0-or-later`. They are
+  separate, unmodified, dynamically loaded libraries, which the LGPL permits
+  inside proprietary software. If the product (for example a container image)
+  is ever distributed to third parties, keep the LGPL notice, do not modify
+  the library, and keep it replaceable by the user. Re-check this before any
+  distribution outside the project's own hosting.
+- **jszip** - dual-licensed `(MIT OR GPL-3.0-or-later)`. This project uses it
   under the MIT option, which the dual license permits.
-- **buffers** — reported as `Unknown` (no machine-readable license field in
+- **caniuse-lite** - `CC-BY-4.0` (browser-support data used by build tooling,
+  not shipped as code); attribution requirement applies if the data is
+  redistributed.
+- **buffers** - reported as `Unknown` (no machine-readable license field in
   its package metadata). It is a small transitive dependency; if it ever
   becomes a direct dependency, re-verify its actual license before relying
   on it in a distributed build.
