@@ -36,6 +36,7 @@ import { ReportingLinesController } from '../modules/reporting-lines/reporting-l
 import { ReportsController } from '../modules/reports/reports.controller.js';
 import { ProfileController } from '../modules/users/profile.controller.js';
 import { UsersController } from '../modules/users/users.controller.js';
+import { UserFieldsController } from '../modules/user-fields/user-fields.controller.js';
 
 export type ControllerClass = abstract new (...args: never[]) => object;
 export type ControllerEntry = { file: string; Controller: ControllerClass };
@@ -80,5 +81,6 @@ export const controllerEntries: ControllerEntry[] = [
   { file: 'reports/reports.controller.ts', Controller: ReportsController },
   { file: 'users/profile.controller.ts', Controller: ProfileController },
   { file: 'users/users.controller.ts', Controller: UsersController },
+  { file: 'user-fields/user-fields.controller.ts', Controller: UserFieldsController },
 ];
 

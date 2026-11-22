@@ -44,6 +44,7 @@ import { ReportingLinesModule } from './modules/reporting-lines/reporting-lines.
 import { ReportsModule } from './modules/reports/reports.module.js';
 import { UploadModule } from './modules/upload/upload.module.js';
 import { UsersModule } from './modules/users/users.module.js';
+import { UserFieldsModule } from './modules/user-fields/public.js';
 
 @Module({
   imports: [
@@ -110,6 +111,7 @@ import { UsersModule } from './modules/users/users.module.js';
     ReportsModule,
     UploadModule,
     UsersModule,
+    UserFieldsModule,
   ],
 })
 export class AppModule {}

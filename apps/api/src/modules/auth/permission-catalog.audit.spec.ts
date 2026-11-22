@@ -41,6 +41,7 @@ const outsideCatalog: Record<string, string> = {
   'positions/': 'organization structure stays with the administrator',
   'progress/': 'own progress of the learner',
   'reporting-lines/': 'organization structure stays with the administrator',
+  'user-fields/': 'custom user field definitions stay with the administrator, like roles',
 };
 
 const inCatalog = (file: string) => catalogFiles.some((prefix) => file.startsWith(prefix));

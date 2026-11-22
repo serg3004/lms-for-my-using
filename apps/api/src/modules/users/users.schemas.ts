@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { paginationQuerySchema } from '../../common/pagination.schema.js';
+import { customFieldValuesSchema } from '../user-fields/public.js';
 
 export const initialUserRoleSchema = z.enum(['learner', 'instructor', 'mentor', 'manager', 'admin']);
 
@@ -9,7 +10,10 @@ export const userStatusSchema = z.enum(['active', 'invited', 'suspended', 'archi
 export const listUsersQuerySchema = paginationQuerySchema.extend({
   search: z.string().trim().min(1).max(120).optional(),
   status: userStatusSchema.optional(),
-});
+  /** PR 499: show only people whose custom field `fieldKey` equals `fieldValue`. */
+  fieldKey: z.string().trim().min(1).max(40).optional(),
+  fieldValue: z.string().trim().min(1).max(500).optional(),
+}).refine((query) => (query.fieldKey === undefined) === (query.fieldValue === undefined), { message: 'fieldKey and fieldValue go together', path: ['fieldKey'] });
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;
 
 export const invitationUserIdSchema = z.guid().toLowerCase();
@@ -41,6 +45,8 @@ export const createUserRequestSchema = createUserSchema.extend({
   /** PR 489: no password and no invitation: the server makes a temporary password, shown once, and the first sign-in leads to choosing their own. */
   temporaryPassword: z.boolean().optional(),
   role: initialUserRoleSchema.optional(),
+  /** PR 499: values of custom fields, `{ key: value }`; `null` clears one. */
+  customFields: customFieldValuesSchema.optional(),
 });
 
 export const usersBulkCreateMaxItems = 50;
@@ -84,6 +90,7 @@ export const updateUserSchema = createUserSchema
   .omit({ organizationId: true, password: true })
   .extend({
     role: z.enum(['learner', 'instructor', 'mentor', 'manager', 'admin']).nullable().optional(),
+    customFields: customFieldValuesSchema.optional(),
   });
 
 export const updateUserStatusSchema = z.object({
@@ -107,6 +114,7 @@ export const importUserItemSchema = createBulkUserItemSchema.extend({
   password: createUserSchema.shape.password.optional(),
   department: z.string().trim().min(1).max(160).optional(),
   role: z.string().trim().min(1).max(40).optional(),
+  customFields: customFieldValuesSchema.optional(),
 });
 
 /** PR 497: the most people one bulk action may touch ("everyone matching the filter" is refused above this). */

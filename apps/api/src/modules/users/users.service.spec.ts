@@ -5,6 +5,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { unrestrictedActor } from '../manager-team-scope/manager-team-scope.js';
 import { createBulkUsersSchema, createUserRequestSchema, createUserSchema, importUsersSchema, updateUserSchema } from './users.schemas.js';
 import { UsersService } from './users.service.js';
+import { noUserFields } from '../../testing/no-user-fields.js';
 
 const organizationId = '11111111-1111-1111-1111-111111111111';
 const userId = '99999999-9999-9999-9999-999999999999';
@@ -121,7 +122,7 @@ describe('UsersService bulk create', () => {
       $transaction: async (operations: Promise<unknown>[]) => Promise.all(operations),
     } as unknown as PrismaService;
 
-    const service = new UsersService(prisma);
+    const service = new UsersService(prisma, undefined, undefined, undefined, noUserFields);
     const input = createBulkUsersSchema.parse({
       organizationId,
       users: [createBulkUser('first@example.com'), createBulkUser('second@example.com')],
@@ -148,7 +149,7 @@ describe('UsersService bulk create', () => {
       $transaction: async (operations: Promise<unknown>[]) => Promise.all(operations),
     } as unknown as PrismaService;
 
-    const service = new UsersService(prisma);
+    const service = new UsersService(prisma, undefined, undefined, undefined, noUserFields);
     const input = createBulkUsersSchema.parse({
       organizationId,
       users: [createBulkUser('first@example.com')],
@@ -177,7 +178,7 @@ describe('UsersService import', () => {
       $transaction: async (operations: Promise<unknown>[]) => Promise.all(operations),
     } as unknown as PrismaService;
 
-    const service = new UsersService(prisma);
+    const service = new UsersService(prisma, undefined, undefined, undefined, noUserFields);
     const input = importUsersSchema.parse({
       organizationId,
       mode: 'validateOnly',
@@ -223,7 +224,7 @@ describe('UsersService import', () => {
       $transaction: async (operations: Promise<unknown>[]) => Promise.all(operations),
     } as unknown as PrismaService;
 
-    const service = new UsersService(prisma);
+    const service = new UsersService(prisma, undefined, undefined, undefined, noUserFields);
     const input = importUsersSchema.parse({
       organizationId,
       mode: 'create',
@@ -261,7 +262,7 @@ describe('UsersService updateUser role changes', () => {
         throw new Error('$transaction must not run when the last-admin guard rejects the change');
       },
     } as unknown as PrismaService;
-    const service = new UsersService(prisma);
+    const service = new UsersService(prisma, undefined, undefined, undefined, noUserFields);
 
     const input = updateUserSchema.parse({
       email: baseUser.email,
@@ -293,7 +294,7 @@ describe('UsersService updateUser role changes', () => {
       },
       $transaction: async (callback: (tx: PrismaService) => Promise<unknown>) => callback(prisma as unknown as PrismaService),
     } as unknown as PrismaService;
-    const service = new UsersService(prisma);
+    const service = new UsersService(prisma, undefined, undefined, undefined, noUserFields);
 
     const input = updateUserSchema.parse({
       email: baseUser.email,
@@ -302,7 +303,7 @@ describe('UsersService updateUser role changes', () => {
       role: 'instructor',
     });
 
-    await expect(service.updateUser(userId, actor, input)).resolves.toEqual(updatedUser);
+    await expect(service.updateUser(userId, actor, input)).resolves.toEqual({ ...updatedUser, customFields: {} });
   });
 
   it('allows changing role when the user does not currently hold admin', async () => {
@@ -320,7 +321,7 @@ describe('UsersService updateUser role changes', () => {
       },
       $transaction: async (callback: (tx: PrismaService) => Promise<unknown>) => callback(prisma as unknown as PrismaService),
     } as unknown as PrismaService;
-    const service = new UsersService(prisma);
+    const service = new UsersService(prisma, undefined, undefined, undefined, noUserFields);
 
     const input = updateUserSchema.parse({
       email: baseUser.email,
@@ -329,7 +330,7 @@ describe('UsersService updateUser role changes', () => {
       role: 'manager',
     });
 
-    await expect(service.updateUser(userId, actor, input)).resolves.toEqual(updatedUser);
+    await expect(service.updateUser(userId, actor, input)).resolves.toEqual({ ...updatedUser, customFields: {} });
   });
 });
 
@@ -351,7 +352,7 @@ describe('UsersService updateUserStatus', () => {
       course: { findMany: async () => [] },
       $transaction: async (run: (client: typeof tx) => Promise<unknown>) => run(tx),
     } as unknown as PrismaService;
-    return { tx, service: new UsersService(prisma) };
+    return { tx, service: new UsersService(prisma, undefined, undefined, undefined, noUserFields) };
   }
 
   it('ends every session of a user who is suspended or archived, and none on activation (PR 493)', async () => {
@@ -386,7 +387,7 @@ describe('UsersService updateUserStatus', () => {
       course: { findMany: async () => [{ id: 'course-1', title: 'Safety', instructors: [{ instructorId: userId }] }] },
       $transaction: async (run: (client: unknown) => Promise<unknown>) => run({ user: { update: async () => ({ id: userId, status: 'active' }) } }),
     } as unknown as PrismaService;
-    const service = new UsersService(prisma);
+    const service = new UsersService(prisma, undefined, undefined, undefined, noUserFields);
 
     await expect(service.updateUserStatus(userId, actor, 'active')).resolves.toMatchObject({
       status: 'active',
@@ -437,7 +438,7 @@ describe('UsersService updateUserStatus', () => {
 
   it('throws NotFoundException when the user does not exist', async () => {
     const prisma = { user: { findFirst: async () => null } } as unknown as PrismaService;
-    const service = new UsersService(prisma);
+    const service = new UsersService(prisma, undefined, undefined, undefined, noUserFields);
 
     await expect(service.updateUserStatus(userId, actor, 'suspended')).rejects.toThrow(NotFoundException);
   });
@@ -454,7 +455,7 @@ describe('UsersService getObserverSessionImpact', () => {
       reportingLine: { count: async () => 3 },
       departmentManager: { count: async () => 1 },
     } as unknown as PrismaService;
-    await expect(new UsersService(prisma).getObserverSessionImpact(userId, unrestrictedActor(organizationId))).resolves.toEqual({
+    await expect(new UsersService(prisma, undefined, undefined, undefined, noUserFields).getObserverSessionImpact(userId, unrestrictedActor(organizationId))).resolves.toEqual({
       observerSessions: 4,
       soleInstructorCourses: [{ id: 'course-1', title: 'Safety' }],
       openAssignments: 2,
@@ -464,7 +465,7 @@ describe('UsersService getObserverSessionImpact', () => {
     expect(count).toHaveBeenCalledWith({ where: { organizationId, observerId: userId, deletedAt: null, status: { in: ['scheduled', 'in_progress', 'paused'] } } });
 
     const missing = { user: { findFirst: async () => null } } as unknown as PrismaService;
-    await expect(new UsersService(missing).getObserverSessionImpact(userId, unrestrictedActor(organizationId))).rejects.toThrow(NotFoundException);
+    await expect(new UsersService(missing, undefined, undefined, undefined, noUserFields).getObserverSessionImpact(userId, unrestrictedActor(organizationId))).rejects.toThrow(NotFoundException);
   });
 });
 
@@ -491,7 +492,7 @@ describe('UsersService archive and restore (PR 495)', () => {
       checklistSession: { count: async () => 0 },
       $transaction: async (run: (client: typeof tx) => Promise<unknown>) => run(tx),
     } as unknown as PrismaService;
-    return { tx, authService, service: new UsersService(prisma, { record: jest.fn(async () => undefined) } as never, undefined, authService as never) };
+    return { tx, authService, service: new UsersService(prisma, { record: jest.fn(async () => undefined) } as never, undefined, authService as never, noUserFields) };
   }
 
   it('refuses to archive or restore for a manager', async () => {
@@ -546,7 +547,7 @@ describe('UsersService listUsers', () => {
       },
     } as unknown as PrismaService;
 
-    const service = new UsersService(prisma);
+    const service = new UsersService(prisma, undefined, undefined, undefined, noUserFields);
     await service.listUsers(unrestrictedActor(organizationId), 1, 20, undefined, 'active');
 
     expect(capturedWhere).toMatchObject({ organizationId, deletedAt: null, status: 'active' });
@@ -564,7 +565,7 @@ describe('UsersService listUsers', () => {
       },
     } as unknown as PrismaService;
 
-    const service = new UsersService(prisma);
+    const service = new UsersService(prisma, undefined, undefined, undefined, noUserFields);
     await service.listUsers(unrestrictedActor(organizationId), 1, 20);
 
     expect(capturedWhere).not.toHaveProperty('status');

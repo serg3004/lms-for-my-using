@@ -47,4 +47,5 @@ Canonical owner: `apps/api/src/app.module.ts`.
 | `ReportingLinesModule` |
 | `ReportsModule` |
 | `UploadModule` |
+| `UserFieldsModule` |
 | `UsersModule` |

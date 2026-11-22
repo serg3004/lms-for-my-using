@@ -102,6 +102,7 @@ Permissions owner: `apps/api/src/modules/auth/roles.ts` (`rolePolicies`). Role e
 | `reportsRead` | `admin`, `manager` |
 | `themeSettingsRead` | `admin`, `manager`, `instructor`, `learner` |
 | `themeSettingsWrite` | `admin` |
+| `userFieldsManage` | `admin` |
 | `usersCreate` | `admin`, `manager` |
 | `usersDeactivate` | `admin`, `manager` |
 | `usersImport` | `admin`, `manager` |
