@@ -42,6 +42,7 @@ type SessionRecord = { id: string };
 type PrismaMock = {
   user: {
     findFirst: (args: PrismaUserFindFirstArgs) => Promise<typeof currentUser | null>;
+    update?: (args: { where: { id: string }; data: { lastLoginAt: Date } }) => Promise<unknown>;
   };
   membership: {
     findMany: (args: PrismaMembershipFindManyArgs) => Promise<Array<{ role: UserRole }>>;
@@ -69,6 +70,7 @@ function createAuthService(
 
         return userResult;
       },
+      update: async () => ({}),
     },
     membership: {
       findMany: async (args) => {
@@ -320,6 +322,7 @@ describe('AuthService login', () => {
       },
       user: {
         findFirst: async () => options.userResult ?? null,
+        update: async () => ({}),
       },
       membership: {
         findMany: async () => (options.roles ?? rolesDefault).map((role) => ({ role })),
@@ -383,9 +386,10 @@ describe('AuthService login', () => {
     const passwordHash = await hashPassword(password);
     const userWithHash = { ...currentUser, passwordHash };
     const sessionCreateCalls: unknown[] = [];
+    const lastLoginCalls: unknown[] = [];
     const prisma = {
       organization: { findFirst: async () => ({ id: orgId }) },
-      user: { findFirst: async () => userWithHash },
+      user: { findFirst: async () => userWithHash, update: async (args: unknown) => { lastLoginCalls.push(args); return {}; } },
       membership: { findMany: async () => [{ role: 'learner' }] },
       session: {
         create: async (args: unknown) => {
@@ -401,6 +405,8 @@ describe('AuthService login', () => {
     await authService.login({ organizationId: orgId, email: currentUser.email, password });
 
     expect(sessionCreateCalls).toHaveLength(1);
+    // PR 498: a sign-in stamps `lastLoginAt`.
+    expect(lastLoginCalls).toEqual([{ where: { id: currentUser.id }, data: { lastLoginAt: expect.any(Date) } }]);
     expect(sessionCreateCalls[0]).toMatchObject({
       data: expect.objectContaining({
         userId: currentUser.id,
@@ -457,6 +463,7 @@ describe('AuthService login', () => {
 
           return userWithHash;
         },
+        update: async () => ({}),
       },
       membership: { findMany: async () => [{ role: 'learner' }] },
       session: { create: async () => ({ id: 'session-id' }) },

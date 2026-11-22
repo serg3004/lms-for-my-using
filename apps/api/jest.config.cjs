@@ -39,6 +39,7 @@ module.exports = {
     '/src/integration/qr-login\\.database\\.spec\\.ts$',
     '/src/integration/badge\\.database\\.spec\\.ts$',
     '/src/integration/employee-card\\.database\\.spec\\.ts$',
+    '/src/integration/account-lifecycle\\.database\\.spec\\.ts$',
     '/src/integration/telegram-delivery\\.database\\.spec\\.ts$',
     '/src/integration/password-policy\\.database\\.spec\\.ts$',
     '/src/integration/temporary-password\\.database\\.spec\\.ts$',

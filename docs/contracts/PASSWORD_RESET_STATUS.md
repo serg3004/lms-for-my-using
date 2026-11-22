@@ -30,3 +30,7 @@ Operational requirements:
 - make the delivery provider construct the public reset link and avoid logging its token;
 - monitor `lms_password_reset_delivery_errors_total` for a sustained `http_error`/`timeout`/`network_error` rate rather than the requester-facing response, which never reflects delivery outcome;
 - periodically delete expired token rows under the normal retention process.
+
+### Account life cycle (PR 498)
+
+The whole life of an account (invitation, accepting it, sign-in, changing the password, lockout, unlock, archive, restore) is covered by one database test and the mails and Telegram texts of that plan by one language guard; see `docs/runbooks/ACCOUNT_LIFECYCLE_ACCEPTANCE.md`. The password reset mail above is Russian only and is outside that guard.
