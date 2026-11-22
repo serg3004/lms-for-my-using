@@ -5,16 +5,16 @@ import type { AdminUserSummary } from './model.js';
 
 export type PasswordResetResult = { user: AdminUserSummary; delivered: boolean; resetUrl?: string } | { user: AdminUserSummary; error: string };
 
-export type InvitationResult = { user: AdminUserSummary; delivered: boolean; inviteUrl?: string };
+export type InvitationResult = { user: AdminUserSummary; delivered: boolean; inviteUrl?: string; /** PR 501: the person activates by employee number, there is no link. */ identity?: boolean };
 
 /** Tells the administrator where a new user's invitation went (their email) or hands over the link when mail is not set up. */
 export function InvitationResultDialog({ result, onClose }: { result: InvitationResult | null; onClose: () => void }) {
   const { t } = useTranslation();
   const name = result ? `${result.user.lastName} ${result.user.firstName}`.trim() : '';
-  const message = !result ? '' : result.delivered
+  const message = !result ? '' : result.identity ? t('identity.admin.identityCreated') : result.delivered
     ? t('admin.users.invitationSent', 'An invitation was sent to {{email}}. The link works for 7 days.', { email: result.user.email })
     : t('admin.users.invitationLink', 'Mail is not set up, so give {{name}} this one-time link (works for 7 days, shown once): {{url}}', { name, url: result.inviteUrl ?? '' });
-  return <ConfirmDialog cancelLabel={t('admin.users.close', 'Close')} confirmLabel={t('admin.users.close', 'Close')} message={message} onCancel={onClose} onConfirm={onClose} open={result !== null} title={t('admin.users.invitationTitle', 'Invitation')} />;
+  return <ConfirmDialog cancelLabel={t('admin.users.close', 'Close')} confirmLabel={t('admin.users.close', 'Close')} message={message} onCancel={onClose} onConfirm={onClose} open={result !== null} title={result?.identity ? t('identity.activate.title') : t('admin.users.invitationTitle', 'Invitation')} />;
 }
 
 /** Confirms a password reset, then shows where the one-time link went (the user's email) or the link itself to hand over. */

@@ -2,6 +2,8 @@ import { apiRequest } from '../apiClient.js';
 
 import type {
   CurrentUser,
+  EmployeeLoginInput,
+  IdentityActivationInput,
   LoginInput,
   LoginResponse,
   PasswordResetAcceptedResponse,
@@ -10,7 +12,7 @@ import type {
   UserPreferencesInput,
 } from './types.js';
 
-export function login(input: LoginInput) {
+export function login(input: LoginInput | EmployeeLoginInput) {
   return apiRequest<LoginResponse>('/auth/login', {
     method: 'POST',
     body: JSON.stringify(input),
@@ -30,6 +32,14 @@ export function updateCurrentUserPreferences(input: UserPreferencesInput) {
 
 export function requestPasswordReset(input: PasswordResetRequestInput) {
   return apiRequest<PasswordResetAcceptedResponse>('/auth/password-reset/request', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+/** PR 501: public; any mismatch answers "data not found" (400). */
+export function activateByIdentity(input: IdentityActivationInput) {
+  return apiRequest<PasswordResetAcceptedResponse>('/auth/activate', {
     method: 'POST',
     body: JSON.stringify(input),
   });

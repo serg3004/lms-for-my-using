@@ -15,8 +15,11 @@ import { AuthService } from './auth.service.js';
 import { refreshReuse } from '../../common/observability/metrics.js';
 import { AuthenticatedAccess, PublicAccess } from './roles.js';
 import {
+  EmployeeLoginInput,
   LoginInput,
   changePasswordSchema,
+  employeeLoginSchema,
+  identityActivationSchema,
   loginSchema,
   invitationAcceptSchema,
   passwordResetConfirmSchema,
@@ -41,7 +44,9 @@ export class AuthController {
   @Post('login')
   @PublicAccess()
   async login(@Body() body: unknown, @Req() request: AuthRequest, @Res({ passthrough: true }) response: AuthCookieResponse) {
-    const input: LoginInput = loginSchema.parse(body);
+    // PR 501: a body with `employeeNumber` is the sign-in without email.
+    const isEmployeeLogin = typeof body === 'object' && body !== null && 'employeeNumber' in body;
+    const input: LoginInput | EmployeeLoginInput = isEmployeeLogin ? employeeLoginSchema.parse(body) : loginSchema.parse(body);
     const userAgent = request.headers['user-agent'];
     const result = await this.authService.login(input, { userAgent: typeof userAgent === 'string' ? userAgent : undefined, ip: request.ip });
     const csrfToken = createCsrfToken();
@@ -128,6 +133,13 @@ export class AuthController {
   confirmPasswordReset(@Body() body: unknown) {
     const input = passwordResetConfirmSchema.parse(body);
     return this.authService.confirmPasswordReset(input);
+  }
+
+  @Post('activate')
+  @PublicAccess()
+  activateByIdentity(@Body() body: unknown) {
+    const input = identityActivationSchema.parse(body);
+    return this.authService.activateByIdentity(input);
   }
 
   @Post('invitation/accept')

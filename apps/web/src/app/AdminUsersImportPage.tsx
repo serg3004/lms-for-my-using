@@ -61,6 +61,7 @@ export function AdminUsersImportPage() {
     <AdminCard>
       <h2>{t('usersImport.templateTitle')}</h2>
       <p>{t('usersImport.templateHint')}</p>
+      <p>{t('identity.importHint')}</p>
       {userFields.fields.some((field) => field.editable !== false) ? <p>{t('userFields.importFields', { names: userFields.fields.filter((field) => field.editable !== false).map((field) => fieldLabel(field, languageOf(i18n.language))).join(', ') })}</p> : null}
       <p>{t('usersImport.limits', { rows: importLimits.maxRows, mb: importLimits.maxFileBytes / 1024 / 1024, batch: importLimits.batchSize })}</p>
       <div className="td-actions">

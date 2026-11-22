@@ -3,9 +3,10 @@ import { BadRequestException, ConflictException, ForbiddenException, HttpExcepti
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
+import { hasNoEmail, noEmailAddress } from '../../common/no-email.js';
 import { loginProtection } from '../../common/observability/metrics.js';
 import { assertPasswordPolicy, checkPassword, describePasswordViolations } from '../../common/password-policy.js';
-import { AuthService, hashPassword, loadPasswordPolicy } from '../auth/public.js';
+import { AuthService, EMPLOYEE_NUMBER_KEY, hashPassword, loadPasswordPolicy } from '../auth/public.js';
 import { countOpenObserverSessions, notifyObserverDeactivated } from '../checklists/public.js';
 import { ManagerTeamScope } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
@@ -78,7 +79,20 @@ type ImportRow = {
   /** PR 499: custom field values of the row and, once validated, what is written for them. */
   customFields?: CustomFieldValues;
   fieldWrites?: FieldWrite[];
+  /** PR 501: the person sets their own password at the activation screen (the row has no mailbox or no invitation is wanted). */
+  activateByIdentity?: boolean;
 };
+
+/** PR 501: how an audit line names a user; a placeholder address says nothing, so the name is used. */
+function userLabel(user: { email: string; firstName: string; lastName: string }): string {
+  return hasNoEmail(user.email) ? `${user.lastName} ${user.firstName} (no email)` : user.email;
+}
+
+/** PR 501: whether `customFields` carries a non-empty employee number. */
+function hasEmployeeNumber(customFields: CustomFieldValues | undefined): boolean {
+  const value = customFields?.[EMPLOYEE_NUMBER_KEY];
+  return typeof value === 'string' ? value.trim() !== '' : typeof value === 'number';
+}
 
 @Injectable()
 export class UsersService {
@@ -318,27 +332,35 @@ export class UsersService {
     await this.ensureOrganizationExists(input.organizationId);
     const registrar = await this.registrars.resolveCreation(actor);
     const departmentId = await this.resolvePlacement(registrar, input.organizationId, input.departmentId);
-    const existingEmails = await this.findExistingEmails(input.organizationId, [input.email]);
+    if (input.email !== undefined) {
+      const existingEmails = await this.findExistingEmails(input.organizationId, [input.email]);
 
-    if (existingEmails.size > 0) {
-      throw new ConflictException('User email already exists in organization');
+      if (existingEmails.size > 0) {
+        throw new ConflictException('User email already exists in organization');
+      }
     }
 
-    const { password, temporaryPassword: wantsTemporary, customFields, ...userData } = input;
+    const { password, temporaryPassword: wantsTemporary, customFields, activateByIdentity, email: givenEmail, ...userData } = input;
     delete userData.departmentId;
     if (wantsTemporary && password !== undefined) throw new BadRequestException('A temporary password and a chosen password cannot be combined');
+    if (activateByIdentity && (password !== undefined || wantsTemporary)) throw new BadRequestException('Activation by employee number cannot be combined with a password');
+    // PR 501: no mailbox means there is nothing to invite, so the person needs a way in that does not use mail, and a number to be found by.
+    const noMailbox = givenEmail === undefined;
+    if (noMailbox && !wantsTemporary && !activateByIdentity) throw new BadRequestException('Without an email choose a temporary password or activation by employee number');
+    if ((noMailbox || activateByIdentity) && !hasEmployeeNumber(customFields)) throw new BadRequestException('The employee number is required for a person without an email or with activation by employee number');
     if (wantsTemporary && !this.authService) throw new ConflictException('Temporary passwords are not available');
     delete userData.role;
-    const invite = password === undefined && !wantsTemporary;
-    if (password !== undefined) assertPasswordPolicy(password, await loadPasswordPolicy(this.prisma, input.organizationId), input);
+    const invite = password === undefined && !wantsTemporary && !activateByIdentity;
+    const email = givenEmail ?? noEmailAddress();
+    if (password !== undefined) assertPasswordPolicy(password, await loadPasswordPolicy(this.prisma, input.organizationId), { ...input, email });
     if (invite && !this.authService) throw new ConflictException('Invitations are not available');
     // An invited user has no usable password until they accept: hash of a random secret nobody sees.
     const passwordHash = await hashPassword(password ?? randomBytes(32).toString('hex'));
-    if (invite) userData.status = 'invited';
+    if (invite || activateByIdentity) userData.status = 'invited';
 
     let fieldChanges: FieldChange[] = [];
     const { created: createdRow, deliverInvitation } = await this.prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({ data: { ...userData, passwordHash }, select: { id: true } });
+      const user = await tx.user.create({ data: { ...userData, email, passwordHash, ...(activateByIdentity ? { identityActivation: true } : {}) }, select: { id: true } });
       await this.fields.syncShiftToSchedule(tx, input.organizationId, user.id, userData.shift);
       fieldChanges = await this.fields.applyValues(tx, { organizationId: input.organizationId, userId: user.id, viewer: actor ? viewerOf(actor) : 'admin', input: customFields ?? {}, mode: 'create' });
       await this.placeNewUsers(tx, input.organizationId, [user.id], departmentId, input.role ?? (registrar ? 'learner' : undefined), actorId);
@@ -354,7 +376,7 @@ export class UsersService {
       action: 'user.created',
       targetType: 'user',
       targetId: created.id,
-      summary: `Created user ${created.email}`,
+      summary: `Created user ${userLabel(created)}`,
       ...(registrar || departmentId || input.role || fieldChanges.length > 0 ? { metadata: { departmentId, ...fieldAuditMetadata(fieldChanges), ...(registrar ? { delegated: registrar.scope } : {}) } } : {}),
     });
 
@@ -366,7 +388,7 @@ export class UsersService {
         action: 'user.temporary_password_issued',
         targetType: 'user',
         targetId: created.id,
-        summary: `Issued a temporary password for ${created.email} at creation`,
+        summary: `Issued a temporary password for ${userLabel(created)} at creation`,
         metadata: { expiresAt: issued.expiresAt.toISOString() },
       });
       return { ...created, temporaryPassword: issued };
@@ -472,19 +494,25 @@ export class UsersService {
         };
       }
 
-      const { department, role, customFields, ...data } = parsed.data;
+      const { department, role, customFields, activateByIdentity, email: givenEmail, ...rest } = parsed.data;
+      const data: ImportUserData = { ...rest, email: givenEmail ?? noEmailAddress() };
       const row: ImportRow = {
         index,
         data,
         ...(customFields ? { customFields } : {}),
+        ...(activateByIdentity ? { activateByIdentity: true } : {}),
         report: {
           index,
-          email: data.email,
+          email: givenEmail ?? null,
           status: 'valid',
           userId: null,
           errors: [],
         },
       };
+      // PR 501: a row without an email, or with activation by employee number, needs the number and no password of its own.
+      if (givenEmail === undefined && !activateByIdentity) row.report.errors.push('Without an email choose activation by employee number');
+      if (activateByIdentity && data.password !== undefined) row.report.errors.push('Activation by employee number cannot be combined with a password');
+      if ((givenEmail === undefined || activateByIdentity) && !hasEmployeeNumber(customFields)) row.report.errors.push('The employee number is required for a person without an email or with activation by employee number');
 
       if (department !== undefined) {
         const found = lookupImportDepartment(department, departments, registrar?.departmentIds ?? null);
@@ -962,10 +990,11 @@ export class UsersService {
   ) {
     const prepared = await Promise.all(creatable.map(async (row) => {
       const { password, ...userData } = row.data!;
-      const invite = password === undefined;
+      const identity = row.activateByIdentity === true;
+      const invite = password === undefined && !identity;
       // An invited user has no usable password until they accept: hash of a random secret nobody sees.
       const passwordHash = await hashPassword(password ?? randomBytes(32).toString('hex'));
-      return { row, invite, data: { ...userData, ...(invite ? { status: 'invited' as const } : {}), organizationId, passwordHash } };
+      return { row, invite, data: { ...userData, ...(invite || identity ? { status: 'invited' as const } : {}), ...(identity ? { identityActivation: true } : {}), organizationId, passwordHash } };
     }));
 
     const deliveries = await this.prisma.$transaction(async (tx) => {

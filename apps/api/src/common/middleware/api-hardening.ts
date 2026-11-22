@@ -42,12 +42,14 @@ const sensitiveRateLimitedRoutes = new Set([
   '/api/v1/auth/password-reset/request',
   '/api/v1/auth/password-reset/confirm',
   '/api/v1/auth/invitation/accept',
+  '/api/v1/auth/activate',
   '/api/v1/auth/change-password',
   '/api/v1/organizations/register',
 ]);
 
 const accountRateLimitedRoutes = new Set([
   '/api/v1/auth/login',
+  '/api/v1/auth/activate',
   '/api/v1/auth/password-reset/request',
 ]);
 
@@ -160,14 +162,16 @@ function getNormalizedAccountKey(request: ApiRequest, requestPath: string): stri
   if (!accountRateLimitedRoutes.has(requestPath) || !request.body || typeof request.body !== 'object') return undefined;
 
   const body = request.body as Record<string, unknown>;
-  if (typeof body.organizationId !== 'string' || typeof body.email !== 'string') return undefined;
+  // PR 501: sign-in and activation without email are limited per organization and employee number, like the others per email.
+  const identity = typeof body.email === 'string' ? body.email : typeof body.employeeNumber === 'string' ? `number:${body.employeeNumber}` : undefined;
+  if (typeof body.organizationId !== 'string' || identity === undefined) return undefined;
 
   const organizationId = body.organizationId.trim().toLowerCase();
-  const email = body.email.trim().toLowerCase();
-  if (!organizationId || !email) return undefined;
+  const account = identity.trim().toLowerCase();
+  if (!organizationId || !account) return undefined;
 
   // Avoid storing account identifiers as plaintext in Redis keys.
-  return createHash('sha256').update(`${organizationId}\0${email}`).digest('hex');
+  return createHash('sha256').update(`${organizationId}\0${account}`).digest('hex');
 }
 
 function ruleKey(scope: string, route: string, rule: RateLimitRule): string {

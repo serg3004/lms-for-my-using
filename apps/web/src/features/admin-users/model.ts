@@ -27,6 +27,9 @@ export type AdminUserSummary = {
   customFields?: CustomFieldValues;
 };
 
+/** PR 501: a person without a mailbox carries a placeholder address on the `.invalid` domain, which nothing can deliver to. */
+export const isNoEmail = (email: string) => email.trim().toLowerCase().endsWith('@no-email.invalid');
+
 export type UserForm = {
   id?: string;
   departmentId?: string;
@@ -34,6 +37,9 @@ export type UserForm = {
   password: string;
   /** PR 489: create with a server-made temporary password instead of an invitation or a chosen password. */
   temporaryPassword?: boolean;
+  /** PR 501: create a person without email; `noEmailAccess` says how they get in. */
+  noEmail?: boolean;
+  noEmailAccess?: 'identity' | 'temporary';
   firstName: string;
   lastName: string;
   middleName: string;
@@ -50,6 +56,8 @@ export type UserForm = {
 };
 
 export type UserFormField = 'firstName' | 'lastName' | 'email' | 'password';
+/** PR 501: the key of the standard employee number field. */
+export const EMPLOYEE_NUMBER_KEY = 'employee_number';
 export type UserFormMode = 'create' | 'edit';
 
 export type AdminUsersFilters = { query: string; role: UserRole | ''; status: UserStatus | ''; /** PR 500: show only people whose custom field `fieldKey` equals `fieldValue`. */ fieldKey?: string; fieldValue?: string };
