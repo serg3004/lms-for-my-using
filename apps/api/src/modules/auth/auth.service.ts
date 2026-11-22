@@ -784,6 +784,8 @@ export class AuthService {
         ...this.journal.device(context),
       },
     });
+    // PR 498: `lastLoginAt` tells "never signed in" from "signed in before"; restoring an archived account depends on it.
+    await this.prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
     return {
       accessToken: token,

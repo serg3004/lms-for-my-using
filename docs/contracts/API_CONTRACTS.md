@@ -1818,6 +1818,7 @@ the email reserved for the same record (no second record with that email). Only 
 `403` and can still block); archiving yourself or the last active administrator is `409`; an archived user cannot be blocked, only restored.
 `status: "active"` on an archived user restores them; a person who never signed in and has an invitation returns to `invited` and
 receives a fresh invitation (`invitation` in the answer). Audit: `user.archived`, `user.restored`. `GET /users?status=archived` lists the archive.
+PR 498 -- every successful sign-in (password, QR, badge) stamps `User.lastLoginAt`. Restoring an archived user returns a person who never signed in (no `lastLoginAt`) and still has an invitation to `invited` with a fresh link; a person who has signed in returns to `active`.
 
 PR 497 -- bulk actions. `POST /users/bulk-actions` takes `{ action, userIds | filter, departmentId?, confirm? }` with `action` one of `suspend`,
 `activate`, `archive`, `move` (needs `departmentId`) and `resend` (a new invitation). The target is exactly one of `userIds` (1-200) or
