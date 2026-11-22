@@ -7,6 +7,7 @@ import { getLoginErrorMessage } from '../shared/apiErrorFeedback.js';
 import { hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { LoginLanguageMenu } from '../shared/LoginLanguageMenu.js';
 import { SkipLink } from '../shared/ui.js';
+import { QrLoginPanel } from '../features/qr-login/QrLoginPanel.js';
 
 type LoginFormState = {
   organizationId: string;
@@ -99,6 +100,8 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => getRememberedLogin() !== null);
   const [byNumber, setByNumber] = useState(false);
+  /** PR 505: the third way, a QR confirmed on a phone. */
+  const [byQr, setByQr] = useState(false);
 
   const updateField =
     (field: LoginFormField) =>
@@ -115,6 +118,8 @@ export function LoginPage() {
         return nextErrors;
       });
     };
+
+  const active = (method: 'email' | 'number' | 'qr') => (method === 'qr' ? byQr : method === 'number' ? byNumber && !byQr : !byNumber && !byQr);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -205,21 +210,23 @@ export function LoginPage() {
           </header>
 
           <div aria-label={t('identity.loginTabs')} role="group" style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
-            {([false, true] as const).map((number) => (
+            {(['email', 'number', 'qr'] as const).map((method) => (
               <button
-                aria-pressed={byNumber === number}
+                aria-pressed={active(method)}
                 className="password-reset-secondary"
-                key={String(number)}
-                onClick={() => { setByNumber(number); setValidationErrors({}); setErrorMessage(null); }}
-                style={{ flex: 1, minHeight: '2.5rem', cursor: 'pointer', fontWeight: byNumber === number ? 700 : 400, border: `${byNumber === number ? 2 : 1}px solid currentColor`, borderRadius: '0.5rem', background: 'transparent', color: 'inherit' }}
+                key={method}
+                onClick={() => { setByQr(method === 'qr'); setByNumber(method === 'number'); setValidationErrors({}); setErrorMessage(null); }}
+                style={{ flex: 1, minHeight: '2.5rem', cursor: 'pointer', fontWeight: active(method) ? 700 : 400, border: `${active(method) ? 2 : 1}px solid currentColor`, borderRadius: '0.5rem', background: 'transparent', color: 'inherit' }}
                 type="button"
               >
-                {number ? t('identity.tabNumber') : t('identity.tabEmail')}
+                {method === 'qr' ? t('qrLogin.tab') : method === 'number' ? t('identity.tabNumber') : t('identity.tabEmail')}
               </button>
             ))}
           </div>
 
-          <form className="login-form" onSubmit={handleSubmit}>
+          {byQr ? <QrLoginPanel onSignedIn={(user) => navigate(getLoginRedirectPath(location.state, user), { replace: true })} /> : null}
+
+          <form className="login-form" style={byQr ? { display: "none" } : undefined} onSubmit={handleSubmit}>
             <label htmlFor="organizationId">
               {t('login.organizationId')}
               <input

@@ -3,10 +3,10 @@ import type { Page } from '@playwright/test';
 /** PR 493: the sign-in protection API as a small in-memory fake, so the security page is tested without a database. */
 export const protectionOrgId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
 
-export type ProtectionCalls = { saved: Array<Record<string, number>>; unlocked: string[] };
+export type ProtectionCalls = { saved: Array<Record<string, number>>; unlocked: string[]; qrSaved: Array<Record<string, unknown>> };
 
 export async function installLoginProtectionMocks(page: Page): Promise<ProtectionCalls> {
-  const calls: ProtectionCalls = { saved: [], unlocked: [] };
+  const calls: ProtectionCalls = { saved: [], unlocked: [], qrSaved: [] };
   let locked = [
     { id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1', email: 'aigul@example.invalid', firstName: 'Айгуль', lastName: 'Сергеева', middleName: null, loginLockedUntil: '2030-01-01T10:30:00.000Z' },
   ];
@@ -24,6 +24,15 @@ export async function installLoginProtectionMocks(page: Page): Promise<Protectio
         return route.fulfill({ json: body });
       }
       return route.fulfill({ json: { maxFailures: 5, windowMinutes: 15, lockMinutes: 15, logRetentionDays: 90 } });
+    }
+    // PR 505: the policy of sign-in by QR.
+    if (path.endsWith('/qr-login')) {
+      if (request.method() === 'PATCH') {
+        const body = JSON.parse(request.postData() ?? '{}') as Record<string, unknown>;
+        calls.qrSaved.push(body);
+        return route.fulfill({ json: body });
+      }
+      return route.fulfill({ json: { enabled: false, sessionHours: 8, roles: ['learner', 'mentor', 'instructor'] } });
     }
     if (path === '/auth/me/profile') return route.fulfill({ json: { phone: null, locale: 'ru', timezone: 'Asia/Almaty', aboutMe: null, hasPhoto: false, version: 0 } });
     if (path === '/auth/me/sessions') return route.fulfill({ json: [{ id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', deviceLabel: 'Chrome · Windows', ipMasked: '203.0.x.x', createdAt: '2030-01-01T09:00:00.000Z', lastActiveAt: '2030-01-01T10:00:00.000Z', current: true }] });

@@ -366,6 +366,10 @@ model Organization {
   customRolesEnabled         Boolean                     @default(false) @map("custom_roles_enabled")
   /// PR 503: sending invitations and passwords through the Telegram bot is off until an administrator enables it.
   telegramDeliveryEnabled    Boolean                     @default(false) @map("telegram_delivery_enabled")
+  /// PR 505: sign-in by QR confirmed on a phone is off until an administrator enables it; the roles and the term are the administrator's choice.
+  qrLoginEnabled             Boolean                     @default(false) @map("qr_login_enabled")
+  qrLoginSessionHours        Int                         @default(8) @map("qr_login_session_hours")
+  qrLoginRoles               String[]                    @default(["learner", "mentor", "instructor"]) @map("qr_login_roles")
   /// PR 488: password policy of the organization, set by an administrator.
   passwordMinLength          Int                         @default(10) @map("password_min_length")
   passwordHistoryCount       Int                         @default(3) @map("password_history_count")
@@ -503,6 +507,7 @@ model User {
   sessions                   Session[]
   passwordResetTokens        PasswordResetToken[]
   invitations                UserInvitation[]
+  qrLoginRequests QrLoginRequest[]
   telegramLink               UserTelegramLink?
   telegramLinkCodes          TelegramLinkCode[]
   messageDeliveries          MessageDelivery[]
@@ -2006,6 +2011,9 @@ model Session {
   lastActiveAt     DateTime     @default(now()) @map("last_active_at") @db.Timestamptz
   deviceLabel      String?      @map("device_label")
   ipMasked         String?      @map("ip_masked")
+  /// PR 505: a session obtained by QR is short, never extended past `maxExpiresAt`, and cannot approve another QR sign-in.
+  viaQr            Boolean      @default(false) @map("via_qr")
+  maxExpiresAt     DateTime?    @map("max_expires_at") @db.Timestamptz
   user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -2013,6 +2021,26 @@ model Session {
   @@index([expiresAt])
   @@index([refreshExpiresAt])
   @@map("sessions")
+}
+
+/// PR 505: a device waiting for a sign-in confirmed on a phone. The code in the QR and the secret the device keeps are stored only as hashes.
+model QrLoginRequest {
+  id          String    @id @default(uuid()) @db.Uuid
+  codeHash    String    @unique @map("code_hash")
+  pollHash    String    @unique @map("poll_hash")
+  deviceLabel String?   @map("device_label")
+  ipMasked    String?   @map("ip_masked")
+  /// pending, approved, denied or used.
+  status      String    @default("pending")
+  userId      String?   @map("user_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz
+  decidedAt   DateTime? @map("decided_at") @db.Timestamptz
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([ipMasked, createdAt])
+  @@map("qr_login_requests")
 }
 
 /// PR 493: one failed sign-in of an existing account; the series of them inside the window decides the lock.
