@@ -29,7 +29,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/attempts/{id}/result` | `AssessmentAttempts` | `bearer` |
 | `GET` | `/api/v1/audit-log` | `AuditLog` | `bearer` |
 | `GET` | `/api/v1/audit-log/filter-options` | `AuditLog` | `bearer` |
-| `POST` | `/api/v1/auth/activate` | `Auth` | `bearer` |
+| `POST` | `/api/v1/auth/activate` | `Auth` | `public` |
+| `POST` | `/api/v1/auth/activate/qr` | `Auth` | `public` |
 | `POST` | `/api/v1/auth/change-password` | `Auth` | `bearer` |
 | `POST` | `/api/v1/auth/invitation/accept` | `Auth` | `bearer` |
 | `POST` | `/api/v1/auth/login` | `Auth` | `public` |
@@ -371,6 +372,9 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/user-fields/{key}/restore` | `UserFields` | `bearer` |
 | `GET` | `/api/v1/users` | `Users` | `bearer` |
 | `POST` | `/api/v1/users` | `Users` | `bearer` |
+| `POST` | `/api/v1/users/activation-qr/personal` | `Users` | `bearer` |
+| `GET` | `/api/v1/users/activation-qr/shared` | `Users` | `bearer` |
+| `POST` | `/api/v1/users/activation-qr/shared` | `Users` | `bearer` |
 | `POST` | `/api/v1/users/bulk` | `Users` | `bearer` |
 | `POST` | `/api/v1/users/bulk-actions` | `Users` | `bearer` |
 | `POST` | `/api/v1/users/bulk-actions/impact` | `Users` | `bearer` |
@@ -380,6 +384,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/users/locked` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}` | `Users` | `bearer` |
 | `PATCH` | `/api/v1/users/{id}` | `Users` | `bearer` |
+| `DELETE` | `/api/v1/users/{id}/activation-qr` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}/department-memberships` | `DepartmentMemberships` | `bearer` |
 | `POST` | `/api/v1/users/{id}/department-transfer` | `DepartmentMemberships` | `bearer` |
 | `GET` | `/api/v1/users/{id}/effective-manager` | `ReportingLines` | `bearer` |

@@ -1,3 +1,4 @@
+import { ActivationQrSheet } from '../features/admin-users/ActivationQrSheet.js';
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import type { TFunction } from 'i18next';
@@ -346,6 +347,7 @@ export function AdminDepartmentUsersPage() {
       />
 
       <div className="admin-card">
+        {department.status === 'active' && <ActivationQrSheet key={department.id} shared departmentId={department.id} />}
         <div className="admin-form__field">
           <label htmlFor="department-users-search">{t('admin.departmentUsers.search', 'Search users')}</label>
           <input

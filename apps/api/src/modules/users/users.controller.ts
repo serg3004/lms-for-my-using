@@ -1,6 +1,6 @@
 import { paginationQuerySchema } from '../../common/pagination.schema.js';
 
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
@@ -18,6 +18,7 @@ import {
   listUsersQuerySchema,
   invitationUserIdSchema,
   resendInvitationsSchema,
+  sharedActivationQrSchema,
   updateUserSchema,
   UpdateUserInput,
   updateUserStatusSchema,
@@ -60,6 +61,36 @@ export class UsersController {
   @Roles(...rolePolicies.usersDeactivate)
   bulkImpact(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
     return this.bulkService.impact(request.currentUser!, bulkImpactSchema.parse(body));
+  }
+
+  @Get('activation-qr/shared')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.departmentsWrite)
+  getSharedActivationQr(@Req() request: AuthenticatedRequest, @Query('departmentId') departmentId?: string) {
+    return this.usersService.getSharedActivationQr(request.currentUser!, departmentId === undefined ? undefined : invitationUserIdSchema.parse(departmentId));
+  }
+
+  @Post('activation-qr/shared')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.departmentsWrite)
+  rotateSharedActivationQr(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const { departmentId } = sharedActivationQrSchema.parse(body);
+    return this.usersService.rotateSharedActivationQr(request.currentUser!, departmentId);
+  }
+
+  @Post('activation-qr/personal')
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersCreate)
+  issuePersonalActivationQrs(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    return this.usersService.issuePersonalActivationQrs(request.currentUser!, resendInvitationsSchema.parse(body).userIds);
+  }
+
+  @Delete(':id/activation-qr')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersCreate)
+  revokePersonalActivationQr(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    return this.usersService.revokePersonalActivationQr(request.currentUser!, invitationUserIdSchema.parse(id));
   }
 
   @Post('invitations/resend')

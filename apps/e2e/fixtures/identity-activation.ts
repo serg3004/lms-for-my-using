@@ -4,12 +4,16 @@ import type { Page } from '@playwright/test';
 export type IdentityCalls = { activations: Array<Record<string, unknown>>; logins: Array<Record<string, unknown>> };
 
 export const knownNumber = '10245';
+export const sampleActivationQr = { kind: 'personal', token: 'a'.repeat(43) };
 
 export async function installIdentityMocks(page: Page): Promise<IdentityCalls> {
   const calls: IdentityCalls = { activations: [], logins: [] };
   await page.route('**/api/v1/**', async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname.replace('/api/v1', '');
+    if (path === '/auth/activate/qr' && request.method() === 'POST') {
+      return route.fulfill({ status: 201, json: { organizationId: 'demo', organizationName: 'Учебная организация' } });
+    }
     if (path === '/auth/activate' && request.method() === 'POST') {
       const body = JSON.parse(request.postData() ?? '{}') as Record<string, unknown>;
       calls.activations.push(body);

@@ -1,0 +1,59 @@
+.activation-qr-preview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: .6rem;
+  max-height: 50vh;
+  overflow: auto;
+  margin-block: .6rem;
+}
+
+.activation-qr-card {
+  border: 1px solid #777;
+  padding: .6rem;
+  background: white;
+  color: black;
+  text-align: center;
+  overflow-wrap: anywhere;
+  break-inside: avoid;
+}
+
+.activation-qr-card img {
+  display: block;
+  width: min(100%, 9rem);
+  height: auto;
+  margin-inline: auto;
+}
+
+.activation-qr-card:only-child img {
+  width: min(100%, 15rem);
+}
+
+.activation-qr-print {
+  display: none;
+}
+
+@media print {
+  body:has(> .activation-qr-print) > :not(.activation-qr-print),
+  .activation-qr-print a {
+    display: none !important;
+  }
+
+  body:has(> .activation-qr-print) {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .activation-qr-print {
+    display: block;
+    columns: 2;
+    gap: .6rem;
+  }
+
+  .activation-qr-print:has(.activation-qr-card:only-child) {
+    columns: 1;
+  }
+
+  .activation-qr-print .activation-qr-card {
+    margin-bottom: .6rem;
+  }
+}

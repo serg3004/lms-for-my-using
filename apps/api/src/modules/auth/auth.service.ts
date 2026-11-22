@@ -17,8 +17,11 @@ import { generateTemporaryPassword, temporaryPasswordLifetimeMs } from '../../co
 import { isPasswordReused, loadPasswordPolicy, rememberReplacedPassword } from './password-policy.js';
 import { LoginJournal } from './login-journal.js';
 import { LoginLockout } from './login-lockout.js';
-import { findUserIdByEmployeeNumber, namesMatch } from './employee-identity.js';
+import { EMPLOYEE_NUMBER_KEY, findUserIdByEmployeeNumber, namesMatch } from './employee-identity.js';
 import { createPasswordResetToken, hashPasswordResetToken, PasswordResetDelivery, passwordResetLifetimeMs } from './password-reset.js';
+
+type ActivationQr = NonNullable<IdentityActivationInput['qr']>;
+const invalidActivationQr = () => new BadRequestException({ error: { code: 'BAD_REQUEST', message: 'Invalid activation QR', details: [{ code: 'ACTIVATION_QR_INVALID', message: 'Invalid activation QR' }] } });
 
 const currentUserSelect = {
   id: true,
@@ -294,7 +297,7 @@ export class AuthService {
     const deliver = await this.prisma.$transaction(async (tx) => {
       const user = await this.findLockedInvitationUser(tx, userId, organizationId, scope);
       const now = new Date();
-      const where = { userId, organizationId };
+      const where = { userId, organizationId, activationQr: false };
       const previous = await tx.userInvitation.findFirst({
         where,
         orderBy: invitationOrder,
@@ -360,14 +363,14 @@ export class AuthService {
     return this.prisma.$transaction(async (tx) => {
       await this.findLockedInvitationUser(tx, userId, organizationId, scope);
       const now = new Date();
-      const where = { userId, organizationId, usedAt: null, revokedAt: null };
+      const where = { userId, organizationId, activationQr: false, usedAt: null, revokedAt: null };
       if (action === 'revoked') {
         const result = await tx.userInvitation.updateMany({ where, data: { revokedAt: now } });
         if (result.count) await this.recordInvitationChange(tx, where, actorId, action);
         return { expiresAt: null };
       }
       const latest = await tx.userInvitation.findFirst({
-        where: { userId, organizationId }, orderBy: invitationOrder,
+        where: { userId, organizationId, activationQr: false }, orderBy: invitationOrder,
         select: { id: true, usedAt: true, revokedAt: true, expiresAt: true },
       });
       if (!latest || latest.usedAt || latest.revokedAt || latest.expiresAt <= now) {
@@ -408,7 +411,7 @@ export class AuthService {
   async acceptInvitation(input: InvitationAcceptInput) {
     const now = new Date();
     const invitation = await this.prisma.userInvitation.findUnique({
-      where: { tokenHash: hashInvitationToken(input.token) },
+      where: { tokenHash: hashInvitationToken(input.token), activationQr: false },
       select: { id: true, userId: true, organizationId: true, expiresAt: true, usedAt: true, revokedAt: true, user: { select: { status: true, deletedAt: true } } },
     });
     if (!invitation || invitation.usedAt || invitation.revokedAt || invitation.expiresAt <= now || invitation.user.status !== 'invited' || invitation.user.deletedAt) {
@@ -456,6 +459,107 @@ export class AuthService {
     return logoutAccepted;
   }
 
+  async changePersonalActivationQr(userId: string, organizationId: string, actorId: string, scope: Prisma.UserWhereInput, issue: boolean) {
+    return this.prisma.$transaction(async (tx) => {
+      await this.findLockedInvitationUser(tx, userId, organizationId, scope);
+      const now = new Date();
+      const revoked = await tx.userInvitation.updateMany({
+        where: { userId, organizationId, activationQr: true, usedAt: null, revokedAt: null },
+        data: { revokedAt: now },
+      });
+      if (!issue) {
+        if (revoked.count) await this.recordActivationQr(tx, organizationId, actorId, 'user', userId, 'revoked');
+        return null;
+      }
+      const employeeNumber = await tx.userFieldValue.findFirst({
+        where: { userId, organizationId, field: { key: EMPLOYEE_NUMBER_KEY, archivedAt: null } },
+        select: { value: true, normalizedValue: true },
+      });
+      if (!employeeNumber?.normalizedValue) throw new ConflictException('Employee number is required');
+      const { token, hash } = createInvitationToken();
+      const expiresAt = new Date(now.getTime() + invitationLifetimeMs);
+      await tx.userInvitation.create({
+        data: { userId, organizationId, tokenHash: hash, activationQr: true, expiresAt, createdById: actorId },
+      });
+      await this.recordActivationQr(tx, organizationId, actorId, 'user', userId, 'issued');
+      const user = await tx.user.findUniqueOrThrow({
+        where: { id: userId }, select: { firstName: true, lastName: true, middleName: true },
+      });
+      return { token, expiresAt, employeeNumber: employeeNumber.value, ...user };
+    });
+  }
+
+  async getSharedActivationQr(organizationId: string, departmentId?: string) {
+    const target = departmentId
+      ? await this.prisma.department.findFirst({
+          where: { id: departmentId, organizationId, status: 'active' }, select: { activationQrCode: true },
+        })
+      : await this.prisma.organization.findUnique({
+          where: { id: organizationId }, select: { activationQrCode: true },
+        });
+    if (!target) throw new NotFoundException('Activation QR scope not found');
+    return { token: target.activationQrCode };
+  }
+
+  async rotateSharedActivationQr(organizationId: string, actorId: string, departmentId?: string) {
+    const { token } = createInvitationToken();
+    return this.prisma.$transaction(async (tx) => {
+      if (departmentId) {
+        const changed = await tx.department.updateMany({
+          where: { id: departmentId, organizationId, status: 'active' }, data: { activationQrCode: token },
+        });
+        if (!changed.count) throw new NotFoundException('Department not found');
+      } else {
+        await tx.organization.update({ where: { id: organizationId }, data: { activationQrCode: token } });
+      }
+      await this.recordActivationQr(tx, organizationId, actorId, departmentId ? 'department' : 'organization', departmentId ?? organizationId, 'issued');
+      return { token };
+    });
+  }
+
+  private recordActivationQr(tx: Prisma.TransactionClient, organizationId: string, actorId: string | null, targetType: string, targetId: string, event: 'issued' | 'revoked' | 'scanned' | 'activated') {
+    return tx.auditLog.create({
+      data: { organizationId, actorId, action: `activation_qr.${event}`, targetType, targetId, summary: `Activation QR ${event}` },
+    });
+  }
+
+  private async resolveActivationQr(qr: ActivationQr) {
+    if (qr.kind === 'personal') {
+      const invitation = await this.prisma.userInvitation.findUnique({
+        where: { tokenHash: hashInvitationToken(qr.token), activationQr: true },
+        select: {
+          id: true, organizationId: true, userId: true, expiresAt: true, revokedAt: true, usedAt: true,
+          user: { select: { status: true, deletedAt: true, organizationId: true } },
+        },
+      });
+      if (!invitation || invitation.usedAt || invitation.revokedAt || invitation.user.deletedAt
+        || invitation.user.status !== 'invited' || invitation.user.organizationId !== invitation.organizationId) throw invalidActivationQr();
+      if (invitation.expiresAt <= new Date()) throw new BadRequestException({ error: { code: 'BAD_REQUEST', message: 'Activation QR expired', details: [{ code: 'ACTIVATION_QR_EXPIRED', message: 'Activation QR expired' }] } });
+      return { organizationId: invitation.organizationId, userId: invitation.userId, invitationId: invitation.id, departmentId: null };
+    }
+    const organization = await this.prisma.organization.findUnique({
+      where: { activationQrCode: qr.token, status: 'active', deletedAt: null }, select: { id: true },
+    });
+    if (organization) return { organizationId: organization.id, departmentId: null };
+    const department = await this.prisma.department.findUnique({
+      where: { activationQrCode: qr.token, status: 'active', organization: { status: 'active', deletedAt: null } },
+      select: { id: true, organizationId: true },
+    });
+    if (!department) throw invalidActivationQr();
+    return { organizationId: department.organizationId, departmentId: department.id };
+  }
+
+  async inspectActivationQr(qr: ActivationQr) {
+    const context = await this.resolveActivationQr(qr);
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: context.organizationId, status: 'active', deletedAt: null }, select: { id: true, name: true },
+    });
+    if (!organization) throw invalidActivationQr();
+    const targetType = context.userId ? 'user' : context.departmentId ? 'department' : 'organization';
+    await this.recordActivationQr(this.prisma, organization.id, null, targetType, context.userId ?? context.departmentId ?? organization.id, 'scanned');
+    return { organizationId: organization.id, organizationName: organization.name };
+  }
+
   /**
    * PR 501: public activation for a person without a mailbox. Organization, employee number and the full name must match the
    * card of an `invited` user the administrator allowed to activate this way. Whatever is wrong (organization, number, name,
@@ -464,11 +568,17 @@ export class AuthService {
    */
   async activateByIdentity(input: IdentityActivationInput) {
     const notFound = () => new BadRequestException('Data not found');
+    const qr = input.qr ? await this.resolveActivationQr(input.qr) : undefined;
     const organizationId = await this.resolveLoginOrganizationId(input.organizationId).catch(() => null);
     const userId = organizationId && await findUserIdByEmployeeNumber(this.prisma, organizationId, input.employeeNumber);
-    if (!organizationId || !userId) throw notFound();
+    if (!organizationId || !userId || (qr && (qr.organizationId !== organizationId || (qr.userId && qr.userId !== userId)))) throw notFound();
+    const eligible = {
+      id: userId, organizationId, status: 'invited' as const, deletedAt: null,
+      ...(!qr?.invitationId ? { identityActivation: true } : {}),
+      ...(qr ? { organization: { status: 'active' as const, deletedAt: null } } : {}),
+    };
     const user = await this.prisma.user.findFirst({
-      where: { id: userId, organizationId, status: 'invited', identityActivation: true, deletedAt: null },
+      where: eligible,
       select: { id: true, organizationId: true, email: true, firstName: true, lastName: true, middleName: true, passwordHash: true },
     });
     if (!user || !namesMatch(user, input, true)) throw notFound();
@@ -477,12 +587,32 @@ export class AuthService {
 
     await this.prisma.$transaction(async (transaction) => {
       await lockInvitationUser(transaction, user.id, organizationId);
+      if (qr?.invitationId) {
+        const now = new Date();
+        const consumed = await transaction.userInvitation.updateMany({
+          where: { id: qr.invitationId, usedAt: null, revokedAt: null, expiresAt: { gt: now } }, data: { usedAt: now },
+        });
+        if (!consumed.count) throw invalidActivationQr();
+      } else if (input.qr && qr) {
+        const code = input.qr.token;
+        const rows = qr.departmentId
+          ? await transaction.$queryRaw<Array<{ id: string }>>`SELECT id FROM departments WHERE id = ${qr.departmentId}::uuid AND status = 'active' AND activation_qr_code = ${code} FOR SHARE`
+          : await transaction.$queryRaw<Array<{ id: string }>>`SELECT id FROM organizations WHERE id = ${organizationId}::uuid AND status = 'active' AND activation_qr_code = ${code} FOR SHARE`;
+        if (!rows.length) throw invalidActivationQr();
+      }
       // Only one activation wins; the state is checked again under the row lock.
       const changed = await transaction.user.updateMany({
-        where: { id: user.id, organizationId, status: 'invited', identityActivation: true, deletedAt: null },
+        where: eligible,
         data: { passwordHash, status: 'active', identityActivation: false, mustChangePassword: false, temporaryPasswordExpiresAt: null, temporaryPasswordUsedAt: null },
       });
       if (changed.count !== 1) throw notFound();
+      if (qr) {
+        await transaction.userInvitation.updateMany({
+          where: { userId, organizationId, usedAt: null, revokedAt: null }, data: { revokedAt: new Date() },
+        });
+        await this.recordActivationQr(transaction, organizationId, user.id, 'user', user.id, 'activated');
+        return;
+      }
       await transaction.auditLog.create({
         data: {
           organizationId, actorId: user.id, action: 'user.identity_activated', targetType: 'user', targetId: user.id,

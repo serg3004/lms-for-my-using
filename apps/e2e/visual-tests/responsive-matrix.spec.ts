@@ -24,7 +24,7 @@ import { freshReportState, installReportMocks } from '../fixtures/checklist-inst
 import { freshRolesState, installCustomRolesMocks, registrar } from '../fixtures/custom-roles.js';
 import { importFileCsv, installUsersImportMocks } from '../fixtures/users-import.js';
 import { installLoginJournalMocks, journalUserId } from '../fixtures/login-journal.js';
-import { installIdentityMocks } from '../fixtures/identity-activation.js';
+import { installIdentityMocks, sampleActivationQr } from '../fixtures/identity-activation.js';
 import { installUserFieldsMocks } from '../fixtures/user-fields.js';
 import { installUserBulkMocks } from '../fixtures/user-bulk-actions.js';
 import { installUserProfileMocks } from '../fixtures/user-profile.js';
@@ -132,6 +132,47 @@ for (const width of [390, 1280]) test(`activation without email is responsive at
   await expectNoPageOverflow(page);
   await expectVisualMatch(page, `activation-without-email-${width}`, false, { maxDiffPixels: 3000 });
 });
+
+for (const width of [390, 1280]) {
+  test(`QR activation form is responsive at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await installIdentityMocks(page);
+    await page.goto(`/activate#qr=personal.${sampleActivationQr.token}`);
+    await expect(page.getByText('Учебная организация')).toBeVisible();
+    await expectNoPageOverflow(page);
+    await expectVisualMatch(page, `activation-qr-${width}`, false, { maxDiffPixels: 3000 });
+  });
+
+  test(`personal activation QR print sheet is responsive at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await installAdminMocks(page);
+    const users = [
+      { id: 'employee-1', firstName: 'Айгуль', lastName: 'Каримова', middleName: 'Ахметовна', employeeNumber: '10245', token: sampleActivationQr.token },
+      { id: 'employee-2', firstName: 'Иван', lastName: 'Новиков', middleName: null, employeeNumber: '10319', token: 'b'.repeat(43) },
+    ];
+    await page.route('**/api/v1/users/invitations?*', (route) => route.fulfill({
+      json: paginated(users.map(({ id, firstName, lastName, middleName }) => ({
+        id, firstName, lastName, middleName, status: 'unsent', canIssueActivationQr: true, email: '', sentAt: null, expiresAt: null, sendCount: 0,
+      }))),
+    }));
+    await page.route('**/api/v1/users/activation-qr/personal', (route) => route.fulfill({ json: { items: users, skipped: 0 } }));
+    await page.goto('/admin/users');
+    await page.getByRole('button', { name: 'Ожидают входа' }).click();
+    await page.getByRole('checkbox', { name: 'Выбрать: Каримова Айгуль Ахметовна' }).check();
+    await page.getByRole('checkbox', { name: 'Выбрать: Новиков Иван' }).check();
+    await page.getByRole('button', { name: 'Личный QR для активации' }).click();
+    await page.getByRole('button', { name: 'Выпустить QR' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Личный QR для активации' });
+    await expect(dialog.getByRole('img')).toHaveCount(2);
+    await expectNoPageOverflow(page);
+    expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    await page.emulateMedia({ media: 'print' });
+    await expect(page.locator('.activation-qr-print .activation-qr-card')).toHaveCount(2);
+    await expect(page.locator('.activation-qr-print')).toBeVisible();
+    await page.emulateMedia({ media: 'screen' });
+    await expectVisualMatch(page, `activation-qr-print-${width}`, false, { maxDiffPixels: 3000 });
+  });
+}
 
 for (const width of [390, 1280]) test(`sign-in by employee number is responsive at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height }); await installIdentityMocks(page);

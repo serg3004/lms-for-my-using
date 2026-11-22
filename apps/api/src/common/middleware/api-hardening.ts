@@ -43,6 +43,7 @@ const sensitiveRateLimitedRoutes = new Set([
   '/api/v1/auth/password-reset/confirm',
   '/api/v1/auth/invitation/accept',
   '/api/v1/auth/activate',
+  '/api/v1/auth/activate/qr',
   '/api/v1/auth/change-password',
   '/api/v1/organizations/register',
 ]);
@@ -273,12 +274,23 @@ export function createSensitiveRouteRateLimitMiddleware(
     // A guest route is keyed and labelled by its pattern, never by the token it carries.
     const requestPath = publicRoute ? publicRoute.route : getRequestPath(request);
     const accountKey = publicRoute ? undefined : getNormalizedAccountKey(request, requestPath);
+    type QrPayload = { token?: unknown; kind?: unknown };
+    const body = request.body as (QrPayload & { qr?: QrPayload }) | undefined;
+    const qr = requestPath === '/api/v1/auth/activate/qr' ? body
+      : requestPath === '/api/v1/auth/activate' ? body?.qr : undefined;
+    const qrToken = qr?.token;
+    const tokenKey = typeof qrToken === 'string' && /^[A-Za-z0-9_-]{43}$/.test(qrToken)
+      ? createHash('sha256').update(qrToken).digest('hex') : undefined;
+    // An organization poster is shared across employees. Keep the tighter account
+    // limit per employee, and use the shared-NAT budget for the poster itself.
+    const qrRules = qr?.kind === 'shared' ? [policy.ip] : policy.account;
     const publicRule = publicRoute ? publicLimits[publicRoute.kind] : undefined;
     const rules = [
       ...(publicRule
         ? [{ key: ruleKey(`ip:${getClientKey(request)}`, requestPath, publicRule), rule: publicRule }]
         : [{ key: ruleKey(`ip:${getClientKey(request)}`, requestPath, policy.ip), rule: policy.ip }]),
       { key: `global:${policy.global.windowMs}`, rule: policy.global },
+      ...(tokenKey ? qrRules.map((rule) => ({ key: ruleKey(`qr:${tokenKey}`, requestPath, rule), rule })) : []),
       ...(accountKey
         ? policy.account.map((rule) => ({ key: ruleKey(`account:${accountKey}`, requestPath, rule), rule }))
         : []),

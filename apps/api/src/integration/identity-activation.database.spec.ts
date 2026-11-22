@@ -3,6 +3,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 
 import type { PrismaService } from '../database/prisma.service.js';
 import { assertSafeTestDatabase } from './database-test-safety.js';
@@ -29,9 +30,13 @@ describe('activation and sign-in without email — database', () => {
     const { AppModule } = await import('../app.module.js');
     const { PrismaService: Prisma } = await import('../database/prisma.service.js');
     const { ApiExceptionFilter } = await import('../common/filters/api-exception.filter.js');
+    const { createSensitiveRouteRateLimitMiddleware } = await import('../common/middleware/api-hardening.js');
     const { hashPassword } = await import('../modules/auth/passwords.js');
     const testingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
-    app = testingModule.createNestApplication();
+    const express = testingModule.createNestApplication<NestExpressApplication>({ bodyParser: false });
+    express.useBodyParser('json');
+    express.use(createSensitiveRouteRateLimitMiddleware());
+    app = express;
     app.setGlobalPrefix('api/v1');
     app.useGlobalFilters(new ApiExceptionFilter());
     await app.listen(0, '127.0.0.1');
@@ -101,6 +106,76 @@ describe('activation and sign-in without email — database', () => {
     expect((await signIn({ employeeNumber, lastName: 'Каримова', password: 'Wrong7!Wrong-Pass' })).status).toBe(401);
     expect((await signIn({ employeeNumber, lastName: 'Другая', password: OWN_PASSWORD })).status).toBe(401);
     expect((await signIn({ employeeNumber: number(), lastName: 'Каримова', password: OWN_PASSWORD })).status).toBe(401);
+  });
+
+  it('links a personal QR to one invited employee and rejects revoked, expired and spent codes', async () => {
+    const employeeNumber = number();
+    const card = { firstName: 'Вера', lastName: 'Каримова', middleName: 'Олеговна' };
+    const user = await unwrap<{ id: string }>(await post('/users', {
+      organizationId, email: `qr-${randomUUID()}@example.test`, ...card, customFields: { employee_number: employeeNumber },
+    }, adminHeaders));
+    const issue = async () => {
+      const response = await post('/users/activation-qr/personal', { userIds: [user.id] }, adminHeaders);
+      expect(response.status).toBe(201);
+      const { items } = await unwrap<{ items: { token: string }[] }>(response);
+      return { kind: 'personal', token: items[0]!.token };
+    };
+
+    const original = await issue();
+    const revoke = await fetch(`${baseUrl}/api/v1/users/${user.id}/activation-qr`, { method: 'DELETE', headers: adminHeaders });
+    expect(revoke.status).toBe(200);
+    expect((await post('/auth/activate/qr', original)).status).toBe(400);
+    const expiring = await issue();
+    await prisma.userInvitation.updateMany({ where: { userId: user.id, activationQr: true, revokedAt: null }, data: { expiresAt: new Date(0) } });
+    expect(await unwrap(await post('/auth/activate/qr', expiring))).toMatchObject({ error: { details: [{ code: 'ACTIVATION_QR_EXPIRED' }] } });
+
+    const qr = await issue();
+    expect(await unwrap(await post('/auth/activate/qr', qr))).toMatchObject({ organizationId });
+    expect((await post('/auth/invitation/accept', { token: qr.token, password: OWN_PASSWORD })).status).toBe(400);
+    const input = { ...card, employeeNumber, password: OWN_PASSWORD, qr };
+    expect((await activate({ ...input, employeeNumber: number() })).status).toBe(400);
+    expect((await activate({ ...input, middleName: 'Другая' })).status).toBe(400);
+    expect((await activate({ ...input, organizationId: otherOrganizationId })).status).toBe(400);
+    const races = await Promise.all([activate(input), activate(input)]);
+    expect(races.map(({ status }) => status).sort()).toEqual([201, 400]);
+    expect((await post('/auth/activate/qr', qr)).status).toBe(400);
+    expect((await activate({ ...input, employeeNumber: number() })).status).toBe(429);
+    const entries = await prisma.auditLog.findMany({ where: { targetId: user.id, action: { startsWith: 'activation_qr.' } } });
+    expect(entries.map(({ action }) => action)).toEqual(expect.arrayContaining([
+      'activation_qr.issued', 'activation_qr.revoked', 'activation_qr.scanned', 'activation_qr.activated',
+    ]));
+    expect(JSON.stringify(entries)).not.toContain(qr.token);
+    expect(await prisma.userInvitation.count({ where: { userId: user.id, activationQr: true, usedAt: { not: null } } })).toBe(1);
+  });
+
+  it('rotates shared organization and department QR codes and still requires the full identity', async () => {
+    const department = await prisma.department.create({ data: { organizationId, name: 'QR distribution point' } });
+    const foreign = await prisma.department.create({ data: { organizationId: otherOrganizationId, name: 'Other organization' } });
+    const issue = async (departmentId?: string) => {
+      const response = await post('/users/activation-qr/shared', { departmentId }, adminHeaders);
+      expect(response.status).toBe(201);
+      return { kind: 'shared', ...(await unwrap<{ token: string }>(response)) };
+    };
+    expect((await post('/users/activation-qr/shared', { departmentId: foreign.id }, adminHeaders)).status).toBe(404);
+    const old = await issue();
+    const current = await issue();
+    const retrieved = await fetch(`${baseUrl}/api/v1/users/activation-qr/shared`, { headers: adminHeaders });
+    expect(await unwrap(retrieved)).toEqual({ token: current.token });
+    expect((await post('/auth/activate/qr', old)).status).toBe(400);
+    expect(await unwrap(await post('/auth/activate/qr', current))).toMatchObject({ organizationId });
+    const qr = await issue(department.id);
+    expect(await unwrap(await post('/auth/activate/qr', qr))).toMatchObject({ organizationId });
+
+    const employeeNumber = number();
+    const card = { employeeNumber, firstName: 'Алия', lastName: 'Серикова' };
+    expect((await post('/users', {
+      organizationId, firstName: card.firstName, lastName: card.lastName, activateByIdentity: true, customFields: { employee_number: employeeNumber },
+    }, adminHeaders)).status).toBe(201);
+    const input = { ...card, password: OWN_PASSWORD, qr };
+    expect((await activate({ ...input, firstName: 'Другая' })).status).toBe(400);
+    expect((await activate({ ...input, organizationId: otherOrganizationId })).status).toBe(400);
+    expect((await activate(input)).status).toBe(201);
+    expect((await post('/auth/activate/qr', qr)).status).toBe(201);
   });
 
   it('answers the same way whatever is wrong, and does not cross organizations', async () => {

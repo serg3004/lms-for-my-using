@@ -5,11 +5,11 @@ import type { UserFieldView } from '../../shared/api/userFields.js';
 import { checkRowsLocally, importLimits, readWorkbook, parseCsv, serverProblem, tableToRows, toApiRow, type FileFailure, type ImportColumn, type ImportProblem, type ImportRow, type Table } from './importFile.js';
 
 export type RowStatus = 'ok' | 'bad' | 'created';
-export type ImportRowState = ImportRow & { status: RowStatus; invitationDelivered?: boolean };
+export type ImportRowState = ImportRow & { status: RowStatus; invitationDelivered?: boolean; userId?: string };
 export type ImportPhase = 'empty' | 'parsed' | 'checking' | 'checked' | 'creating' | 'done';
 export type ImportFailure = FileFailure | 'checkFailed' | 'createFailed' | 'forbidden';
 
-type ServerReport = { rows: Array<{ index: number; status: string; errors: string[]; invitationDelivered?: boolean }> };
+type ServerReport = { rows: Array<{ index: number; status: string; errors: string[]; invitationDelivered?: boolean; userId?: string }> };
 
 /** PR 492: the import flow: read the file, check it by the server without saving, create in parts of 100 rows. */
 export function useUsersImport(organizationId: string, fieldNames: (column: ImportColumn) => string, customFields: UserFieldView[] = []) {
@@ -53,6 +53,7 @@ export function useUsersImport(organizationId: string, fieldNames: (column: Impo
             row.problems = [...row.problems, ...entry.errors.map((message): ImportProblem => serverProblem(message))];
           } else if (entry.status === 'created') {
             row.status = 'created';
+            if (entry.userId) row.userId = entry.userId;
             if (entry.invitationDelivered !== undefined) row.invitationDelivered = entry.invitationDelivered;
           }
         }

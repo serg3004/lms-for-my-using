@@ -227,6 +227,28 @@ describe('API hardening middleware', () => {
     expect(nextTracker.calls).toBe(0);
   });
 
+  it('limits a QR token across IP changes without using it in storage keys', async () => {
+    const store = createInMemoryRateLimitStore();
+    const increment = jest.spyOn(store, 'increment');
+    const middleware = createSensitiveRouteRateLimitMiddleware(store, {
+      ip: { maxRequests: 100, windowMs: 60_000 },
+      account: [{ maxRequests: 1, windowMs: 60_000 }],
+      global: { maxRequests: 100, windowMs: 60_000 },
+    });
+    const token = 'A'.repeat(43);
+    const attempt = async (ip: string, employeeNumber: string) => {
+      const response = createResponse();
+      await middleware(createRequest({
+        url: '/api/v1/auth/activate', ip,
+        body: { organizationId: 'demo', employeeNumber, qr: { kind: 'personal', token } },
+      }) as never, response as never, () => undefined);
+      return response;
+    };
+    expect((await attempt('192.0.2.1', '10245')).statusCode).not.toBe(429);
+    expect((await attempt('192.0.2.2', '10246')).statusCode).toBe(429);
+    expect(increment.mock.calls.some(([key]) => key.includes(token))).toBe(false);
+  });
+
   it('normalizes organization and email before applying the account limit', async () => {
     const middleware = createSensitiveRouteRateLimitMiddleware(createInMemoryRateLimitStore(), {
       ip: { maxRequests: 100, windowMs: 60_000 },

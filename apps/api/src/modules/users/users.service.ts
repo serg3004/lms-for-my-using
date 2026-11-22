@@ -164,8 +164,13 @@ export class UsersService {
         where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: (page - 1) * pageSize, take: pageSize,
         select: {
           id: true, firstName: true, lastName: true, middleName: true, email: true,
+          userFieldValues: {
+            where: { field: { key: EMPLOYEE_NUMBER_KEY, archivedAt: null }, normalizedValue: { not: '' } },
+            select: { id: true },
+            take: 1,
+          },
           invitations: {
-            where: { organizationId: actor.organizationId },
+            where: { organizationId: actor.organizationId, activationQr: false },
             orderBy: [{ createdAt: 'desc' }, { sendCount: 'desc' }, { id: 'desc' }], take: 1,
             select: { createdAt: true, sendCount: true, expiresAt: true, revokedAt: true, usedAt: true },
           },
@@ -174,7 +179,8 @@ export class UsersService {
       this.prisma.user.count({ where }),
     ]);
     const now = new Date();
-    const items = users.map(({ invitations: [latest], ...user }) => ({
+    const items = users.map(({ invitations: [latest], userFieldValues, ...user }) => ({
+      canIssueActivationQr: userFieldValues.length > 0,
       ...user,
       sentAt: latest?.createdAt ?? null,
       sendCount: latest?.sendCount ?? 0,
@@ -182,6 +188,34 @@ export class UsersService {
       status: !latest ? 'unsent' : latest.revokedAt || latest.usedAt ? 'revoked' : latest.expiresAt <= now ? 'expired' : 'pending',
     }));
     return { items, page, pageSize, total };
+  }
+
+  getSharedActivationQr(actor: TeamScopeActor, departmentId?: string) {
+    return this.authService!.getSharedActivationQr(actor.organizationId, departmentId);
+  }
+
+  rotateSharedActivationQr(actor: TeamScopeActor, departmentId?: string) {
+    return this.authService!.rotateSharedActivationQr(actor.organizationId, actor.id, departmentId);
+  }
+
+  async revokePersonalActivationQr(actor: TeamScopeActor, userId: string) {
+    await this.authService!.changePersonalActivationQr(userId, actor.organizationId, actor.id, await this.invitationScope.user(actor), false);
+    return { revoked: true };
+  }
+
+  async issuePersonalActivationQrs(actor: TeamScopeActor, userIds: string[]) {
+    const scope = await this.invitationScope.user(actor);
+    const seen = [...new Set(userIds)];
+    const items = [];
+    for (const userId of seen) {
+      try {
+        const issued = await this.authService!.changePersonalActivationQr(userId, actor.organizationId, actor.id, scope, true);
+        if (issued) items.push({ userId, ...issued });
+      } catch (error) {
+        if (!(error instanceof NotFoundException || error instanceof ConflictException)) throw error;
+      }
+    }
+    return { items, skipped: seen.length - items.length };
   }
 
   async resendInvitation(actor: TeamScopeActor, userId: string) {

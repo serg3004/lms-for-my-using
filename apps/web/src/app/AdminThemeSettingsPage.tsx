@@ -1,3 +1,4 @@
+import { ActivationQrSheet } from '../features/admin-users/ActivationQrSheet.js';
 import { useEffect, useState, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -206,6 +207,7 @@ export function AdminThemeSettingsPage() {
       sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')}
       navItems={navItems}
     >
+      {currentUser?.roles.includes('admin') ? <ActivationQrSheet shared /> : null}
       <AdminPageHeader
         eyebrow={t('admin.themeSettings.eyebrow', 'Platform branding')}
         title={t('admin.themeSettings.title', 'Theme settings')}

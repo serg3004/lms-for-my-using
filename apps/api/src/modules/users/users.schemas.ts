@@ -17,6 +17,7 @@ export const listUsersQuerySchema = paginationQuerySchema.extend({
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;
 
 export const invitationUserIdSchema = z.guid().toLowerCase();
+export const sharedActivationQrSchema = z.object({ departmentId: invitationUserIdSchema.optional() }).strict();
 export const resendInvitationsSchema = z.object({
   userIds: z.array(invitationUserIdSchema).min(1).max(20).transform((ids) => [...new Set(ids)]),
 });

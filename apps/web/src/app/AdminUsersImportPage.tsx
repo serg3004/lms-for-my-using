@@ -1,3 +1,4 @@
+import { ActivationQrSheet } from '../features/admin-users/ActivationQrSheet.js';
 import { useTranslation } from 'react-i18next';
 
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
@@ -33,6 +34,7 @@ export function AdminUsersImportPage() {
   const bad = flow.rows.filter((row) => row.status === 'bad');
   const ok = flow.rows.filter((row) => row.status === 'ok');
   const created = flow.rows.filter((row) => row.status === 'created');
+  const qrUserIds = created.flatMap((row) => row.userId ? [row.userId] : []);
   const unsent = created.filter((row) => row.invitationDelivered === false).length;
   const busy = flow.phase === 'checking' || flow.phase === 'creating';
 
@@ -90,6 +92,7 @@ export function AdminUsersImportPage() {
       <div className="td-actions">
         {flow.phase !== 'done' ? <button className="admin-btn admin-btn--secondary" type="button" disabled={busy || ok.length === 0} onClick={() => void flow.check()}>{flow.phase === 'checking' ? t('usersImport.checking') : t('usersImport.check')}</button> : null}
         {flow.phase === 'checked' || flow.phase === 'creating' ? <button className="admin-btn admin-btn--primary" type="button" disabled={busy || ok.length === 0} onClick={() => void flow.create()}>{flow.phase === 'creating' ? t('usersImport.creating') : t('usersImport.create', { count: ok.length })}</button> : null}
+        {flow.phase === 'done' && qrUserIds.length > 0 ? <ActivationQrSheet key={qrUserIds[0]} userIds={qrUserIds} /> : null}
         {flow.phase === 'done' ? <button className="admin-btn admin-btn--secondary" type="button" onClick={downloadReport}>{t('usersImport.downloadReport')}</button> : null}
       </div>
     </AdminCard> : null}

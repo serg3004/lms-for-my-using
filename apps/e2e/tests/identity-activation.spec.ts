@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { installIdentityMocks, knownNumber } from '../fixtures/identity-activation.js';
+import { installIdentityMocks, knownNumber, sampleActivationQr } from '../fixtures/identity-activation.js';
 
 test('PR 501: a person without email activates by number and name, and a wrong number shows the same neutral text', async ({ page }) => {
   const calls = await installIdentityMocks(page);
@@ -38,4 +38,23 @@ test('PR 501: sign-in by employee number sends the number, the last name and the
   expect(calls.logins[0]).toEqual({ organizationId: 'demo', employeeNumber: knownNumber, lastName: 'Каримова', password: 'Own-Pass7!' });
   await page.getByRole('link', { name: 'Нет почты? Активировать учётную запись' }).click();
   await expect(page).toHaveURL(/\/activate$/);
+});
+
+test('PR 504: scanning a personal code pre-fills the organization and requires the employee identity', async ({ page }) => {
+  const calls = await installIdentityMocks(page);
+  await page.goto(`/activate#qr=personal.${sampleActivationQr.token}`);
+  await expect(page.getByText('Учебная организация')).toBeVisible();
+  await expect(page.getByLabel('ID или короткое имя организации')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Активировать' }).click();
+  await expect(page.getByLabel('Табельный номер')).toHaveAttribute('aria-invalid', 'true');
+  expect(calls.activations).toHaveLength(0);
+
+  await page.getByLabel('Табельный номер').fill(knownNumber);
+  await page.getByLabel('Фамилия').fill('Каримова');
+  await page.getByLabel('Имя', { exact: true }).fill('Айгуль');
+  await page.getByLabel('Новый пароль').fill('Own-Pass7!');
+  await page.getByLabel('Повторите пароль').fill('Own-Pass7!');
+  await page.getByRole('button', { name: 'Активировать' }).click();
+  await expect(page.getByRole('heading', { name: 'Учётная запись активирована' })).toBeVisible();
+  expect(calls.activations[0]).toMatchObject({ organizationId: 'demo', employeeNumber: knownNumber, firstName: 'Айгуль', lastName: 'Каримова', qr: sampleActivationQr });
 });

@@ -1,7 +1,7 @@
 import { AxeBuilder } from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 
-import { installIdentityMocks } from '../fixtures/identity-activation.js';
+import { installIdentityMocks, sampleActivationQr } from '../fixtures/identity-activation.js';
 
 for (const width of [375, 1440]) {
   test(`the activation page is accessible at ${width}px`, async ({ page }) => {
@@ -26,3 +26,12 @@ for (const width of [375, 1440]) {
     expect(result.violations).toEqual([]);
   });
 }
+
+test('activation from a QR is accessible on a narrow screen', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 900 });
+  await installIdentityMocks(page);
+  await page.goto(`/activate#qr=personal.${sampleActivationQr.token}`);
+  await expect(page.getByText('Учебная организация')).toBeVisible();
+  const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+  expect(result.violations).toEqual([]);
+});
