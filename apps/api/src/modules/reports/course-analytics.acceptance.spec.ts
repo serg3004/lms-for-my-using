@@ -5,7 +5,7 @@ import { buildCourseUserRows, summarizeCourses, summarizeUser } from './course-a
 import { courseExportRows, coursesExportRows, SHEET_NAMES, userExportRows } from './course-analytics-export.js';
 
 /**
- * PR 476: acceptance guard for gaps 50-52 of docs/product/future/CHECKLIST_REMAINING_WORK_PLAN.md (course analytics:
+ * PR 476: acceptance guard for gaps 50-52 of docs/archive/completed-plans/CHECKLIST_REMAINING_WORK_PLAN.md (course analytics:
  * data API PR 473, screens PR 474, export PR 475). It fails when a later change drops a role from a screen or an export,
  * widens the object scope of the manager or the instructor, loses one of the metrics of the plan from the API, the
  * export or the texts, or lets the competitor's name into the code and the texts (the owner calls it "эталон").

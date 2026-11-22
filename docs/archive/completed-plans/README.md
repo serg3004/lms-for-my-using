@@ -9,7 +9,7 @@
 | [`UI_REFRESH_IMPLEMENTATION_PLAN.md`](./UI_REFRESH_IMPLEMENTATION_PLAN.md) | 309–323 | обновление интерфейса по прототипам |
 | [`UI_REFRESH_FINAL_PARITY_PLAN.md`](./UI_REFRESH_FINAL_PARITY_PLAN.md) | — | финальное выравнивание UI; закрыт как неактуальный 2026-11-18, код не менялся |
 | [`CHECKLIST_WORKPLACE_TRAINING_EXTENSION_PLAN.md`](./CHECKLIST_WORKPLACE_TRAINING_EXTENSION_PLAN.md) | 324–342 | расширение: уведомления, подсказки, шаблоны, Redis и почта |
-| [`CHECKLIST_WORKPLACE_TRAINING_PARITY_PLAN.md`](./CHECKLIST_WORKPLACE_TRAINING_PARITY_PLAN.md) | 343–358 | паритет с прототипами (PR 357 PWA перенесён в `CHECKLIST_REMAINING_WORK_PLAN.md`) |
+| [`CHECKLIST_WORKPLACE_TRAINING_PARITY_PLAN.md`](./CHECKLIST_WORKPLACE_TRAINING_PARITY_PLAN.md) | 343–358 | паритет с прототипами (PR 357 PWA перенесён в [`CHECKLIST_REMAINING_WORK_PLAN.md`](./CHECKLIST_REMAINING_WORK_PLAN.md)) |
 | [`CHECKLIST_ROLE_PERMISSIONS_PLAN.md`](./CHECKLIST_ROLE_PERMISSIONS_PLAN.md) | 359–367 | права по ролям (таблица: `../../product/future/CHECKLIST_ROLE_PERMISSIONS_TABLE.md`) |
 | [`CHECKLIST_REFERENCE_PARITY_PLAN.md`](./CHECKLIST_REFERENCE_PARITY_PLAN.md) | 368–380 | паритет с эталоном: отчёты, PDF, XLSX |
 | [`LONGREAD_LESSON_TYPE_PLAN.md`](./LONGREAD_LESSON_TYPE_PLAN.md) | 381–392 | лонгрид как тип урока |
@@ -20,3 +20,6 @@
 | [`CHECKLIST_EDITOR_REMARKS_PLAN_3.md`](./CHECKLIST_EDITOR_REMARKS_PLAN_3.md) | 453 | свой выпадающий список |
 | [`CHECKLIST_EDITOR_REMARKS_PLAN_4.md`](./CHECKLIST_EDITOR_REMARKS_PLAN_4.md) | 454–458 | ремарки редактора, этап 4 |
 | [`CHECKLIST_ANALYTICS_TAB_PLAN.md`](./CHECKLIST_ANALYTICS_TAB_PLAN.md) | 459–468 | вкладка «Аналитика», вход по ссылке и QR |
+| [`CHECKLIST_REMAINING_WORK_PLAN.md`](./CHECKLIST_REMAINING_WORK_PLAN.md) | 469–478 и 357 | остаток по чек-листам: аналитика курсов, почта, PWA |
+| [`CUSTOM_ROLE_PERMISSIONS_PLAN.md`](./CUSTOM_ROLE_PERMISSIONS_PLAN.md) | — | проект модели настраиваемых ролей (историческая модель) |
+| [`CUSTOM_ROLES_IMPLEMENTATION_PLAN.md`](./CUSTOM_ROLES_IMPLEMENTATION_PLAN.md) | 479–486 | реализация настраиваемых ролей |
