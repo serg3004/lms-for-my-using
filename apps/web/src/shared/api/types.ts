@@ -47,6 +47,8 @@ export type CurrentUser = {
   timezone: string;
   /** PR 489: a temporary password was used; only the change-password screen is available until it is set. */
   mustChangePassword?: boolean;
+  /** PR 506: set only for a kiosk session opened by a badge. */
+  kiosk?: boolean;
   roles: UserRole[];
 };
 

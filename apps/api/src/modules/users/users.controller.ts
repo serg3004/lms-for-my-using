@@ -86,6 +86,38 @@ export class UsersController {
     return this.usersService.issuePersonalActivationQrs(request.currentUser!, resendInvitationsSchema.parse(body).userIds);
   }
 
+  /** PR 506: issue badges; the token and the first PIN are shown this once. */
+  @Post('badges')
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.badgesManage)
+  issueBadges(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    return this.usersService.issueBadges(request.currentUser!, resendInvitationsSchema.parse(body).userIds);
+  }
+
+  @Get(':id/badge')
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.badgesManage)
+  badgeState(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    return this.usersService.badgeState(request.currentUser!, invitationUserIdSchema.parse(id));
+  }
+
+  @Delete(':id/badge')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.badgesManage)
+  revokeBadge(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    return this.usersService.revokeBadge(request.currentUser!, invitationUserIdSchema.parse(id));
+  }
+
+  @Post(':id/badge/pin-reset')
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.badgesManage)
+  resetBadgePin(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
+    return this.usersService.resetBadgePin(request.currentUser!, invitationUserIdSchema.parse(id));
+  }
+
   @Delete(':id/activation-qr')
   @UseGuards(AuthGuard, RolesGuard)
   @Roles(...rolePolicies.usersCreate)

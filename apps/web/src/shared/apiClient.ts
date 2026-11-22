@@ -293,6 +293,9 @@ export const UPLOAD_TIMEOUT_MS = 180_000;
 let refreshRequest: Promise<boolean> | null = null;
 let successfulRefreshCount = 0;
 
+/** Sent when a call was refused and the session could not be renewed; a shared tablet uses it to return to the badge scan. */
+export const SESSION_ENDED_EVENT = 'lms:session-ended';
+
 async function refreshAccessToken() {
   if (!refreshRequest) {
     refreshRequest = fetch(`${apiBasePath}/auth/refresh`, {
@@ -339,6 +342,8 @@ async function apiResponse(path: string, init: RequestInit, timeoutMs: number) {
 
       if (refreshed) {
         response = await executeApiRequest(path, init, signal);
+      } else if (typeof window !== 'undefined') {
+        window.dispatchEvent(new Event(SESSION_ENDED_EVENT));
       }
     }
 

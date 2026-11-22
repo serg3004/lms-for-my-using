@@ -24,6 +24,7 @@ import { freshReportState, installReportMocks } from '../fixtures/checklist-inst
 import { freshRolesState, installCustomRolesMocks, registrar } from '../fixtures/custom-roles.js';
 import { importFileCsv, installUsersImportMocks } from '../fixtures/users-import.js';
 import { installLoginJournalMocks, journalUserId } from '../fixtures/login-journal.js';
+import { badgeToken, installBadgeMocks, newBadgeState } from '../fixtures/badge.js';
 import { installIdentityMocks, sampleActivationQr } from '../fixtures/identity-activation.js';
 import { installUserFieldsMocks } from '../fixtures/user-fields.js';
 import { installUserBulkMocks } from '../fixtures/user-bulk-actions.js';
@@ -1568,3 +1569,19 @@ for (const width of [390, 1280]) for (const screen of ['courses', 'checklists'] 
     await expectVisualMatch(page, `analytics-user-fields-${screen}-${width}`, false, { maxDiffPixels: 3000 });
   });
 }
+
+for (const width of [390, 1280]) test(`badge scan screen is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installBadgeMocks(page, newBadgeState());
+  await page.goto('/badge');
+  await expect(page.getByLabel('Код бейджа')).toBeVisible();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `badge-scan-${width}`, false, { maxDiffPixels: 3000 });
+});
+
+for (const width of [390, 1280]) test(`badge PIN pad is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installBadgeMocks(page, newBadgeState());
+  await page.goto(`/badge#${badgeToken}`);
+  await expect(page.getByRole('heading', { name: 'Введите PIN' })).toBeVisible();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `badge-pin-${width}`, false, { maxDiffPixels: 3000 });
+});

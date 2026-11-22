@@ -35,6 +35,12 @@ export const activationQrSchema = z.object({
 
 /** PR 505: the code shown as a QR and the secret the device keeps are 32 random bytes in base64url. */
 export const qrCodeSchema = z.object({ code: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict();
+/** PR 506: the token on the badge and the PIN (4 to 6 digits). The PIN is optional on the first scan: the answer says whether one is needed. */
+export const badgeLoginSchema = z.object({
+  token: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  pin: z.string().regex(/^\d{4,6}$/).optional(),
+}).strict();
+export const badgePinSchema = z.object({ pin: z.string().regex(/^\d{4,6}$/) }).strict();
 export const qrPollSchema = z.object({ pollToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict();
 
 /** PR 501: a person without a mailbox confirms who they are and sets the first password. */
@@ -94,6 +100,8 @@ export const currentUserSchema = z.object({
   timezone: z.string(),
   /** PR 489: set by a temporary password; until the user sets their own, only changing it and signing out work. */
   mustChangePassword: z.boolean(),
+  /** PR 506: set only for a kiosk session opened by a badge. */
+  kiosk: z.boolean().optional(),
   roles: z.array(userRoleSchema),
 });
 

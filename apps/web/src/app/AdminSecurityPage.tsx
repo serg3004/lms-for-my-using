@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { getPasswordPolicy, savePasswordPolicy } from '../shared/api/organizations.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { LoginProtectionCard } from '../shared/LoginProtectionCard.js';
+import { BadgePolicyCard } from '../shared/BadgePolicyCard.js';
 import { QrLoginPolicyCard } from '../shared/QrLoginPolicyCard.js';
 import { MyDevicesCard } from '../shared/MyDevicesCard.js';
 import { ChangePasswordForm } from '../shared/ChangePasswordForm.js';
@@ -70,6 +71,7 @@ export function AdminSecurityPage() {
       </AdminCard>
       {currentUser ? <LoginProtectionCard organizationId={currentUser.organizationId} /> : null}
       {currentUser ? <QrLoginPolicyCard organizationId={currentUser.organizationId} /> : null}
+      {currentUser ? <BadgePolicyCard organizationId={currentUser.organizationId} /> : null}
       <AdminCard>
         <ChangePasswordForm className="admin-form" />
       </AdminCard>

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
+import { APP_INTERCEPTOR, Reflector } from '@nestjs/core';
 
 import { AuthController } from './auth.controller.js';
 import { AuthGuard } from './auth.guard.js';
@@ -9,10 +9,11 @@ import { RolesGuard } from './roles.guard.js';
 import { EffectivePermissionsLookup } from './effective-permissions.loader.js';
 import { AuthService } from './auth.service.js';
 import { PasswordResetDelivery } from './password-reset.js';
+import { KioskFinishInterceptor } from './kiosk-finish.interceptor.js';
 
 @Module({
   controllers: [AuthController],
-  providers: [AuthGuard, AuthService, AuthSessionStore, OrganizationScopeGuard, PasswordResetDelivery, Reflector, RolesGuard, EffectivePermissionsLookup],
+  providers: [{ provide: APP_INTERCEPTOR, useClass: KioskFinishInterceptor }, AuthGuard, AuthService, AuthSessionStore, OrganizationScopeGuard, PasswordResetDelivery, Reflector, RolesGuard, EffectivePermissionsLookup],
   exports: [AuthGuard, AuthService, AuthSessionStore, OrganizationScopeGuard, RolesGuard, EffectivePermissionsLookup],
 })
 export class AuthModule {}

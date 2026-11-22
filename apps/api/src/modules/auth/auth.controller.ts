@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Optional, Param, Patch, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Optional, Param, Patch, Post, Put, Req, Res, UnauthorizedException } from '@nestjs/common';
 
 import {
   AuthHeaders,
@@ -22,6 +22,8 @@ import {
   identityActivationSchema,
   activationQrSchema,
   loginSchema,
+  badgeLoginSchema,
+  badgePinSchema,
   qrCodeSchema,
   qrPollSchema,
   invitationAcceptSchema,
@@ -107,6 +109,19 @@ export class AuthController {
     const accessToken = resolveAccessToken(request.headers);
     assertValidCsrf(request.headers, request.method, accessToken.source);
     return this.authService.qrDecide(accessToken.token, qrCodeSchema.parse(body).code, 'denied');
+  }
+
+  /** PR 506: a scan of the badge, then the PIN. The answer is "a PIN is needed", a kiosk session, or one refusal for everything else. */
+  @Post('badge/login')
+  @PublicAccess()
+  async badgeLogin(@Body() body: unknown, @Req() request: AuthRequest, @Res({ passthrough: true }) response: AuthCookieResponse) {
+    const { token, pin } = badgeLoginSchema.parse(body);
+    const userAgent = request.headers['user-agent'];
+    const result = await this.authService.badgeLogin(token, pin, { userAgent: typeof userAgent === 'string' ? userAgent : undefined, ip: request.ip });
+    if (result.status !== 'ok') return { status: result.status };
+    const csrfToken = createCsrfToken();
+    setAuthCookies(response, result.accessToken, csrfToken, result.refreshToken);
+    return { status: result.status, accessToken: result.accessToken, tokenType: result.tokenType, user: result.user, csrfToken };
   }
 
   @Post('refresh')
@@ -224,6 +239,28 @@ export class AuthController {
     const accessToken = resolveAccessToken(request.headers);
     assertValidCsrf(request.headers, request.method, accessToken.source);
     return this.authService.revokeOwnSession(accessToken.token, sessionId);
+  }
+
+  @Get('me/badge')
+  @AuthenticatedAccess()
+  ownBadge(@Req() request: AuthRequest) {
+    return this.authService.ownBadgeState(resolveAccessToken(request.headers).token);
+  }
+
+  @Post('me/badge/lost')
+  @AuthenticatedAccess()
+  reportBadgeLost(@Req() request: AuthRequest) {
+    const accessToken = resolveAccessToken(request.headers);
+    assertValidCsrf(request.headers, request.method, accessToken.source);
+    return this.authService.reportOwnBadgeLost(accessToken.token);
+  }
+
+  @Put('me/badge/pin')
+  @AuthenticatedAccess()
+  changeBadgePin(@Req() request: AuthRequest, @Body() body: unknown) {
+    const accessToken = resolveAccessToken(request.headers);
+    assertValidCsrf(request.headers, request.method, accessToken.source);
+    return this.authService.changeOwnBadgePin(accessToken.token, badgePinSchema.parse(body).pin);
   }
 
   @Get('me')

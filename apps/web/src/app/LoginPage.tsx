@@ -375,6 +375,7 @@ export function LoginPage() {
               </Link>
             </div>
             <Link className="login-form__forgot" to="/activate">{t('identity.activateLink')}</Link>
+            <Link className="login-form__forgot" to="/badge">{t('badge.link')}</Link>
 
             {infoMessage ? (
               <p className="login-form__info" role="status">

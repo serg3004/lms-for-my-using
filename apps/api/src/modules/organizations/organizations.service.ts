@@ -4,11 +4,12 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { loadLoginProtection, type LoginProtection } from '../../common/login-protection.js';
+import { loadBadgePolicy, type BadgePolicy } from '../../common/badge.js';
 import { loadQrLoginPolicy, type QrLoginPolicy } from '../../common/qr-login.js';
 import { assertPasswordPolicy, defaultPasswordPolicy } from '../../common/password-policy.js';
 import { hashPassword } from '../auth/public.js';
 import { UploadService } from '../upload/public.js';
-import { CreateOrganizationInput, LoginProtectionInput, OrganizationFeaturesInput, PasswordPolicyInput, QrLoginPolicyInput, RegisterOrganizationInput, ThemeSettingsInput } from './organizations.schemas.js';
+import { BadgePolicyInput, CreateOrganizationInput, LoginProtectionInput, OrganizationFeaturesInput, PasswordPolicyInput, QrLoginPolicyInput, RegisterOrganizationInput, ThemeSettingsInput } from './organizations.schemas.js';
 
 type StoredThemeSettings = Partial<ThemeSettingsInput> & { logoObjectKey?: string; logoMimeType?: string };
 
@@ -242,6 +243,27 @@ export class OrganizationsService {
         targetType: 'organization',
         targetId: organizationId,
         summary: `Sign-in by QR: ${updated.enabled ? 'on' : 'off'}, session ${updated.sessionHours} h, roles ${updated.roles.join(', ') || 'none'}`,
+        metadata: { before: existing, after: updated },
+      });
+    }
+    return updated;
+  }
+
+  async getBadgePolicy(organizationId: string) {
+    const organization = await this.prisma.organization.findFirst({ where: { id: organizationId }, select: { id: true } });
+    if (!organization) throw new NotFoundException('Organization not found');
+    return loadBadgePolicy(this.prisma, organizationId);
+  }
+
+  /** PR 506: applies to the next scan; open kiosk sessions keep their idle time until they renew. */
+  async updateBadgePolicy(organizationId: string, input: BadgePolicyInput, actorId: string | null = null) {
+    const existing = await this.getBadgePolicy(organizationId);
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { badgePinRequired: input.pinRequired, badgeIdleMinutes: input.idleMinutes } });
+    const updated: BadgePolicy = { pinRequired: input.pinRequired, idleMinutes: input.idleMinutes };
+    if (JSON.stringify(existing) !== JSON.stringify(updated)) {
+      await this.auditLog.record({
+        organizationId, actorId, action: 'organization.badge_policy_updated', targetType: 'organization', targetId: organizationId,
+        summary: `Badge sign-in: PIN ${updated.pinRequired ? 'required' : 'not required'}, idle ${updated.idleMinutes} min`,
         metadata: { before: existing, after: updated },
       });
     }

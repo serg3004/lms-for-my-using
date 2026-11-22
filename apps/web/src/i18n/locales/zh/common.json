@@ -3076,6 +3076,10 @@
         "title": "观察场次已删除",
         "message": "尚未开始的场次已删除，您无需再参加。"
       },
+      "badge_lost": {
+        "title": "工牌已报失",
+        "message": "{{name}} 报告工牌丢失。该工牌已被撤销，请重新制作并打印新工牌。"
+      },
       "checklist_session_completed": {
         "title": "观察场次已完成",
         "message": "场次已完成。请打开场次查看您有权查看的反馈。"
