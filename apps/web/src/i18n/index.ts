@@ -8,6 +8,7 @@ import zhCommon from './locales/zh/common.json';
 import { loginResources } from './loginResources.js';
 import { passwordResetResources } from './passwordResetResources.js';
 import { securityResources } from './securityResources.js';
+import { userFieldsResources } from './userFieldsResources.js';
 import { usersImportResources } from './usersImportResources.js';
 
 export const DEFAULT_LOCALE = 'ru';
@@ -18,10 +19,10 @@ void i18next.use(initReactI18next).init({
   lng: DEFAULT_LOCALE,
   fallbackLng: DEFAULT_LOCALE,
   resources: {
-    ru: { translation: { ...ruCommon, login: loginResources.ru, passwordReset: passwordResetResources.ru, security: securityResources.ru, usersImport: usersImportResources.ru } },
-    en: { translation: { ...enCommon, login: loginResources.en, passwordReset: passwordResetResources.en, security: securityResources.en, usersImport: usersImportResources.en } },
-    kk: { translation: { ...kkCommon, login: loginResources.kk, passwordReset: passwordResetResources.kk, security: securityResources.kk, usersImport: usersImportResources.kk } },
-    zh: { translation: { ...zhCommon, login: loginResources.zh, passwordReset: passwordResetResources.zh, security: securityResources.zh, usersImport: usersImportResources.zh } },
+    ru: { translation: { ...ruCommon, login: loginResources.ru, passwordReset: passwordResetResources.ru, security: securityResources.ru, usersImport: usersImportResources.ru, userFields: userFieldsResources.ru } },
+    en: { translation: { ...enCommon, login: loginResources.en, passwordReset: passwordResetResources.en, security: securityResources.en, usersImport: usersImportResources.en, userFields: userFieldsResources.en } },
+    kk: { translation: { ...kkCommon, login: loginResources.kk, passwordReset: passwordResetResources.kk, security: securityResources.kk, usersImport: usersImportResources.kk, userFields: userFieldsResources.kk } },
+    zh: { translation: { ...zhCommon, login: loginResources.zh, passwordReset: passwordResetResources.zh, security: securityResources.zh, usersImport: usersImportResources.zh, userFields: userFieldsResources.zh } },
   },
   interpolation: {
     escapeValue: false,

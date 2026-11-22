@@ -1,4 +1,6 @@
 import { usersImportResources } from '../../i18n/usersImportResources.js';
+import type { UserFieldView } from '../../shared/api/userFields.js';
+import { fieldLabel, headerNames, importCellValue } from '../user-fields/model.js';
 
 /** PR 492: reading, checking and reporting of a user import file. Pure functions; the page and the hook call them. */
 export const importColumns = ['email', 'lastName', 'firstName', 'middleName', 'position', 'shift', 'phone', 'locale', 'department', 'role'] as const;
@@ -7,7 +9,8 @@ export const importLimits = { maxFileBytes: 2 * 1024 * 1024, maxRows: 1000, batc
 
 export type ImportValues = Partial<Record<ImportColumn, string>>;
 export type ImportProblem = { key: string; params?: Record<string, string | number> };
-export type ImportRow = { line: number; values: ImportValues; problems: ImportProblem[] };
+/** PR 500: `custom` holds the cells of custom field columns by field key, already turned into what the API takes. */
+export type ImportRow = { line: number; values: ImportValues; problems: ImportProblem[]; custom?: Record<string, string> };
 export type FileFailure = 'fileWrongType' | 'fileTooBig' | 'fileTooManyRows' | 'fileEmpty' | 'fileNoEmailColumn' | 'fileUnreadable';
 
 /** A cell the person typed: every table cell is text, a formula cell of a workbook is marked by the reader. */
@@ -69,10 +72,15 @@ export async function readWorkbook(buffer: ArrayBuffer): Promise<Table> {
 const formulaLike = /^[=@]|^[+-](?!\d)/;
 
 /** Rows of people from a table: the header row is found by names in any language; empty rows are skipped. */
-export function tableToRows(table: Table): { rows: ImportRow[] } | { failure: FileFailure } {
+export function tableToRows(table: Table, fields: UserFieldView[] = []): { rows: ImportRow[] } | { failure: FileFailure } {
   const headerIndex = table.rows.findIndex((row) => row.some((cell) => cell.trim() !== ''));
   if (headerIndex < 0) return { failure: 'fileEmpty' };
-  const columns = (table.rows[headerIndex] ?? []).map((cell) => headerAliases.get(cell.trim().toLowerCase()));
+  // A standard column name wins over a custom field that happens to carry the same title.
+  const fieldByHeader = new Map<string, UserFieldView>();
+  for (const field of fields) for (const name of headerNames(field)) if (!headerAliases.has(name) && !fieldByHeader.has(name)) fieldByHeader.set(name, field);
+  const headerCells = (table.rows[headerIndex] ?? []).map((cell) => cell.trim().toLowerCase());
+  const columns = headerCells.map((cell) => headerAliases.get(cell));
+  const customColumns = headerCells.map((cell) => (headerAliases.has(cell) ? undefined : fieldByHeader.get(cell)));
   if (!columns.includes('email')) return { failure: 'fileNoEmailColumn' };
 
   const rows: ImportRow[] = [];
@@ -81,16 +89,20 @@ export function tableToRows(table: Table): { rows: ImportRow[] } | { failure: Fi
     const rowIndex = headerIndex + 1 + offset;
     const values: ImportValues = {};
     const problems: ImportProblem[] = [];
+    const custom: Record<string, string> = {};
     columns.forEach((column, columnIndex) => {
-      if (!column) return;
+      const field = customColumns[columnIndex];
+      if (!column && !field) return;
       const value = (cells[columnIndex] ?? '').trim();
       if (table.formulaCells.has(formulaCellKey(rowIndex, columnIndex)) || formulaLike.test(value)) {
         if (!problems.some((problem) => problem.key === 'formula')) problems.push({ key: 'formula' });
         return;
       }
-      if (value !== '') values[column] = value;
+      if (value === '') return;
+      if (column) values[column] = value;
+      else if (field) custom[field.key] = importCellValue(field, value);
     });
-    rows.push({ line: rowIndex + 1, values, problems });
+    rows.push({ line: rowIndex + 1, values, problems, ...(Object.keys(custom).length > 0 ? { custom } : {}) });
   });
   if (rows.length === 0) return { failure: 'fileEmpty' };
   if (rows.length > importLimits.maxRows) return { failure: 'fileTooManyRows' };
@@ -128,25 +140,43 @@ const serverProblems: Record<string, string> = {
   'Roles are granted by an administrator': 'roleForbidden',
 };
 
+const fieldProblems: Array<[RegExp, string]> = [
+  [/^The field "([^"]+)" is required$/, 'required'], [/^The value of "([^"]+)" is not valid$/, 'invalid'], [/^The value of "([^"]+)" is not one of the options$/, 'option'],
+  [/^The value of "([^"]+)" is too long$/, 'tooLong'], [/^The value of "([^"]+)" repeats in the import$/, 'repeats'], [/^The value of "([^"]+)" is already used by another person$/, 'taken'],
+  [/^The field "([^"]+)" cannot be changed by you$/, 'forbidden'], [/^Unknown field "([^"]+)"$/, 'unknown'],
+];
+
 export function serverProblem(message: string): ImportProblem {
   const key = serverProblems[message];
-  return key ? { key } : { key: 'raw', params: { message } };
+  if (key) return { key };
+  for (const [pattern, kind] of fieldProblems) {
+    const match = pattern.exec(message);
+    if (match) return { key: 'field', params: { kind, field: match[1]! } };
+  }
+  return { key: 'raw', params: { message } };
 }
 
 /** The row as the API takes it: only the filled columns, never a password (the person is invited). */
-export function toApiRow(row: ImportRow): Record<string, string> {
-  return Object.fromEntries(Object.entries(row.values).filter(([, value]) => value !== undefined && value !== '')) as Record<string, string>;
+export function toApiRow(row: ImportRow): Record<string, unknown> {
+  const standard = Object.fromEntries(Object.entries(row.values).filter(([, value]) => value !== undefined && value !== ''));
+  return row.custom && Object.keys(row.custom).length > 0 ? { ...standard, customFields: row.custom } : standard;
 }
 
 /** Template rows: the header in the given language and one sample line. */
-export function templateRows(locale: 'en' | 'ru' | 'kk' | 'zh'): string[][] {
+export function templateRows(locale: 'en' | 'ru' | 'kk' | 'zh', fields: UserFieldView[] = []): string[][] {
   const texts = usersImportResources[locale];
-  return [importColumns.map((column) => texts.columns[column]), importColumns.map((column) => texts.sample[column])];
+  const editable = fields.filter((field) => field.editable !== false);
+  return [[...importColumns.map((column) => texts.columns[column]), ...editable.map((field) => fieldLabel(field, locale))], [...importColumns.map((column) => texts.sample[column]), ...editable.map(() => '')]];
+}
+
+/** A text made harmless when a spreadsheet would read it as a formula. */
+export function formulaSafe(value: string): string {
+  return /^[=@\t\r]|^[+-](?!\d)/.test(value) ? `'${value}` : value;
 }
 
 /** A cell of an exported CSV: quoted, and made harmless when a spreadsheet would read it as a formula. */
 export function csvCell(value: string): string {
-  const safe = /^[=@\t\r]|^[+-](?!\d)/.test(value) ? `'${value}` : value;
+  const safe = formulaSafe(value);
   return /[",;\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 

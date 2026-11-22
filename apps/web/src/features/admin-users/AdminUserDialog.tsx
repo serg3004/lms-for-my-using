@@ -2,11 +2,13 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { listDepartments } from '../../shared/api/departments.js';
+import type { UserFieldView } from '../../shared/api/userFields.js';
 import type { FormValidationErrors } from '../../shared/formValidation.js';
 import { AdminUserForm } from './AdminUserForm.js';
 import type { UserForm, UserFormField, UserFormMode } from './model.js';
 
 type Props = {
+  fields?: UserFieldView[];
   open: boolean; mode: UserFormMode; form: UserForm; errors: FormValidationErrors<UserFormField>;
   message: string | null; isSaving: boolean; onChange: (form: UserForm) => void;
   onErrorsChange: (errors: FormValidationErrors<UserFormField>) => void; onSubmit: (event: FormEvent) => void; onClose: () => void;
@@ -56,6 +58,6 @@ export function AdminUserDialog(props: Props) {
 
   return <dialog aria-labelledby={titleId} className="admin-dialog admin-user-dialog" ref={dialogRef} onCancel={(e) => { e.preventDefault(); close(); }} onClose={() => { if (props.open) close(); }}>
     <div className="admin-dialog__header"><h2 id={titleId}>{props.mode === 'create' ? t('admin.users.createDialogTitle', 'Create user') : t('admin.users.editDialogTitle', 'Edit user')}</h2><button aria-label={t('admin.users.closeDialog', 'Close user dialog')} className="admin-dialog__close" onClick={close} type="button">✕</button></div>
-    <AdminUserForm departments={departments} departmentsLoading={departmentsLoading} departmentsError={departmentsError} form={props.form} mode={props.mode} errors={props.errors} message={props.message} isSaving={props.isSaving} onChange={props.onChange} onErrorsChange={props.onErrorsChange} onSubmit={props.onSubmit} onCancel={close} />
+    <AdminUserForm fields={props.fields ?? []} departments={departments} departmentsLoading={departmentsLoading} departmentsError={departmentsError} form={props.form} mode={props.mode} errors={props.errors} message={props.message} isSaving={props.isSaving} onChange={props.onChange} onErrorsChange={props.onErrorsChange} onSubmit={props.onSubmit} onCancel={close} />
   </dialog>;
 }

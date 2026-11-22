@@ -21,16 +21,34 @@ import { EMPTY_USER_FORM, toEditUserForm, userName, withoutPassword, type AdminU
 import { useAdminUserMutations } from '../features/admin-users/useAdminUserMutations.js';
 import { useAdminUsers } from '../features/admin-users/useAdminUsers.js';
 import { validateUserForm } from '../features/admin-users/validation.js';
+import { downloadXlsxFile } from '../shared/downloadCsv.js';
+import { exportRows, loadAllUsers } from '../features/admin-users/exportUsers.js';
+import { fieldLabel, languageOf, missingRequired } from '../features/user-fields/model.js';
+import { useUserFieldViews } from '../features/user-fields/useUserFieldViews.js';
+
+const SHOWN_FIELDS_KEY = 'admin.users.shownFields';
+function readShownFields(): string[] {
+  try {
+    const parsed: unknown = JSON.parse(localStorage.getItem(SHOWN_FIELDS_KEY) ?? '[]');
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : [];
+  } catch {
+    return [];
+  }
+}
 
 export function AdminUsersPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const language = languageOf(i18n.language);
   const navItems: AdminNavItem[] = [
     { label: t('admin.title', 'Admin dashboard'), href: '/admin' },
     { label: t('admin.users.title', 'Users'), href: '/admin/users', isCurrent: true },
   ];
   const usersQuery = useAdminUsers();
   const mutations = useAdminUserMutations(usersQuery.reload);
-  const bulk = useBulkUserActions({ users: usersQuery.users, filters: usersQuery.filters, resetKey: `${usersQuery.page}|${usersQuery.filters.query}|${usersQuery.filters.role}|${usersQuery.filters.status}`, reload: usersQuery.reload });
+  const userFields = useUserFieldViews('users');
+  const [shownFields, setShownFields] = useState<string[]>(readShownFields);
+  const [exporting, setExporting] = useState(false);
+  const bulk = useBulkUserActions({ users: usersQuery.users, filters: usersQuery.filters, resetKey: `${usersQuery.page}|${usersQuery.filters.query}|${usersQuery.filters.role}|${usersQuery.filters.status}|${usersQuery.filters.fieldKey}|${usersQuery.filters.fieldValue}`, reload: usersQuery.reload });
   const [form, setForm] = useState<UserForm>(EMPTY_USER_FORM);
   const [mode, setMode] = useState<UserFormMode | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -108,8 +126,10 @@ export function AdminUsersPage() {
     const nextErrors = validateUserForm(form, mode, t);
     setErrors(nextErrors);
     if (hasValidationErrors(nextErrors)) return;
+    const missing = missingRequired(userFields.fields, form.customFields, language);
+    if (missing.length > 0) { setMessage(t('userFields.requiredMissing', { fields: missing.join(', ') })); return; }
     setMessage(null);
-    const result = await mutations.saveUser(form, mode, usersQuery.state.currentUser.organizationId);
+    const result = await mutations.saveUser(form, mode, usersQuery.state.currentUser.organizationId, userFields.fields);
     setForm((current) => withoutPassword(current));
     if (result.ok) { close(); setInviteResult(result.invitation ?? null); setTemporaryResult(result.temporary ?? null); }
     else {
@@ -123,17 +143,44 @@ export function AdminUsersPage() {
   if (usersQuery.state.status !== 'loaded') return null;
   const loadedState = usersQuery.state;
   const canArchive = loadedState.currentUser.roles.includes('admin');
+  const columnFields = userFields.fields.filter((field) => shownFields.includes(field.key));
+  function toggleField(key: string) {
+    const next = shownFields.includes(key) ? shownFields.filter((item) => item !== key) : [...shownFields, key];
+    setShownFields(next);
+    try { localStorage.setItem(SHOWN_FIELDS_KEY, JSON.stringify(next)); } catch { /* a remembered choice is a convenience only */ }
+  }
+  async function exportExcel() {
+    setExporting(true);
+    setMessage(null);
+    try {
+      const users = await loadAllUsers(usersQuery.filters);
+      const rows = exportRows(users, columnFields, language, {
+        name: t('admin.users.col.name', 'Name'), email: t('admin.users.col.email', 'Email'), role: t('admin.users.col.role', 'Role'), status: t('admin.users.col.status', 'Status'),
+        yes: t('userFields.yes'), no: t('userFields.no'), roleLabel: (role) => t(`admin.roles.options.${role}`, role), statusLabel: (status) => t(`admin.users.status.${status}`, status),
+      });
+      await downloadXlsxFile(`${t('userFields.exportFile')}.xlsx`, rows, t('userFields.exportFile'), { styled: true });
+    } catch {
+      setMessage(t('userFields.exportFailed'));
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')} navItems={navItems}>
     <AdminPageHeader
       eyebrow={t('admin.users.eyebrow', 'Access management')}
       title={t('admin.users.title', 'Users')}
       subtitle={t('admin.users.subtitle', 'Manage organization users and their roles.')}
-      action={<div className="td-actions"><a className="admin-btn admin-btn--secondary" href="/admin/users/import">{t('usersImport.button')}</a><button className="admin-btn admin-btn--primary" onClick={() => open('create')} type="button">{t('admin.users.createButton', 'Create user')}</button></div>}
+      action={<div className="td-actions"><a className="admin-btn admin-btn--secondary" href="/admin/user-fields">{t('userFields.settingsLink')}</a><a className="admin-btn admin-btn--secondary" href="/admin/users/import">{t('usersImport.button')}</a><button className="admin-btn admin-btn--primary" onClick={() => open('create')} type="button">{t('admin.users.createButton', 'Create user')}</button></div>}
     />
     <PendingInvitations />
-    <AdminUsersFilters filters={usersQuery.filters} onChange={usersQuery.setFilters} />
-    <AdminUsersTable selection={{ selectedKeys: bulk.selectedKeys, onChange: bulk.setSelectedKeys, selectedLabel: (count) => t('common.selectedCount', { count }), selectAllLabel: t('security.bulkSelectAllRows'), rowLabel: (user) => userName(user) }} batchActions={<BulkUserBar scope={bulk.scope} canArchive={canArchive} canSelectAll={bulk.canSelectAll} matching={bulk.matching} busy={bulk.busy} onAction={(action) => void bulk.start(action)} onSelectAll={bulk.selectAllMatching} onClear={bulk.clear} />} users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} onResetPassword={setPendingReset} onTemporaryPassword={setPendingTemporary} onRights={setRightsUser} onArchive={canArchive ? (user) => void startArchive(user) : undefined} onRestore={canArchive ? setPendingRestore : undefined} />
+    <AdminUsersFilters filters={usersQuery.filters} onChange={usersQuery.setFilters} fields={userFields.fields} />
+    <div className="td-actions">
+      {userFields.fields.length > 0 ? <details><summary>{t('userFields.columns')}</summary><div style={{ display: 'grid', gap: '0.25rem', padding: '0.5rem 0' }}>{userFields.fields.map((field) => <label key={field.key}><input type="checkbox" checked={shownFields.includes(field.key)} onChange={() => toggleField(field.key)} /> {fieldLabel(field, language)}</label>)}</div></details> : null}
+      <button className="admin-btn admin-btn--secondary" disabled={exporting} onClick={() => void exportExcel()} type="button">{exporting ? t('userFields.exporting') : t('userFields.exportExcel')}</button>
+    </div>
+    {message && mode === null ? <p className="admin-form__error" role="alert">{message}</p> : null}
+    <AdminUsersTable extraFields={columnFields} selection={{ selectedKeys: bulk.selectedKeys, onChange: bulk.setSelectedKeys, selectedLabel: (count) => t('common.selectedCount', { count }), selectAllLabel: t('security.bulkSelectAllRows'), rowLabel: (user) => userName(user) }} batchActions={<BulkUserBar scope={bulk.scope} canArchive={canArchive} canSelectAll={bulk.canSelectAll} matching={bulk.matching} busy={bulk.busy} onAction={(action) => void bulk.start(action)} onSelectAll={bulk.selectAllMatching} onClear={bulk.clear} />} users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} onResetPassword={setPendingReset} onTemporaryPassword={setPendingTemporary} onRights={setRightsUser} onArchive={canArchive ? (user) => void startArchive(user) : undefined} onRestore={canArchive ? setPendingRestore : undefined} />
     <BulkArchiveDialog pending={bulk.pendingArchive} error={bulk.error} onCancel={bulk.cancelArchive} onConfirm={() => void bulk.confirmArchive()} />
     {bulk.moveOpen ? <BulkMoveDialog open count={bulk.count} busy={bulk.busy} error={bulk.error} onCancel={bulk.cancelMove} onConfirm={(id) => void bulk.confirmMove(id)} /> : null}
     <BulkResultDialog report={bulk.report} names={bulk.names} onClose={bulk.closeReport} />
@@ -145,6 +192,6 @@ export function AdminUsersPage() {
     <ArchiveUserDialog pending={pendingArchive} error={archiveFailed} onCancel={() => setPendingArchive(null)} onConfirm={() => void confirmArchive()} />
     <ConfirmDialog open={pendingRestore !== null} title={t('security.restoreTitle')} message={pendingRestore ? t('security.restoreIntro', { name: userName(pendingRestore) }) : ''} confirmLabel={t('security.restoreAction')} cancelLabel={t('admin.users.cancel', 'Cancel')} onCancel={() => setPendingRestore(null)} onConfirm={() => void confirmRestore()} />
     <Pagination page={usersQuery.page} pageSize={loadedState.pageSize} total={loadedState.total} onPage={usersQuery.setPage} />
-    <AdminUserDialog open={mode !== null} mode={mode ?? 'create'} form={form} errors={errors} message={message} isSaving={mutations.isSaving} onChange={setForm} onErrorsChange={setErrors} onSubmit={(event) => void submit(event)} onClose={close} />
+    <AdminUserDialog fields={userFields.fields} open={mode !== null} mode={mode ?? 'create'} form={form} errors={errors} message={message} isSaving={mutations.isSaving} onChange={setForm} onErrorsChange={setErrors} onSubmit={(event) => void submit(event)} onClose={close} />
   </AdminPageLayout>;
 }

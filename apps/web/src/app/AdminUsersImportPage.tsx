@@ -6,6 +6,8 @@ import { useSession } from '../shared/session.js';
 import { DataTable, type Column } from '../shared/ui.js';
 import { importLimits, templateRows, toCsv, type ImportColumn, type ImportProblem } from '../features/admin-users-import/importFile.js';
 import { useUsersImport, type ImportRowState } from '../features/admin-users-import/useUsersImport.js';
+import { fieldLabel, languageOf } from '../features/user-fields/model.js';
+import { useUserFieldViews } from '../features/user-fields/useUserFieldViews.js';
 
 const shownProblems = 200;
 const locales = ['en', 'ru', 'kk', 'zh'] as const;
@@ -21,9 +23,13 @@ export function AdminUsersImportPage() {
     { label: t('usersImport.title'), href: '/admin/users/import', isCurrent: true },
   ];
   const fieldName = (column: ImportColumn) => t(`usersImport.columns.${column}`);
-  const flow = useUsersImport(currentUser?.organizationId ?? '', fieldName);
+  const userFields = useUserFieldViews('users');
+  const flow = useUsersImport(currentUser?.organizationId ?? '', fieldName, userFields.fields);
+  const fieldTitle = (key: unknown) => { const field = userFields.fields.find((item) => item.key === key); return field ? fieldLabel(field, languageOf(i18n.language)) : String(key); };
 
-  const text = (problem: ImportProblem) => problem.key === 'raw' ? String(problem.params?.['message'] ?? '') : t(`usersImport.problem.${problem.key}`, problem.params);
+  const text = (problem: ImportProblem) => problem.key === 'raw' ? String(problem.params?.['message'] ?? '')
+    : problem.key === 'field' ? t(`userFields.importProblem.${String(problem.params?.['kind'])}`, { field: fieldTitle(problem.params?.['field']) })
+    : t(`usersImport.problem.${problem.key}`, problem.params);
   const bad = flow.rows.filter((row) => row.status === 'bad');
   const ok = flow.rows.filter((row) => row.status === 'ok');
   const created = flow.rows.filter((row) => row.status === 'created');
@@ -37,7 +43,7 @@ export function AdminUsersImportPage() {
   ];
 
   function downloadTemplate(kind: 'xlsx' | 'csv') {
-    const rows = templateRows(locale);
+    const rows = templateRows(locale, userFields.fields);
     const name = t('usersImport.templateFile');
     if (kind === 'csv') downloadCsvFile(`${name}.csv`, toCsv(rows));
     else void downloadXlsxFile(`${name}.xlsx`, rows, name, { styled: true });
@@ -55,6 +61,7 @@ export function AdminUsersImportPage() {
     <AdminCard>
       <h2>{t('usersImport.templateTitle')}</h2>
       <p>{t('usersImport.templateHint')}</p>
+      {userFields.fields.some((field) => field.editable !== false) ? <p>{t('userFields.importFields', { names: userFields.fields.filter((field) => field.editable !== false).map((field) => fieldLabel(field, languageOf(i18n.language))).join(', ') })}</p> : null}
       <p>{t('usersImport.limits', { rows: importLimits.maxRows, mb: importLimits.maxFileBytes / 1024 / 1024, batch: importLimits.batchSize })}</p>
       <div className="td-actions">
         <button className="admin-btn admin-btn--secondary" type="button" onClick={() => downloadTemplate('xlsx')}>{t('usersImport.templateXlsx')}</button>

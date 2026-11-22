@@ -85,13 +85,13 @@ export function revokeAllUserSessions(userId: string) {
 }
 
 /** PR 496: the fields a person edits in their own profile; `version` is the one last read (a different one is a 409). */
-export type OwnProfile = { phone: string | null; locale: string; timezone: string; aboutMe: string | null; hasPhoto: boolean; version: number };
+export type OwnProfile = { phone: string | null; locale: string; timezone: string; aboutMe: string | null; hasPhoto: boolean; version: number; /** PR 500: custom field values the person may see. */ customFields?: Record<string, string | number | boolean> };
 
 export function getOwnProfile() {
   return apiRequest<OwnProfile>('/auth/me/profile');
 }
 
-export function updateOwnProfile(input: { version: number; phone?: string | null; timezone?: string; aboutMe?: string | null }) {
+export function updateOwnProfile(input: { version: number; phone?: string | null; timezone?: string; aboutMe?: string | null; customFields?: Record<string, string | boolean | null> }) {
   return apiRequest<OwnProfile>('/auth/me/profile', { method: 'PATCH', body: JSON.stringify(input) });
 }
 

@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const api = vi.hoisted(() => ({ getOwnProfile: vi.fn(), updateOwnProfile: vi.fn(), uploadOwnPhoto: vi.fn(), removeOwnPhoto: vi.fn() }));
 const client = vi.hoisted(() => ({
   apiDownloadRequest: vi.fn(),
+  apiRequest: vi.fn(),
   ApiClientError: class ApiClientError extends Error { constructor(message: string, readonly status: number) { super(message); } },
 }));
 const refreshUser = vi.hoisted(() => vi.fn());
@@ -46,6 +47,7 @@ describe('OwnProfileCard (PR 496)', () => {
     api.uploadOwnPhoto.mockReset();
     api.removeOwnPhoto.mockReset();
     client.apiDownloadRequest.mockReset();
+    client.apiRequest.mockReset().mockResolvedValue({ items: [] });
     refreshUser.mockReset();
   });
 
@@ -58,6 +60,22 @@ describe('OwnProfileCard (PR 496)', () => {
     expect(api.updateOwnProfile).toHaveBeenCalledWith({ version: 4, phone: '+77011234567', timezone: 'Asia/Almaty', aboutMe: 'Кладовщик' });
     expect(refreshUser).toHaveBeenCalled();
     expect(view.textContent).toContain('Профиль сохранён.');
+  });
+
+  it('shows the custom fields the person may see, edits only their own editable ones and sends just the change (PR 500)', async () => {
+    const labels = (ru: string) => ({ ru, en: ru, kk: ru, zh: ru });
+    client.apiRequest.mockResolvedValue({ items: [
+      { key: 'telegram', labels: labels('Telegram'), type: 'phone', required: false, unique: false, searchable: false, options: null, sortOrder: 1, editable: true },
+      { key: 'hire_date', labels: labels('Дата приёма'), type: 'date', required: false, unique: false, searchable: false, options: null, sortOrder: 2, editable: false },
+    ] });
+    api.getOwnProfile.mockResolvedValue({ ...profile, customFields: { telegram: '+77010000000', hire_date: '2026-01-02' } });
+    const view = await render();
+    expect(view.textContent).toContain('Дополнительные данные');
+    expect((view.querySelector('#own-field-hire_date') as HTMLInputElement).disabled).toBe(true);
+    expect((view.querySelector('#own-field-hire_date') as HTMLInputElement).value).toBe('2026-01-02');
+    await type(view, '#own-field-telegram', '+77019998877');
+    await submit(view);
+    expect(api.updateOwnProfile).toHaveBeenCalledWith(expect.objectContaining({ version: 4, customFields: { telegram: '+77019998877' } }));
   });
 
   it('refuses a bad phone number before sending anything', async () => {
