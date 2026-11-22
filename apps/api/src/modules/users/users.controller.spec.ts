@@ -5,6 +5,7 @@ import type { AuthenticatedRequest } from '../auth/auth.guard';
 import { OrganizationScopeGuard } from '../auth/organization-scope.guard';
 import { rolePolicies, rolesMetadataKey } from '../auth/roles';
 import { RolesGuard } from '../auth/roles.guard';
+import type { UsersBulkService } from './users-bulk.service.js';
 import { UsersController } from './users.controller';
 import { CreateUserInput } from './users.schemas';
 import { UsersService } from './users.service';
@@ -39,7 +40,7 @@ describe('UsersController', () => {
 
       return { id: 'user-id', ...input };
     };
-    const controller = new UsersController({ createUser } as unknown as UsersService);
+    const controller = new UsersController({ createUser } as unknown as UsersService, {} as UsersBulkService);
 
     const result = controller.createUser(createUserInput, mockRequest);
 
@@ -74,7 +75,7 @@ describe('UsersController', () => {
 
       return { id: userId, status };
     };
-    const controller = new UsersController({ updateUserStatus } as unknown as UsersService);
+    const controller = new UsersController({ updateUserStatus } as unknown as UsersService, {} as UsersBulkService);
 
     const userId = '22222222-2222-2222-2222-222222222222';
     const result = controller.updateUserStatus(userId, { status: 'suspended' }, mockRequest);

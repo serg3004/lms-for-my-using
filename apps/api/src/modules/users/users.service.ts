@@ -84,10 +84,10 @@ export class UsersService {
     this.invitationScope = new OrganizationAccessScopeService(prisma, teamScope);
   }
 
-  async listUsers(actor: TeamScopeActor, page: number, pageSize: number, search?: string, status?: ListUsersQuery['status']) {
-    const skip = (page - 1) * pageSize;
+  /** The users a list request (and a bulk action on "everyone matching the filter") reaches: the actor's scope plus search and status. */
+  async listWhere(actor: TeamScopeActor, search?: string, status?: ListUsersQuery['status']) {
     const registrar = await this.registrars.resolve(actor);
-    const where = {
+    return {
       organizationId: actor.organizationId,
       ...this.teamScope.user(actor),
       ...this.registrars.readWhere(registrar, actor.organizationId),
@@ -103,6 +103,11 @@ export class UsersService {
           }
         : {}),
     };
+  }
+
+  async listUsers(actor: TeamScopeActor, page: number, pageSize: number, search?: string, status?: ListUsersQuery['status']) {
+    const skip = (page - 1) * pageSize;
+    const where = await this.listWhere(actor, search, status);
     const [items, total] = await Promise.all([
       this.prisma.user.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: pageSize, select: userSelect }),
       this.prisma.user.count({ where }),
@@ -596,6 +601,11 @@ export class UsersService {
     if (user.status === 'archived' && status === 'suspended') {
       throw new ConflictException('An archived user must be restored before being blocked');
     }
+    // PR 497: nobody blocks themselves or the last active administrator (archiving is checked below).
+    if (status === 'suspended' && user.status !== 'suspended') {
+      if (userId === actor.id) throw new ConflictException('You cannot block yourself');
+      if (await this.isLastActiveAdmin(userId, organizationId)) throw new ConflictException('The last active administrator cannot be blocked');
+    }
     if (archiving && user.status !== 'archived') {
       if (userId === actor.id) throw new ConflictException('You cannot archive yourself');
       if (await this.isLastActiveAdmin(userId, organizationId)) throw new ConflictException('The last active administrator cannot be archived');
@@ -648,7 +658,7 @@ export class UsersService {
   }
 
   /** True when the user is the only active administrator of the organization (archiving them would lock everyone out). */
-  private async isLastActiveAdmin(userId: string, organizationId: string): Promise<boolean> {
+  async isLastActiveAdmin(userId: string, organizationId: string): Promise<boolean> {
     const isAdmin = await this.prisma.membership.count({ where: { organizationId, userId, role: 'admin' } });
     if (isAdmin === 0) return false;
     const others = await this.prisma.membership.count({

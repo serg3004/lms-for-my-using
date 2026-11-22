@@ -1812,6 +1812,21 @@ the email reserved for the same record (no second record with that email). Only 
 `status: "active"` on an archived user restores them; a person who never signed in and has an invitation returns to `invited` and
 receives a fresh invitation (`invitation` in the answer). Audit: `user.archived`, `user.restored`. `GET /users?status=archived` lists the archive.
 
+PR 497 -- bulk actions. `POST /users/bulk-actions` takes `{ action, userIds | filter, departmentId?, confirm? }` with `action` one of `suspend`,
+`activate`, `archive`, `move` (needs `departmentId`) and `resend` (a new invitation). The target is exactly one of `userIds` (1-200) or
+`filter: { search?, status? }` ("everyone matching the list filter" inside the caller's scope; more than 500 matches is `400`). The answer is
+`{ action, summary: { requested, done, unchanged, failed }, items: [{ userId, status, reason? }] }` with `status` one of `done`, `unchanged`
+(already in the target state: repeating a batch changes nothing), `notFound` (also out of the caller's team scope), `forbidden`, `conflict`,
+`rateLimited`, `failed`, and `reason` one of `self`, `lastAdmin`, `archived`, `adminOnly`, `invited`. A refusal for one person never stops the
+others. Every person goes through the same rules as `PATCH /users/{id}/status`: nobody blocks or archives themselves, and the last active
+administrator can be neither blocked nor archived (this guard now also applies to the single-user route). `archive` is administrator-only (a manager gets `403`)
+and needs `confirm: true` (`409` without it); `POST /users/bulk-actions/impact` with the same target returns the summed impact
+`{ users, observerSessions, soleInstructorCourses (count), openAssignments, subordinates, managedDepartments }` for the confirmation. `move` closes
+the person's current primary department membership today and opens the new one (the department must be active and inside the caller's area;
+`404`/`403` otherwise); an archived person is `conflict` with reason `archived`. Audit: the single-user actions keep their own records
+(`user.status_changed`, `user.archived`, `user.restored`, `user.department_changed` for `move`) and every batch adds one `user.bulk_action`
+(action, counts, selection or filter, department).
+
 When an `active` user becomes `suspended` and has at least one unfinished session, one
 `checklist_session_observer_deactivated` notice and one `checklists.observer-deactivated-notify`
 outbox event are written per active admin of the organization, in the same transaction as the status

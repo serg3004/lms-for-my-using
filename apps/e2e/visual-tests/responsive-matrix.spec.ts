@@ -23,6 +23,7 @@ import { freshReportState, installReportMocks } from '../fixtures/checklist-inst
 import { freshRolesState, installCustomRolesMocks, registrar } from '../fixtures/custom-roles.js';
 import { importFileCsv, installUsersImportMocks } from '../fixtures/users-import.js';
 import { installLoginJournalMocks, journalUserId } from '../fixtures/login-journal.js';
+import { installUserBulkMocks } from '../fixtures/user-bulk-actions.js';
 import { installUserProfileMocks } from '../fixtures/user-profile.js';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -116,6 +117,18 @@ for (const width of [390, 1280]) test(`own profile card is responsive at ${width
   await card.scrollIntoViewIfNeeded();
   await expectNoPageOverflow(page);
   await expectVisualMatch(page, `own-profile-${width}`, false, { maxDiffPixels: 3000 });
+});
+
+for (const width of [390, 1280]) test(`users bulk bar and report are responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installUserBulkMocks(page);
+  await page.goto('/admin/users');
+  await page.getByRole('checkbox', { name: 'Выбрать все строки на странице' }).check();
+  await page.getByRole('button', { name: 'Выбрать всех, подходящих под фильтр: 45' }).waitFor();
+  await page.getByRole('button', { name: 'Заблокировать' }).click();
+  await page.getByRole('dialog', { name: 'Результат' }).getByText('Запрошено').waitFor();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `users-bulk-result-${width}`, false, { maxDiffPixels: 3000 });
 });
 
 for (const width of [390, 1280]) test(`user rights dialog is responsive at ${width}px`, async ({ page }) => {

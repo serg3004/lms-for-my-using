@@ -108,3 +108,36 @@ export const importUserItemSchema = createBulkUserItemSchema.extend({
   department: z.string().trim().min(1).max(160).optional(),
   role: z.string().trim().min(1).max(40).optional(),
 });
+
+/** PR 497: the most people one bulk action may touch ("everyone matching the filter" is refused above this). */
+export const bulkActionMaxUsers = 500;
+export const bulkActionExplicitMaxUsers = 200;
+
+const bulkTargetSchema = z.object({
+  /** Chosen rows; or `filter` for "everyone matching the current list filter". Exactly one of the two. */
+  userIds: z.array(invitationUserIdSchema).min(1).max(bulkActionExplicitMaxUsers).transform((ids) => [...new Set(ids)]).optional(),
+  filter: z.object({ search: listUsersQuerySchema.shape.search, status: userStatusSchema.optional() }).strict().optional(),
+});
+
+const oneTarget = (input: { userIds?: unknown; filter?: unknown }) => (input.userIds === undefined) !== (input.filter === undefined);
+const oneTargetMessage = { message: 'Send either userIds or filter', path: ['userIds'] };
+
+export const bulkActionNames = ['suspend', 'activate', 'archive', 'move', 'resend'] as const;
+
+export const bulkActionSchema = bulkTargetSchema
+  .extend({
+    action: z.enum(bulkActionNames),
+    /** `move`: the department the people are placed in (their current primary department is closed). */
+    departmentId: z.guid().optional(),
+    /** `archive` goes through only after the administrator has seen the summed impact. */
+    confirm: z.boolean().optional(),
+  })
+  .strict()
+  .refine(oneTarget, oneTargetMessage)
+  .refine((input) => (input.action === 'move') === (input.departmentId !== undefined), { message: 'departmentId is for the move action only and is required there', path: ['departmentId'] });
+
+export const bulkImpactSchema = bulkTargetSchema.strict().refine(oneTarget, oneTargetMessage);
+
+export type BulkActionInput = z.infer<typeof bulkActionSchema>;
+export type BulkImpactInput = z.infer<typeof bulkImpactSchema>;
+export type BulkActionName = (typeof bulkActionNames)[number];

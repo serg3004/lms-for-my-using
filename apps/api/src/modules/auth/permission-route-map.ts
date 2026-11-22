@@ -242,4 +242,6 @@ export const permissionRouteMap: Readonly<Record<string, readonly PermissionActi
   'UsersController.revokeUserSession': ['user.reset-password'],
   'UsersController.revokeAllUserSessions': ['user.reset-password'],
   'UsersController.updateUserStatus': ['user.deactivate'],
+  'UsersController.runBulkAction': ['user.deactivate'],
+  'UsersController.bulkImpact': ['user.deactivate'],
 };
