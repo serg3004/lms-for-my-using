@@ -16,7 +16,9 @@ const assetDirectory = new URL('../dist/assets/', import.meta.url);
 // header/row grid with its card layout needed ~700 B.
 // Bumped 94 KiB -> 95 KiB for the preview device frame (PR 458): the budget had 13 B left; the frame, the toolbar and the touch sizes
 // of a tablet/phone needed ~480 B. The two panel rules (width, margin) moved to the frame instead of being duplicated.
-const maximumCssBytes = 95 * 1024;
+// PR 504 adds an 875 B stylesheet for the QR sheet preview and print layout.
+// The existing bundle occupied 97,155 B, leaving 125 B under the previous cap.
+const maximumCssBytes = 96 * 1024;
 
 const cssAssets = (await readdir(assetDirectory)).filter((file) => file.endsWith('.css'));
 

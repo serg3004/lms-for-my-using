@@ -354,6 +354,7 @@ enum ChecklistScaleStatus {
 }
 
 model Organization {
+  activationQrCode String? @unique @map("activation_qr_code")
   id                         String                      @id @default(uuid()) @db.Uuid
   name                       String
   slug                       String                      @unique
@@ -569,6 +570,7 @@ model PasswordHistory {
 }
 
 model UserInvitation {
+  activationQr Boolean @default(false) @map("activation_qr")
   id             String    @id @default(uuid()) @db.Uuid
   userId         String    @map("user_id") @db.Uuid
   organizationId String    @map("organization_id") @db.Uuid
@@ -705,6 +707,7 @@ model DepartmentType {
 }
 
 model Department {
+  activationQrCode String? @unique @map("activation_qr_code")
   id                    String                 @id @default(uuid()) @db.Uuid
   organizationId        String                 @map("organization_id") @db.Uuid
   parentId              String?                @map("parent_id") @db.Uuid

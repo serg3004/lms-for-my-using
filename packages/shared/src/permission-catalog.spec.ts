@@ -19,7 +19,7 @@ describe('permission catalog', () => {
 
   it('offers only delegable actions for custom roles', () => {
     const keys = delegablePermissionActions().map((item) => item.key);
-    const builtInOnly = ['checklist.access.settings', 'user.invitation.manage'];
+    const builtInOnly = ['checklist.access.settings', 'user.invitation.manage', 'user.activation-qr.shared'];
     expect(keys).toEqual(PERMISSION_ACTIONS.map((item) => item.key).filter((key) => !builtInOnly.includes(key)));
     for (const capability of NON_DELEGABLE_CAPABILITIES) expect(keys).not.toContain(capability);
   });

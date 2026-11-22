@@ -43,6 +43,8 @@ const publicOperations = new Set([
   'GET /api/v1/health/live',
   'GET /api/v1/health/ready',
   'POST /api/v1/auth/login',
+  'POST /api/v1/auth/activate',
+  'POST /api/v1/auth/activate/qr',
   'POST /api/v1/auth/refresh',
   'POST /api/v1/auth/password-reset/request',
   'POST /api/v1/auth/reset-password-request',

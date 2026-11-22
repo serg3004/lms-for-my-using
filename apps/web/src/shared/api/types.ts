@@ -19,6 +19,8 @@ export type EmployeeLoginInput = {
   password: string;
 };
 
+export type ActivationQr = { kind: 'personal' | 'shared'; token: string };
+
 /** PR 501: confirms the card data and sets the first password. */
 export type IdentityActivationInput = {
   organizationId: string;
@@ -27,6 +29,7 @@ export type IdentityActivationInput = {
   firstName: string;
   middleName?: string;
   password: string;
+  qr?: ActivationQr;
 };
 
 export type CurrentUser = {

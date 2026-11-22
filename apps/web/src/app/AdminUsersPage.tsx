@@ -196,6 +196,6 @@ export function AdminUsersPage() {
     <ArchiveUserDialog pending={pendingArchive} error={archiveFailed} onCancel={() => setPendingArchive(null)} onConfirm={() => void confirmArchive()} />
     <ConfirmDialog open={pendingRestore !== null} title={t('security.restoreTitle')} message={pendingRestore ? t('security.restoreIntro', { name: userName(pendingRestore) }) : ''} confirmLabel={t('security.restoreAction')} cancelLabel={t('admin.users.cancel', 'Cancel')} onCancel={() => setPendingRestore(null)} onConfirm={() => void confirmRestore()} />
     <Pagination page={usersQuery.page} pageSize={loadedState.pageSize} total={loadedState.total} onPage={usersQuery.setPage} />
-    <AdminUserDialog fields={userFields.fields} open={mode !== null} mode={mode ?? 'create'} form={form} errors={errors} message={message} isSaving={mutations.isSaving} onChange={setForm} onErrorsChange={setErrors} onSubmit={(event) => void submit(event)} onClose={close} />
+    <AdminUserDialog activationQrUserId={mode === 'edit' ? usersQuery.users.find((user) => user.id === form.id && user.status === 'invited')?.id : undefined} fields={userFields.fields} open={mode !== null} mode={mode ?? 'create'} form={form} errors={errors} message={message} isSaving={mutations.isSaving} onChange={setForm} onErrorsChange={setErrors} onSubmit={(event) => void submit(event)} onClose={close} />
   </AdminPageLayout>;
 }

@@ -6,6 +6,10 @@
 >
 > **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
 
+## Activation QR migration (PR 504)
+
+Migration `20261123090000_activation_qr` adds a personal QR flag to `user_invitations` and nullable shared code columns with unique indexes to `organizations` and `departments`. Existing invitations keep their email-link behavior. Shared codes are initially unset and issued by an administrator. The migration is additive and needs no data backfill. Apply it before deploying the QR-enabled API.
+
 ## Checklist block appearance migration (PR 422)
 
 `20261105130000_checklist_appearance` is additive and backward-compatible:

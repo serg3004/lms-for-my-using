@@ -102,6 +102,7 @@ export const PERMISSION_ACTIONS = [
   action('user.deactivate', 'users', ['department', 'organization'], l('Блокировать и возвращать пользователей', 'Suspend and reactivate users', 'Пайдаланушыларды бұғаттау және қайтару', '停用和恢复用户'), ['user.read']),
   action('user.reset-password', 'users', ['department', 'organization'], l('Сбрасывать пароль пользователям', 'Reset users\' passwords', 'Пайдаланушылардың құпиясөзін қалпына келтіру', '重置用户密码'), ['user.read']),
   action('user.invitation.manage', 'users', ORG, l('Управлять приглашениями', 'Manage invitations', 'Шақыруларды басқару', '管理邀请'), [], false),
+  action('user.activation-qr.shared', 'users', ORG, l('Управлять общими QR активации', 'Manage shared activation QR codes', 'Ортақ белсендіру QR кодтарын басқару', '管理通用激活二维码'), [], false),
   // Stays with the system role: it decides who may act as an observer, which is an access setting.
   action('checklist.access.settings', 'checklists', ORG, l('Менять, кто может быть наблюдателем', 'Change who may be an observer', 'Бақылаушы кім бола алатынын өзгерту', '更改谁可以担任观察员'), [], false),
 ] as const satisfies readonly PermissionAction[];

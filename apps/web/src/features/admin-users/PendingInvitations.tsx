@@ -1,3 +1,4 @@
+import { ActivationQrSheet } from './ActivationQrSheet.js';
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -9,6 +10,7 @@ import { useAsyncData } from '../../shared/useAsyncData.js';
 
 type Invitation = {
   id: string;
+  canIssueActivationQr?: boolean;
   firstName: string;
   lastName: string;
   middleName: string | null;
@@ -151,9 +153,9 @@ function PendingInvitationsList({ busy, setBusy, organizationId, canEnableTelegr
           selectAllLabel: t(`${keys}.selectAll`), rowLabel: (user) => t(`${keys}.selectUser`, { name: nameOf(user) }),
           selectedLabel: (count) => t(`${keys}.selected`, { count }),
         }}
-        batchActions={(users) => <button className="admin-btn" type="button" disabled={busy} onClick={() => void run('batch', users)}>
+        batchActions={(users) => <>{users.some((user) => user.canIssueActivationQr) && <ActivationQrSheet key={users.map(({ id }) => id).join(',')} userIds={users.filter((user) => user.canIssueActivationQr).map(({ id }) => id)} />}<button className="admin-btn" type="button" disabled={busy} onClick={() => void run('batch', users)}>
           {t(`${keys}.resendSelected`)}
-        </button>}
+        </button></>}
         responsiveDetails={{ label: t('courses.details'), expandLabel: (user) => `${t('courses.details')}: ${nameOf(user)}`, collapseLabel: (user) => `${t('courses.details')}: ${nameOf(user)}` }} />
       <Pagination page={page} pageSize={data.pageSize} total={data.total} onPage={(next) => {
         if (busy) return;

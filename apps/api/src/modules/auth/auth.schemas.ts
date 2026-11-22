@@ -28,6 +28,11 @@ export const employeeLoginSchema = z.object({
   password: z.string().min(1).max(255),
 }).strict();
 
+export const activationQrSchema = z.object({
+  token: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  kind: z.enum(['personal', 'shared']),
+}).strict();
+
 /** PR 501: a person without a mailbox confirms who they are and sets the first password. */
 export const identityActivationSchema = z.object({
   organizationId: organizationLoginSchema,
@@ -36,6 +41,7 @@ export const identityActivationSchema = z.object({
   firstName: z.string().trim().min(1).max(80),
   middleName: z.string().trim().max(80).optional(),
   password: newPasswordSchema,
+  qr: activationQrSchema.optional(),
 }).strict();
 
 export const passwordResetRequestSchema = z.object({

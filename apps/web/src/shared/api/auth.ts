@@ -1,3 +1,4 @@
+import type { ActivationQr } from './types.js';
 import { apiRequest } from '../apiClient.js';
 
 import type {
@@ -34,6 +35,14 @@ export function requestPasswordReset(input: PasswordResetRequestInput) {
   return apiRequest<PasswordResetAcceptedResponse>('/auth/password-reset/request', {
     method: 'POST',
     body: JSON.stringify(input),
+  });
+}
+
+export function inspectActivationQr(qr: ActivationQr, signal: AbortSignal) {
+  return apiRequest<{ organizationId: string; organizationName: string }>('/auth/activate/qr', {
+    method: 'POST',
+    body: JSON.stringify(qr),
+    signal,
   });
 }
 

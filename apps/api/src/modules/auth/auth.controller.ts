@@ -20,6 +20,7 @@ import {
   changePasswordSchema,
   employeeLoginSchema,
   identityActivationSchema,
+  activationQrSchema,
   loginSchema,
   invitationAcceptSchema,
   passwordResetConfirmSchema,
@@ -133,6 +134,12 @@ export class AuthController {
   confirmPasswordReset(@Body() body: unknown) {
     const input = passwordResetConfirmSchema.parse(body);
     return this.authService.confirmPasswordReset(input);
+  }
+
+  @Post('activate/qr')
+  @PublicAccess()
+  inspectActivationQr(@Body() body: unknown) {
+    return this.authService.inspectActivationQr(activationQrSchema.parse(body));
   }
 
   @Post('activate')
