@@ -159,7 +159,8 @@ const metricCells = (row: Pick<Metrics, 'completionPercentage' | 'averagePercent
 
 type SheetsOverview = {
   total: { guests?: { completed: number; averagePercentage: number | null }; scales: ScaleLike[]; plan: { planned: number; completed: number; overdue: number }; completionPercentage: number | null; averagePercentage: number | null; criteria: { total: number; answered: number; skipped: number; remaining: number }; queue: { notStarted: number } };
-  sheets: Array<SheetsOverview['total'] & { checklistId: string; title: string }>;
+  fieldColumn?: string;
+  sheets: Array<SheetsOverview['total'] & { checklistId: string; title: string; fieldLabel?: string }>;
 };
 
 /** Pure: the sheets table of the screen, a total row and the level distribution of the total. */
@@ -169,8 +170,8 @@ export function sheetsExportRows(data: SheetsOverview, locale: Locale): ReportCe
     row.criteria.answered, row.criteria.answered + row.criteria.remaining + row.criteria.skipped, row.queue.notStarted,
   ];
   return [
-    [...HEADERS.sheets[locale]],
-    ...data.sheets.map((row) => line(plainText(row.title), row)),
+    [...HEADERS.sheets[locale], ...(data.fieldColumn ? [data.fieldColumn] : [])],
+    ...data.sheets.map((row) => [...line(plainText(row.title), row), ...(data.fieldColumn ? [row.fieldLabel ?? ''] : [])]),
     line(t('total', locale), data.total),
     // PR 468: guests (no account) are inside the total; their own line says how many and with what average.
     ...(data.total.guests && data.total.guests.completed > 0
@@ -235,13 +236,13 @@ export class ChecklistAnalyticsExport {
     // Data rows only: the total row and the level block under the table are not counted.
     let rowCount: number;
     if (query.view === 'sheets') {
-      const overview = await this.sheets.overview(organizationId, actor, userScope, { ...filters, checklistIds: query.checklistIds });
-      if (overview.sheets.length > MAX_EXPORT_ROWS) throw new BadRequestException(`The export is limited to ${MAX_EXPORT_ROWS} checklists. Narrow the filters.`);
+      const overview = await this.sheets.overview(organizationId, actor, userScope, { ...filters, fieldFilters: query.fieldFilters, groupByField: query.groupByField, checklistIds: query.checklistIds });
+      if ((query.groupByField && overview.truncated) || overview.sheets.length > MAX_EXPORT_ROWS) throw new BadRequestException(`The export is limited to ${MAX_EXPORT_ROWS} checklists. Narrow the filters.`);
       table = sheetsExportRows(overview as unknown as SheetsOverview, locale);
       rowCount = overview.sheets.length;
     } else {
       const sheetId = query.checklistId!;
-      const cut = (by: 'criteria' | 'groups' | 'feedback' | 'notes') => this.items.items(organizationId, actor, userScope, sheetId, { ...filters, by, page: 1, itemId: query.itemId }, { allNotes: true }) as Promise<CutResult>;
+      const cut = (by: 'criteria' | 'groups' | 'feedback' | 'notes') => this.items.items(organizationId, actor, userScope, sheetId, { ...filters, fieldFilters: query.fieldFilters, by, page: 1, itemId: query.itemId }, { allNotes: true }) as Promise<CutResult>;
       if (query.view === 'criteria' || query.view === 'groups') {
         const [main, groups] = await Promise.all([cut(query.view), query.view === 'criteria' ? cut('groups') : Promise.resolve(null)]);
         const source = (query.view === 'criteria' ? main.criteria : main.groups) as ItemRow[];

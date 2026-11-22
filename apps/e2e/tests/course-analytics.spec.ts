@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 
 import { expect, test } from '@playwright/test';
 
+import { installAnalyticsUserFieldMocks } from '../fixtures/analytics-user-fields.js';
 import { courseA, forbiddenUser, installCourseAnalyticsMocks, missingCourse, userA } from '../fixtures/course-analytics.js';
 
 const roles = [
@@ -100,4 +101,26 @@ test('each view downloads Excel and CSV with the filters of the screen, a grey h
   const [person] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Скачать Excel' }).click()]);
   expect((await open(person, 'По пользователю')).getCell('C3').value).toBe('Тест не проходил');
   expect(requests.filter((url) => url.pathname.endsWith('/export')).at(-1)?.searchParams.get('userId')).toBe(userA);
+});
+
+for (const width of [390, 1280]) test(`user field filters reach course analytics and exports at ${width}px`, async ({ page }) => {
+  const requests = await installCourseAnalyticsMocks(page, 'manager');
+  await installAnalyticsUserFieldMocks(page);
+  await page.setViewportSize({ width, height: 900 });
+  await page.goto('/manager/reports/courses');
+  const fields = page.getByRole('group', { name: 'Поля пользователя' });
+  await fields.getByRole('combobox', { name: 'Поле', exact: true }).selectOption('work_schedule');
+  await fields.getByRole('combobox', { name: 'Значение', exact: true }).selectOption('2-2');
+  await fields.getByRole('button', { name: 'Применить' }).click();
+  await expect.poll(() => requests.at(-1)?.searchParams.get('fieldFilters')).toBe('[["work_schedule","2-2"]]');
+  await fields.getByRole('combobox', { name: 'Группировать по', exact: true }).selectOption('work_schedule');
+  await expect.poll(() => requests.at(-1)?.searchParams.get('groupByField')).toBe('work_schedule');
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Скачать CSV', exact: true }).click();
+  await download;
+  expect(requests.at(-1)?.searchParams.get('fieldFilters')).toBe('[["work_schedule","2-2"]]');
+  expect(requests.at(-1)?.searchParams.get('groupByField')).toBe('work_schedule');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await fields.getByRole('button', { name: 'Сбросить' }).click();
+  await expect.poll(() => requests.at(-1)?.searchParams.has('fieldFilters')).toBe(false);
 });

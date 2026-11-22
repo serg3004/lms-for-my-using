@@ -1,3 +1,4 @@
+import { analyticsFieldFilter } from '../user-fields/public.js';
 import { NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 
@@ -196,7 +197,10 @@ export class ChecklistItemAnalytics {
     if (!accessible.some((sheet) => sheet.id === checklistId)) throw new NotFoundException('Checklist not found');
     const from = new Date(query.from);
     const to = new Date(query.to);
-    const employeeFilter = analyticsEmployeeFilter(organizationId, userScope, query);
+    const fieldScope = await analyticsFieldFilter(this.prisma, organizationId, actor.roles, query.fieldFilters);
+    const employeeFilter = analyticsEmployeeFilter(
+      organizationId, query.fieldFilters ? { AND: [userScope, fieldScope] } : userScope, query,
+    );
     const person = { select: { firstName: true, lastName: true } } as const;
     const instanceSelect = {
       completedAt: true, templateSnapshot: true, user: person,

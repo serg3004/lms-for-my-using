@@ -1,3 +1,4 @@
+import { analyticsFieldFilter } from '../user-fields/public.js';
 import { plainText } from '@lms/shared/rich-text';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -1804,7 +1805,9 @@ export class ChecklistsService {
     query: ChecklistManagerAnalyticsQuery,
     userScope: Prisma.UserWhereInput,
     orgThresholds: { high: number; low: number | null },
+    roles: readonly string[] = [],
   ) {
+    const fieldScope = await analyticsFieldFilter(this.prisma, organizationId, roles, query.fieldFilters);
     // PR 397: sheets with their own thresholds colour their results by those; a view of a single sheet uses them throughout.
     // Averages across several sheets are compared by percentage and banded by the organization's thresholds.
     const sheetThresholds = new Map((await this.prisma.checklist.findMany({
@@ -1819,7 +1822,7 @@ export class ChecklistsService {
     // Departments are derived from the already scoped employees (participantLearnerScope), so a manager
     // only ever sees departments of their own zone and never gains admin-level org structure access.
     const scopedEmployees = await this.prisma.user.findMany({
-      where: { organizationId, deletedAt: null, ...userScope },
+      where: { organizationId, deletedAt: null, ...(query.fieldFilters ? { AND: [userScope, fieldScope] } : userScope) },
       select: {
         id: true, firstName: true, lastName: true, email: true,
         departmentMemberships: {
@@ -2070,9 +2073,11 @@ export class ChecklistsService {
     userScope: Prisma.UserWhereInput,
     thresholds: { high: number; low: number | null },
     actor: { id: string; locale: string | null },
+    roles: readonly string[] = [],
   ) {
     const { table: tableKind = 'employees', q, noCompletion, performance, sort, dir, format = 'csv', ...analyticsQuery } = query;
-    const analytics = await this.getManagerAnalytics(organizationId, analyticsQuery, userScope, thresholds);
+    const { fieldFilters, ...auditableFilters } = analyticsQuery;
+    const analytics = await this.getManagerAnalytics(organizationId, { ...auditableFilters, fieldFilters }, userScope, thresholds, roles);
     const employeeRows = tableKind === 'employees' ? viewEmployees(analytics.employees, { q, noCompletion, performance, sort, dir }) : [];
     const rowCount = tableKind === 'managers' ? analytics.managers.length : employeeRows.length;
     if (rowCount > MAX_EXPORT_ROWS) {
@@ -2085,7 +2090,7 @@ export class ChecklistsService {
       action: 'checklist_report.exported',
       targetType: 'checklist_report',
       summary: `Exported ${rowCount} ${tableKind} of the checklist dashboard to ${format.toUpperCase()}`,
-      metadata: { kind: tableKind === 'managers' ? 'manager_managers' : 'manager_employees', format, rowCount, filters: performance && tableKind === 'employees' ? { ...analyticsQuery, performance } : analyticsQuery },
+      metadata: { kind: tableKind === 'managers' ? 'manager_managers' : 'manager_employees', format, rowCount, filters: performance && tableKind === 'employees' ? { ...auditableFilters, performance } : auditableFilters },
     });
     return { filename: `checklist-${tableKind}-${new Date().toISOString().slice(0, 10)}.csv`, csv: serializeReportCsv(table), rows: table, rowCount };
   }

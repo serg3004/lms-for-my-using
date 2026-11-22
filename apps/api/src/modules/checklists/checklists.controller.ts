@@ -225,6 +225,7 @@ export class ChecklistsController {
       checklistManagerAnalyticsQuerySchema.parse(rawQuery),
       scope,
       { high: settings.highPerformanceThreshold, low: settings.lowThreshold },
+      user.roles,
     );
   }
 
@@ -242,6 +243,7 @@ export class ChecklistsController {
       scope,
       { high: settings.highPerformanceThreshold, low: settings.lowThreshold },
       { id: user.id, locale: user.locale },
+      user.roles,
     );
   }
 

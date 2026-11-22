@@ -48,6 +48,7 @@ export function sendManagerOverdueReminders(assignmentIds: string[]) {
 // ---- PR 299: manager checklist analytics (`/manager/checklists`) ----
 
 export type ManagerChecklistAnalyticsQuery = {
+  fieldFilters?: string;
   managerId?: string;
   from: string;
   to: string;
@@ -143,7 +144,7 @@ export function exportManagerChecklistManagers(query: ManagerChecklistAnalyticsQ
 
 // ---- PR 461: analytics over several sheets (the "Analytics" tab) ----
 
-export type SheetAnalyticsQuery = { from: string; to: string; checklistIds?: string[]; departmentId?: string; managerId?: string };
+export type SheetAnalyticsQuery = { groupByField?: string; from: string; to: string; checklistIds?: string[]; departmentId?: string; managerId?: string; fieldFilters?: string };
 
 export type SheetAnalyticsSheet = { id: string; title: string; status: string; folderId: string | null; sessionsInPeriod: number };
 
@@ -162,7 +163,8 @@ export type SheetAnalyticsMetrics = {
 };
 export type SheetAnalytics = {
   total: SheetAnalyticsMetrics;
-  sheets: Array<SheetAnalyticsMetrics & { checklistId: string; title: string }>;
+  fieldColumn?: string;
+  sheets: Array<SheetAnalyticsMetrics & { checklistId: string; title: string; fieldLabel?: string; groupKey?: string | null }>;
   period: { from: string; to: string };
   truncated: boolean;
 };
@@ -198,16 +200,17 @@ export type ItemAnalytics = {
   truncated: boolean;
 };
 
-export function getItemAnalytics(checklistId: string, query: { by: ItemAnalytics['by']; from: string; to: string; departmentId?: string; managerId?: string; page?: number; itemId?: string }) {
+export function getItemAnalytics(checklistId: string, query: { by: ItemAnalytics['by']; from: string; to: string; departmentId?: string; managerId?: string; fieldFilters?: string; page?: number; itemId?: string }) {
   return apiRequest<ItemAnalytics>(`/checklists/${encodeURIComponent(checklistId)}/analytics/items${buildQueryString(query)}`);
 }
 
 // ---- PR 463: the export of the current view of the Analytics tab ----
 
 export type SheetAnalyticsExportQuery = {
+  groupByField?: string;
   view: 'sheets' | 'criteria' | 'groups' | 'feedback' | 'notes';
   from: string; to: string;
-  checklistIds?: string[]; checklistId?: string; departmentId?: string; managerId?: string;
+  checklistIds?: string[]; checklistId?: string; departmentId?: string; managerId?: string; fieldFilters?: string;
   pick?: string[]; q?: string; sort?: 'order' | 'completion' | 'average'; itemId?: string;
   format: 'csv' | 'xlsx';
 };

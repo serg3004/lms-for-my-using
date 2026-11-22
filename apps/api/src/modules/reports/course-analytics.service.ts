@@ -1,3 +1,4 @@
+import { analyticsFieldFilter, analyticsFieldPresentation } from '../user-fields/public.js';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 
@@ -22,6 +23,8 @@ import type { CourseAnalyticsExportQuery, CourseAnalyticsQuery } from './reports
 /** Upper bound of (course, user) rows read in one request; the answer says `truncated` when it was hit. */
 export const COURSE_ANALYTICS_MAX_ROWS = 5000;
 
+type ReportActor = TeamScopeActor & { locale?: string | null };
+
 type Scope = { courseId?: string; userId?: string };
 
 /**
@@ -37,15 +40,33 @@ export class CourseAnalyticsService {
     private readonly auditLog: AuditLogService = new AuditLogService(prisma),
   ) {}
 
-  async getCourses(actor: TeamScopeActor, query: CourseAnalyticsQuery) {
+  async getCourses(actor: ReportActor, query: CourseAnalyticsQuery) {
     const data = await this.load(actor, query, {});
     const summaries = summarizeCourses(data.rows);
+    const grouped = new Map<string | null, { label: string; rows: CourseUserRow[] }>();
+    if (data.field) {
+      for (const row of data.rows) {
+        const value = data.field.values.get(row.userId);
+        const key = value?.key ?? null;
+        let bucket = grouped.get(key);
+        if (!bucket) {
+          bucket = { label: value?.label ?? '', rows: [] };
+          grouped.set(key, bucket);
+        }
+        bucket.rows.push(row);
+      }
+    }
     const titles = new Map(data.courses.map((course) => [course.id, course.title]));
     return {
       period: { from: query.from ?? null, to: query.to ?? null },
       durationBasis: 'calendar' as const,
       truncated: data.truncated,
-      courses: summaries.map((summary) => ({ ...summary, title: titles.get(summary.courseId) ?? '' })),
+      courses: data.field
+        ? [...grouped].flatMap(([groupKey, group]) => summarizeCourses(group.rows).map((summary) => ({
+          ...summary, title: titles.get(summary.courseId) ?? '', fieldLabel: group.label, groupKey,
+        })))
+        : summaries.map((summary) => ({ ...summary, title: titles.get(summary.courseId) ?? '' })),
+      ...(data.field ? { fieldColumn: data.field.label } : {}),
       filterOptions: await this.filterOptions(actor),
       courseOptions: data.courses.map((course) => ({ id: course.id, title: course.title })),
     };
@@ -64,17 +85,17 @@ export class CourseAnalyticsService {
     let truncated: boolean;
     if (query.view === 'courses') {
       const data = await this.getCourses(actor, filters);
-      table = coursesExportRows(data.courses, locale);
+      table = coursesExportRows(data.courses, locale, data.fieldColumn);
       rowCount = data.courses.length;
       truncated = data.truncated;
     } else if (query.view === 'course') {
       const data = await this.getCourseReport(actor, query.courseId!, filters);
-      table = courseExportRows(data.rows, locale, actor.timezone);
+      table = courseExportRows(data.rows, locale, actor.timezone, data.fieldColumn);
       rowCount = data.rows.length;
       truncated = data.truncated;
     } else {
       const data = await this.getUserReport(actor, query.userId!, filters);
-      table = userExportRows(data.rows, locale, actor.timezone);
+      table = userExportRows(data.rows, locale, actor.timezone, data.fieldColumn);
       rowCount = data.rows.length;
       truncated = data.truncated;
     }
@@ -119,7 +140,7 @@ export class CourseAnalyticsService {
     };
   }
 
-  async getCourseReport(actor: TeamScopeActor, courseId: string, query: CourseAnalyticsQuery) {
+  async getCourseReport(actor: ReportActor, courseId: string, query: CourseAnalyticsQuery) {
     const data = await this.load(actor, query, { courseId });
     const course = data.courses.find((candidate) => candidate.id === courseId);
     if (!course) throw new NotFoundException('Course not found');
@@ -130,11 +151,12 @@ export class CourseAnalyticsService {
       truncated: data.truncated,
       course: { id: course.id, title: course.title },
       summary: summary ?? null,
-      rows: data.rows.map((row) => ({ ...row, user: data.users.get(row.userId) ?? null })),
+      ...(data.field ? { fieldColumn: data.field.label } : {}),
+      rows: data.rows.map((row) => ({ ...row, ...(data.field ? { fieldLabel: data.field.values.get(row.userId)?.label ?? '' } : {}), user: data.users.get(row.userId) ?? null })),
     };
   }
 
-  async getUserReport(actor: TeamScopeActor, userId: string, query: CourseAnalyticsQuery) {
+  async getUserReport(actor: ReportActor, userId: string, query: CourseAnalyticsQuery) {
     const isManager = !actor.roles.includes('admin') && !isOrgWideGrant(actor) && actor.roles.includes('manager');
     const user = await this.prisma.user.findFirst({
       where: { AND: [{ id: userId, organizationId: actor.organizationId, deletedAt: null }, ...(isManager ? [await this.orgAccessScope.user(actor)] : [])] },
@@ -149,12 +171,17 @@ export class CourseAnalyticsService {
       truncated: data.truncated,
       user,
       summary: summarizeUser(data.rows),
-      rows: data.rows.map((row) => ({ ...row, courseTitle: titles.get(row.courseId) ?? '' })),
+      ...(data.field ? { fieldColumn: data.field.label } : {}),
+      rows: data.rows.map((row) => ({ ...row, ...(data.field ? { fieldLabel: data.field.values.get(row.userId)?.label ?? '' } : {}), courseTitle: titles.get(row.courseId) ?? '' })),
     };
   }
 
-  private async load(actor: TeamScopeActor, query: CourseAnalyticsQuery, scope: Scope) {
+  private async load(actor: ReportActor, query: CourseAnalyticsQuery, scope: Scope) {
     const organizationId = actor.organizationId;
+    const [fieldScope, presentation] = await Promise.all([
+      analyticsFieldFilter(this.prisma, organizationId, actor.roles, query.fieldFilters),
+      query.groupByField ? analyticsFieldPresentation(this.prisma, organizationId, actor, query.groupByField) : undefined,
+    ]);
     const isAdmin = actor.roles.includes('admin') || isOrgWideGrant(actor);
     const isManager = !isAdmin && actor.roles.includes('manager');
     const instructorOnly = !isAdmin && !isManager;
@@ -167,12 +194,13 @@ export class CourseAnalyticsService {
       ...(instructorOnly ? { instructors: { some: { instructorId: actor.id, organizationId, deletedAt: null } } } : {}),
     };
     const courses = await this.prisma.course.findMany({ where: courseWhere, select: { id: true, title: true }, orderBy: [{ title: 'asc' }, { id: 'asc' }] });
-    const empty = { courses, rows: [] as CourseUserRow[], users: new Map<string, UserInfo>(), truncated: false };
+    const empty = { courses, rows: [] as CourseUserRow[], users: new Map<string, UserInfo>(), truncated: false, field: presentation ? { label: presentation.label, values: await presentation.values([]) } : undefined };
     if (courses.length === 0) return empty;
     const courseIds = courses.map((course) => course.id);
 
     // Users the viewer may see, narrowed by the department, group and manager filters.
     const userAnd: Prisma.UserWhereInput[] = [{ organizationId, deletedAt: null }];
+    if (query.fieldFilters) userAnd.push(fieldScope);
     if (isManager) userAnd.push(await this.orgAccessScope.user(actor));
     if (scope.userId) userAnd.push({ id: scope.userId });
     if (query.departmentId) userAnd.push(await this.departmentPopulation(organizationId, query.departmentId, query.includeDescendants));
@@ -264,7 +292,8 @@ export class CourseAnalyticsService {
 
     const rows = buildCourseUserRows({ now: new Date(), assignments: limited, lessons, progress, assessments, attempts, certificates });
     rows.sort((a, b) => `${users.get(a.userId)?.lastName ?? ''}${users.get(a.userId)?.firstName ?? ''}`.localeCompare(`${users.get(b.userId)?.lastName ?? ''}${users.get(b.userId)?.firstName ?? ''}`, 'ru') || a.courseId.localeCompare(b.courseId));
-    return { courses, rows, users, truncated };
+    const field = presentation ? { label: presentation.label, values: await presentation.values(userIds) } : undefined;
+    return { courses, rows, users, truncated, field };
   }
 
   private async departmentPopulation(organizationId: string, departmentId: string, includeDescendants: boolean): Promise<Prisma.UserWhereInput> {
