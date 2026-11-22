@@ -161,7 +161,9 @@ export class Badges {
       await context.record(person, 'locked');
       throw invalid();
     }
-    const matches = badge.pinHash && pin !== undefined && pinShape.test(pin) ? await verifyPassword(pin, badge.pinHash) : false;
+    // The PIN is always compared when the badge has one, so the time does not tell whether its shape was right.
+    const candidate = pin !== undefined && pinShape.test(pin) ? pin : '';
+    const matches = badge.pinHash ? await verifyPassword(candidate, badge.pinHash) : false;
     if (!matches) {
       const protection = await loadLoginProtection(this.prisma, person.organizationId);
       const updated = await this.prisma.userBadge.update({ where: { id: badge.id }, data: { pinFailures: { increment: 1 } }, select: { pinFailures: true } });
