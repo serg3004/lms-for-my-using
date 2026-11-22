@@ -9,8 +9,8 @@ export const importLimits = { maxFileBytes: 2 * 1024 * 1024, maxRows: 1000, batc
 
 export type ImportValues = Partial<Record<ImportColumn, string>>;
 export type ImportProblem = { key: string; params?: Record<string, string | number> };
-/** PR 500: `custom` holds the cells of custom field columns by field key, already turned into what the API takes. */
-export type ImportRow = { line: number; values: ImportValues; problems: ImportProblem[]; custom?: Record<string, string> };
+/** PR 500: `custom` holds the cells of custom field columns by field key, already turned into what the API takes. PR 501: `activate` is the row's "activation by employee number" cell. */
+export type ImportRow = { line: number; values: ImportValues; problems: ImportProblem[]; custom?: Record<string, string>; activate?: boolean };
 export type FileFailure = 'fileWrongType' | 'fileTooBig' | 'fileTooManyRows' | 'fileEmpty' | 'fileNoEmailColumn' | 'fileUnreadable';
 
 /** A cell the person typed: every table cell is text, a formula cell of a workbook is marked by the reader. */
@@ -23,6 +23,11 @@ for (const column of importColumns) {
   headerAliases.set(column.toLowerCase(), column);
   for (const locale of ['en', 'ru', 'kk', 'zh'] as const) headerAliases.set(usersImportResources[locale].columns[column].trim().toLowerCase(), column);
 }
+
+/** PR 501: names of the optional column that lets a row without an email activate by employee number (not part of the template). */
+const activationHeaders = new Set(['activatebyidentity', 'activation by employee number', 'активация по табельному номеру', 'табель нөмірі арқылы белсендіру', '按工号激活']);
+const yesWords = new Set(['yes', 'y', 'true', '1', 'да', 'иә', 'ия', '是']);
+export const isYes = (value: string) => yesWords.has(value.trim().toLowerCase());
 
 /** Splits CSV text into rows of cells: quotes, doubled quotes, a BOM and the delimiter (comma, semicolon or tab) of the first line. */
 export function parseCsv(text: string): string[][] {
@@ -80,7 +85,8 @@ export function tableToRows(table: Table, fields: UserFieldView[] = []): { rows:
   for (const field of fields) for (const name of headerNames(field)) if (!headerAliases.has(name) && !fieldByHeader.has(name)) fieldByHeader.set(name, field);
   const headerCells = (table.rows[headerIndex] ?? []).map((cell) => cell.trim().toLowerCase());
   const columns = headerCells.map((cell) => headerAliases.get(cell));
-  const customColumns = headerCells.map((cell) => (headerAliases.has(cell) ? undefined : fieldByHeader.get(cell)));
+  const activationColumn = headerCells.findIndex((cell) => activationHeaders.has(cell));
+  const customColumns = headerCells.map((cell) => (headerAliases.has(cell) || activationHeaders.has(cell) ? undefined : fieldByHeader.get(cell)));
   if (!columns.includes('email')) return { failure: 'fileNoEmailColumn' };
 
   const rows: ImportRow[] = [];
@@ -102,7 +108,8 @@ export function tableToRows(table: Table, fields: UserFieldView[] = []): { rows:
       if (column) values[column] = value;
       else if (field) custom[field.key] = importCellValue(field, value);
     });
-    rows.push({ line: rowIndex + 1, values, problems, ...(Object.keys(custom).length > 0 ? { custom } : {}) });
+    const activate = activationColumn >= 0 && isYes(cells[activationColumn] ?? '');
+    rows.push({ line: rowIndex + 1, values, problems, ...(Object.keys(custom).length > 0 ? { custom } : {}), ...(activate ? { activate: true } : {}) });
   });
   if (rows.length === 0) return { failure: 'fileEmpty' };
   if (rows.length > importLimits.maxRows) return { failure: 'fileTooManyRows' };
@@ -116,7 +123,8 @@ export function checkRowsLocally(rows: ImportRow[], fieldNames: (column: ImportC
   const firstLine = new Map<string, number>();
   return rows.map((row) => {
     const problems = [...row.problems];
-    const missing = (['email', 'lastName', 'firstName'] as const).filter((column) => !row.values[column]);
+    // PR 501: a row that activates by employee number may leave the email empty.
+    const missing = (['email', 'lastName', 'firstName'] as const).filter((column) => !row.values[column] && !(column === 'email' && row.activate));
     if (missing.length > 0) problems.push({ key: 'required', params: { fields: missing.map(fieldNames).join(', ') } });
     const email = row.values.email?.toLowerCase();
     if (email) {
@@ -138,6 +146,9 @@ const serverProblems: Record<string, string> = {
   'Department is required': 'departmentRequired',
   'Role not found': 'roleMissing',
   'Roles are granted by an administrator': 'roleForbidden',
+  'Without an email choose activation by employee number': 'noEmailNeedsActivation',
+  'Activation by employee number cannot be combined with a password': 'activationWithPassword',
+  'The employee number is required for a person without an email or with activation by employee number': 'employeeNumberRequired',
 };
 
 const fieldProblems: Array<[RegExp, string]> = [
@@ -159,7 +170,7 @@ export function serverProblem(message: string): ImportProblem {
 /** The row as the API takes it: only the filled columns, never a password (the person is invited). */
 export function toApiRow(row: ImportRow): Record<string, unknown> {
   const standard = Object.fromEntries(Object.entries(row.values).filter(([, value]) => value !== undefined && value !== ''));
-  return row.custom && Object.keys(row.custom).length > 0 ? { ...standard, customFields: row.custom } : standard;
+  return { ...standard, ...(row.activate ? { activateByIdentity: true } : {}), ...(row.custom && Object.keys(row.custom).length > 0 ? { customFields: row.custom } : {}) };
 }
 
 /** Template rows: the header in the given language and one sample line. */

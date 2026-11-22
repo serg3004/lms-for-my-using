@@ -2,7 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { BadRequestException, ConflictException, HttpException, HttpStatus, Injectable, Logger, NotFoundException, Optional, UnauthorizedException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
-import { type CurrentUser, type ChangePasswordInput, type InvitationAcceptInput, type LoginInput, type PasswordResetConfirmInput, type PasswordResetRequestInput, type UpdatePreferencesInput, type UserRole } from './auth.schemas.js';
+import { type CurrentUser, type ChangePasswordInput, type EmployeeLoginInput, type IdentityActivationInput, type InvitationAcceptInput, type LoginInput, type PasswordResetConfirmInput, type PasswordResetRequestInput, type UpdatePreferencesInput, type UserRole } from './auth.schemas.js';
 import { type JwtClaims, signJwt, verifyJwt } from './auth.tokens.js';
 import { createRefreshToken } from './auth.refresh-tokens.js';
 import { refreshTokenLifetimeMs } from './auth.lifecycle.js';
@@ -17,6 +17,7 @@ import { generateTemporaryPassword, temporaryPasswordLifetimeMs } from '../../co
 import { isPasswordReused, loadPasswordPolicy, rememberReplacedPassword } from './password-policy.js';
 import { LoginJournal } from './login-journal.js';
 import { LoginLockout } from './login-lockout.js';
+import { findUserIdByEmployeeNumber, namesMatch } from './employee-identity.js';
 import { createPasswordResetToken, hashPasswordResetToken, PasswordResetDelivery, passwordResetLifetimeMs } from './password-reset.js';
 
 const currentUserSelect = {
@@ -45,6 +46,8 @@ const loginUserSelect = {
 
 const invitationResendIntervalMs = 60_000;
 const invitationOrder = [{ createdAt: 'desc' }, { sendCount: 'desc' }, { id: 'desc' }] satisfies Prisma.UserInvitationOrderByWithRelationInput[];
+
+type LoginUserRecord = Prisma.UserGetPayload<{ select: typeof loginUserSelect }>;
 
 type InvitationUser = { id: string; organizationId: string; email: string; firstName: string; locale: string };
 
@@ -141,6 +144,26 @@ export class AuthService {
       throw invalidCredentialsException();
     }
 
+    return this.checkLoginPassword(user, input.password, context);
+  }
+
+  /**
+   * PR 501: sign-in by organization, employee number, last name and password. The number and the name are not secrets, so
+   * they only select the account; the password decides. An unknown number, a wrong name, a wrong password, a lock and a spent
+   * temporary password all answer the same way.
+   */
+  async validateEmployeeLogin(input: EmployeeLoginInput, context?: ClientContext) {
+    const organizationId = await this.resolveLoginOrganizationId(input.organizationId);
+    const userId = await findUserIdByEmployeeNumber(this.prisma, organizationId, input.employeeNumber);
+    const user = userId && await this.prisma.user.findFirst({
+      where: { id: userId, organizationId, status: 'active', deletedAt: null },
+      select: loginUserSelect,
+    });
+    if (!user) throw invalidCredentialsException();
+    return this.checkLoginPassword(user, input.password, context, input.lastName);
+  }
+
+  private async checkLoginPassword(user: LoginUserRecord, password: string, context?: ClientContext, lastName?: string) {
     // PR 493: a locked account answers exactly like a wrong password, even for the right one, and does not count further.
     if (this.lockout.isLocked(user)) {
       loginProtection.inc({ event: 'blocked' });
@@ -148,7 +171,9 @@ export class AuthService {
       throw invalidCredentialsException();
     }
 
-    const isPasswordValid = await verifyPassword(input.password, user.passwordHash);
+    // The password is always checked, so a wrong last name takes as long as a wrong password.
+    const passwordValid = await verifyPassword(password, user.passwordHash);
+    const isPasswordValid = passwordValid && (lastName === undefined || namesMatch(user, { lastName }, false));
 
     if (!isPasswordValid) {
       const locked = await this.lockout.registerFailure(user);
@@ -431,6 +456,43 @@ export class AuthService {
     return logoutAccepted;
   }
 
+  /**
+   * PR 501: public activation for a person without a mailbox. Organization, employee number and the full name must match the
+   * card of an `invited` user the administrator allowed to activate this way. Whatever is wrong (organization, number, name,
+   * status, no permission, a number shared by several people) the answer is the same "data not found", so nothing here tells an
+   * outsider whether a person exists. The password follows the organization policy; the audit entry carries no password.
+   */
+  async activateByIdentity(input: IdentityActivationInput) {
+    const notFound = () => new BadRequestException('Data not found');
+    const organizationId = await this.resolveLoginOrganizationId(input.organizationId).catch(() => null);
+    const userId = organizationId && await findUserIdByEmployeeNumber(this.prisma, organizationId, input.employeeNumber);
+    if (!organizationId || !userId) throw notFound();
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, organizationId, status: 'invited', identityActivation: true, deletedAt: null },
+      select: { id: true, organizationId: true, email: true, firstName: true, lastName: true, middleName: true, passwordHash: true },
+    });
+    if (!user || !namesMatch(user, input, true)) throw notFound();
+    await this.assertPasswordAllowed(user, input.password, { checkReuse: false });
+    const passwordHash = await hashPassword(input.password);
+
+    await this.prisma.$transaction(async (transaction) => {
+      await lockInvitationUser(transaction, user.id, organizationId);
+      // Only one activation wins; the state is checked again under the row lock.
+      const changed = await transaction.user.updateMany({
+        where: { id: user.id, organizationId, status: 'invited', identityActivation: true, deletedAt: null },
+        data: { passwordHash, status: 'active', identityActivation: false, mustChangePassword: false, temporaryPasswordExpiresAt: null, temporaryPasswordUsedAt: null },
+      });
+      if (changed.count !== 1) throw notFound();
+      await transaction.auditLog.create({
+        data: {
+          organizationId, actorId: user.id, action: 'user.identity_activated', targetType: 'user', targetId: user.id,
+          summary: 'The person confirmed their employee number and name and set a password',
+        },
+      });
+    });
+    return logoutAccepted;
+  }
+
   async confirmPasswordReset(input: PasswordResetConfirmInput) {
     const now = new Date();
     const tokenHash = hashPasswordResetToken(input.token);
@@ -549,8 +611,8 @@ export class AuthService {
     return logoutAccepted;
   }
 
-  async login(input: LoginInput, context?: ClientContext) {
-    const user = await this.validateLogin(input, context);
+  async login(input: LoginInput | EmployeeLoginInput, context?: ClientContext) {
+    const user = 'employeeNumber' in input ? await this.validateEmployeeLogin(input, context) : await this.validateLogin(input, context);
     const { token, jti, expiresAt } = await signJwt({
       sub: user.id,
       organizationId: user.organizationId,

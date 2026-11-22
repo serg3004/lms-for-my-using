@@ -7,7 +7,7 @@ import type { ReactNode } from 'react';
 import { DataTable, StatusBadge, type Column, type DataTableSelection } from '../../shared/ui.js';
 import type { UserFieldView } from '../../shared/api/userFields.js';
 import { displayValue, fieldLabel, languageOf } from '../user-fields/model.js';
-import { userName, type AdminUserSummary, type UserStatus } from './model.js';
+import { isNoEmail, userName, type AdminUserSummary, type UserStatus } from './model.js';
 
 function statusTone(status: UserStatus) {
   if (status === 'active') return 'success';
@@ -25,7 +25,7 @@ export function AdminUsersTable({ extraFields = [], selection, batchActions, use
   const fieldColumns: Column<AdminUserSummary>[] = extraFields.map((field) => ({ key: `field:${field.key}`, label: fieldLabel(field, language), priority: 'secondary' as const, render: (u: AdminUserSummary) => displayValue(field, u.customFields?.[field.key], language, t('userFields.yes'), t('userFields.no')) || '—' }));
   const columns: Column<AdminUserSummary>[] = [
     { key: 'name', label: t('admin.users.col.name', 'Name'), priority: 'primary', render: userName },
-    { key: 'email', label: t('admin.users.col.email', 'Email'), priority: 'secondary', render: (u) => u.email },
+    { key: 'email', label: t('admin.users.col.email', 'Email'), priority: 'secondary', render: (u) => isNoEmail(u.email) ? t('identity.admin.noEmailLabel') : u.email },
     { key: 'role', label: t('admin.users.col.role', 'Role'), priority: 'secondary', render: (u) => u.memberships.map((m) => roleLabel(t, m.role)).join(', ') || '—' },
     { key: 'status', label: t('admin.users.col.status', 'Status'), priority: 'primary', render: (u) => <StatusBadge tone={statusTone(u.status)}>{t(`admin.users.status.${u.status}`, u.status)}</StatusBadge> },
     { key: 'lastLogin', label: t('admin.users.col.lastLogin', 'Last login'), priority: 'tertiary', render: (u) => u.lastLoginAt ? formatDate(u.lastLoginAt, undefined, { dateStyle: 'medium', timeStyle: 'short' }) : t('admin.users.never', 'Never') },

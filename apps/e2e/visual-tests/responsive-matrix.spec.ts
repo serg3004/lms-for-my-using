@@ -23,6 +23,7 @@ import { freshReportState, installReportMocks } from '../fixtures/checklist-inst
 import { freshRolesState, installCustomRolesMocks, registrar } from '../fixtures/custom-roles.js';
 import { importFileCsv, installUsersImportMocks } from '../fixtures/users-import.js';
 import { installLoginJournalMocks, journalUserId } from '../fixtures/login-journal.js';
+import { installIdentityMocks } from '../fixtures/identity-activation.js';
 import { installUserFieldsMocks } from '../fixtures/user-fields.js';
 import { installUserBulkMocks } from '../fixtures/user-bulk-actions.js';
 import { installUserProfileMocks } from '../fixtures/user-profile.js';
@@ -118,6 +119,26 @@ for (const width of [390, 1280]) test(`own profile card is responsive at ${width
   await card.scrollIntoViewIfNeeded();
   await expectNoPageOverflow(page);
   await expectVisualMatch(page, `own-profile-${width}`, false, { maxDiffPixels: 3000 });
+});
+
+for (const width of [390, 1280]) test(`activation without email is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installIdentityMocks(page);
+  await page.goto('/activate');
+  await page.getByLabel('ID или короткое имя организации').fill('demo');
+  await page.getByLabel('Табельный номер').fill('10245');
+  await page.getByLabel('Фамилия').fill('Каримова');
+  await expect(page.getByRole('heading', { name: 'Активация учётной записи' })).toBeVisible();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `activation-without-email-${width}`, false, { maxDiffPixels: 3000 });
+});
+
+for (const width of [390, 1280]) test(`sign-in by employee number is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installIdentityMocks(page);
+  await page.goto('/login');
+  await page.getByRole('button', { name: 'По табельному номеру' }).click();
+  await expect(page.getByLabel('Табельный номер')).toBeVisible();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `login-by-number-${width}`, false, { maxDiffPixels: 3000 });
 });
 
 for (const width of [390, 1280]) test(`user fields settings are responsive at ${width}px`, async ({ page }) => {
