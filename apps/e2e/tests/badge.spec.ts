@@ -64,5 +64,5 @@ test('PR 506: when the session ends by itself, the screen returns to the badge s
   // The work was handed in (or the badge was reported lost): the next call is refused and cannot be renewed.
   state.sessionEnded = true;
   await page.getByRole('link', { name: 'Назначения' }).first().click();
-  await page.waitForURL('**/badge');
+  await expect(page).toHaveURL(/\/badge$/);
 });

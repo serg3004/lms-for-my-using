@@ -29,7 +29,7 @@ test('PR 505: an administrator switches sign-in by QR on and chooses the roles a
   await page.getByRole('checkbox', { name: 'Администратор' }).check();
   await expect(page.getByText('лучше не включать')).toBeVisible();
   await page.getByRole('checkbox', { name: 'Администратор' }).uncheck();
-  await page.getByRole('button', { name: 'Сохранить' }).last().click();
+  await page.locator('form', { has: page.getByRole('heading', { name: 'Вход по QR-коду' }) }).getByRole('button', { name: 'Сохранить' }).click();
   await expect(page.getByText('Настройки входа по QR сохранены.')).toBeVisible();
   expect(calls.qrSaved).toEqual([{ enabled: true, sessionHours: 4, roles: ['learner', 'mentor', 'instructor'] }]);
 });
