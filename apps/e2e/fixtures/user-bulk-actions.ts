@@ -27,6 +27,7 @@ export async function installUserBulkMocks(page: Page, roles: string[] = ['admin
       if (url.searchParams.get('pageSize') === '1') { calls.counts.push(url.search); return route.fulfill({ json: { items: [users[0]], total: 45, page: 1, pageSize: 1 } }); }
       return route.fulfill({ json: { items: users, total: 45, page: 1, pageSize: 20 } });
     }
+    if (path === '/user-fields/for-users') return route.fulfill({ json: { items: [] } });
     if (path === '/users/invitations') return route.fulfill({ json: { items: [], total: 0, page: 1, pageSize: 20 } });
     if (path === '/departments') return route.fulfill({ json: { items: [{ id: 'd1d1d1d1-d1d1-4d1d-8d1d-d1d1d1d1d1d1', name: 'Склад' }], total: 1, page: 1, pageSize: 200 } });
     if (path === '/users/bulk-actions/impact') {
