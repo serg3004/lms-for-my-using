@@ -376,6 +376,8 @@ model Organization {
   updatedAt                  DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                  DateTime?                   @map("deleted_at") @db.Timestamptz
   loginEvents                LoginEvent[]
+  /// PR 499: set once the ready-made user fields were put in place; after that the administrator owns the set (edit, remove, re-add).
+  userFieldsSeededAt         DateTime?                   @map("user_fields_seeded_at")
   userFieldDefinitions       UserFieldDefinition[]
   userFieldValues            UserFieldValue[]
   users                      User[]

@@ -365,6 +365,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/user-fields/template` | `UserFields` | `bearer` |
 | `GET` | `/api/v1/user-fields/visible` | `UserFields` | `bearer` |
 | `PATCH` | `/api/v1/user-fields/{key}` | `UserFields` | `bearer` |
+| `DELETE` | `/api/v1/user-fields/{key}` | `UserFields` | `bearer` |
 | `POST` | `/api/v1/user-fields/{key}/archive` | `UserFields` | `bearer` |
 | `POST` | `/api/v1/user-fields/{key}/restore` | `UserFields` | `bearer` |
 | `GET` | `/api/v1/users` | `Users` | `bearer` |

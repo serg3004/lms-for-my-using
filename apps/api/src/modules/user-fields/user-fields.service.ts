@@ -93,6 +93,7 @@ function isUniqueViolation(error: unknown): boolean {
 const TEMPLATE: Array<{ key: string; labels: FieldLabels; type: FieldType; unique?: boolean; searchable?: boolean; visibleTo: string[]; editableBy: string[] }> = [
   { key: 'employee_number', labels: { ru: 'Табельный номер', en: 'Employee number', kk: 'Табель нөмірі', zh: '工号' }, type: 'text', unique: true, searchable: true, visibleTo: ['manager'], editableBy: [] },
   { key: 'whatsapp', labels: { ru: 'WhatsApp', en: 'WhatsApp', kk: 'WhatsApp', zh: 'WhatsApp' }, type: 'phone', visibleTo: ['manager', 'self'], editableBy: ['self'] },
+  { key: 'telegram', labels: { ru: 'Telegram', en: 'Telegram', kk: 'Telegram', zh: 'Telegram' }, type: 'phone', visibleTo: ['manager', 'self'], editableBy: ['self'] },
   { key: 'hire_date', labels: { ru: 'Дата приёма', en: 'Hire date', kk: 'Қабылдау күні', zh: '入职日期' }, type: 'date', visibleTo: ['manager', 'self'], editableBy: [] },
   { key: WORK_SCHEDULE_KEY, labels: { ru: 'График работы', en: 'Work schedule', kk: 'Жұмыс кестесі', zh: '工作时间表' }, type: 'list', visibleTo: ['manager', 'self'], editableBy: ['manager'] },
 ];
@@ -111,11 +112,14 @@ function optionMatches(option: FieldOption, text: string): boolean {
 /** PR 499: definitions and values of the custom user fields of an organization. */
 @Injectable()
 export class UserFieldsService {
+  private readonly seeded = new Set<string>();
+
   constructor(private readonly prisma: PrismaService, private readonly auditLog: AuditLogService) {}
 
   // ── Definitions (administrator) ────────────────────────────────────────────────
 
   async listDefinitions(organizationId: string, includeArchived: boolean) {
+    await this.ensureSeeded(organizationId);
     const rows = await this.prisma.userFieldDefinition.findMany({
       where: { organizationId, ...(includeArchived ? {} : { archivedAt: null }) },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
@@ -133,6 +137,7 @@ export class UserFieldsService {
   }
 
   async createDefinition(organizationId: string, input: CreateUserFieldInput, actorId: string) {
+    await this.ensureSeeded(organizationId);
     const last = await this.prisma.userFieldDefinition.aggregate({ where: { organizationId }, _max: { sortOrder: true } });
     try {
       const row = await this.prisma.userFieldDefinition.create({
@@ -150,6 +155,7 @@ export class UserFieldsService {
   }
 
   async updateDefinition(organizationId: string, key: string, input: UpdateUserFieldInput, actorId: string) {
+    await this.ensureSeeded(organizationId);
     const row = await this.prisma.userFieldDefinition.findFirst({ where: { organizationId, key } });
     if (!row) throw new NotFoundException('Field not found');
     const current = toDefinition(row);
@@ -185,6 +191,7 @@ export class UserFieldsService {
   }
 
   async setArchived(organizationId: string, key: string, archived: boolean, actorId: string) {
+    await this.ensureSeeded(organizationId);
     const row = await this.prisma.userFieldDefinition.findFirst({ where: { organizationId, key } });
     if (!row) throw new NotFoundException('Field not found');
     const valueCount = await this.prisma.userFieldValue.count({ where: { organizationId, fieldId: row.id } });
@@ -194,7 +201,20 @@ export class UserFieldsService {
     return presentDefinition(toDefinition(updated), valueCount);
   }
 
+  /** Removes a field that was archived first, with every value of it. The shift text of the user card stays as it is. */
+  async deleteDefinition(organizationId: string, key: string, actorId: string) {
+    await this.ensureSeeded(organizationId);
+    const row = await this.prisma.userFieldDefinition.findFirst({ where: { organizationId, key } });
+    if (!row) throw new NotFoundException('Field not found');
+    if (!row.archivedAt) throw new ConflictException('Archive the field first: deleting it removes every value');
+    const valueCount = await this.prisma.userFieldValue.count({ where: { organizationId, fieldId: row.id } });
+    await this.prisma.userFieldDefinition.delete({ where: { id: row.id } });
+    await this.auditLog.record({ organizationId, actorId, action: 'user_field.deleted', targetType: 'user_field', targetId: row.id, summary: `Deleted user field ${row.key}`, metadata: { key: row.key, valueCount } });
+    return { deleted: true, key: row.key, valueCount };
+  }
+
   async reorder(organizationId: string, keys: string[], actorId: string) {
+    await this.ensureSeeded(organizationId);
     const active = await this.prisma.userFieldDefinition.findMany({ where: { organizationId, archivedAt: null }, select: { id: true, key: true } });
     if (active.length !== keys.length || active.some((row) => !keys.includes(row.key))) throw new BadRequestException('Send every active field exactly once');
     await this.prisma.$transaction(keys.map((key, index) => this.prisma.userFieldDefinition.updateMany({ where: { organizationId, key }, data: { sortOrder: (index + 1) * 10 } })));
@@ -206,7 +226,7 @@ export class UserFieldsService {
    * The ready-made set (employee number, WhatsApp, hire date, work schedule). Idempotent: a field that exists is left alone.
    * When the work schedule is created, the different `shift` texts of the users become its options and every user keeps their value.
    */
-  async applyTemplate(organizationId: string, actorId: string) {
+  async applyTemplate(organizationId: string, actorId: string | null) {
     const result = await this.prisma.$transaction(async (tx) => {
       const existing = new Set((await tx.userFieldDefinition.findMany({ where: { organizationId }, select: { key: true } })).map((row) => row.key));
       const last = await tx.userFieldDefinition.aggregate({ where: { organizationId }, _max: { sortOrder: true } });
@@ -243,9 +263,11 @@ export class UserFieldsService {
           migratedShifts = data.length;
         }
       }
+      await tx.organization.updateMany({ where: { id: organizationId, userFieldsSeededAt: null }, data: { userFieldsSeededAt: new Date() } });
       return { created, skipped: TEMPLATE.map((item) => item.key).filter((key) => existing.has(key)), migratedShifts };
     });
-    if (result.created.length > 0) {
+    this.seeded.add(organizationId);
+    if (actorId && result.created.length > 0) {
       await this.auditLog.record({ organizationId, actorId, action: 'user_field.template_applied', targetType: 'user_field', targetId: null, summary: 'Created the ready-made user fields', metadata: result });
     }
     return result;
@@ -253,7 +275,24 @@ export class UserFieldsService {
 
   // ── What a viewer may see ───────────────────────────────────────────────────────
 
+  /**
+   * The ready-made set is in place from the first use of the fields, without anyone pressing a button. It is only a start:
+   * once the flag is set the administrator owns the set, and nothing here ever restores or overwrites a field.
+   */
+  async ensureSeeded(organizationId: string): Promise<void> {
+    if (this.seeded.has(organizationId)) return;
+    const organization = await this.prisma.organization.findUnique({ where: { id: organizationId }, select: { userFieldsSeededAt: true } });
+    if (organization && !organization.userFieldsSeededAt) {
+      try { await this.applyTemplate(organizationId, null); } catch (error) {
+        // Two requests seeding at once: the loser meets the unique key, the winner's set is what counts.
+        if (!isUniqueViolation(error)) throw error;
+      }
+    }
+    this.seeded.add(organizationId);
+  }
+
   async loadActive(organizationId: string, db: Db = this.prisma): Promise<FieldDefinition[]> {
+    await this.ensureSeeded(organizationId);
     const rows = await db.userFieldDefinition.findMany({ where: { organizationId, archivedAt: null }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] });
     return rows.map(toDefinition);
   }
@@ -360,6 +399,7 @@ export class UserFieldsService {
   /** The old `shift` text of the user card kept in step with the work schedule field (a synonym for one release). */
   async syncShiftToSchedule(db: Db, organizationId: string, userId: string, shift: string | null | undefined): Promise<void> {
     if (shift === undefined) return;
+    await this.ensureSeeded(organizationId);
     const row = await db.userFieldDefinition.findFirst({ where: { organizationId, key: WORK_SCHEDULE_KEY, archivedAt: null, type: 'list' } });
     if (!row) return;
     const definition = toDefinition(row);

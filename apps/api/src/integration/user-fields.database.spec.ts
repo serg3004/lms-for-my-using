@@ -92,19 +92,32 @@ describe('custom user fields — database', () => {
     }
   });
 
-  it('keeps definitions for the administrator only and applies the ready-made template once', async () => {
+  it('puts the ready-made set in place by itself and leaves the whole set to the administrator', async () => {
     expect((await send('GET', '/user-fields', managerHeaders)).status).toBe(403);
     expect((await send('GET', '/user-fields', learnerHeaders)).status).toBe(403);
-    expect((await send('POST', '/user-fields/template', adminHeaders)).status).toBe(201);
-    expect((await send('POST', '/user-fields/template', adminHeaders)).status).toBe(201);
+    // No button was pressed: the first use finds the set already there.
     const list = await send('GET', '/user-fields', adminHeaders);
-    expect(list.body.items.map((item: Json) => item.key)).toEqual(['employee_number', 'whatsapp', 'hire_date', 'work_schedule']);
+    expect(list.body.items.map((item: Json) => item.key)).toEqual(['employee_number', 'whatsapp', 'telegram', 'hire_date', 'work_schedule']);
     expect(list.body.items[0]).toMatchObject({ unique: true, searchable: true, visibleTo: ['manager'], editableBy: [] });
+    expect((await send('POST', '/user-fields/template', adminHeaders)).body.created).toEqual([]);
     // The person sees only what is visible to them, with no rights lists.
     const own = await send('GET', '/user-fields/visible', learnerHeaders);
-    expect(own.body.items.map((item: Json) => item.key)).toEqual(['whatsapp', 'hire_date', 'work_schedule']);
+    expect(own.body.items.map((item: Json) => item.key)).toEqual(['whatsapp', 'telegram', 'hire_date', 'work_schedule']);
     expect(own.body.items[0]).not.toHaveProperty('visibleTo');
     expect((await send('POST', '/user-fields', adminHeaders, { key: 'employee_number', type: 'text', labels })).status).toBe(409);
+
+    // Every field of the set can be changed, archived and deleted like any other.
+    const renamed = await send('PATCH', '/user-fields/telegram', adminHeaders, { labels: { ru: 'Телеграм', en: 'Telegram', kk: 'Telegram', zh: 'Telegram' }, required: false, editableBy: [] });
+    expect(renamed.body).toMatchObject({ labels: { ru: 'Телеграм' }, editableBy: [] });
+    expect((await send('DELETE', '/user-fields/telegram', adminHeaders)).status).toBe(409);
+    await send('POST', '/user-fields/telegram/archive', adminHeaders);
+    expect((await send('DELETE', '/user-fields/telegram', managerHeaders)).status).toBe(403);
+    expect((await send('DELETE', '/user-fields/telegram', adminHeaders)).body).toMatchObject({ deleted: true });
+    expect((await send('GET', '/user-fields', adminHeaders)).body.items.map((item: Json) => item.key)).not.toContain('telegram');
+    // A field the administrator removed does not come back by itself; pressing the template button brings back only what is missing.
+    expect((await send('GET', '/user-fields/visible', learnerHeaders)).body.items.map((item: Json) => item.key)).not.toContain('telegram');
+    expect((await send('POST', '/user-fields/template', adminHeaders)).body.created).toEqual(['telegram']);
+    expect((await send('GET', '/user-fields', adminHeaders)).body.items.find((item: Json) => item.key === 'telegram').labels.ru).toBe('Telegram');
   });
 
   it('writes values on creation and update, keeps the employee number unique and mirrors the work schedule into shift', async () => {

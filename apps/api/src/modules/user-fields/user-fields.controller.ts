@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 
 import { AuthenticatedAccess, AuthGuard, Roles, RolesGuard, rolePolicies } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
@@ -59,6 +59,14 @@ export class UserFieldsController {
   @Roles(...rolePolicies.userFieldsManage)
   update(@Req() request: AuthenticatedRequest, @Param('key') key: string, @Body() body: unknown) {
     return this.fields.updateDefinition(request.currentUser!.organizationId, fieldKeySchema.parse(key), updateUserFieldSchema.parse(body), request.currentUser!.id);
+  }
+
+  /** Only an archived field can be deleted; its values go with it. */
+  @Delete(':key')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.userFieldsManage)
+  remove(@Req() request: AuthenticatedRequest, @Param('key') key: string) {
+    return this.fields.deleteDefinition(request.currentUser!.organizationId, fieldKeySchema.parse(key), request.currentUser!.id);
   }
 
   @Post(':key/archive')

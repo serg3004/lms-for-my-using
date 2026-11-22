@@ -1,3 +1,6 @@
+-- AlterTable
+ALTER TABLE "organizations" ADD COLUMN "user_fields_seeded_at" TIMESTAMP(3);
+
 -- PR 499: custom user fields (definitions and values). Additive only: two new tables and one enum.
 CREATE TYPE "UserFieldType" AS ENUM ('text', 'number', 'date', 'list', 'phone', 'boolean');
 

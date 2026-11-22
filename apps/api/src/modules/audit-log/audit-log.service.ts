@@ -29,6 +29,7 @@ export type AuditLogAction =
   | 'user_field.updated'
   | 'user_field.archived'
   | 'user_field.restored'
+  | 'user_field.deleted'
   | 'user_field.reordered'
   | 'user_field.template_applied'
   | 'custom_role.created'
