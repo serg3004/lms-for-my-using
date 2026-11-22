@@ -17,7 +17,7 @@ import { InvitationResultDialog, ResetPasswordDialogs, TemporaryPasswordDialogs,
 import { AdminUserDialog } from '../features/admin-users/AdminUserDialog.js';
 import { AdminUsersFilters } from '../features/admin-users/AdminUsersFilters.js';
 import { AdminUsersTable } from '../features/admin-users/AdminUsersTable.js';
-import { EMPTY_USER_FORM, toEditUserForm, userName, withoutPassword, type AdminUserSummary, type UserForm, type UserFormField, type UserFormMode } from '../features/admin-users/model.js';
+import { EMPLOYEE_NUMBER_KEY, EMPTY_USER_FORM, toEditUserForm, userName, withoutPassword, type AdminUserSummary, type UserForm, type UserFormField, type UserFormMode } from '../features/admin-users/model.js';
 import { useAdminUserMutations } from '../features/admin-users/useAdminUserMutations.js';
 import { useAdminUsers } from '../features/admin-users/useAdminUsers.js';
 import { validateUserForm } from '../features/admin-users/validation.js';
@@ -126,6 +126,7 @@ export function AdminUsersPage() {
     const nextErrors = validateUserForm(form, mode, t);
     setErrors(nextErrors);
     if (hasValidationErrors(nextErrors)) return;
+    if (mode === 'create' && form.noEmail && !(form.customFields?.[EMPLOYEE_NUMBER_KEY] ?? '').trim()) { setMessage(t('identity.admin.employeeNumberRequired')); return; }
     const missing = missingRequired(userFields.fields, form.customFields, language);
     if (missing.length > 0) { setMessage(t('userFields.requiredMissing', { fields: missing.join(', ') })); return; }
     setMessage(null);

@@ -20,6 +20,24 @@ export const loginSchema = z.object({
   password: z.string().min(1).max(255),
 });
 
+/** PR 501: sign-in without email: the number and the last name select the account, the password decides. */
+export const employeeLoginSchema = z.object({
+  organizationId: organizationLoginSchema,
+  employeeNumber: z.string().trim().min(1).max(80),
+  lastName: z.string().trim().min(1).max(80),
+  password: z.string().min(1).max(255),
+}).strict();
+
+/** PR 501: a person without a mailbox confirms who they are and sets the first password. */
+export const identityActivationSchema = z.object({
+  organizationId: organizationLoginSchema,
+  employeeNumber: z.string().trim().min(1).max(80),
+  lastName: z.string().trim().min(1).max(80),
+  firstName: z.string().trim().min(1).max(80),
+  middleName: z.string().trim().max(80).optional(),
+  password: newPasswordSchema,
+}).strict();
+
 export const passwordResetRequestSchema = z.object({
   // Same short name or ID as the sign-in form.
   organizationId: organizationLoginSchema,
@@ -77,6 +95,8 @@ export const loginResponseSchema = z.object({
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
+export type EmployeeLoginInput = z.infer<typeof employeeLoginSchema>;
+export type IdentityActivationInput = z.infer<typeof identityActivationSchema>;
 export type LoginIdentityInput = Pick<LoginInput, 'organizationId' | 'email'>;
 export type PasswordResetRequestInput = z.infer<typeof passwordResetRequestSchema>;
 export type PasswordResetConfirmInput = z.infer<typeof passwordResetConfirmSchema>;

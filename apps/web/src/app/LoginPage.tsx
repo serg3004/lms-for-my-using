@@ -12,6 +12,9 @@ type LoginFormState = {
   organizationId: string;
   email: string;
   password: string;
+  /** PR 501: sign-in without email. */
+  employeeNumber: string;
+  lastName: string;
 };
 
 type LoginFormField = keyof LoginFormState;
@@ -48,6 +51,8 @@ function getInitialLoginFormState(): LoginFormState {
     organizationId: rememberedLogin?.organizationId ?? '',
     email: rememberedLogin?.email ?? '',
     password: '',
+    employeeNumber: '',
+    lastName: '',
   };
 }
 
@@ -93,6 +98,7 @@ export function LoginPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => getRememberedLogin() !== null);
+  const [byNumber, setByNumber] = useState(false);
 
   const updateField =
     (field: LoginFormField) =>
@@ -118,7 +124,12 @@ export function LoginPage() {
 
     const nextValidationErrors = validateRequiredFields<LoginFormField>([
       { name: 'organizationId', value: formState.organizationId, message: t('validation.required') },
-      { name: 'email', value: formState.email, message: t('validation.required') },
+      ...(byNumber
+        ? [
+            { name: 'employeeNumber' as const, value: formState.employeeNumber, message: t('validation.required') },
+            { name: 'lastName' as const, value: formState.lastName, message: t('validation.required') },
+          ]
+        : [{ name: 'email' as const, value: formState.email, message: t('validation.required') }]),
       { name: 'password', value: formState.password, message: t('validation.required') },
     ]);
 
@@ -128,13 +139,23 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      const loginResult = await login({
-        organizationId: formState.organizationId.trim(),
-        email: formState.email.trim(),
-        password: formState.password,
-      });
+      const loginResult = await login(byNumber
+        ? {
+            organizationId: formState.organizationId.trim(),
+            employeeNumber: formState.employeeNumber.trim(),
+            lastName: formState.lastName.trim(),
+            password: formState.password,
+          }
+        : {
+            organizationId: formState.organizationId.trim(),
+            email: formState.email.trim(),
+            password: formState.password,
+          });
 
-      if (rememberMe) {
+      if (byNumber) {
+        // Nothing but the organization is remembered for this way: the number and the name identify a person.
+        localStorage.removeItem(REMEMBERED_LOGIN_KEY);
+      } else if (rememberMe) {
         localStorage.setItem(
           REMEMBERED_LOGIN_KEY,
           JSON.stringify({
@@ -183,6 +204,21 @@ export function LoginPage() {
             <p>{t('login.subtitle')}</p>
           </header>
 
+          <div aria-label={t('identity.loginTabs')} role="group" style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
+            {([false, true] as const).map((number) => (
+              <button
+                aria-pressed={byNumber === number}
+                className="password-reset-secondary"
+                key={String(number)}
+                onClick={() => { setByNumber(number); setValidationErrors({}); setErrorMessage(null); }}
+                style={{ flex: 1, minHeight: '2.5rem', cursor: 'pointer', fontWeight: byNumber === number ? 700 : 400, border: `${byNumber === number ? 2 : 1}px solid currentColor`, borderRadius: '0.5rem', background: 'transparent', color: 'inherit' }}
+                type="button"
+              >
+                {number ? t('identity.tabNumber') : t('identity.tabEmail')}
+              </button>
+            ))}
+          </div>
+
           <form className="login-form" onSubmit={handleSubmit}>
             <label htmlFor="organizationId">
               {t('login.organizationId')}
@@ -205,26 +241,75 @@ export function LoginPage() {
               </p>
             ) : null}
 
-            <label htmlFor="email">
-              {t('login.email')}
-              <input
-                aria-describedby={validationErrors.email ? 'email-error' : undefined}
-                aria-invalid={Boolean(validationErrors.email)}
-                autoComplete="email"
-                id="email"
-                name="email"
-                onChange={updateField('email')}
-                placeholder={t('login.emailPlaceholder')}
-                required
-                type="email"
-                value={formState.email}
-              />
-            </label>
-            {validationErrors.email ? (
-              <p className="login-form__field-error" id="email-error" role="alert">
-                {validationErrors.email}
-              </p>
-            ) : null}
+            {byNumber ? (
+              <>
+                <label htmlFor="employeeNumber">
+                  {t('identity.employeeNumber')}
+                  <input
+                    aria-describedby={validationErrors.employeeNumber ? 'employeeNumber-error' : 'login-number-hint'}
+                    aria-invalid={Boolean(validationErrors.employeeNumber)}
+                    autoComplete="off"
+                    id="employeeNumber"
+                    name="employeeNumber"
+                    onChange={updateField('employeeNumber')}
+                    placeholder={t('identity.employeeNumberPlaceholder')}
+                    required
+                    type="text"
+                    value={formState.employeeNumber}
+                  />
+                </label>
+                {validationErrors.employeeNumber ? (
+                  <p className="login-form__field-error" id="employeeNumber-error" role="alert">
+                    {validationErrors.employeeNumber}
+                  </p>
+                ) : null}
+
+                <label htmlFor="lastName">
+                  {t('identity.lastName')}
+                  <input
+                    aria-describedby={validationErrors.lastName ? 'lastName-error' : 'login-number-hint'}
+                    aria-invalid={Boolean(validationErrors.lastName)}
+                    autoComplete="family-name"
+                    id="lastName"
+                    name="lastName"
+                    onChange={updateField('lastName')}
+                    placeholder={t('identity.lastNamePlaceholder')}
+                    required
+                    type="text"
+                    value={formState.lastName}
+                  />
+                </label>
+                {validationErrors.lastName ? (
+                  <p className="login-form__field-error" id="lastName-error" role="alert">
+                    {validationErrors.lastName}
+                  </p>
+                ) : null}
+                <p id="login-number-hint" style={{ margin: 0, fontSize: '0.85rem' }}>{t('identity.numberHint')}</p>
+              </>
+            ) : (
+              <>
+                <label htmlFor="email">
+                  {t('login.email')}
+                  <input
+                    aria-describedby={validationErrors.email ? 'email-error' : undefined}
+                    aria-invalid={Boolean(validationErrors.email)}
+                    autoComplete="email"
+                    id="email"
+                    name="email"
+                    onChange={updateField('email')}
+                    placeholder={t('login.emailPlaceholder')}
+                    required
+                    type="email"
+                    value={formState.email}
+                  />
+                </label>
+                {validationErrors.email ? (
+                  <p className="login-form__field-error" id="email-error" role="alert">
+                    {validationErrors.email}
+                  </p>
+                ) : null}
+              </>
+            )}
 
             <label htmlFor="password">
               {t('login.password')}
@@ -282,6 +367,7 @@ export function LoginPage() {
                 {t('login.forgotPassword')}
               </Link>
             </div>
+            <Link className="login-form__forgot" to="/activate">{t('identity.activateLink')}</Link>
 
             {infoMessage ? (
               <p className="login-form__info" role="status">

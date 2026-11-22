@@ -21,6 +21,7 @@ module.exports = {
     '<rootDir>/src/integration/custom-roles-acceptance.database.spec.ts',
     '<rootDir>/src/integration/memberships-revoke.database.spec.ts',
     '<rootDir>/src/integration/user-invitation.database.spec.ts',
+    '<rootDir>/src/integration/identity-activation.database.spec.ts',
     '<rootDir>/src/integration/password-policy.database.spec.ts',
     '<rootDir>/src/integration/temporary-password.database.spec.ts',
     '<rootDir>/src/integration/login-lockout.database.spec.ts',

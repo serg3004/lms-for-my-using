@@ -473,6 +473,8 @@ model User {
   temporaryPasswordUsedAt    DateTime?                  @map("temporary_password_used_at") @db.Timestamptz
   /// PR 493: sign-in is refused until this moment after too many failed attempts; an administrator can lift it earlier.
   loginLockedUntil           DateTime?                  @map("login_locked_until") @db.Timestamptz
+  /// PR 501: an `invited` person without a mailbox may set their own password by confirming the organization, employee number and full name.
+  identityActivation         Boolean                    @default(false) @map("identity_activation")
   /// PR 496: the person's own short note and photo; `profileVersion` guards two open tabs against overwriting each other.
   aboutMe                    String?                    @map("about_me")
   photoObjectKey             String?                    @map("photo_object_key")

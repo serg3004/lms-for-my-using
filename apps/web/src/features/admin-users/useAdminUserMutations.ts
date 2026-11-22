@@ -25,6 +25,8 @@ export function useAdminUserMutations(reload: () => Promise<void>) {
           method: 'POST', body: JSON.stringify(toCreateUserPayload(form, organizationId, fields)),
         });
         if (created.invitation) invited = { user: created, ...created.invitation };
+        // PR 501: no mailbox and no password: the person activates themselves, so the administrator is told what to pass on.
+        else if (form.noEmail && (form.noEmailAccess ?? 'identity') === 'identity') invited = { user: created, delivered: false, identity: true };
         if (created.temporaryPassword) temporary = { user: created, ...created.temporaryPassword };
       } else if (form.id) {
         await apiRequest<AdminUserSummary>(`/users/${form.id}`, {

@@ -40,7 +40,11 @@ export const createUserSchema = z.object({
 /** PR 483: `POST /users` may name the department the new user is placed in (required for a registrar limited to a department). */
 /** PR 487: without `password` the user is created `invited` and receives an email invitation to set their own. */
 export const createUserRequestSchema = createUserSchema.extend({
+  /** PR 501: a person without a mailbox. Then the employee number is required and exactly one of `temporaryPassword` / `activateByIdentity` says how they get in. */
+  email: createUserSchema.shape.email.optional(),
   password: createUserSchema.shape.password.optional(),
+  /** PR 501: the person sets their own password at the public activation screen by confirming organization, employee number and full name. */
+  activateByIdentity: z.boolean().optional(),
   departmentId: z.guid().optional(),
   /** PR 489: no password and no invitation: the server makes a temporary password, shown once, and the first sign-in leads to choosing their own. */
   temporaryPassword: z.boolean().optional(),
@@ -111,6 +115,9 @@ export type UpdateUserStatusInput = z.infer<typeof updateUserStatusSchema>;
  * named by its title and the role by its key or its name in any interface language; the service resolves both per row.
  */
 export const importUserItemSchema = createBulkUserItemSchema.extend({
+  /** PR 501: a row without an email needs `activateByIdentity` and an employee number. */
+  email: createUserSchema.shape.email.optional(),
+  activateByIdentity: z.boolean().optional(),
   password: createUserSchema.shape.password.optional(),
   department: z.string().trim().min(1).max(160).optional(),
   role: z.string().trim().min(1).max(40).optional(),

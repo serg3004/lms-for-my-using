@@ -6,7 +6,7 @@ import { PasswordInput } from '../../shared/PasswordInput.js';
 import type { UserFieldView } from '../../shared/api/userFields.js';
 import { CustomFieldInputs } from '../user-fields/CustomFieldInputs.js';
 import { clearFieldError, type FormValidationErrors } from '../../shared/formValidation.js';
-import { USER_ROLES, USER_STATUSES, type UserForm, type UserFormField, type UserFormMode } from './model.js';
+import { isNoEmail, USER_ROLES, USER_STATUSES, type UserForm, type UserFormField, type UserFormMode } from './model.js';
 
 type Props = {
   /** PR 500: custom fields the caller may see; their inputs follow the standard ones. */
@@ -31,9 +31,19 @@ export function AdminUserForm({ fields = [], departments = [], departmentsLoadin
       <FormField id="user-firstName" label={t('admin.users.fieldFirstName', 'First name')} required error={errors.firstName}><input id="user-firstName" aria-describedby={errors.firstName ? 'user-firstName-error' : undefined} aria-invalid={Boolean(errors.firstName)} value={form.firstName} onChange={(e) => field('firstName', e.target.value)} /></FormField>
       <FormField id="user-middleName" label={t('admin.users.fieldMiddleName', 'Middle name')}><input id="user-middleName" value={form.middleName} onChange={(e) => onChange({ ...form, middleName: e.target.value })} /></FormField>
     </div>
+    {mode === 'create' && <label><input checked={Boolean(form.noEmail)} onChange={(e) => onChange({ ...form, noEmail: e.target.checked, noEmailAccess: form.noEmailAccess ?? 'identity', password: '', temporaryPassword: false })} type="checkbox" /> {t('identity.admin.noEmail')}</label>}
+    {mode === 'create' && form.noEmail && <FormField id="user-no-email-access" label={t('identity.admin.access')} hint={t('identity.admin.noEmailHint')}>
+      <select id="user-no-email-access" value={form.noEmailAccess ?? 'identity'} onChange={(e) => onChange({ ...form, noEmailAccess: e.target.value as 'identity' | 'temporary' })}>
+        <option value="identity">{t('identity.admin.accessIdentity')}</option>
+        <option value="temporary">{t('identity.admin.accessTemporary')}</option>
+      </select>
+    </FormField>}
+    {mode === 'edit' && isNoEmail(form.email) && <p>{t('identity.admin.noEmailHint')}</p>}
+    {!(form.noEmail && mode === 'create') && !(mode === 'edit' && isNoEmail(form.email)) && (<>
     <FormField id="user-email" label={t('admin.users.fieldEmail', 'Email')} required error={errors.email}><input id="user-email" type="email" aria-describedby={errors.email ? 'user-email-error' : undefined} aria-invalid={Boolean(errors.email)} value={form.email} onChange={(e) => field('email', e.target.value)} /></FormField>
     {mode === 'create' && <FormField id="user-password" label={t('admin.users.fieldPasswordOptional', 'Password (optional)')} hint={t('admin.users.passwordInviteHint', 'Leave empty: the user will get an email invitation and set their own password.')} error={errors.password}><PasswordInput id="user-password" disabled={Boolean(form.temporaryPassword)} autoComplete="new-password" aria-describedby={errors.password ? 'user-password-error' : undefined} aria-invalid={Boolean(errors.password)} value={form.password} onChange={(e) => field('password', e.target.value)} /></FormField>}
     {mode === 'create' && <label><input checked={Boolean(form.temporaryPassword)} onChange={(e) => onChange({ ...form, password: e.target.checked ? '' : form.password, temporaryPassword: e.target.checked })} type="checkbox" /> {t('security.accessTemporary')}</label>}
+    </>)}
     {mode === 'edit' && <><div className="admin-form__row">
       <FormField id="user-position" label={t('admin.users.fieldPosition', 'Position')}><input id="user-position" value={form.position} onChange={(e) => onChange({ ...form, position: e.target.value })} /></FormField>
       <FormField id="user-shift" label={t('admin.users.fieldShift', 'Shift')}><input id="user-shift" value={form.shift} onChange={(e) => onChange({ ...form, shift: e.target.value })} /></FormField>

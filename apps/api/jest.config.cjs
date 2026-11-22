@@ -35,6 +35,7 @@ module.exports = {
     '/src/integration/custom-roles-acceptance\\.database\\.spec\\.ts$',
     '/src/integration/memberships-revoke\\.database\\.spec\\.ts$',
     '/src/integration/user-invitation\\.database\\.spec\\.ts$',
+    '/src/integration/identity-activation\\.database\\.spec\\.ts$',
     '/src/integration/password-policy\\.database\\.spec\\.ts$',
     '/src/integration/temporary-password\\.database\\.spec\\.ts$',
     '/src/integration/login-lockout\\.database\\.spec\\.ts$',

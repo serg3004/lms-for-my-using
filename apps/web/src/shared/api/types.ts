@@ -11,6 +11,24 @@ export type LoginInput = {
   password: string;
 };
 
+/** PR 501: sign-in without email. */
+export type EmployeeLoginInput = {
+  organizationId: string;
+  employeeNumber: string;
+  lastName: string;
+  password: string;
+};
+
+/** PR 501: confirms the card data and sets the first password. */
+export type IdentityActivationInput = {
+  organizationId: string;
+  employeeNumber: string;
+  lastName: string;
+  firstName: string;
+  middleName?: string;
+  password: string;
+};
+
 export type CurrentUser = {
   id: string;
   organizationId: string;
