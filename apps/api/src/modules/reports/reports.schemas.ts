@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
+import { analyticsFieldFiltersSchema, fieldKeySchema } from '../user-fields/public.js';
+
 export const reportsSummaryQuerySchema = z.object({
+  groupByField: fieldKeySchema.optional(),
+  fieldFilters: analyticsFieldFiltersSchema,
   departmentId: z.guid().optional(),
   includeDescendants: z.enum(['true', 'false']).optional().transform((value) => value === 'true'),
 });
@@ -8,6 +12,8 @@ export const reportsSummaryQuerySchema = z.object({
 export type ReportsSummaryQuery = z.infer<typeof reportsSummaryQuerySchema>;
 
 const analyticsFilterShape = {
+  groupByField: fieldKeySchema.optional(),
+  fieldFilters: analyticsFieldFiltersSchema,
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
   departmentId: z.guid().optional(),

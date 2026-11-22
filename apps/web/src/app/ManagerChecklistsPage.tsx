@@ -1,3 +1,4 @@
+import { AnalyticsFieldFilter } from '../features/user-fields/AnalyticsFieldFilter.js';
 import { plainText } from '@lms/shared/rich-text';
 import { useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -246,6 +247,7 @@ export function ManagerChecklistsPage({ Layout = ManagerPageLayout }: { Layout?:
   const customTo = searchParams.get('to') ?? '';
   const departmentId = searchParams.get('departmentId') ?? '';
   const managerId = searchParams.get('managerId') ?? '';
+  const fieldFilters = searchParams.get('fieldFilters') || undefined;
   const searchQuery = searchParams.get('q') ?? '';
   const onlyNoCompletion = searchParams.get('noCompletion') === '1';
   const performanceParam = searchParams.get('performance');
@@ -270,8 +272,8 @@ export function ManagerChecklistsPage({ Layout = ManagerPageLayout }: { Layout?:
   }
 
   const { state } = useAsyncData<ManagerChecklistAnalytics>(
-    () => getManagerChecklistAnalytics({ from, to, checklistId: checklistId || undefined, departmentId: departmentId || undefined, managerId: managerId || undefined }),
-    [from, to, checklistId, departmentId, managerId],
+    () => getManagerChecklistAnalytics({ from, to, checklistId: checklistId || undefined, departmentId: departmentId || undefined, fieldFilters, managerId: managerId || undefined }),
+    [from, to, checklistId, departmentId, managerId, fieldFilters],
     { unauthenticated: t('manager.checklists.loadError', 'Unable to load analytics.'), error: t('manager.checklists.loadError', 'Unable to load analytics.') },
   );
   const { state: checklistsState } = useAsyncData<ChecklistSummary[]>(listChecklists, [], { unauthenticated: '', error: '' });
@@ -288,12 +290,12 @@ export function ManagerChecklistsPage({ Layout = ManagerPageLayout }: { Layout?:
     try {
       const file = table === 'managers' ? await exportManagerChecklistManagers({
         from, to, checklistId: checklistId || undefined, departmentId: departmentId || undefined,
-        managerId: managerId || undefined, format,
+        fieldFilters, managerId: managerId || undefined, format,
       }) : await exportManagerChecklistEmployees({
         from, to,
         checklistId: checklistId || undefined,
         departmentId: departmentId || undefined,
-        managerId: managerId || undefined,
+        fieldFilters, managerId: managerId || undefined,
         q: searchQuery.trim() || undefined,
         noCompletion: onlyNoCompletion ? 'true' : undefined,
         performance: performance ?? undefined,
@@ -359,6 +361,7 @@ export function ManagerChecklistsPage({ Layout = ManagerPageLayout }: { Layout?:
       </header>
 
       <Card style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,200px),1fr))', gap: 16, marginBottom: 20 }}>
+        <AnalyticsFieldFilter value={fieldFilters} onChange={(value) => updateParam('fieldFilters', value)} />
         <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
           {t('manager.checklists.periodFilter', 'Period')}
           <select className="ds-input" value={period} onChange={(event) => updateParam('period', event.target.value)}>

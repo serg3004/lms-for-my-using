@@ -6,6 +6,7 @@ export const PINO_REDACT_PATHS = [
   'req.headers["x-csrf-token"]',
   'req.headers["set-cookie"]',
   'res.headers["set-cookie"]',
+  'req.query.fieldFilters',
   'req.body.cookie',
   'req.body.authorization',
   'req.body.apiKey',
@@ -19,3 +20,14 @@ export const PINO_REDACT_PATHS = [
   'req.body.resetToken',
   'req.body.csrfToken',
 ];
+
+
+export function redactAnalyticsFilters(url: string): string {
+  const index = url.indexOf('?');
+  if (index < 0) return url;
+  const params = new URLSearchParams(url.slice(index + 1));
+  if (!params.has('fieldFilters')) return url;
+  params.delete('fieldFilters');
+  const query = params.toString();
+  return url.slice(0, index) + (query ? '?' + query : '');
+}

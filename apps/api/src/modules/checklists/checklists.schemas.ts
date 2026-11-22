@@ -1,6 +1,8 @@
 import { richTextSchema } from '@lms/shared/rich-text';
 import { DESCRIPTION_MARKUP_LIMIT } from '@lms/shared/checklist-description';
 import { z } from 'zod';
+
+import { analyticsFieldFiltersSchema, fieldKeySchema } from '../user-fields/public.js';
 import { UserRole } from '@prisma/client';
 
 import { HIGHLIGHT_COLOR_PATTERN, normalizeHighlightColor } from './checklist-colors.js';
@@ -353,6 +355,7 @@ export type ChecklistAnalyticsQuery = z.infer<typeof checklistAnalyticsQuerySche
 
 // ---- PR 299: manager checklist analytics ----
 export const checklistManagerAnalyticsQuerySchema = z.object({
+  fieldFilters: analyticsFieldFiltersSchema,
   managerId: z.union([z.guid().toLowerCase(), z.literal('unassigned')]).optional(),
   from: z.string().datetime(),
   to: z.string().datetime(),
@@ -363,6 +366,8 @@ export type ChecklistManagerAnalyticsQuery = z.infer<typeof checklistManagerAnal
 
 // PR 459: analytics over several sheets (the "Analytics" tab); `checklistIds` is a comma-separated list, empty = every accessible sheet.
 export const checklistSheetAnalyticsQuerySchema = z.object({
+  groupByField: fieldKeySchema.optional(),
+  fieldFilters: analyticsFieldFiltersSchema,
   from: z.string().datetime(),
   to: z.string().datetime(),
   checklistIds: z.preprocess(
@@ -376,6 +381,7 @@ export type ChecklistSheetAnalyticsQuery = z.infer<typeof checklistSheetAnalytic
 
 // PR 460: one sheet cut by criteria, groups, feedback fields or notes (the notes list is paged by 20).
 export const checklistItemAnalyticsQuerySchema = z.object({
+  fieldFilters: analyticsFieldFiltersSchema,
   by: z.enum(['criteria', 'groups', 'feedback', 'notes']),
   from: z.string().datetime(),
   to: z.string().datetime(),
@@ -414,6 +420,8 @@ export type FinishPublicChecklistInput = z.infer<typeof finishPublicChecklistSch
 
 // PR 463: the export of the "Analytics" tab repeats its current view; the cuts of one sheet need `checklistId`.
 export const checklistAnalyticsExportQuerySchema = z.object({
+  groupByField: fieldKeySchema.optional(),
+  fieldFilters: analyticsFieldFiltersSchema,
   view: z.enum(['sheets', 'criteria', 'groups', 'feedback', 'notes']),
   from: z.string().datetime(),
   to: z.string().datetime(),

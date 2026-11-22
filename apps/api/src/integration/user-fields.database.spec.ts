@@ -197,6 +197,34 @@ describe('custom user fields — database', () => {
     expect((await send('GET', '/user-fields/for-users', managerHeaders)).body.items.map((item: Json) => item.key)).not.toContain('secret_note');
   });
 
+  it('intersects analytics filters with tenant and team scopes and rejects hidden fields', async () => {
+    const filters = (key: string, value: string) => new URLSearchParams({ fieldFilters: JSON.stringify([[key, value]]) });
+    const outOfTeam = await createUser('outside-team', 'learner');
+    await send('PATCH', `/users/${outOfTeam.id}`, adminHeaders, userBody(outOfTeam, { customFields: { work_schedule: '5-2' } }));
+    const tenantField = await prisma.userFieldDefinition.create({
+      data: { organizationId: otherOrganizationId, key: 'work_schedule', labels, type: 'list', visibleTo: ['manager'] },
+    });
+    const foreignUser = await prisma.user.create({
+      data: { organizationId: otherOrganizationId, email: 'foreign@example.test', firstName: 'Foreign', lastName: 'Person', passwordHash: 'unused' },
+    });
+    await prisma.userFieldValue.create({
+      data: { organizationId: otherOrganizationId, userId: foreignUser.id, fieldId: tenantField.id, value: '5-2', normalizedValue: '5-2' },
+    });
+
+    const from = '2026-11-01T00:00:00.000Z';
+    const to = '2026-11-30T23:59:59.999Z';
+    const query = filters('work_schedule', '5-2');
+    query.set('from', from);
+    query.set('to', to);
+    const summary = await send('GET', `/checklists/manager-analytics?${query}`, managerHeaders);
+    expect(summary.status).toBe(200);
+    expect(summary.body.employees.map((employee: Json) => employee.userId)).toEqual([learner.id]);
+    expect((await send('GET', `/reports/summary?${filters('secret_note', 'internal')}`, managerHeaders)).status).toBe(400);
+    expect((await send('GET', '/reports/course-analytics?groupByField=secret_note', managerHeaders)).status).toBe(400);
+    expect((await send('GET', '/reports/course-analytics/export?view=courses&groupByField=secret_note', managerHeaders)).status).toBe(400);
+  });
+
+
   it('lets people edit only their own editable fields and shows them no others', async () => {
     const profile = await send('GET', '/auth/me/profile', learnerHeaders);
     expect(profile.body.customFields).not.toHaveProperty('employee_number');

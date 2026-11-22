@@ -10,7 +10,15 @@ const userId = '33333333-3333-4333-8333-333333333333';
 function build(options: { courses?: unknown[]; users?: unknown[]; audit?: unknown[] } = {}) {
   const calls: Array<{ resource: string; args: { where?: unknown } }> = [];
   const rec = (resource: string, result: unknown) => async (args: { where?: unknown }) => { calls.push({ resource, args }); return result; };
+  const labels = { ru: 'График работы', en: 'Work schedule', kk: 'Жұмыс кестесі', zh: '工作时间表' };
   const prisma = {
+    userFieldDefinition: {
+      findFirst: rec('userFieldDefinition', {
+        id: 'field-id', key: 'work_schedule', type: 'list', labels,
+        options: [{ key: '2-2', labels: { ...labels, en: 'Two on, two off', ru: 'Два через два' } }],
+      }),
+    },
+    userFieldValue: { findMany: rec('userFieldValue', [{ userId, value: '2-2', normalizedValue: '2-2' }]) },
     course: { findMany: rec('course', options.courses ?? [{ id: courseId, title: 'Безопасность' }]) },
     assignment: { findMany: rec('assignment', [{ courseId, userId, groupId: null, departmentId: null, includeDescendants: false, dueAt: null, status: 'assigned' }]) },
     groupMember: { findMany: rec('groupMember', []) },
@@ -41,6 +49,24 @@ describe('CourseAnalyticsService scope', () => {
     expect(result.courses[0]).toMatchObject({ courseId, title: 'Безопасность', assigned: 1 });
     expect(JSON.stringify(calls.find((call) => call.resource === 'course')?.args.where)).not.toContain('instructors');
     expect(JSON.stringify(calls.find((call) => call.resource === 'user')?.args.where)).not.toContain('team-scope-marker');
+  });
+
+  it('groups the same scoped assignments and localizes the selected field in the export', async () => {
+    const { service, calls } = build();
+    const actor = { ...manager, locale: 'en' };
+    const grouped = { includeDescendants: false, groupByField: 'work_schedule' };
+    const [baseline, report] = await Promise.all([
+      service.getCourses(actor, { includeDescendants: false }),
+      service.getCourses(actor, grouped),
+    ]);
+    expect(report.fieldColumn).toBe('Work schedule');
+    expect(report.courses).toEqual([{ ...baseline.courses[0], fieldLabel: 'Two on, two off', groupKey: '2-2' }]);
+    expect(calls.find((call) => call.resource === 'userFieldValue')?.args.where).toMatchObject({
+      organizationId, userId: { in: [userId] }, field: { visibleTo: { has: 'manager' } },
+    });
+    const file = await service.export(actor, { ...grouped, view: 'courses', format: 'csv' });
+    expect(file.rows[0]?.at(-1)).toBe('Work schedule');
+    expect(file.rows[1]?.at(-1)).toBe('Two on, two off');
   });
 
   it('manager reads only users of their team', async () => {

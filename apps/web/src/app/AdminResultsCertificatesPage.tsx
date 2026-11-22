@@ -1,3 +1,4 @@
+import { AnalyticsFieldFilter } from '../features/user-fields/AnalyticsFieldFilter.js';
 import type { LongreadCompletion } from '@lms/shared/longread-progress';
 import { CompletionStatus } from '../features/longread-progress/CompletionRuntime.js';
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
@@ -14,13 +15,13 @@ import type { PaginatedResponse } from '../shared/api/types.js';
 type Course = { id: string; organizationId: string; title: string };
 type User = { id: string; email: string; name: string | null };
 type Assessment = { id: string; courseId: string; title: string; passingScore: number; status: string };
-type Progress = { lesson?: { id: string; title: string } | null; longread?: LongreadCompletion; id: string; courseId: string; userId: string; status: string; score: number | null; completedAt: string | null };
-type Certificate = { id: string; courseId: string; userId: string; issuedAt: string; status: string };
+type Progress = { fieldLabel?: string; lesson?: { id: string; title: string } | null; longread?: LongreadCompletion; id: string; courseId: string; userId: string; status: string; score: number | null; completedAt: string | null };
+type Certificate = { fieldLabel?: string; id: string; courseId: string; userId: string; issuedAt: string; status: string };
 type AssessmentResult = { id: string; assessmentId: string; userId: string; score: number; maxScore: number; percentage: number; passed: boolean; completedAt: string | null };
 type ReportUser = { id: string; firstName: string; lastName: string; email: string };
 type ReportProgress = Omit<Progress, 'courseId' | 'userId'> & { course: { id: string; title: string }; user: ReportUser };
 type ReportCertificate = Omit<Certificate, 'courseId' | 'userId'> & { course: { id: string; title: string }; user: ReportUser };
-type OverdueAssignment = { id: string; dueAt: string; course: { id: string; title: string }; user: ReportUser | null; group: { id: string; name: string } | null };
+type OverdueAssignment = { fieldLabel?: string; id: string; dueAt: string; course: { id: string; title: string }; user: ReportUser | null; group: { id: string; name: string } | null };
 type ReportsCounts = {
   progressTotal: number;
   progressCompletedTotal: number;
@@ -28,9 +29,10 @@ type ReportsCounts = {
   certificatesIssuedTotal: number;
   overdueTotal: number;
 };
-type ReportsSummary = { progress: ReportProgress[]; certificates: ReportCertificate[]; overdueAssignments: OverdueAssignment[]; counts: ReportsCounts };
+type ReportsSummary = { fieldColumn?: string; progress: ReportProgress[]; certificates: ReportCertificate[]; overdueAssignments: OverdueAssignment[]; counts: ReportsCounts };
 
 type AdminResultsData = {
+  fieldColumn?: string;
   courses: Course[];
   users: User[];
   assessments: Assessment[];
@@ -63,7 +65,7 @@ export function serializeCsv(rows: string[][]) {
   return rows.map((row) => row.map((value) => `"${value.replace(/"/g, '""')}"`).join(',')).join('\r\n');
 }
 
-export function buildProgressExportRows(courses: Course[], users: User[], progressItems: Progress[], t: TFunction) {
+export function buildProgressExportRows(courses: Course[], users: User[], progressItems: Progress[], t: TFunction, fieldColumn?: string) {
   const header = [
     t('admin.results.col.learner', 'Learner'),
     t('admin.results.col.course', 'Course'),
@@ -72,18 +74,27 @@ export function buildProgressExportRows(courses: Course[], users: User[], progre
   ];
   const withLongreads = progressItems.some((progress) => !!progress.longread);
   if (withLongreads) header.push(t('longreadProgress.lesson'), t('longreadProgress.versionLabel'), t('longreadProgress.status'), t('longreadProgress.chapters'));
+  if (fieldColumn) header.push(fieldColumn);
   const rows = progressItems.map((progress) => [
     findUserLabel(users, progress.userId),
     findCourseTitle(courses, progress.courseId),
     `${progressPercent(progress)}%`,
     progress.score != null ? `${progress.score}%` : '',
     ...(withLongreads ? [progress.lesson?.title ?? '', progress.longread ? String(progress.longread.version) : '', progress.longread ? t(progress.longread.completed ? 'longreadProgress.done' : 'longreadProgress.incomplete') : '', progress.longread?.chapters.map((chapter) => `${chapter.title ?? chapter.anchor}: ${t(chapter.completedAt ? 'longreadProgress.done' : 'longreadProgress.incomplete')}${chapter.reasons.length ? ` (${[...new Set(chapter.reasons.map((reason) => t(`longreadProgress.reasons.${reason.code}`, { count: reason.remainingSeconds ?? 0 })))].join('; ')})` : ''}`).join(' | ') ?? ''] : []),
+    ...(fieldColumn ? [progress.fieldLabel ?? ''] : []),
   ]);
+  if (fieldColumn) {
+    // Custom labels are supplied by administrators and may start with a spreadsheet formula prefix.
+    for (const row of [header, ...rows]) {
+      const index = row.length - 1;
+      if (/^[=+@-]/.test(row[index] ?? '')) row[index] = "'" + row[index];
+    }
+  }
   return [header, ...rows];
 }
 
-export function downloadResultsCsv(courses: Course[], users: User[], progressItems: Progress[], t: TFunction) {
-  const lines = serializeCsv(buildProgressExportRows(courses, users, progressItems, t));
+export function downloadResultsCsv(courses: Course[], users: User[], progressItems: Progress[], t: TFunction, fieldColumn?: string) {
+  const lines = serializeCsv(buildProgressExportRows(courses, users, progressItems, t, fieldColumn));
 
   const blob = new Blob([lines], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -147,6 +158,8 @@ export async function downloadAssessmentResultsXlsx(results: AssessmentResult[],
 
 export function AdminResultsCertificatesPage() {
   const { t } = useTranslation();
+  const [fieldFilters, setFieldFilters] = useState('');
+  const [groupByField, setGroupByField] = useState('');
   const [courseId, setCourseId] = useState('');
   const [userId, setUserId] = useState('');
   const [assessmentId, setAssessmentId] = useState('');
@@ -159,11 +172,14 @@ export function AdminResultsCertificatesPage() {
 
   const { state: loadState, reload: loadData } = useAsyncData<AdminResultsData>(
     async () => {
+      const params = new URLSearchParams();
+      if (fieldFilters) params.set('fieldFilters', fieldFilters);
+      if (groupByField) params.set('groupByField', groupByField);
       const [{ items: courses }, { items: users }, assessments, reports] = await Promise.all([
         apiRequest<PaginatedResponse<Course>>('/courses?pageSize=200'),
         apiRequest<PaginatedResponse<User>>('/users?pageSize=200'),
         apiRequest<Assessment[]>('/assessments'),
-        apiRequest<ReportsSummary>('/reports/summary'),
+        apiRequest<ReportsSummary>(params.size ? `/reports/summary?${params}` : '/reports/summary'),
       ]);
       const progressItems = reports.progress.map((item) => ({ ...item, courseId: item.course.id, userId: item.user.id }));
       const certificates = reports.certificates.map((item) => ({ ...item, courseId: item.course.id, userId: item.user.id }));
@@ -180,11 +196,12 @@ export function AdminResultsCertificatesPage() {
         certificates,
         overdueAssignments: reports.overdueAssignments,
         reportsCounts: reports.counts,
+        fieldColumn: reports.fieldColumn,
         assessmentResults,
         selectedAssessmentId,
       };
     },
-    [assessmentId, t],
+    [assessmentId, fieldFilters, groupByField, t],
     {
       unauthenticated: t('admin.results.sessionExpired', 'Your session expired. Sign in again.'),
       error: t('admin.results.loadError', 'Unable to load results dashboard.'),
@@ -284,7 +301,7 @@ export function AdminResultsCertificatesPage() {
             <button
               className="admin-btn admin-btn--primary"
               disabled={loadState.data.progressItems.length === 0}
-              onClick={() => downloadResultsCsv(loadState.data.courses, loadState.data.users, loadState.data.progressItems, t)}
+              onClick={() => downloadResultsCsv(loadState.data.courses, loadState.data.users, loadState.data.progressItems, t, loadState.data.fieldColumn)}
               type="button"
             >
               {t('admin.results.export', 'Export CSV')}
@@ -292,6 +309,8 @@ export function AdminResultsCertificatesPage() {
           </div>
         }
       />
+
+      <AnalyticsFieldFilter value={fieldFilters} onChange={setFieldFilters} groupBy={groupByField} onGroupBy={setGroupByField} />
 
       {(() => {
         const counts = loadState.data.reportsCounts;
@@ -314,6 +333,10 @@ export function AdminResultsCertificatesPage() {
       <DataTable<Progress>
         label={t('admin.results.progressReport', 'Learner progress')}
         columns={[
+          ...(loadState.data.fieldColumn ? [{
+            key: 'userField', label: loadState.data.fieldColumn, priority: 'primary' as const,
+            render: (row: Progress) => row.fieldLabel || '—',
+          }] : []),
           {
             key: 'learner',
             priority: 'primary',

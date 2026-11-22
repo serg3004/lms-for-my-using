@@ -1,6 +1,9 @@
 /** PR 500: texts of the custom user fields page, the form, the list, the export and the profile section. */
 export const userFieldsResources = {
   "ru": {
+    "groupBy": "Группировать по",
+    "applyFilter": "Применить",
+    "clearFilter": "Сбросить",
     "importProblem": {
       "required": "Заполните поле «{{field}}».",
       "invalid": "Неверное значение в поле «{{field}}».",
@@ -124,6 +127,9 @@ export const userFieldsResources = {
     "importFields": "Столбцы настраиваемых полей в шаблоне: {{names}}. Значение списка пишите по названию, «да/нет» словами, дату как 31.12.2026 или 2026-12-31."
   },
   "en": {
+    "groupBy": "Group by",
+    "applyFilter": "Apply",
+    "clearFilter": "Clear",
     "importProblem": {
       "required": "Fill in the field \"{{field}}\".",
       "invalid": "The value of \"{{field}}\" is not valid.",
@@ -247,6 +253,9 @@ export const userFieldsResources = {
     "importFields": "Custom field columns in the template: {{names}}. Write a list value by its title, yes/no in words, a date as 31.12.2026 or 2026-12-31."
   },
   "kk": {
+    "groupBy": "Топтау өрісі",
+    "applyFilter": "Қолдану",
+    "clearFilter": "Тазалау",
     "importProblem": {
       "required": "«{{field}}» өрісін толтырыңыз.",
       "invalid": "«{{field}}» өрісіндегі мән дұрыс емес.",
@@ -370,6 +379,9 @@ export const userFieldsResources = {
     "importFields": "Үлгідегі өрістер бағандары: {{names}}. Тізім мәнін атауымен, иә/жоқты сөзбен, күнді 31.12.2026 немесе 2026-12-31 түрінде жазыңыз."
   },
   "zh": {
+    "groupBy": "分组依据",
+    "applyFilter": "应用",
+    "clearFilter": "清除",
     "importProblem": {
       "required": "请填写字段“{{field}}”。",
       "invalid": "字段“{{field}}”的值无效。",

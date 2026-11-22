@@ -3,6 +3,8 @@ import { apiRequest } from '../apiClient.js';
 /** PR 474: client of the course and user analytics (API: `/reports/course-analytics`, PR 473). */
 
 export type CourseAnalyticsQuery = {
+  fieldFilters?: string;
+  groupByField?: string;
   from?: string;
   to?: string;
   departmentId?: string;
@@ -54,7 +56,8 @@ export type CourseAnalyticsList = {
   period: { from: string | null; to: string | null };
   durationBasis: 'calendar';
   truncated: boolean;
-  courses: Array<CourseAnalyticsSummary & { title: string }>;
+  fieldColumn?: string;
+  courses: Array<CourseAnalyticsSummary & { title: string; fieldLabel?: string; groupKey?: string | null }>;
   filterOptions: { departments: Named[]; groups: Named[]; managers: Named[] };
   courseOptions: Array<{ id: string; title: string }>;
 };
@@ -63,22 +66,26 @@ export type CourseReport = {
   period: { from: string | null; to: string | null };
   durationBasis: 'calendar';
   truncated: boolean;
+  fieldColumn?: string;
   course: { id: string; title: string };
   summary: CourseAnalyticsSummary | null;
-  rows: Array<CourseAnalyticsUserRow & { user: Person | null }>;
+  rows: Array<CourseAnalyticsUserRow & { user: Person | null; fieldLabel?: string }>;
 };
 
 export type UserReport = {
   period: { from: string | null; to: string | null };
   durationBasis: 'calendar';
   truncated: boolean;
+  fieldColumn?: string;
   user: Person;
   summary: { assigned: number; completed: number; passed: number; avgPercent: number | null; certificates: number };
-  rows: Array<CourseAnalyticsUserRow & { courseTitle: string }>;
+  rows: Array<CourseAnalyticsUserRow & { courseTitle: string; fieldLabel?: string }>;
 };
 
 function queryString(query: CourseAnalyticsQuery) {
   const params = new URLSearchParams();
+  if (query.groupByField) params.set('groupByField', query.groupByField);
+  if (query.fieldFilters) params.set('fieldFilters', query.fieldFilters);
   if (query.from) params.set('from', query.from);
   if (query.to) params.set('to', query.to);
   if (query.departmentId) params.set('departmentId', query.departmentId);

@@ -2436,6 +2436,20 @@ The course list answer (`GET /reports/course-analytics`) also carries `filterOpt
 their managers inside the viewer's scope; none for an instructor) and `courseOptions` (the courses the viewer may read),
 so the screen can fill its filters without reading the department or group lists, which a manager or instructor may not.
 
+### Custom user field filters (PR 502)
+
+Checklist overview, item analytics, manager analytics, their exports, course analytics and course exports, and
+`GET /reports/summary` accept `fieldFilters`, a URL-encoded JSON array of up to ten `[fieldKey, value]` pairs.
+Each condition intersects the current organization and viewer scope. List option keys, booleans, ISO dates and
+numbers compare by normalized value. Searchable text compares by literal substring. Archived fields, unknown
+fields, and fields hidden from the viewer produce the same 400 response. An administrator can use any active
+field of a supported type. A manager can use active fields visible to managers. Export audit entries omit values.
+
+The checklist overview and course analytics accept `groupByField` with one visible field key. The summary tables
+return one row per checklist or course and normalized field value, and include rows for employees without a value.
+The course and employee details and the results summary expose the selected field as a column. CSV and XLSX use the same rows and localized
+field and list labels. The existing row limits also apply to grouped exports.
+
 ### Screens (PR 474)
 
 «Аналитика курсов» is one screen per role over this API: administrator `/admin/results/courses` (under «Результаты»),

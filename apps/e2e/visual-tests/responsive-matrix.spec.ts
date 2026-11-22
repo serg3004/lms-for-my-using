@@ -16,6 +16,7 @@ import { openManagementEdit, openManagementList, openManagementReport, openManag
 import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 import { installManagerReportMocks, reportManagerA } from '../fixtures/checklist-manager-report.js';
 import { installSheetAnalyticsMocks, sheetA } from '../fixtures/checklist-sheet-analytics.js';
+import { installAnalyticsUserFieldMocks } from '../fixtures/analytics-user-fields.js';
 import { installCourseAnalyticsMocks, courseA, userA } from '../fixtures/course-analytics.js';
 import { GOOD_CODE, openPublicPage } from '../fixtures/checklist-public-page.js';
 import { freshTransferState, installTransferMocks, openTransferDialog } from '../fixtures/checklist-transfer.js';
@@ -1507,3 +1508,18 @@ for (const width of [390, 1280]) test(`checklist public page is responsive at ${
   await expectNoPageOverflow(page);
   await expectVisualMatch(page, `checklist-public-pass-${width}`, false, { fullPage: true, maxDiffPixels: 3000 });
 });
+
+for (const width of [390, 1280]) for (const screen of ['courses', 'checklists'] as const) {
+  test(`analytics user field controls in ${screen} at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    if (screen === 'courses') await installCourseAnalyticsMocks(page, 'admin');
+    else await installSheetAnalyticsMocks(page, 'admin');
+    await installAnalyticsUserFieldMocks(page);
+    await page.goto(screen === 'courses' ? '/admin/results/courses' : '/admin/checklists/sheet-analytics');
+    const fields = page.getByRole('group', { name: 'Поля пользователя' });
+    await fields.getByRole('combobox', { name: 'Поле', exact: true }).selectOption('work_schedule');
+    await fields.getByRole('combobox', { name: 'Значение', exact: true }).selectOption('2-2');
+    await expectNoPageOverflow(page);
+    await expectVisualMatch(page, `analytics-user-fields-${screen}-${width}`, false, { maxDiffPixels: 3000 });
+  });
+}

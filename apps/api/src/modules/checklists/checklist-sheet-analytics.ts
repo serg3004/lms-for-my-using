@@ -1,3 +1,4 @@
+import { analyticsFieldFilter, analyticsFieldPresentation } from '../user-fields/public.js';
 import type { Prisma } from '@prisma/client';
 
 import type { PrismaService } from '../../database/prisma.service.js';
@@ -193,8 +194,12 @@ export class ChecklistSheetAnalytics {
       .sort((a, b) => b.sessionsInPeriod - a.sessionsInPeriod || a.title.localeCompare(b.title));
   }
 
-  async overview(organizationId: string, actor: FolderActor, userScope: Prisma.UserWhereInput, query: ChecklistSheetAnalyticsQuery, now = new Date()) {
-    const accessibleSheets = await this.accessible(organizationId, actor);
+  async overview(organizationId: string, actor: FolderActor & { locale?: string | null }, userScope: Prisma.UserWhereInput, query: ChecklistSheetAnalyticsQuery, now = new Date()) {
+    const [accessibleSheets, fieldScope, presentation] = await Promise.all([
+      this.accessible(organizationId, actor),
+      analyticsFieldFilter(this.prisma, organizationId, actor.roles, query.fieldFilters),
+      query.groupByField ? analyticsFieldPresentation(this.prisma, organizationId, actor, query.groupByField) : undefined,
+    ]);
     const wanted = query.checklistIds?.length ? new Set(query.checklistIds) : null;
     const sheets = accessibleSheets.filter((sheet) => !wanted || wanted.has(sheet.id));
     const sheetIds = sheets.map((sheet) => sheet.id);
@@ -203,9 +208,11 @@ export class ChecklistSheetAnalytics {
 
     const from = new Date(query.from);
     const to = new Date(query.to);
-    const employeeFilter = analyticsEmployeeFilter(organizationId, userScope, query);
+    const employeeFilter = analyticsEmployeeFilter(
+      organizationId, query.fieldFilters ? { AND: [userScope, fieldScope] } : userScope, query,
+    );
     const instanceSelect = {
-      checklistId: true, status: true, percentage: true, scored: true, templateSnapshot: true, user: { select: { email: true } },
+      checklistId: true, userId: true, status: true, percentage: true, scored: true, templateSnapshot: true, user: { select: { email: true } },
       results: { select: { itemId: true, answerState: true, scaleLevel: true, checked: true, points: true } },
     } as const;
     const [sessions, selfDone, waiting] = await Promise.all([
@@ -219,11 +226,11 @@ export class ChecklistSheetAnalytics {
       }),
       this.prisma.checklistSession.findMany({
         where: { organizationId, deletedAt: null, status: 'scheduled', instance: { deletedAt: null, checklistId: { in: sheetIds }, user: employeeFilter } },
-        select: { scheduledAt: true, createdAt: true, instance: { select: { checklistId: true } } }, take: MAX_INSTANCES,
+        select: { scheduledAt: true, createdAt: true, instance: { select: { checklistId: true, userId: true } } }, take: MAX_INSTANCES,
       }),
     ]);
-    const toInstance = (instance: (typeof selfDone)[number], sessionStatus: AnalyticsInstance['sessionStatus'], scheduledAt: Date | null): AnalyticsInstance => ({
-      checklistId: instance.checklistId, sessionStatus, scheduledAt, instanceStatus: instance.status, percentage: instance.percentage, scored: instance.scored,
+    const toInstance = (instance: (typeof selfDone)[number], sessionStatus: AnalyticsInstance['sessionStatus'], scheduledAt: Date | null): AnalyticsInstance & { userId: string } => ({
+      checklistId: instance.checklistId, userId: instance.userId, sessionStatus, scheduledAt, instanceStatus: instance.status, percentage: instance.percentage, scored: instance.scored,
       guest: instance.user?.email === GUEST_USER_EMAIL,
       snapshot: (instance.templateSnapshot ?? null) as Snapshot, results: instance.results,
     });
@@ -231,8 +238,35 @@ export class ChecklistSheetAnalytics {
       ...sessions.map((session) => toInstance(session.instance, session.status, session.scheduledAt)),
       ...selfDone.map((instance) => toInstance(instance, null, null)),
     ];
-    const queue = waiting.map((row) => ({ checklistId: row.instance.checklistId, scheduledAt: row.scheduledAt, createdAt: row.createdAt }));
-    const result = buildSheetAnalytics(sheets.map((sheet) => ({ id: sheet.id, title: sheet.title })), instances, queue, now);
+    const queue = waiting.map((row) => ({ checklistId: row.instance.checklistId, userId: row.instance.userId, scheduledAt: row.scheduledAt, createdAt: row.createdAt }));
+    const result = buildSheetAnalytics(sheets, instances, queue, now);
+    if (presentation) {
+      const sheetById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
+      const values = await presentation.values([...new Set([...instances, ...queue].map((row) => row.userId))]);
+      const groups = new Map<string | null, { label: string; instances: typeof instances; queue: typeof queue; sheets: Set<string> }>();
+      const groupOf = (row: { userId: string; checklistId: string }) => {
+        const value = values.get(row.userId);
+        const key = value?.key ?? null;
+        let group = groups.get(key);
+        if (!group) {
+          group = { label: value?.label ?? '', instances: [], queue: [], sheets: new Set() };
+          groups.set(key, group);
+        }
+        group.sheets.add(row.checklistId);
+        return group;
+      };
+      for (const row of instances) groupOf(row).instances.push(row);
+      for (const row of queue) groupOf(row).queue.push(row);
+      const groupedRows = [...groups].flatMap(([groupKey, group]) =>
+        buildSheetAnalytics([...group.sheets].map((id) => sheetById.get(id)!), group.instances, group.queue, now).sheets
+          .map((row) => ({ ...row, fieldLabel: group.label, groupKey })),
+      );
+      return {
+        ...result, sheets: groupedRows.slice(0, MAX_INSTANCES), fieldColumn: presentation.label,
+        period: { from: query.from, to: query.to },
+        truncated: sessions.length >= MAX_INSTANCES || selfDone.length >= MAX_INSTANCES || waiting.length >= MAX_INSTANCES || groupedRows.length > MAX_INSTANCES,
+      };
+    }
     return { ...result, period: { from: query.from, to: query.to }, truncated: sessions.length >= MAX_INSTANCES || selfDone.length >= MAX_INSTANCES };
   }
 }

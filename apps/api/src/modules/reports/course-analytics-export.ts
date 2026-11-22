@@ -93,26 +93,26 @@ function detailCells(row: Row, locale: Locale, timeZone: string | null | undefin
 
 const noteRows = (locale: Locale): ReportCell[][] => [[], [L.note[locale]]];
 
-export function coursesExportRows(courses: ReadonlyArray<Summary & { title: string }>, locale: Locale): ReportCell[][] {
+export function coursesExportRows(courses: ReadonlyArray<Summary & { title: string; fieldLabel?: string }>, locale: Locale, fieldColumn?: string): ReportCell[][] {
   return [
-    [...HEADERS.courses[locale]],
-    ...courses.map((course) => [course.title, course.assigned, course.started, course.completed, course.completedPercent, course.passed, course.failed, course.overdue, blank(course.avgPercent), blank(course.medianPercent), formatHoursMinutes(course.avgDurationMinutes)]),
+    [...HEADERS.courses[locale], ...(fieldColumn ? [fieldColumn] : [])],
+    ...courses.map((course) => [course.title, course.assigned, course.started, course.completed, course.completedPercent, course.passed, course.failed, course.overdue, blank(course.avgPercent), blank(course.medianPercent), formatHoursMinutes(course.avgDurationMinutes), ...(fieldColumn ? [course.fieldLabel ?? ''] : [])]),
     ...noteRows(locale),
   ];
 }
 
-export function courseExportRows(rows: ReadonlyArray<Row & { user: { firstName: string; lastName: string; email: string } | null }>, locale: Locale, timeZone: string | null | undefined): ReportCell[][] {
+export function courseExportRows(rows: ReadonlyArray<Row & { user: { firstName: string; lastName: string; email: string } | null; fieldLabel?: string }>, locale: Locale, timeZone: string | null | undefined, fieldColumn?: string): ReportCell[][] {
   return [
-    [...FIRST.course[locale], ...DETAIL_TAIL[locale]],
-    ...rows.map((row) => [row.user ? [row.user.lastName, row.user.firstName].filter(Boolean).join(' ') : '', row.user?.email ?? '', ...detailCells(row, locale, timeZone)]),
+    [...FIRST.course[locale], ...DETAIL_TAIL[locale], ...(fieldColumn ? [fieldColumn] : [])],
+    ...rows.map((row) => [row.user ? [row.user.lastName, row.user.firstName].filter(Boolean).join(' ') : '', row.user?.email ?? '', ...detailCells(row, locale, timeZone), ...(fieldColumn ? [row.fieldLabel ?? ''] : [])]),
     ...noteRows(locale),
   ];
 }
 
-export function userExportRows(rows: ReadonlyArray<Row & { courseTitle: string }>, locale: Locale, timeZone: string | null | undefined): ReportCell[][] {
+export function userExportRows(rows: ReadonlyArray<Row & { courseTitle: string; fieldLabel?: string }>, locale: Locale, timeZone: string | null | undefined, fieldColumn?: string): ReportCell[][] {
   return [
-    [...FIRST.user[locale], ...DETAIL_TAIL[locale]],
-    ...rows.map((row) => [row.courseTitle, ...detailCells(row, locale, timeZone)]),
+    [...FIRST.user[locale], ...DETAIL_TAIL[locale], ...(fieldColumn ? [fieldColumn] : [])],
+    ...rows.map((row) => [row.courseTitle, ...detailCells(row, locale, timeZone), ...(fieldColumn ? [row.fieldLabel ?? ''] : [])]),
     ...noteRows(locale),
   ];
 }

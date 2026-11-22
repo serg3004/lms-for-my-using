@@ -1,3 +1,4 @@
+import { analyticsFieldFilter, analyticsFieldPresentation, type AnalyticsFieldFilters } from '../user-fields/public.js';
 import { publicLongreadProgress } from '@lms/shared/longread-progress';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
@@ -33,9 +34,16 @@ export class ReportsService {
    * department-scoped view of their own managed subtree, while a sibling/foreign department
    * request naturally resolves to an empty population instead of an error.
    */
-  async getSummary(actor: TeamScopeActor, filter?: ReportsDepartmentFilter) {
+  async getSummary(
+    actor: TeamScopeActor & { locale?: string | null },
+    filter?: ReportsDepartmentFilter,
+    fields?: { fieldFilters?: AnalyticsFieldFilters; groupByField?: string },
+  ) {
     return observeOrgDuration(orgReportQueryDuration, { report: filter ? 'department_summary' : 'summary' }, async () => {
       const baseWhere = { organizationId: actor.organizationId, deletedAt: null } as const;
+      const presentation = fields?.groupByField
+        ? await analyticsFieldPresentation(this.prisma, actor.organizationId, actor, fields.groupByField)
+        : undefined;
 
     let progressWhere: Prisma.ProgressWhereInput;
     let certificateWhere: Prisma.CertificateWhereInput;
@@ -64,6 +72,13 @@ export class ReportsService {
         dueAt: { lt: new Date() },
         ...this.teamScope.assignment(actor),
       };
+    }
+
+    if (fields?.fieldFilters) {
+      const user = await analyticsFieldFilter(this.prisma, actor.organizationId, actor.roles, fields.fieldFilters);
+      progressWhere = { AND: [progressWhere, { user }] };
+      certificateWhere = { AND: [certificateWhere, { user }] };
+      overdueWhere = { AND: [overdueWhere, { user }] };
     }
 
     const [progress, certificates, overdueAssignments, progressTotal, progressCompletedTotal, progressAvgScore, certificatesIssuedTotal, overdueTotal] =
@@ -114,10 +129,18 @@ export class ReportsService {
         this.prisma.assignment.count({ where: overdueWhere }),
       ]);
 
+      const values = presentation
+        ? await presentation.values([...new Set([...progress, ...certificates, ...overdueAssignments].flatMap((row) => row.user ? [row.user.id] : []))])
+        : undefined;
+      const withField = <Row extends { user: { id: string } | null }>(rows: Row[]) => {
+        if (!values) return rows;
+        return rows.map((row) => ({ ...row, fieldLabel: row.user ? values.get(row.user.id)?.label ?? '' : '' }));
+      };
       return {
-        progress: progress.map(publicLongreadProgress),
-        certificates,
-        overdueAssignments,
+        ...(presentation ? { fieldColumn: presentation.label } : {}),
+        progress: withField(progress.map(publicLongreadProgress)),
+        certificates: withField(certificates),
+        overdueAssignments: withField(overdueAssignments),
         counts: {
           progressTotal,
           progressCompletedTotal,
