@@ -966,7 +966,11 @@ export class AuthService {
         organizationId: claims.organizationId,
         email: claims.email,
       });
-      return session.viaBadge ? { ...user, kiosk: true } : user;
+      const inspector = await this.prisma.externalInspector.findUnique({ where: { userId: user.id }, select: { visibleBlocks: true, accessUntil: true, revokedAt: true } });
+      // An inspector whose access ended or was withdrawn has no session any more; the web client then returns to the sign-in screen.
+      if (inspector && (inspector.revokedAt || inspector.accessUntil <= new Date())) throw new Error('Inspector access ended');
+      const restricted = inspector ? { ...user, inspector: { visible: inspector.visibleBlocks, accessUntil: inspector.accessUntil.toISOString() } } : user;
+      return session.viaBadge ? { ...restricted, kiosk: true } : restricted;
     } catch {
       throw new UnauthorizedException('Invalid token');
     }

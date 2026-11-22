@@ -49,11 +49,15 @@ type PrismaMock = {
   session: {
     findFirst: (args: { where: Record<string, unknown> }) => Promise<SessionRecord | null>;
   };
+  externalInspector: {
+    findUnique: () => Promise<{ visibleBlocks: string[]; accessUntil: Date; revokedAt: Date | null } | null>;
+  };
 };
 
 function createAuthService(
   userResult: typeof currentUser | null = currentUser,
   sessionResult: SessionRecord | null = { id: 'session-id' },
+  inspectorResult: { visibleBlocks: string[]; accessUntil: Date; revokedAt: Date | null } | null = null,
 ) {
   const findFirstCalls: PrismaUserFindFirstArgs[] = [];
   const membershipFindManyCalls: PrismaMembershipFindManyArgs[] = [];
@@ -80,6 +84,7 @@ function createAuthService(
         return sessionResult;
       },
     },
+    externalInspector: { findUnique: async () => inspectorResult },
   };
 
   return {
@@ -212,6 +217,25 @@ describe('AuthService current user lookup', () => {
         },
       },
     ]);
+  });
+
+  describe('an outside inspector (PR 507)', () => {
+    const lookup = async (inspector: { visibleBlocks: string[]; accessUntil: Date; revokedAt: Date | null }) => {
+      process.env.JWT_SECRET = jwtSecret;
+      const { authService } = createAuthService(currentUser, { id: 'session-id' }, inspector);
+      const { token } = await signJwt({ sub: currentUser.id, organizationId: currentUser.organizationId, email: currentUser.email }, jwtSecret);
+      return authService.getCurrentUser(token);
+    };
+    const later = new Date(Date.now() + 86_400_000);
+
+    it('marks the account with what it may see and until when', async () => {
+      await expect(lookup({ visibleBlocks: ['clearance'], accessUntil: later, revokedAt: null })).resolves.toMatchObject({ inspector: { visible: ['clearance'], accessUntil: later.toISOString() } });
+    });
+
+    it('refuses an account whose access ended or was withdrawn', async () => {
+      await expect(lookup({ visibleBlocks: [], accessUntil: new Date(Date.now() - 1000), revokedAt: null })).rejects.toThrow('Invalid token');
+      await expect(lookup({ visibleBlocks: [], accessUntil: later, revokedAt: new Date() })).rejects.toThrow('Invalid token');
+    });
   });
 
   it('rejects tokens when the subject does not match an active user', async () => {

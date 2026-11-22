@@ -235,6 +235,16 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/departments/{id}/restore` | `Departments` | `bearer` |
 | `GET` | `/api/v1/departments/{id}/users` | `DepartmentMemberships` | `bearer` |
 | `POST` | `/api/v1/departments/{id}/users/bulk-transfer` | `DepartmentMemberships` | `bearer` |
+| `POST` | `/api/v1/employee-card/anonymous-scan` | `EmployeeCard` | `bearer` |
+| `POST` | `/api/v1/employee-card/checked` | `EmployeeCard` | `bearer` |
+| `GET` | `/api/v1/employee-card/inspectors` | `EmployeeCard` | `bearer` |
+| `POST` | `/api/v1/employee-card/inspectors` | `EmployeeCard` | `bearer` |
+| `DELETE` | `/api/v1/employee-card/inspectors/{userId}` | `EmployeeCard` | `bearer` |
+| `POST` | `/api/v1/employee-card/open` | `EmployeeCard` | `bearer` |
+| `POST` | `/api/v1/employee-card/photo` | `EmployeeCard` | `bearer` |
+| `GET` | `/api/v1/employee-card/policy/{organizationId}` | `EmployeeCard` | `bearer` |
+| `PATCH` | `/api/v1/employee-card/policy/{organizationId}` | `EmployeeCard` | `bearer` |
+| `GET` | `/api/v1/employee-card/views` | `EmployeeCard` | `bearer` |
 | `GET` | `/api/v1/groups` | `Groups` | `bearer` |
 | `POST` | `/api/v1/groups` | `Groups` | `bearer` |
 | `GET` | `/api/v1/groups/{id}` | `Groups` | `bearer` |

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { CardViewsCard } from '../features/badge/CardViewsCard.js';
 import { MyBadgeCard } from '../features/badge/MyBadgeCard.js';
 import { supportedLocales } from '../i18n/index.js';
 import { updateCurrentUserPreferences } from '../shared/apiClient.js';
@@ -76,6 +77,7 @@ export function LearnerProfilePage() {
       </form>
       <OwnProfileCard />
       <MyBadgeCard />
+      <CardViewsCard />
       <ChangePasswordForm />
       <MyDevicesCard />
     </section>

@@ -381,8 +381,8 @@ export async function apiRequest<TResponse>(path: string, init: RequestInit = {}
 }
 
 /** A binary download (PDF): the file as a Blob with the server's file name; failures carry the JSON error message. */
-export async function apiDownloadRequest(path: string, timeoutMs = REQUEST_TIMEOUT_MS) {
-  const response = await apiResponse(path, {}, timeoutMs);
+export async function apiDownloadRequest(path: string, timeoutMs = REQUEST_TIMEOUT_MS, init: RequestInit = {}) {
+  const response = await apiResponse(path, init, timeoutMs);
 
   if (!response.ok) {
     const text = await response.text();

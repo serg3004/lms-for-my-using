@@ -49,6 +49,8 @@ export type CurrentUser = {
   mustChangePassword?: boolean;
   /** PR 506: set only for a kiosk session opened by a badge. */
   kiosk?: boolean;
+  /** PR 507: set only for an outside inspector, who opens nothing but the employee card. */
+  inspector?: { visible: string[]; accessUntil: string };
   roles: UserRole[];
 };
 

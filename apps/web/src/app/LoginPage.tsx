@@ -57,7 +57,9 @@ function getInitialLoginFormState(): LoginFormState {
   };
 }
 
-export function getLoginRedirectPath(locationState: unknown, user?: { roles: string[] }) {
+export function getLoginRedirectPath(locationState: unknown, user?: { roles: string[]; inspector?: unknown }) {
+  // PR 507: an outside inspector has only the employee card.
+  if (user?.inspector) return '/employee-card';
   const fromPath = (locationState as LoginLocationState | null)?.from?.pathname;
   if (typeof fromPath === 'string' && fromPath.startsWith('/') && !fromPath.startsWith('//')) {
     return fromPath;

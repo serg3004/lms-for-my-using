@@ -4,6 +4,7 @@ import { Route } from 'react-router-dom';
 import { ForbiddenPage } from '../ForbiddenPage.js';
 import { NotFoundPage } from '../NotFoundPage.js';
 
+const EmployeeCardPage = lazy(() => import('../EmployeeCardPage.js').then((m) => ({ default: m.EmployeeCardPage })));
 const BadgePage = lazy(() => import('../BadgePage.js').then((m) => ({ default: m.BadgePage })));
 const QrConfirmPage = lazy(() => import('../QrConfirmPage.js').then((m) => ({ default: m.QrConfirmPage })));
 const LoginPage = lazy(() => import('../LoginPage.js').then((m) => ({ default: m.LoginPage })));
@@ -19,6 +20,7 @@ export function PublicRoutes() {
     <Route path="/login" element={<LoginPage />} />
     <Route path="/qr-login" element={<QrConfirmPage />} />
     <Route path="/badge" element={<BadgePage />} />
+    <Route path="/employee-card" element={<EmployeeCardPage />} />
     <Route path="/activate" element={<ActivatePage />} />
     <Route path="/password-reset" element={<PasswordResetPage />} />
     <Route path="/invitation" element={<PasswordResetPage mode="invitation" />} />

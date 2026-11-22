@@ -102,6 +102,8 @@ export const currentUserSchema = z.object({
   mustChangePassword: z.boolean(),
   /** PR 506: set only for a kiosk session opened by a badge. */
   kiosk: z.boolean().optional(),
+  /** PR 507: set only for an outside inspector: what the account may be shown, and until when. */
+  inspector: z.object({ visible: z.array(z.string()), accessUntil: z.string() }).optional(),
   roles: z.array(userRoleSchema),
 });
 

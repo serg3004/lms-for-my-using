@@ -28,6 +28,7 @@ import { ManagerModule } from './modules/manager/manager.module.js';
 import { MembershipsModule } from './modules/memberships/memberships.module.js';
 import { ManagerTeamScopeModule } from './modules/manager-team-scope/manager-team-scope.module.js';
 import { AuditLogModule } from './modules/audit-log/audit-log.module.js';
+import { EmployeeCardModule } from './modules/employee-card/employee-card.module.js';
 import { LearnerDashboardModule } from './modules/learner-dashboard/learner-dashboard.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { OpenApiModule } from './modules/openapi/openapi.module.js';
@@ -108,6 +109,7 @@ import { UserFieldsModule } from './modules/user-fields/public.js';
     ManagerTeamScopeModule,
     NotificationsModule,
     AuditLogModule,
+    EmployeeCardModule,
     LearnerDashboardModule,
     OpenApiModule,
     OutboxModule,

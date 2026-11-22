@@ -23,6 +23,7 @@ Canonical owner: `apps/api/src/app.module.ts`.
 | `DepartmentManagersModule` |
 | `DepartmentMembershipsModule` |
 | `DepartmentsModule` |
+| `EmployeeCardModule` |
 | `GroupsModule` |
 | `HealthModule` |
 | `LearnerDashboardModule` |
