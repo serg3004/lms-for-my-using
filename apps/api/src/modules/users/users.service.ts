@@ -11,8 +11,6 @@ import { countOpenObserverSessions, notifyObserverDeactivated } from '../checkli
 import { ManagerTeamScope } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import { OrganizationAccessScopeService } from '../organization-access-scope/public.js';
-import { assertInspectorTerm } from '../employee-card/employee-card.js';
-import type { CreateInspectorInput } from '../employee-card/employee-card.schemas.js';
 import { UserFieldsService } from '../user-fields/public.js';
 import { fieldAuditMetadata, validateFieldValues, WORK_SCHEDULE_KEY } from '../user-fields/public.js';
 import type { CustomFieldValues, FieldChange, FieldViewer, FieldWrite } from '../user-fields/public.js';
@@ -20,7 +18,6 @@ import { TelegramDeliveryService, type DeliveryKind } from './telegram-delivery.
 import { assertNoRoleChange, UserRegistrarAccess, type Registrar } from './user-registrar-access.js';
 import { lookupImportDepartment, resolveImportRole, type ImportRole } from './user-import.js';
 import {
-  createUserRequestSchema,
   importUserItemSchema,
   CreateBulkUsersInput,
   CreateUserInput,
@@ -496,13 +493,6 @@ export class UsersService {
       metadata: { delivered: invitation.delivered },
     });
     return { ...created, invitation };
-  }
-
-  /** PR 507: an outside inspector is an invited account that opens only the employee card; the administrator chooses what it sees and until when. */
-  async createInspector(input: CreateInspectorInput, actor: TeamScopeActor) {
-    assertInspectorTerm(input.accessUntil);
-    const request = createUserRequestSchema.parse({ organizationId: actor.organizationId, email: input.email, firstName: input.firstName, lastName: input.lastName, position: 'Inspector', role: 'learner' });
-    return this.createUser(request, actor.id, actor, { inspector: { visible: input.visible, accessUntil: input.accessUntil } });
   }
 
   async createBulkUsers(input: CreateBulkUsersInput, actor?: TeamScopeActor) {

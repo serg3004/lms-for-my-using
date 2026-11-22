@@ -5,10 +5,11 @@ import { cardBlocks, loadEmployeeCardBlocks, type CardBlock } from '../../common
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { EMPLOYEE_NUMBER_KEY, type CurrentUser } from '../auth/public.js';
-import { ManagerTeamScope } from '../manager-team-scope/public.js';
+import { ManagerTeamScope, type TeamScopeActor } from '../manager-team-scope/public.js';
 import { UploadService } from '../upload/public.js';
-import { PROFILE_PHOTO_MAX_BYTES } from '../users/profile.schemas.js';
-import { clearanceOf, datedStatus, hasDetail, visibleBlocks, visibleFields, type ViewerLevel } from './employee-card.js';
+import { PROFILE_PHOTO_MAX_BYTES, UsersService, createUserRequestSchema } from '../users/public.js';
+import type { CreateInspectorInput } from './employee-card.schemas.js';
+import { assertInspectorTerm, clearanceOf, datedStatus, hasDetail, visibleBlocks, visibleFields, type ViewerLevel } from './employee-card.js';
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 const listLimit = 100;
@@ -31,7 +32,15 @@ export class EmployeeCardService {
     private readonly auditLog: AuditLogService,
     private readonly teamScope: ManagerTeamScope,
     private readonly upload: UploadService,
+    private readonly users: UsersService,
   ) {}
+
+  /** An outside inspector is an invited account that opens only the employee card; the administrator chooses what it sees and until when. */
+  async createInspector(input: CreateInspectorInput, actor: TeamScopeActor) {
+    assertInspectorTerm(input.accessUntil);
+    const request = createUserRequestSchema.parse({ organizationId: actor.organizationId, email: input.email, firstName: input.firstName, lastName: input.lastName, position: 'Inspector', role: 'learner' });
+    return this.users.createUser(request, actor.id, actor, { inspector: { visible: input.visible, accessUntil: input.accessUntil } });
+  }
 
   /** The badge must be active, of the viewer's organization and of a person who is still active; every other case is the same 404. */
   private async subjectOf(token: string, organizationId: string) {

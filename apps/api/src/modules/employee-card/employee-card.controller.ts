@@ -2,7 +2,6 @@ import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, Res, 
 
 import { AuthGuard, AuthenticatedAccess, OrganizationScope, OrganizationScopeGuard, PublicAccess, Roles, RolesGuard } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
-import { UsersService } from '../users/users.service.js';
 import { cardPolicySchema, cardTokenSchema, createInspectorSchema } from './employee-card.schemas.js';
 import { EmployeeCardService } from './employee-card.service.js';
 
@@ -15,7 +14,7 @@ type ScanRequest = { ip?: string | undefined; headers: { 'user-agent'?: string |
  */
 @Controller('employee-card')
 export class EmployeeCardController {
-  constructor(private readonly card: EmployeeCardService, private readonly users: UsersService) {}
+  constructor(private readonly card: EmployeeCardService) {}
 
   @Post('open')
   @HttpCode(200)
@@ -86,7 +85,7 @@ export class EmployeeCardController {
   @UseGuards(AuthGuard, RolesGuard)
   @Roles('admin')
   createInspector(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
-    return this.users.createInspector(createInspectorSchema.parse(body), request.currentUser!);
+    return this.card.createInspector(createInspectorSchema.parse(body), request.currentUser!);
   }
 
   @Delete('inspectors/:userId')
