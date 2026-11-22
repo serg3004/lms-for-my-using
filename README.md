@@ -10,12 +10,15 @@ Current repository implementation includes:
 
 - NestJS API and React/Vite Web application;
 - organizations/users/memberships/groups and role-based authorization;
-- courses, lessons, materials/uploads, assignments/submissions, progress, assessments/attempts/results, certificates and reporting surfaces;
+- courses, lessons (including longread lessons with versions and exercises), materials/uploads, assignments/submissions, progress, assessments/attempts/results, certificates and reporting surfaces;
+- workplace-training checklists: checklist builder with folders and scales, observation sessions, observer conduct flow (including installable PWA), analytics tab with link/QR access, reports, PDF and XLSX export;
+- organization structure (departments, positions, managers, team scope), configurable custom roles and permissions, user invitations and account management (user fields, password policy, login journal);
 - server-side auth sessions with refresh rotation/revocation, logout/logout-all and password-reset request/confirm;
 - Notifications and Admin Audit Log backend/API/UI surfaces;
 - private S3-compatible upload/download/quarantine/scanner integration;
 - runtime OpenAPI and centralized API error handling;
-- CI, security, accessibility and visual-regression workflows.
+- CI, security, accessibility and visual-regression workflows;
+- Russian, English, Kazakh and Chinese interface texts.
 
 This list is orientation only. Current implementation facts must be verified through the canonical owner-sources described in `docs/README.md`.
 
@@ -71,7 +74,11 @@ Active implementation work belongs in GitHub Issues/Project, not in Markdown bac
 ```text
 apps/api/       NestJS API
 apps/web/       React/Vite Web application
+apps/e2e/       Playwright end-to-end and visual tests
 packages/       shared workspace packages
+services/       auxiliary services (malware scanner)
+infra/          Docker, nginx, monitoring and Railway configuration
+tests/          fixtures and test scripts
 docs/           project documentation
 ```
 
@@ -79,7 +86,7 @@ Prisma schema and migrations live under `apps/api/prisma/`. The schema/migration
 
 ## License
 
-Proprietary — all rights reserved. This is **not** an open-source project; see [`LICENSE`](./LICENSE). Third-party dependency licenses are summarized in [`NOTICE`](./NOTICE).
+Proprietary — all rights reserved. Copyright (c) 2026 Афанасков Сергей Анатольевич (Afanaskov Sergey Anatolyevich). This is **not** an open-source project: viewing the repository does not grant any right to copy, modify, distribute or use the code; see [`LICENSE`](./LICENSE). Third-party dependency licenses are summarized in [`NOTICE`](./NOTICE).
 
 ## Project naming
 
