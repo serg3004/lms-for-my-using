@@ -349,12 +349,15 @@
   position: relative;
   overflow-x: hidden;
   overflow-y: auto;
-  /* The scrollbar's place is always reserved, so the content does not jump sideways when a list grows past the screen (a new folder). */
-  scrollbar-gutter: stable;
   padding: 32px;
   /* The global `main { width: min(1120px, ...); margin: 0 auto }` would otherwise cap and centre the whole admin area. */
   width: auto;
   margin: 0;
+}
+
+/* The scrollbar's place is always reserved on wide screens, so the content does not jump sideways when a list grows past the screen (a new folder). Not on phones: there the 15px are needed by the narrow editor rows. */
+@media (min-width: 861px) {
+  .admin-shell { scrollbar-gutter: stable; }
 }
 
 .admin-shell__inner {
