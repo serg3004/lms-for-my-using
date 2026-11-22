@@ -33,6 +33,10 @@ export const activationQrSchema = z.object({
   kind: z.enum(['personal', 'shared']),
 }).strict();
 
+/** PR 505: the code shown as a QR and the secret the device keeps are 32 random bytes in base64url. */
+export const qrCodeSchema = z.object({ code: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict();
+export const qrPollSchema = z.object({ pollToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/) }).strict();
+
 /** PR 501: a person without a mailbox confirms who they are and sets the first password. */
 export const identityActivationSchema = z.object({
   organizationId: organizationLoginSchema,

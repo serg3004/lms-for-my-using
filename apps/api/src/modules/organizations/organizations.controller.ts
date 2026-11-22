@@ -15,6 +15,7 @@ import {
   OrganizationFeaturesInput,
   LoginProtectionInput,
   loginProtectionSchema,
+  qrLoginPolicySchema,
   PasswordPolicyInput,
   passwordPolicySchema,
   organizationFeaturesSchema,
@@ -139,6 +140,22 @@ export class OrganizationsController {
     const input: LoginProtectionInput = loginProtectionSchema.parse(body);
 
     return this.organizationsService.updateLoginProtection(organizationId, input, request.currentUser?.id ?? null);
+  }
+
+  @Get(':id/qr-login')
+  @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
+  @Roles(...rolePolicies.qrLoginPolicy)
+  @OrganizationScope('param', 'id')
+  getQrLoginPolicy(@Param('id') organizationId: string) {
+    return this.organizationsService.getQrLoginPolicy(organizationId);
+  }
+
+  @Patch(':id/qr-login')
+  @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
+  @Roles(...rolePolicies.qrLoginPolicy)
+  @OrganizationScope('param', 'id')
+  updateQrLoginPolicy(@Param('id') organizationId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.organizationsService.updateQrLoginPolicy(organizationId, qrLoginPolicySchema.parse(body), request.currentUser?.id ?? null);
   }
 
   @Post(':id/logo')

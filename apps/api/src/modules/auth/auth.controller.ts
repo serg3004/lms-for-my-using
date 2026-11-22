@@ -22,6 +22,8 @@ import {
   identityActivationSchema,
   activationQrSchema,
   loginSchema,
+  qrCodeSchema,
+  qrPollSchema,
   invitationAcceptSchema,
   passwordResetConfirmSchema,
   passwordResetRequestSchema,
@@ -60,6 +62,51 @@ export class AuthController {
       user: result.user,
       csrfToken,
     };
+  }
+
+  /** PR 505: a device without a password asks for a sign-in and shows the answer as a QR. */
+  @Post('qr/start')
+  @PublicAccess()
+  qrStart(@Req() request: AuthRequest) {
+    const userAgent = request.headers['user-agent'];
+    return this.authService.qrStart({ userAgent: typeof userAgent === 'string' ? userAgent : undefined, ip: request.ip });
+  }
+
+  /** The device asks whether the phone decided; its secret is in the body, never in a URL. */
+  @Post('qr/status')
+  @PublicAccess()
+  async qrStatus(@Body() body: unknown, @Req() request: AuthRequest, @Res({ passthrough: true }) response: AuthCookieResponse) {
+    const { pollToken } = qrPollSchema.parse(body);
+    const userAgent = request.headers['user-agent'];
+    const result = await this.authService.qrStatus(pollToken, { userAgent: typeof userAgent === 'string' ? userAgent : undefined, ip: request.ip });
+    if (result.status !== 'approved') return { status: result.status };
+    const csrfToken = createCsrfToken();
+    setAuthCookies(response, result.accessToken, csrfToken, result.refreshToken);
+    return { status: result.status, accessToken: result.accessToken, tokenType: result.tokenType, user: result.user, csrfToken };
+  }
+
+  @Post('qr/inspect')
+  @AuthenticatedAccess()
+  qrInspect(@Req() request: AuthRequest, @Body() body: unknown) {
+    const accessToken = resolveAccessToken(request.headers);
+    assertValidCsrf(request.headers, request.method, accessToken.source);
+    return this.authService.qrInspect(accessToken.token, qrCodeSchema.parse(body).code);
+  }
+
+  @Post('qr/approve')
+  @AuthenticatedAccess()
+  qrApprove(@Req() request: AuthRequest, @Body() body: unknown) {
+    const accessToken = resolveAccessToken(request.headers);
+    assertValidCsrf(request.headers, request.method, accessToken.source);
+    return this.authService.qrDecide(accessToken.token, qrCodeSchema.parse(body).code, 'approved');
+  }
+
+  @Post('qr/deny')
+  @AuthenticatedAccess()
+  qrDeny(@Req() request: AuthRequest, @Body() body: unknown) {
+    const accessToken = resolveAccessToken(request.headers);
+    assertValidCsrf(request.headers, request.method, accessToken.source);
+    return this.authService.qrDecide(accessToken.token, qrCodeSchema.parse(body).code, 'denied');
   }
 
   @Post('refresh')

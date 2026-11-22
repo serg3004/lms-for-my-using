@@ -36,6 +36,7 @@ module.exports = {
     '/src/integration/memberships-revoke\\.database\\.spec\\.ts$',
     '/src/integration/user-invitation\\.database\\.spec\\.ts$',
     '/src/integration/identity-activation\\.database\\.spec\\.ts$',
+    '/src/integration/qr-login\\.database\\.spec\\.ts$',
     '/src/integration/telegram-delivery\\.database\\.spec\\.ts$',
     '/src/integration/password-policy\\.database\\.spec\\.ts$',
     '/src/integration/temporary-password\\.database\\.spec\\.ts$',

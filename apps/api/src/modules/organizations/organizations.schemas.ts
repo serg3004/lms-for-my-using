@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { qrLoginRoleValues, qrLoginSessionHoursRange } from '../../common/qr-login.js';
 import { loginFailureWindowRange, loginLockRange, loginLogRetentionRange, loginMaxFailuresRange } from '../../common/login-protection.js';
 import { passwordHistoryRange, passwordMinLengthRange } from '../../common/password-policy.js';
 
@@ -75,6 +76,14 @@ export const loginProtectionSchema = z.object({
   logRetentionDays: z.number().int().min(loginLogRetentionRange.min).max(loginLogRetentionRange.max).optional(),
 }).strict();
 export type LoginProtectionInput = z.infer<typeof loginProtectionSchema>;
+
+/** PR 505: sign-in by QR confirmed on a phone: the switch, the term of the session and the roles that may use it. */
+export const qrLoginPolicySchema = z.object({
+  enabled: z.boolean(),
+  sessionHours: z.number().int().min(qrLoginSessionHoursRange.min).max(qrLoginSessionHoursRange.max),
+  roles: z.array(z.enum(qrLoginRoleValues)).max(qrLoginRoleValues.length).transform((roles) => [...new Set(roles)]),
+}).strict();
+export type QrLoginPolicyInput = z.infer<typeof qrLoginPolicySchema>;
 
 /** PR 381: organization feature switches; each one defaults to off and is changed only by an admin. */
 export const organizationFeaturesSchema = z.object({

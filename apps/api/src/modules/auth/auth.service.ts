@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import { BadRequestException, ConflictException, HttpException, HttpStatus, Injectable, Logger, NotFoundException, Optional, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, Logger, NotFoundException, Optional, UnauthorizedException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { type CurrentUser, type ChangePasswordInput, type EmployeeLoginInput, type IdentityActivationInput, type InvitationAcceptInput, type LoginInput, type PasswordResetConfirmInput, type PasswordResetRequestInput, type UpdatePreferencesInput, type UserRole } from './auth.schemas.js';
@@ -12,11 +12,13 @@ import { buildInvitationMail, createInvitationToken, hashInvitationToken, invita
 import { isMailConfigured, sendMail } from '../../common/mail/mailer.js';
 import type { ClientContext } from '../../common/device-info.js';
 import { loginProtection } from '../../common/observability/metrics.js';
+import { loadQrLoginPolicy } from '../../common/qr-login.js';
 import { assertPasswordPolicy, passwordPolicyError } from '../../common/password-policy.js';
 import { generateTemporaryPassword, temporaryPasswordLifetimeMs } from '../../common/temporary-password.js';
 import { isPasswordReused, loadPasswordPolicy, rememberReplacedPassword } from './password-policy.js';
 import { LoginJournal } from './login-journal.js';
 import { LoginLockout } from './login-lockout.js';
+import { QrLogin } from './qr-login.js';
 import { EMPLOYEE_NUMBER_KEY, findUserIdByEmployeeNumber, namesMatch } from './employee-identity.js';
 import { createPasswordResetToken, hashPasswordResetToken, PasswordResetDelivery, passwordResetLifetimeMs } from './password-reset.js';
 
@@ -82,6 +84,7 @@ export class AuthService {
 
   private readonly lockout: LoginLockout;
   private readonly journal: LoginJournal;
+  private readonly qr: QrLogin;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -89,6 +92,7 @@ export class AuthService {
   ) {
     this.lockout = new LoginLockout(prisma);
     this.journal = new LoginJournal(prisma);
+    this.qr = new QrLogin(prisma);
   }
 
   async findActiveUserByLoginIdentity(input: Pick<LoginInput, 'organizationId' | 'email'>) {
@@ -744,13 +748,20 @@ export class AuthService {
 
   async login(input: LoginInput | EmployeeLoginInput, context?: ClientContext) {
     const user = 'employeeNumber' in input ? await this.validateEmployeeLogin(input, context) : await this.validateLogin(input, context);
+    const session = await this.startSession(user, context);
+    await this.journal.record(user, 'success', context);
+    return session;
+  }
+
+  /** Opens a session for a person who has proved who they are. A session by QR is short and is never extended past its term. */
+  private async startSession(user: CurrentUser, context: ClientContext | undefined, qr?: { hours: number }) {
     const { token, jti, expiresAt } = await signJwt({
       sub: user.id,
       organizationId: user.organizationId,
       email: user.email,
     });
     const refresh = createRefreshToken();
-    const refreshExpiresAt = new Date(Date.now() + refreshTokenLifetimeMs);
+    const refreshExpiresAt = qr ? new Date(Date.now() + qr.hours * 60 * 60 * 1000) : new Date(Date.now() + refreshTokenLifetimeMs);
 
     await this.prisma.session.create({
       data: {
@@ -760,10 +771,10 @@ export class AuthService {
         expiresAt,
         refreshTokenHash: refresh.hash,
         refreshExpiresAt,
+        ...(qr ? { viaQr: true, maxExpiresAt: refreshExpiresAt } : {}),
         ...this.journal.device(context),
       },
     });
-    await this.journal.record(user, 'success', context);
 
     return {
       accessToken: token,
@@ -771,6 +782,43 @@ export class AuthService {
       tokenType: 'Bearer',
       user,
     };
+  }
+
+  /** PR 505: a device without a password asks for a sign-in and shows the code as a QR. */
+  qrStart(context?: ClientContext) {
+    return this.qr.start(context);
+  }
+
+  /** PR 505: the device asks whether the phone decided; on a confirmation it gets its own session. */
+  async qrStatus(pollToken: string, context?: ClientContext) {
+    const result = await this.qr.claim(pollToken, (person) => this.qr.mayUse(person));
+    if (result.status !== 'approved') return result;
+    const record = await this.prisma.user.findFirst({ where: { id: result.userId, status: 'active', deletedAt: null }, select: { ...currentUserSelect, locale: true } });
+    if (!record) return { status: 'denied' as const };
+    const user = await this.withRoles(record);
+    const policy = await loadQrLoginPolicy(this.prisma, user.organizationId);
+    const session = await this.startSession(user, context, { hours: policy.sessionHours });
+    await this.journal.record(user, 'qr', context);
+    await this.qr.notify(record, result.device);
+    return { status: 'approved' as const, ...session };
+  }
+
+  async qrInspect(accessToken: string, code: string) {
+    await this.verifiedClaims(accessToken);
+    return this.qr.inspect(code);
+  }
+
+  /** PR 505: only a person who is signed in with a password can confirm; a session got by QR cannot confirm another. */
+  async qrDecide(accessToken: string, code: string, decision: 'approved' | 'denied') {
+    const claims = await this.verifiedClaims(accessToken);
+    const session = await this.prisma.session.findUnique({ where: { jti: claims.jti }, select: { viaQr: true } });
+    if (decision === 'approved' && session?.viaQr) throw new ForbiddenException({ error: { code: 'FORBIDDEN', message: 'Sign-in by QR is not available', details: [{ code: 'QR_LOGIN_NOT_ALLOWED', message: 'Sign-in by QR is not available' }] } });
+    const person = await this.prisma.user.findFirst({
+      where: { id: claims.sub, organizationId: claims.organizationId, status: 'active', deletedAt: null },
+      select: { id: true, organizationId: true, status: true, mustChangePassword: true, loginLockedUntil: true },
+    });
+    if (!person) throw new UnauthorizedException('Invalid token');
+    return this.qr.decide(person, code, decision);
   }
 
   /** PR 494: the signed-in person's own open sessions; the one that asks is marked as current. */
@@ -824,7 +872,10 @@ export class AuthService {
     });
 
     const newRefresh = createRefreshToken();
-    const refreshExpiresAt = new Date(Date.now() + refreshTokenLifetimeMs);
+    // PR 505: a session by QR is never extended past its term.
+    const current = await this.prisma.session.findUnique({ where: { id: sessionId }, select: { maxExpiresAt: true } });
+    const wanted = new Date(Date.now() + refreshTokenLifetimeMs);
+    const refreshExpiresAt = current?.maxExpiresAt && current.maxExpiresAt < wanted ? current.maxExpiresAt : wanted;
 
     await this.prisma.session.update({
       where: { id: sessionId, userId, organizationId },

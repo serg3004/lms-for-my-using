@@ -70,6 +70,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `Position` |
 | `PositionCourse` |
 | `Progress` |
+| `QrLoginRequest` |
 | `ReportingLine` |
 | `Session` |
 | `TelegramLinkCode` |

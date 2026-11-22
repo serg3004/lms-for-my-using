@@ -3,7 +3,7 @@ import { Logger } from '@nestjs/common';
 import { describeDevice, maskIp, type ClientContext } from '../../common/device-info.js';
 import { PrismaService } from '../../database/prisma.service.js';
 
-export type LoginOutcome = 'success' | 'failed' | 'blocked' | 'locked';
+export type LoginOutcome = 'success' | 'failed' | 'blocked' | 'locked' | 'qr';
 
 /** PR 494: the journal of sign-ins of existing accounts; a failure to write it never changes the sign-in itself. */
 export class LoginJournal {
