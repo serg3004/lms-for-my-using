@@ -623,10 +623,10 @@ describe('admin page smoke rendering', () => {
   });
 
   it('renders results and certificates happy path without crashing', () => {
-    // useState call order in AdminResultsCertificatesPage: courseId, userId, assessmentId,
-    // assessmentAttemptId, submitState, then useAsyncData's internal state as call #6.
+    // Two analytics filter states precede the five certificate form states.
+    // The loaded report is useAsyncData's internal state, call #8.
     useStateAtCalls({
-      6: {
+      8: {
         status: 'loaded',
         data: {
           courses: [{ id: 'course-1', organizationId: 'org-1', title: 'Workplace Safety' }],
