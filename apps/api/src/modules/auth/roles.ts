@@ -26,6 +26,8 @@ export const rolePolicies = {
   usersResetPassword: ['admin', 'manager'],
   /** PR 484: role management is the administrator's alone (the `role.manage` capability is never delegable). */
   customRolesManage: ['admin'],
+  /** PR 499: definitions of custom user fields are the administrator's. */
+  userFieldsManage: ['admin'],
   membershipsRead: ['admin', 'manager'],
   membershipsCreate: ['admin'],
   membershipsDelete: ['admin'],

@@ -73,6 +73,8 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `Session` |
 | `User` |
 | `UserCustomRoleAssignment` |
+| `UserFieldDefinition` |
+| `UserFieldValue` |
 | `UserInvitation` |
 
 ## Enums
@@ -126,5 +128,6 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `PositionStatus` | `active`, `archived` |
 | `ProgressStatus` | `not_started`, `in_progress`, `completed` |
 | `ReportingLineType` | `DIRECT`, `FUNCTIONAL`, `PROJECT` |
+| `UserFieldType` | `text`, `number`, `date`, `list`, `phone`, `boolean` |
 | `UserRole` | `learner`, `instructor`, `mentor`, `manager`, `admin` |
 | `UserStatus` | `active`, `invited`, `suspended`, `archived` |

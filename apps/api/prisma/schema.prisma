@@ -8,6 +8,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserFieldType {
+  text
+  number
+  date
+  list
+  phone
+  boolean
+}
+
 enum UserStatus {
   active
   invited
@@ -367,6 +376,8 @@ model Organization {
   updatedAt                  DateTime                    @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                  DateTime?                   @map("deleted_at") @db.Timestamptz
   loginEvents                LoginEvent[]
+  userFieldDefinitions       UserFieldDefinition[]
+  userFieldValues            UserFieldValue[]
   users                      User[]
   groups                     Group[]
   courses                    Course[]
@@ -468,6 +479,7 @@ model User {
   profileVersion             Int                        @default(0) @map("profile_version")
   loginAttempts              LoginAttempt[]
   loginEvents                LoginEvent[]
+  userFieldValues            UserFieldValue[]
   createdAt                  DateTime                   @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                  DateTime                   @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                  DateTime?                  @map("deleted_at") @db.Timestamptz
@@ -1970,6 +1982,60 @@ model LoginEvent {
   @@index([userId, createdAt])
   @@index([organizationId, createdAt])
   @@map("login_events")
+}
+
+/// PR 499: a field an administrator defines for the users of the organization (employee number, work schedule, ...).
+model UserFieldDefinition {
+  id             String           @id @default(uuid()) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  /// Stable machine key, unique per organization (also after archiving), e.g. `employee_number`.
+  key            String
+  /// Titles in the four interface languages: { ru, en, kk, zh }.
+  labels         Json
+  type           UserFieldType
+  required       Boolean          @default(false)
+  /// One value at most per organization (employee number); checked on the normalized value.
+  isUnique       Boolean          @default(false) @map("is_unique")
+  /// The value is looked up by the search box of the users list.
+  searchable     Boolean          @default(false)
+  /// List fields: [{ key, labels: { ru, en, kk, zh }, archived? }]; an archived option stays valid for old values only.
+  options        Json?
+  /// Who besides the administrator sees the value: `manager` (inside their scope) and/or `self`.
+  visibleTo      String[]         @default([]) @map("visible_to")
+  /// Who besides the administrator may change it; always a subset of `visibleTo`.
+  editableBy     String[]         @default([]) @map("editable_by")
+  sortOrder      Int              @default(0) @map("sort_order")
+  archivedAt     DateTime?        @map("archived_at") @db.Timestamptz
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  values         UserFieldValue[]
+
+  @@unique([organizationId, key])
+  @@index([organizationId, archivedAt, sortOrder])
+  @@map("user_field_definitions")
+}
+
+/// PR 499: the value of one field for one user. `normalizedValue` is what search and filters compare; `uniqueKey` is set only for
+/// unique fields, and the unique index on it makes a second equal value in the same field impossible.
+model UserFieldValue {
+  id              String              @id @default(uuid()) @db.Uuid
+  organizationId  String              @map("organization_id") @db.Uuid
+  userId          String              @map("user_id") @db.Uuid
+  fieldId         String              @map("field_id") @db.Uuid
+  value           String
+  normalizedValue String              @map("normalized_value")
+  uniqueKey       String?             @map("unique_key")
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  field           UserFieldDefinition @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, fieldId])
+  @@unique([fieldId, uniqueKey])
+  @@index([organizationId, fieldId, normalizedValue])
+  @@map("user_field_values")
 }
 
 model MaterialFileDeletionAudit {

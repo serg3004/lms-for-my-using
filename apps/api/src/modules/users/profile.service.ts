@@ -5,6 +5,8 @@ import { AuditLogService } from '../audit-log/public.js';
 import { rolePolicies } from '../auth/public.js';
 import { ManagerTeamScope } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
+import { fieldAuditMetadata, UserFieldsService } from '../user-fields/public.js';
+import type { FieldChange } from '../user-fields/public.js';
 import { UploadService, validateUploadFile } from '../upload/public.js';
 import { processProfilePhoto } from './profile-photo.js';
 import { PROFILE_PHOTO_MAX_BYTES, PROFILE_PHOTO_MIME_TYPES, type UpdateOwnProfileInput } from './profile.schemas.js';
@@ -25,12 +27,14 @@ export class ProfileService {
     private readonly upload: UploadService,
     private readonly auditLog: AuditLogService = new AuditLogService(prisma),
     private readonly teamScope: ManagerTeamScope = new ManagerTeamScope(),
+    private readonly fields: UserFieldsService = new UserFieldsService(prisma, auditLog),
   ) {}
 
   async getOwnProfile(userId: string, organizationId: string) {
     const row = await this.prisma.user.findFirst({ where: { id: userId, organizationId, deletedAt: null }, select: profileSelect });
     if (!row) throw new NotFoundException('User not found');
-    return toProfile(row);
+    const values = await this.fields.readValues(organizationId, [userId], 'self');
+    return { ...toProfile(row), customFields: values.get(userId) ?? {} };
   }
 
   async updateOwnProfile(userId: string, organizationId: string, input: UpdateOwnProfileInput) {
@@ -44,14 +48,19 @@ export class ProfileService {
     if (input.timezone !== undefined && input.timezone !== current.timezone) data.timezone = input.timezone;
     if (input.aboutMe !== undefined && (input.aboutMe || null) !== current.aboutMe) data.aboutMe = input.aboutMe || null;
     const changed = Object.keys(data);
-    if (changed.length === 0) return toProfile(current);
+    if (changed.length === 0 && !input.customFields) return this.getOwnProfile(userId, organizationId);
 
     // The version in the WHERE clause makes two simultaneous saves safe: the second one updates nothing and gets a 409.
-    const result = await this.prisma.user.updateMany({
-      where: { id: userId, organizationId, profileVersion: input.version },
-      data: { ...data, profileVersion: { increment: 1 } },
+    let fieldChanges: FieldChange[] = [];
+    await this.prisma.$transaction(async (tx) => {
+      const result = await tx.user.updateMany({
+        where: { id: userId, organizationId, profileVersion: input.version },
+        data: { ...data, profileVersion: { increment: 1 } },
+      });
+      if (result.count === 0) throw new ConflictException('The profile was changed elsewhere. Reload it and try again');
+      // PR 499: custom fields the person may edit themselves; the same rules and the same transaction as the rest.
+      if (input.customFields) fieldChanges = await this.fields.applyValues(tx, { organizationId, userId, viewer: 'self', input: input.customFields, mode: 'update' });
     });
-    if (result.count === 0) throw new ConflictException('The profile was changed elsewhere. Reload it and try again');
 
     await this.auditLog.record({
       organizationId,
@@ -59,9 +68,9 @@ export class ProfileService {
       action: 'user.profile_updated',
       targetType: 'user',
       targetId: userId,
-      summary: `User changed own profile fields: ${changed.join(', ')}`,
+      summary: `User changed own profile fields: ${[...changed, ...fieldChanges.map((change) => change.key)].join(', ')}`,
       // Field names only: phone numbers and notes are personal data and do not belong in the audit trail.
-      metadata: { fields: changed },
+      metadata: { fields: changed, ...fieldAuditMetadata(fieldChanges) },
     });
     return this.getOwnProfile(userId, organizationId);
   }

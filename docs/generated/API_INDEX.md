@@ -358,6 +358,15 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/reports/course-analytics/export` | `Reports` | `bearer` |
 | `GET` | `/api/v1/reports/course-analytics/users/{userId}` | `Reports` | `bearer` |
 | `GET` | `/api/v1/reports/summary` | `Reports` | `bearer` |
+| `GET` | `/api/v1/user-fields` | `UserFields` | `bearer` |
+| `POST` | `/api/v1/user-fields` | `UserFields` | `bearer` |
+| `GET` | `/api/v1/user-fields/for-users` | `UserFields` | `bearer` |
+| `PUT` | `/api/v1/user-fields/order` | `UserFields` | `bearer` |
+| `POST` | `/api/v1/user-fields/template` | `UserFields` | `bearer` |
+| `GET` | `/api/v1/user-fields/visible` | `UserFields` | `bearer` |
+| `PATCH` | `/api/v1/user-fields/{key}` | `UserFields` | `bearer` |
+| `POST` | `/api/v1/user-fields/{key}/archive` | `UserFields` | `bearer` |
+| `POST` | `/api/v1/user-fields/{key}/restore` | `UserFields` | `bearer` |
 | `GET` | `/api/v1/users` | `Users` | `bearer` |
 | `POST` | `/api/v1/users` | `Users` | `bearer` |
 | `POST` | `/api/v1/users/bulk` | `Users` | `bearer` |

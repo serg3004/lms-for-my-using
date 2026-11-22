@@ -4,6 +4,7 @@ import { jest } from '@jest/globals';
 import type { PrismaService } from '../../database/prisma.service.js';
 import { unrestrictedActor } from '../manager-team-scope/public.js';
 import type { UploadService } from '../upload/public.js';
+import { noUserFields } from '../../testing/no-user-fields.js';
 import { ProfileService } from './profile.service.js';
 
 const organizationId = '11111111-1111-4111-8111-111111111111';
@@ -19,8 +20,9 @@ function harness(current: typeof row | null = row, updated = 1) {
       update: jest.fn(async () => ({})),
     },
   };
+  (prisma as Record<string, unknown>).$transaction = async (run: (client: typeof prisma) => Promise<unknown>) => run(prisma);
   const upload = { uploadUserPhoto: jest.fn(async () => 'key-1'), deleteObject: jest.fn(async () => undefined), getObjectBytes: jest.fn(async () => Buffer.from('img')) };
-  return { prisma, audit, upload, service: new ProfileService(prisma as unknown as PrismaService, upload as unknown as UploadService, audit as never) };
+  return { prisma, audit, upload, service: new ProfileService(prisma as unknown as PrismaService, upload as unknown as UploadService, audit as never, undefined, noUserFields) };
 }
 
 describe('ProfileService (PR 496)', () => {

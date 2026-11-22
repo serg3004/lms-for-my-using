@@ -107,6 +107,7 @@ describe('rolePolicies', () => {
     usersDeactivate: ['admin', 'manager'],
     usersResetPassword: ['admin', 'manager'],
     customRolesManage: ['admin'],
+    userFieldsManage: ['admin'],
     membershipsRead: ['admin', 'manager'],
     membershipsCreate: ['admin'],
     membershipsDelete: ['admin'],

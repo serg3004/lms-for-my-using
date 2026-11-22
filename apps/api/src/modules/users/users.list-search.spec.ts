@@ -3,6 +3,7 @@ import { jest } from '@jest/globals';
 import { PrismaService } from '../../database/prisma.service.js';
 import { unrestrictedActor } from '../manager-team-scope/manager-team-scope.js';
 import { UsersService } from './users.service.js';
+import { noUserFields } from '../../testing/no-user-fields.js';
 
 const organizationId = '11111111-1111-1111-1111-111111111111';
 
@@ -11,7 +12,7 @@ describe('UsersService.listUsers search (PR 267: server-side user search for pic
     const findMany = jest.fn(async () => []);
     const count = jest.fn(async () => 0);
     const prisma = { user: { findMany, count } } as unknown as PrismaService;
-    const service = new UsersService(prisma);
+    const service = new UsersService(prisma, undefined, undefined, undefined, noUserFields);
 
     await service.listUsers(unrestrictedActor(organizationId), 1, 20);
 
@@ -26,7 +27,7 @@ describe('UsersService.listUsers search (PR 267: server-side user search for pic
     const findMany = jest.fn(async () => []);
     const count = jest.fn(async () => 0);
     const prisma = { user: { findMany, count } } as unknown as PrismaService;
-    const service = new UsersService(prisma);
+    const service = new UsersService(prisma, undefined, undefined, undefined, noUserFields);
 
     await service.listUsers(unrestrictedActor(organizationId), 1, 20, 'ada');
 
@@ -49,7 +50,7 @@ describe('UsersService.listUsers search (PR 267: server-side user search for pic
     const findMany = jest.fn(async () => []);
     const count = jest.fn(async () => 0);
     const prisma = { user: { findMany, count } } as unknown as PrismaService;
-    const service = new UsersService(prisma);
+    const service = new UsersService(prisma, undefined, undefined, undefined, noUserFields);
 
     await service.listUsers(unrestrictedActor(organizationId), 1, 20, 'lovelace');
 

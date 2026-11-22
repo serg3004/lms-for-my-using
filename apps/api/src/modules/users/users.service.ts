@@ -10,6 +10,9 @@ import { countOpenObserverSessions, notifyObserverDeactivated } from '../checkli
 import { ManagerTeamScope } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
 import { OrganizationAccessScopeService } from '../organization-access-scope/public.js';
+import { UserFieldsService } from '../user-fields/public.js';
+import { fieldAuditMetadata, validateFieldValues, WORK_SCHEDULE_KEY } from '../user-fields/public.js';
+import type { CustomFieldValues, FieldChange, FieldViewer, FieldWrite } from '../user-fields/public.js';
 import { assertNoRoleChange, UserRegistrarAccess, type Registrar } from './user-registrar-access.js';
 import { lookupImportDepartment, resolveImportRole, type ImportRole } from './user-import.js';
 import {
@@ -45,6 +48,11 @@ const userSelect = {
   },
 } as const;
 
+/** PR 499: what a person may see of custom fields on others: an administrator everything, any other reader the manager view. */
+function viewerOf(actor: TeamScopeActor): FieldViewer {
+  return actor.roles.includes('admin') ? 'admin' : 'manager';
+}
+
 type ImportUserData = Omit<CreateUserInput, 'organizationId' | 'password'> & { password?: string | undefined };
 type ImportRowStatus = 'created' | 'valid' | 'skipped';
 
@@ -67,6 +75,9 @@ type ImportRow = {
   /** PR 492: department and role named in the row itself; they win over the batch values. */
   departmentId?: string | null;
   role?: ImportRole;
+  /** PR 499: custom field values of the row and, once validated, what is written for them. */
+  customFields?: CustomFieldValues;
+  fieldWrites?: FieldWrite[];
 };
 
 @Injectable()
@@ -79,40 +90,52 @@ export class UsersService {
     private readonly auditLog: AuditLogService = new AuditLogService(prisma),
     private readonly teamScope: ManagerTeamScope = new ManagerTeamScope(),
     private readonly authService?: AuthService,
+    private readonly fields: UserFieldsService = new UserFieldsService(prisma, auditLog),
   ) {
     this.registrars = new UserRegistrarAccess(prisma);
     this.invitationScope = new OrganizationAccessScopeService(prisma, teamScope);
   }
 
   /** The users a list request (and a bulk action on "everyone matching the filter") reaches: the actor's scope plus search and status. */
-  async listWhere(actor: TeamScopeActor, search?: string, status?: ListUsersQuery['status']) {
+  async listWhere(actor: TeamScopeActor, search?: string, status?: ListUsersQuery['status'], field?: { key: string; value: string }) {
     const registrar = await this.registrars.resolve(actor);
+    const viewer = viewerOf(actor);
+    const fieldSearch = search ? this.fields.searchClause(actor.organizationId, viewer, search) : null;
+    const fieldFilter = field ? await this.fields.filterClause(actor.organizationId, viewer, field.key, field.value) : null;
     return {
       organizationId: actor.organizationId,
       ...this.teamScope.user(actor),
       ...this.registrars.readWhere(registrar, actor.organizationId),
       deletedAt: null,
       ...(status ? { status } : {}),
+      ...(fieldFilter ? { AND: [fieldFilter] } : {}),
       ...(search
         ? {
             OR: [
               { firstName: { contains: search, mode: 'insensitive' as const } },
               { lastName: { contains: search, mode: 'insensitive' as const } },
               { email: { contains: search, mode: 'insensitive' as const } },
+              ...(fieldSearch ? [fieldSearch] : []),
             ],
           }
         : {}),
     };
   }
 
-  async listUsers(actor: TeamScopeActor, page: number, pageSize: number, search?: string, status?: ListUsersQuery['status']) {
+  /** Adds `customFields` (only the fields the actor may see) to users read from the database. */
+  private async withCustomFields<T extends { id: string }>(organizationId: string, viewer: FieldViewer, users: T[]): Promise<Array<T & { customFields: Record<string, string | number | boolean> }>> {
+    const values = await this.fields.readValues(organizationId, users.map((user) => user.id), viewer);
+    return users.map((user) => ({ ...user, customFields: values.get(user.id) ?? {} }));
+  }
+
+  async listUsers(actor: TeamScopeActor, page: number, pageSize: number, search?: string, status?: ListUsersQuery['status'], field?: { key: string; value: string }) {
     const skip = (page - 1) * pageSize;
-    const where = await this.listWhere(actor, search, status);
+    const where = await this.listWhere(actor, search, status, field);
     const [items, total] = await Promise.all([
       this.prisma.user.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: pageSize, select: userSelect }),
       this.prisma.user.count({ where }),
     ]);
-    return { items, page, pageSize, total };
+    return { items: await this.withCustomFields(actor.organizationId, viewerOf(actor), items), page, pageSize, total };
   }
 
   async listInvitations(actor: TeamScopeActor, page: number, pageSize: number) {
@@ -190,7 +213,7 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    return user;
+    return (await this.withCustomFields(actor.organizationId, viewerOf(actor), [user]))[0]!;
   }
 
 
@@ -221,7 +244,7 @@ export class UsersService {
       }
     }
 
-    const { role, ...userData } = input;
+    const { role, customFields, ...userData } = input;
     const changedFields = [...Object.keys(userData), ...(role !== undefined ? ['role'] : [])];
 
     if (role !== undefined && role !== 'admin') {
@@ -241,12 +264,15 @@ export class UsersService {
       }
     }
 
+    let fieldChanges: FieldChange[] = [];
     const updated = await this.prisma.$transaction(async (transaction) => {
       await transaction.user.update({
         where: { id: userId, organizationId },
         data: userData,
         select: { id: true },
       });
+      await this.fields.syncShiftToSchedule(transaction, organizationId, userId, userData.shift);
+      if (customFields) fieldChanges = await this.fields.applyValues(transaction, { organizationId, userId, viewer: viewerOf(actor), input: customFields, mode: 'update' });
 
       if (role !== undefined) {
         await transaction.membership.deleteMany({
@@ -280,10 +306,10 @@ export class UsersService {
       targetType: 'user',
       targetId: userId,
       summary: `Updated user ${updated.email}`,
-      metadata: { fields: changedFields, ...(registrar ? { delegated: registrar.scope } : {}) },
+      metadata: { fields: changedFields, ...fieldAuditMetadata(fieldChanges), ...(registrar ? { delegated: registrar.scope } : {}) },
     });
 
-    return updated;
+    return (await this.withCustomFields(actor.organizationId, viewerOf(actor), [updated]))[0]!;
   }
 
   async createUser(input: CreateUserRequestInput, actorId: string | null = null, actor?: TeamScopeActor) {
@@ -298,7 +324,7 @@ export class UsersService {
       throw new ConflictException('User email already exists in organization');
     }
 
-    const { password, temporaryPassword: wantsTemporary, ...userData } = input;
+    const { password, temporaryPassword: wantsTemporary, customFields, ...userData } = input;
     delete userData.departmentId;
     if (wantsTemporary && password !== undefined) throw new BadRequestException('A temporary password and a chosen password cannot be combined');
     if (wantsTemporary && !this.authService) throw new ConflictException('Temporary passwords are not available');
@@ -310,13 +336,17 @@ export class UsersService {
     const passwordHash = await hashPassword(password ?? randomBytes(32).toString('hex'));
     if (invite) userData.status = 'invited';
 
-    const { created, deliverInvitation } = await this.prisma.$transaction(async (tx) => {
+    let fieldChanges: FieldChange[] = [];
+    const { created: createdRow, deliverInvitation } = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({ data: { ...userData, passwordHash }, select: { id: true } });
+      await this.fields.syncShiftToSchedule(tx, input.organizationId, user.id, userData.shift);
+      fieldChanges = await this.fields.applyValues(tx, { organizationId: input.organizationId, userId: user.id, viewer: actor ? viewerOf(actor) : 'admin', input: customFields ?? {}, mode: 'create' });
       await this.placeNewUsers(tx, input.organizationId, [user.id], departmentId, input.role ?? (registrar ? 'learner' : undefined), actorId);
       const created = await tx.user.findUniqueOrThrow({ where: { id: user.id, organizationId: input.organizationId }, select: userSelect });
       const deliverInvitation = invite ? await this.authService!.prepareInvitationFor({ ...created, organizationId: input.organizationId }, actorId, tx) : undefined;
       return { created, deliverInvitation };
     });
+    const created = (await this.withCustomFields(input.organizationId, actor ? viewerOf(actor) : 'admin', [createdRow]))[0]!;
 
     await this.auditLog.record({
       organizationId: input.organizationId,
@@ -325,7 +355,7 @@ export class UsersService {
       targetType: 'user',
       targetId: created.id,
       summary: `Created user ${created.email}`,
-      ...(registrar || departmentId || input.role ? { metadata: { departmentId, ...(registrar ? { delegated: registrar.scope } : {}) } } : {}),
+      ...(registrar || departmentId || input.role || fieldChanges.length > 0 ? { metadata: { departmentId, ...fieldAuditMetadata(fieldChanges), ...(registrar ? { delegated: registrar.scope } : {}) } } : {}),
     });
 
     if (wantsTemporary) {
@@ -362,6 +392,7 @@ export class UsersService {
     await this.ensureOrganizationExists(input.organizationId);
     const registrar = await this.registrars.resolveCreation(actor);
     const departmentId = await this.resolvePlacement(registrar, input.organizationId, input.departmentId);
+    await this.fields.assertNoRequired(input.organizationId, actor ? viewerOf(actor) : 'admin');
     const emails = input.users.map((user) => user.email);
     const existingEmails = await this.findExistingEmails(input.organizationId, emails);
 
@@ -441,10 +472,11 @@ export class UsersService {
         };
       }
 
-      const { department, role, ...data } = parsed.data;
+      const { department, role, customFields, ...data } = parsed.data;
       const row: ImportRow = {
         index,
         data,
+        ...(customFields ? { customFields } : {}),
         report: {
           index,
           email: data.email,
@@ -508,8 +540,31 @@ export class UsersService {
       }
     });
 
+    // PR 499: custom field values are checked per row exactly as POST /users checks them (rights, types, required, unique).
+    const definitions = await this.fields.loadActive(input.organizationId);
+    const fieldViewer = actor ? viewerOf(actor) : 'admin';
+    const seenUnique = new Set<string>();
+    for (const row of rows) {
+      if (!row.data || row.report.errors.length > 0) continue;
+      const { writes, problems } = validateFieldValues(definitions, fieldViewer, row.customFields ?? {}, { mode: 'create' });
+      if (problems.length > 0) problems.forEach((problem) => row.report.errors.push(problem.message));
+      for (const write of writes) {
+        if (write.clear || !write.definition.isUnique) continue;
+        const mark = `${write.definition.id}\u0000${write.normalized}`;
+        if (seenUnique.has(mark)) row.report.errors.push(`The value of "${write.definition.key}" repeats in the import`);
+        seenUnique.add(mark);
+      }
+      if (row.report.errors.length === 0) {
+        const taken = await this.fields.takenUniqueFields(input.organizationId, writes, null);
+        taken.forEach((key) => row.report.errors.push(`The value of "${key}" is already used by another person`));
+      }
+      if (row.report.errors.length > 0) row.report.status = 'skipped';
+      else row.fieldWrites = writes;
+    }
+    const hasSchedule = definitions.some((definition) => definition.key === WORK_SCHEDULE_KEY);
+
     const creatableRows = rows.filter((row) => row.data && row.report.errors.length === 0);
-    const rich = creatableRows.some((row) => row.data!.password === undefined || row.departmentId !== undefined || row.role !== undefined);
+    const rich = creatableRows.some((row) => row.data!.password === undefined || row.departmentId !== undefined || row.role !== undefined || (row.fieldWrites?.length ?? 0) > 0 || (hasSchedule && row.data!.shift !== undefined));
     if (rich && creatableRows.some((row) => row.data!.password === undefined) && !this.authService && input.mode === 'create') {
       throw new ConflictException('Invitations are not available');
     }
@@ -919,6 +974,8 @@ export class UsersService {
         const user = await tx.user.create({ data: item.data, select: { id: true, email: true, firstName: true, locale: true } });
         item.row.report.userId = user.id;
         await this.placeNewUsers(tx, organizationId, [user.id], item.row.departmentId ?? batchDepartmentId, item.row.role ?? batchRole, actorId);
+        await this.fields.syncShiftToSchedule(tx, organizationId, user.id, item.row.data!.shift);
+        if (item.row.fieldWrites?.length) await this.fields.persist(tx, organizationId, user.id, item.row.fieldWrites);
         if (item.invite) pending.push({ row: item.row, deliver: await this.authService!.prepareInvitationFor({ ...user, organizationId }, actorId, tx) });
       }
       return pending;

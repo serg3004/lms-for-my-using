@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { customFieldValuesSchema } from '../user-fields/public.js';
+
 const phonePattern = /^\+?[0-9][0-9 ()-]{3,23}[0-9]$/;
 
 function isTimeZone(value: string): boolean {
@@ -28,6 +30,8 @@ export const updateOwnProfileSchema = z.object({
   locale: z.enum(['ru', 'en', 'kk', 'zh']).optional(),
   timezone: z.string().trim().min(1).max(64).refine(isTimeZone, 'Unknown time zone').optional(),
   aboutMe: z.string().transform(cleanText).refine((value) => value.length <= 500, 'About me is limited to 500 characters').nullable().optional(),
+  /** PR 499: values of the custom fields the administrator allowed the person to edit themselves. */
+  customFields: customFieldValuesSchema.optional(),
 }).strict();
 
 export type UpdateOwnProfileInput = z.infer<typeof updateOwnProfileSchema>;
