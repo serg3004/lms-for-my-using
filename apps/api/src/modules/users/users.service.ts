@@ -14,6 +14,7 @@ import { OrganizationAccessScopeService } from '../organization-access-scope/pub
 import { UserFieldsService } from '../user-fields/public.js';
 import { fieldAuditMetadata, validateFieldValues, WORK_SCHEDULE_KEY } from '../user-fields/public.js';
 import type { CustomFieldValues, FieldChange, FieldViewer, FieldWrite } from '../user-fields/public.js';
+import { TelegramDeliveryService, type DeliveryKind } from './telegram-delivery.service.js';
 import { assertNoRoleChange, UserRegistrarAccess, type Registrar } from './user-registrar-access.js';
 import { lookupImportDepartment, resolveImportRole, type ImportRole } from './user-import.js';
 import {
@@ -105,6 +106,7 @@ export class UsersService {
     private readonly teamScope: ManagerTeamScope = new ManagerTeamScope(),
     private readonly authService?: AuthService,
     private readonly fields: UserFieldsService = new UserFieldsService(prisma, auditLog),
+    private readonly telegram?: TelegramDeliveryService,
   ) {
     this.registrars = new UserRegistrarAccess(prisma);
     this.invitationScope = new OrganizationAccessScopeService(prisma, teamScope);
@@ -204,6 +206,28 @@ export class UsersService {
       items.push(...batch);
     }
     return { items };
+  }
+
+  /** PR 503: whether the Telegram channel is set up and switched on for the organization. */
+  telegramStatus(actor: TeamScopeActor) {
+    if (!this.telegram) throw new ConflictException('Telegram delivery is not available');
+    return this.telegram.status(actor.organizationId);
+  }
+
+  /** PR 503: the last Telegram sends to a person the caller may see. */
+  async telegramHistory(actor: TeamScopeActor, userId: string) {
+    if (!this.telegram) throw new ConflictException('Telegram delivery is not available');
+    await this.getUser(userId, actor);
+    return this.telegram.history(actor.organizationId, userId);
+  }
+
+  /** PR 503: sends an invitation (to people the caller may invite) or a temporary password (to people the caller may reset) through Telegram. */
+  async sendToTelegram(actor: TeamScopeActor, userId: string, kind: DeliveryKind) {
+    if (!this.telegram) throw new ConflictException('Telegram delivery is not available');
+    const where = kind === 'invitation'
+      ? await this.invitationScope.user(actor)
+      : { ...this.teamScope.user(actor), ...this.registrars.writeWhere(await this.registrars.resolve(actor), actor) };
+    return this.telegram.send(actor, userId, kind, where);
   }
 
   async changeInvitation(actor: TeamScopeActor, userId: string, action: 'revoked' | 'extended') {

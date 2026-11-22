@@ -9,6 +9,7 @@ import { loginResources } from './loginResources.js';
 import { passwordResetResources } from './passwordResetResources.js';
 import { securityResources } from './securityResources.js';
 import { identityResources } from './identityResources.js';
+import { telegramResources } from './telegramResources.js';
 import { userFieldsResources } from './userFieldsResources.js';
 import { usersImportResources } from './usersImportResources.js';
 
@@ -20,10 +21,10 @@ void i18next.use(initReactI18next).init({
   lng: DEFAULT_LOCALE,
   fallbackLng: DEFAULT_LOCALE,
   resources: {
-    ru: { translation: { ...ruCommon, login: loginResources.ru, passwordReset: passwordResetResources.ru, security: securityResources.ru, usersImport: usersImportResources.ru, userFields: userFieldsResources.ru, identity: identityResources.ru } },
-    en: { translation: { ...enCommon, login: loginResources.en, passwordReset: passwordResetResources.en, security: securityResources.en, usersImport: usersImportResources.en, userFields: userFieldsResources.en, identity: identityResources.en } },
-    kk: { translation: { ...kkCommon, login: loginResources.kk, passwordReset: passwordResetResources.kk, security: securityResources.kk, usersImport: usersImportResources.kk, userFields: userFieldsResources.kk, identity: identityResources.kk } },
-    zh: { translation: { ...zhCommon, login: loginResources.zh, passwordReset: passwordResetResources.zh, security: securityResources.zh, usersImport: usersImportResources.zh, userFields: userFieldsResources.zh, identity: identityResources.zh } },
+    ru: { translation: { ...ruCommon, login: loginResources.ru, passwordReset: passwordResetResources.ru, security: securityResources.ru, usersImport: usersImportResources.ru, userFields: userFieldsResources.ru, identity: identityResources.ru, telegram: telegramResources.ru } },
+    en: { translation: { ...enCommon, login: loginResources.en, passwordReset: passwordResetResources.en, security: securityResources.en, usersImport: usersImportResources.en, userFields: userFieldsResources.en, identity: identityResources.en, telegram: telegramResources.en } },
+    kk: { translation: { ...kkCommon, login: loginResources.kk, passwordReset: passwordResetResources.kk, security: securityResources.kk, usersImport: usersImportResources.kk, userFields: userFieldsResources.kk, identity: identityResources.kk, telegram: telegramResources.kk } },
+    zh: { translation: { ...zhCommon, login: loginResources.zh, passwordReset: passwordResetResources.zh, security: securityResources.zh, usersImport: usersImportResources.zh, userFields: userFieldsResources.zh, identity: identityResources.zh, telegram: telegramResources.zh } },
   },
   interpolation: {
     escapeValue: false,
