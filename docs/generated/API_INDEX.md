@@ -360,6 +360,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/reports/course-analytics/export` | `Reports` | `bearer` |
 | `GET` | `/api/v1/reports/course-analytics/users/{userId}` | `Reports` | `bearer` |
 | `GET` | `/api/v1/reports/summary` | `Reports` | `bearer` |
+| `POST` | `/api/v1/telegram/webhook` | `TelegramWebhook` | `bearer` |
 | `GET` | `/api/v1/user-fields` | `UserFields` | `bearer` |
 | `POST` | `/api/v1/user-fields` | `UserFields` | `bearer` |
 | `GET` | `/api/v1/user-fields/for-users` | `UserFields` | `bearer` |
@@ -382,9 +383,11 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/users/invitations` | `Users` | `bearer` |
 | `POST` | `/api/v1/users/invitations/resend` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/locked` | `Users` | `bearer` |
+| `GET` | `/api/v1/users/telegram-delivery` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}` | `Users` | `bearer` |
 | `PATCH` | `/api/v1/users/{id}` | `Users` | `bearer` |
 | `DELETE` | `/api/v1/users/{id}/activation-qr` | `Users` | `bearer` |
+| `GET` | `/api/v1/users/{id}/deliveries` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}/department-memberships` | `DepartmentMemberships` | `bearer` |
 | `POST` | `/api/v1/users/{id}/department-transfer` | `DepartmentMemberships` | `bearer` |
 | `GET` | `/api/v1/users/{id}/effective-manager` | `ReportingLines` | `bearer` |
@@ -399,5 +402,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `DELETE` | `/api/v1/users/{id}/sessions/{sessionId}` | `Users` | `bearer` |
 | `PATCH` | `/api/v1/users/{id}/status` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}/status-impact` | `Users` | `bearer` |
+| `POST` | `/api/v1/users/{id}/telegram/invitation` | `Users` | `bearer` |
+| `POST` | `/api/v1/users/{id}/telegram/temporary-password` | `Users` | `bearer` |
 | `POST` | `/api/v1/users/{id}/temporary-password` | `Users` | `bearer` |
 | `POST` | `/api/v1/users/{id}/unlock` | `Users` | `bearer` |

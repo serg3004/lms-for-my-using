@@ -293,7 +293,8 @@ export class AuthService {
     return this.sendInvitation(user.id, user.organizationId, createdById);
   }
 
-  async sendInvitation(userId: string, organizationId: string, actorId: string | null, scope?: Prisma.UserWhereInput) {
+  /** `mail: false` (PR 503) skips the email: the caller passes the link on through another channel and gets it back once. */
+  async sendInvitation(userId: string, organizationId: string, actorId: string | null, scope?: Prisma.UserWhereInput, { mail = true } = {}) {
     const deliver = await this.prisma.$transaction(async (tx) => {
       const user = await this.findLockedInvitationUser(tx, userId, organizationId, scope);
       const now = new Date();
@@ -308,7 +309,7 @@ export class AuthService {
       }
       await tx.userInvitation.updateMany({ where: { ...where, usedAt: null, revokedAt: null }, data: { revokedAt: now } });
       const deliver = await this.prepareInvitationFor(user, actorId, tx, {
-        createdAt: now, sendCount: (previous?.sendCount ?? 0) + 1,
+        createdAt: now, sendCount: (previous?.sendCount ?? 0) + 1, mail,
       });
       if (scope) await this.recordInvitationChange(tx, where, actorId, 'resent');
       return deliver;
@@ -321,33 +322,33 @@ export class AuthService {
     user: InvitationUser,
     createdById: string | null,
     tx: Prisma.TransactionClient,
-    { createdAt = new Date(), sendCount = 1 } = {},
+    { createdAt = new Date(), sendCount = 1, mail = true } = {},
   ) {
     const invitation = createInvitationToken();
     const expiresAt = new Date(createdAt.getTime() + invitationLifetimeMs);
     await tx.userInvitation.create({
       data: { userId: user.id, organizationId: user.organizationId, tokenHash: invitation.hash, expiresAt, createdById, createdAt, sendCount },
     });
-    return () => this.deliverInvitation(user, invitation.token, expiresAt);
+    return () => this.deliverInvitation(user, invitation.token, expiresAt, mail);
   }
 
   private async deliverInvitation(
     user: InvitationUser,
-    token: string, expiresAt: Date,
+    token: string, expiresAt: Date, mail = true,
   ) {
     const frontend = (process.env['FRONTEND_URL'] ?? '').replace(/\/+$/, '');
     const link = `${frontend}/invitation?token=${token}`;
     let delivered = false;
-    if (isMailConfigured()) {
+    if (mail && isMailConfigured()) {
       try {
         const organization = await this.prisma.organization.findUnique({ where: { id: user.organizationId }, select: { name: true } });
-        const mail = buildInvitationMail(user.locale, {
+        const mailText = buildInvitationMail(user.locale, {
           firstName: user.firstName,
           organizationName: organization?.name ?? '',
           link,
           days: invitationLifetimeDays,
         });
-        await sendMail({ to: user.email, ...mail });
+        await sendMail({ to: user.email, ...mailText });
         delivered = true;
       } catch {
         // Provider errors can contain the link and the recipient's address.

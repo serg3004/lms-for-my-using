@@ -131,6 +131,10 @@ ALLOW_IN_MEMORY_RATE_LIMIT=true
 
 **SMTP на Railway не работает** на тарифах Free/Trial/Hobby (исходящие порты 25/465/587 закрыты, симптом — `Password reset delivery failed (timeout)`; только Pro и выше). Поэтому временный вариант без своего домена — Brevo по HTTPS (решение владельца 2026-11-21, DEC-MAIL-001): `BREVO_API_KEY` (ключ в Brevo: SMTP & API → API Keys) и `MAIL_FROM` (адрес отправителя, подтверждённый в Brevo, например `LMS <you@gmail.com>`). Порядок выбора: Resend → Brevo → SMTP. Письма с адреса Gmail могут попадать в Спам; со своим доменом переключиться на Resend. Проверено 2026-11-21: письмо сброса пароля через Brevo доходит (`LIVE-VERIFIED`); `SMTP_*` на Railway больше не нужны и могут быть удалены, а пароль приложения Gmail заменён или отозван. Живая доставка `[НЕ ПРОВЕРЕНО]` до настройки переменных.
 
+### Telegram (отправка приглашений и паролей, PR 503)
+
+Бот создаёт владелец у @BotFather. У `api` задаются `TELEGRAM_BOT_TOKEN` (секрет, в чат и репозиторий не попадает), `TELEGRAM_BOT_USERNAME` (без `@`), `TELEGRAM_WEBHOOK_SECRET` (случайная строка 32+ знаков; Telegram присылает её в заголовке `X-Telegram-Bot-Api-Secret-Token`), `FRONTEND_URL` (адрес сайта для ссылок в сообщениях); необязательно `TELEGRAM_DAILY_LIMIT` (по умолчанию 300 сообщений в сутки на организацию). Вебхук регистрируется один раз после выкладки: `curl -sS "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" --data-urlencode "url=https://<адрес api>/telegram/webhook" --data-urlencode "secret_token=$TELEGRAM_WEBHOOK_SECRET" --data-urlencode 'allowed_updates=["message"]'`. Администратор организации включает канал в настройках функций. Без токена отправка отвечает 409 «Telegram is not configured». В логах и аудите нет текста сообщений, ссылок и паролей; при утечке токена его перевыпускают у @BotFather и обновляют переменную. Реальная проверка владельцем описана в `docs/product/future/OWNER_CHECKS.md`.
+
 ### Storage
 
 Storage configuration — S3-compatible и provider-neutral.

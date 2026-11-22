@@ -61,6 +61,7 @@ export const actionPolicies: Readonly<Record<PermissionActionKey, PolicyName>> =
   'user.deactivate': 'usersDeactivate',
   'user.reset-password': 'usersResetPassword',
   'user.invitation.manage': 'usersCreate',
+  'user.activation-qr.shared': 'departmentsWrite',
 };
 
 /** The built-in roles that hold the action. */

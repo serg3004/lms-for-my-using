@@ -364,6 +364,8 @@ model Organization {
   longreadEnabled            Boolean                     @default(false) @map("longread_enabled")
   /// PR 480: custom roles grant rights only while an administrator has switched them on for the organization; off by default.
   customRolesEnabled         Boolean                     @default(false) @map("custom_roles_enabled")
+  /// PR 503: sending invitations and passwords through the Telegram bot is off until an administrator enables it.
+  telegramDeliveryEnabled    Boolean                     @default(false) @map("telegram_delivery_enabled")
   /// PR 488: password policy of the organization, set by an administrator.
   passwordMinLength          Int                         @default(10) @map("password_min_length")
   passwordHistoryCount       Int                         @default(3) @map("password_history_count")
@@ -501,6 +503,9 @@ model User {
   sessions                   Session[]
   passwordResetTokens        PasswordResetToken[]
   invitations                UserInvitation[]
+  telegramLink               UserTelegramLink?
+  telegramLinkCodes          TelegramLinkCode[]
+  messageDeliveries          MessageDelivery[]
   passwordHistory            PasswordHistory[]
   instructedCourses          CourseInstructor[]
   groupMemberships           GroupMember[]
@@ -581,6 +586,55 @@ model UserInvitation {
   @@index([userId, organizationId])
   @@index([expiresAt])
   @@map("user_invitations")
+}
+
+/// PR 503: the Telegram chat of a person, bound when they press "Start" in the bot with a one-time code.
+model UserTelegramLink {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @unique @map("user_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  chatId         String   @map("chat_id")
+  linkedAt       DateTime @default(now()) @map("linked_at") @db.Timestamptz
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("user_telegram_links")
+}
+
+/// PR 503: a one-time code in the bot link; only its hash is stored. `intent` says what to send once the person has pressed "Start".
+model TelegramLinkCode {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  codeHash       String    @unique @map("code_hash")
+  intent         String
+  createdById    String?   @map("created_by_id") @db.Uuid
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz
+  usedAt         DateTime? @map("used_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, organizationId])
+  @@index([expiresAt])
+  @@map("telegram_link_codes")
+}
+
+/// PR 503: the journal of sends through a messenger; never holds the text, a password or a link.
+model MessageDelivery {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  channel        String
+  kind           String
+  status         String
+  errorCode      String?  @map("error_code")
+  createdById    String?  @map("created_by_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([userId, createdAt])
+  @@map("message_deliveries")
 }
 
 model Group {
