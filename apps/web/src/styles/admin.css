@@ -349,6 +349,8 @@
   position: relative;
   overflow-x: hidden;
   overflow-y: auto;
+  /* The scrollbar's place is always reserved, so the content does not jump sideways when a list grows past the screen (a new folder). */
+  scrollbar-gutter: stable;
   padding: 32px;
   /* The global `main { width: min(1120px, ...); margin: 0 auto }` would otherwise cap and centre the whole admin area. */
   width: auto;
@@ -365,7 +367,8 @@
   gap: 4px;
   overflow-x: auto;
   margin: 0 0 24px;
-  border-bottom: 1px solid var(--color-border);
+  /* The rule is drawn inside the strip: a tab pulled 1px over a real border made the strip 1px taller than its box and gave it a tiny vertical scrollbar. */
+  box-shadow: inset 0 -1px 0 var(--color-border);
 }
 
 .admin-org-tabs__tab {
@@ -374,7 +377,6 @@
   gap: 7px;
   flex: none;
   padding: 10px 14px 12px;
-  margin-bottom: -1px;
   /* Reset global.css's `button{border,background,color:#fff}` -- this class is also used on
      `<button role="tab">` elements (PR 318's session status tabs), not just the `<a>` nav strip
      it was written for. */
