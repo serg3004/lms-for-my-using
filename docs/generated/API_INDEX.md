@@ -6,6 +6,12 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 
 | Method | Path | Tag | Auth |
 |---|---|---|---|
+| `GET` | `/api/v1/assessment-folders` | `AssessmentFolders` | `bearer` |
+| `POST` | `/api/v1/assessment-folders` | `AssessmentFolders` | `bearer` |
+| `POST` | `/api/v1/assessment-folders/bulk` | `AssessmentFolders` | `bearer` |
+| `PATCH` | `/api/v1/assessment-folders/{id}` | `AssessmentFolders` | `bearer` |
+| `DELETE` | `/api/v1/assessment-folders/{id}` | `AssessmentFolders` | `bearer` |
+| `GET` | `/api/v1/assessment-folders/{id}/delete-impact` | `AssessmentFolders` | `bearer` |
 | `GET` | `/api/v1/assessments` | `Assessments` | `bearer` |
 | `POST` | `/api/v1/assessments` | `Assessments` | `bearer` |
 | `GET` | `/api/v1/assessments/standalone/mine` | `StandaloneAssessments` | `bearer` |

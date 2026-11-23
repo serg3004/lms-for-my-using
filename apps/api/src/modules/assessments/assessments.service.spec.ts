@@ -255,6 +255,7 @@ describe('AssessmentsService.deleteAssessment', () => {
     const update = options.update ?? jest.fn(async () => ({ id: assessmentId }));
     const findFirst = options.findFirst ?? jest.fn(async () => options.activeAttempt ?? null);
     const tx = {
+      $executeRaw: jest.fn(async () => 0),
       $queryRaw: jest.fn(async () => options.rows.map((row) => ({ timeLimitMinutes: null, ...row }))),
       assessmentAttempt: { findFirst },
       assessment: { update },

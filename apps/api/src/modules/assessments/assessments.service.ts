@@ -11,11 +11,16 @@ import {
   UpdateAssessmentStatusInput,
 } from './assessments.schemas.js';
 
+import { lockAssessmentFolders } from './assessment-folder-lock.js';
+import { assessmentCourseScope } from './assessment-author-scope.js';
+
 const assessmentSelect = {
   id: true,
   organizationId: true,
   courseId: true,
   lessonId: true,
+  folderId: true,
+  isLongreadExercise: true,
   title: true,
   slug: true,
   description: true,
@@ -182,12 +187,13 @@ export class AssessmentsService {
     });
   }
 
-  async deleteAssessment(assessmentId: string, organizationId: string) {
+  async deleteAssessment(assessmentId: string, organizationId: string, instructorId?: string) {
     // SELECT ... FOR UPDATE locks the assessment row for the rest of this transaction, so a
     // concurrent startAttempt() (which takes the same lock before creating its attempt row —
     // see AssessmentAttemptsService.startAttempt) is fully serialized against this delete:
     // whichever transaction gets the lock first is the one the other sees committed.
     const outcome = await this.prisma.$transaction(async (tx) => {
+      await lockAssessmentFolders(tx, organizationId);
       const rows = await tx.$queryRaw<{ id: string; slug: string; timeLimitMinutes: number | null }[]>`
         SELECT id, slug, time_limit_minutes AS "timeLimitMinutes" FROM assessments
         WHERE id = ${assessmentId}::uuid AND organization_id = ${organizationId}::uuid AND deleted_at IS NULL
@@ -198,6 +204,11 @@ export class AssessmentsService {
       if (!assessment) {
         return 'not-found' as const;
       }
+
+      if (instructorId && !await tx.assessment.findFirst({
+        where: { id: assessmentId, organizationId, ...assessmentCourseScope(organizationId, instructorId) },
+        select: { id: true },
+      })) return 'not-found' as const;
 
       // An in_progress attempt only blocks deletion while it's still within its time limit — an
       // abandoned attempt past its deadline is spent (createAttempt would force passed: false on
@@ -233,7 +244,7 @@ export class AssessmentsService {
     }
 
     if (outcome === 'conflict') {
-      throw new BadRequestException('Cannot delete an assessment with an attempt in progress');
+      throw new AssessmentAttemptInProgressException();
     }
   }
 
@@ -297,5 +308,11 @@ export class AssessmentsService {
     if (!lesson) {
       throw new NotFoundException('Lesson not found');
     }
+  }
+}
+
+export class AssessmentAttemptInProgressException extends BadRequestException {
+  constructor() {
+    super('Cannot delete an assessment with an attempt in progress');
   }
 }

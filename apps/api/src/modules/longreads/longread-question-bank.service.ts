@@ -33,7 +33,7 @@ export class LongreadQuestionBankService {
       if (existing && input.assessmentId && input.assessmentId !== existing.assessmentId) throw new BadRequestException('Cannot move question to another assessment');
       let assessment = existing || input.assessmentId ? await tx.assessment.findFirst({ where: { id: existing?.assessmentId ?? input.assessmentId, lessonId, organizationId, deletedAt: null } }) : await tx.assessment.findFirst({ where: { lessonId, organizationId, deletedAt: null }, orderBy: { createdAt: 'asc' } });
       if (input.assessmentId && !assessment) throw new NotFoundException('Assessment not found');
-      if (!assessment) assessment = await tx.assessment.create({ data: { organizationId, courseId: lesson.courseId, lessonId, title: lesson.title, slug: `longread-${randomUUID()}`, availableAfterCourseCompletion: false, status: 'draft' } });
+      if (!assessment) assessment = await tx.assessment.create({ data: { organizationId, courseId: lesson.courseId, lessonId, title: lesson.title, isLongreadExercise: true, slug: `longread-${randomUUID()}`, availableAfterCourseCompletion: false, status: 'draft' } });
       await tx.assessment.update({ where: { id: assessment.id }, data: { passingScore: input.assessmentPassingScore, maxAttempts: input.assessmentMaxAttempts } });
       const data = { type: input.type, title: input.title, text: input.text, definition: definition ?? Prisma.DbNull, scoringMode: input.scoringMode };
       const question = existing ? await tx.assessmentQuestion.update({ where: { id: existing.id }, data }) : await tx.assessmentQuestion.create({ data: { ...data, organizationId, assessmentId: assessment.id } });

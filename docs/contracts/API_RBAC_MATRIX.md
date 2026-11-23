@@ -424,3 +424,11 @@ Telegram delivery (PR 503): `GET /users/telegram-delivery`, `GET /users/:id/deli
 
 `POST /users/:id/temporary-password` uses the `user.reset-password` permission and the same object filters as `POST /users/{id}/reset-password` (administrator: whole organization; manager: own team; delegated registrar: own department tree, never above `learner`); the caller cannot issue one for themselves. `POST /users` with `temporaryPassword: true` follows the existing `user.create` rules. While `mustChangePassword` is set, `AuthGuard` refuses every guarded route with `403 PASSWORD_CHANGE_REQUIRED` whatever the role; custom roles do not change this.
 
+
+### Assessment folders (PR 524)
+
+All `/assessment-folders` routes require `assessment.author`. Authors work with
+their organization's shared tree. Course-scoped instructors see counts for
+assigned courses and can move or delete only tests in those courses. Deleting
+a folder that contains active tests outside the instructor's scope is forbidden,
+including its deletion preview.

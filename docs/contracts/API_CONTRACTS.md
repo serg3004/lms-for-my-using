@@ -2522,3 +2522,39 @@ browser from the same rows (grey header, frozen first row, widths; text stays te
 read cut by the row limit, is a 400 asking to narrow the filters. Every export writes one `course_report.exported` audit
 entry with the kind, format, row count and filter ids, never names or results.
 
+
+## Assessment folders (PR 524)
+
+Assessment lists and detail responses include `folderId` (null means root) and
+`isLongreadExercise`. Assessments created by longread exercises stay at the root.
+Attaching an existing assessment to a longread through a placement does not change
+its origin. Moving a test between folders preserves its course, lesson and placements.
+Tests created through the existing API start at the root.
+
+The folder endpoints use `assessment.author` and derive the organization from the
+authenticated request. The folder structure is shared among authors in that organization.
+For course-scoped instructors, test counts and bulk test operations cover only assigned
+courses. Folder removal and its preview return 403 if the subtree contains an active
+test outside those courses. Foreign and deleted folders are treated as missing.
+
+| Endpoint | Contract |
+| --- | --- |
+| `GET /assessment-folders` | Returns `{ folders, assessmentCount, rootAssessmentCount }`. The flat tree uses `parentId` and each row includes `id`, `name`, `createdBy`, timestamps, `childFolderCount`, direct `assessmentCount` and recursive `totalAssessmentCount`. Counts exclude soft-deleted tests. |
+| `POST /assessment-folders` | Accepts `{ name, parentId? }`. Omit the parent or pass null for the root. Returns the created folder. |
+| `PATCH /assessment-folders/:id` | Accepts `{ name?, parentId? }`. Omitted fields keep their values and a null parent moves the folder to the root. Returns the updated folder. |
+| `GET /assessment-folders/:id/delete-impact` | Returns `{ folders, movedToRoot: [{ id, title }] }`, including the selected folder and all its descendants. |
+| `DELETE /assessment-folders/:id` | Soft-deletes the subtree and returns the same impact shape, recalculated atomically. Its tests move to the root with their status, questions and attempts preserved. |
+| `POST /assessment-folders/bulk` | Accepts `{ kind: 'folder' \| 'assessment', action: 'move' \| 'delete', ids, parentId? }`. Move requires `parentId` (null for root). Delete accepts no destination. |
+
+Folder names are trimmed, 1–200 characters and case-insensitively unique among
+active siblings (409 on conflict). Folders support five levels from the root.
+Cycles and moves that would exceed the limit return 400.
+
+Bulk accepts 1–100 UUIDs. The result is `{ action, kind, done, skipped, results }`,
+with one result per distinct ID in input order. Done rows contain
+`{ id, result: 'done' }` and folder deletions also include `impact`. Skipped rows
+contain `{ id, result: 'skipped', reason }`. Reasons are `not_found`, `forbidden`,
+`name_conflict`, `too_deep`, `cycle`, `already_in_folder`, `covered_by_parent`,
+`longread_exercise` and `attempt_in_progress`. Ancestor deletions cover selected
+descendants. Deleting tests explicitly uses the existing soft-delete rules,
+including the check for an attempt in progress.

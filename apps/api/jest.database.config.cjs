@@ -5,6 +5,7 @@ module.exports = {
   testMatch: [
     '<rootDir>/src/integration/longread-exercises.database.spec.ts',
     '<rootDir>/src/integration/assessment-question-types.database.spec.ts',
+    '<rootDir>/src/integration/assessment-folders.database.spec.ts',
     '<rootDir>/src/integration/api.database-smoke.spec.ts',
     '<rootDir>/src/integration/checklist-snapshot.database.spec.ts',
     '<rootDir>/src/integration/checklist-session-domain.database.spec.ts',
