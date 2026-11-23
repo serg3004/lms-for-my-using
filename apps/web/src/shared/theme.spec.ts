@@ -65,18 +65,29 @@ describe('theme settings', () => {
     expect(getStoredThemeSettings()).toBe(defaultThemeSettings);
   });
 
-  it('applies every setting as a root custom property', () => {
+  it('writes only customised settings and clears the ones left at their default', () => {
     const setProperty = vi.fn();
-    vi.stubGlobal('document', { documentElement: { style: { setProperty } } });
+    const removeProperty = vi.fn();
+    vi.stubGlobal('document', { documentElement: { dataset: {}, style: { setProperty, removeProperty } } });
 
-    applyThemeSettings(defaultThemeSettings);
+    applyThemeSettings({ ...defaultThemeSettings, colorPrimary: '#047857', radiusLg: '18px' });
 
-    expect(setProperty).toHaveBeenCalledWith('--color-primary', '#4f46e5');
-    expect(setProperty).toHaveBeenCalledWith('--admin-sidebar-text', '#ffffff');
-    // platformName/logoObjectKey/logoUrl aren't CSS custom properties.
-    const nonCssPropertyKeys = ['platformName', 'logoObjectKey', 'logoUrl'];
-    const expectedCssPropertyCount = Object.keys(defaultThemeSettings).filter((key) => !nonCssPropertyKeys.includes(key)).length;
-    expect(setProperty).toHaveBeenCalledTimes(expectedCssPropertyCount);
+    expect(setProperty).toHaveBeenCalledWith('--color-primary', '#047857');
+    // radiusLg 18px was the default before the refresh, so it follows the new default instead of being pinned.
+    expect(removeProperty).toHaveBeenCalledWith('--radius-lg');
+    expect(removeProperty).toHaveBeenCalledWith('--admin-sidebar-text');
+    expect(setProperty).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the dark tokens in the dark theme and lightens the brand colour', () => {
+    const setProperty = vi.fn();
+    const removeProperty = vi.fn();
+    vi.stubGlobal('document', { documentElement: { dataset: { theme: 'dark' }, style: { setProperty, removeProperty } } });
+
+    applyThemeSettings({ ...defaultThemeSettings, colorPrimary: '#047857', colorBackground: '#f0fdf4' });
+
+    expect(removeProperty).toHaveBeenCalledWith('--color-background');
+    expect(setProperty).toHaveBeenCalledWith('--color-primary', 'color-mix(in srgb, #047857 60%, white)');
   });
 
   it('does nothing when rendered outside a browser', () => {
@@ -87,8 +98,9 @@ describe('theme settings', () => {
   it('persists, applies, and resets settings', () => {
     const localStorage = storageStub();
     const setProperty = vi.fn();
+    const removeProperty = vi.fn();
     vi.stubGlobal('localStorage', localStorage);
-    vi.stubGlobal('document', { documentElement: { style: { setProperty } } });
+    vi.stubGlobal('document', { documentElement: { dataset: {}, style: { setProperty, removeProperty } } });
 
     saveThemeSettings(defaultThemeSettings);
     expect(localStorage.setItem).toHaveBeenCalledWith(
@@ -98,7 +110,7 @@ describe('theme settings', () => {
 
     resetThemeSettings();
     expect(localStorage.removeItem).toHaveBeenCalledWith('lms.adminThemeSettings');
-    expect(setProperty).toHaveBeenCalled();
+    expect(removeProperty).toHaveBeenCalled();
   });
 });
 
@@ -106,7 +118,7 @@ describe('organization theme settings', () => {
   beforeEach(() => {
     mocks.apiRequest.mockReset();
     vi.stubGlobal('localStorage', storageStub());
-    vi.stubGlobal('document', { documentElement: { style: { setProperty: vi.fn() } } });
+    vi.stubGlobal('document', { documentElement: { dataset: {}, style: { setProperty: vi.fn(), removeProperty: vi.fn() } } });
   });
 
   it('fetches and normalizes an organization theme', async () => {

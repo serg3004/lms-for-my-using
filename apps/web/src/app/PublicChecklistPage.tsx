@@ -78,7 +78,7 @@ export function publicErrorText(error: unknown, t: TFunction): string {
 }
 
 const shell = { maxWidth: 720, margin: '0 auto', padding: '16px max(16px, env(safe-area-inset-left, 0px)) 48px', boxSizing: 'border-box' as const, minWidth: 0 };
-const card = { background: 'var(--color-surface, #ffffff)', border: '1px solid var(--color-border, #e3e8ef)', borderRadius: 14, padding: 16, display: 'grid', gap: 12, minWidth: 0 };
+const card = { background: 'var(--color-surface, #ffffff)', border: '1px solid var(--color-border, var(--color-border))', borderRadius: 14, padding: 16, display: 'grid', gap: 12, minWidth: 0 };
 
 function LanguageSelect() {
   const { t, i18n } = useTranslation();
@@ -104,7 +104,7 @@ function CaptchaField({ id, captcha, code, onCode, onRefresh, disabled, t }: { i
       <label htmlFor={id} style={{ fontWeight: 600 }}>{t('publicChecklist.captchaLabel', 'Code from the picture')}</label>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         {captcha
-          ? <img alt={t('publicChecklist.captchaAlt', 'Picture with a code of letters and digits')} src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(captcha.svg)}`} style={{ maxWidth: '100%', height: 'auto', background: '#ffffff', borderRadius: 8, border: '1px solid var(--color-border, #e3e8ef)' }} />
+          ? <img alt={t('publicChecklist.captchaAlt', 'Picture with a code of letters and digits')} src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(captcha.svg)}`} style={{ maxWidth: '100%', height: 'auto', background: 'var(--color-surface)', borderRadius: 8, border: '1px solid var(--color-border, var(--color-border))' }} />
           : <span role="status">{t('publicChecklist.captchaLoading', 'Loading the code…')}</span>}
         <Button disabled={disabled} onClick={onRefresh} size="sm" style={{ minHeight: 44 }} type="button" variant="secondary">{t('publicChecklist.captchaRefresh', 'New picture')}</Button>
       </div>

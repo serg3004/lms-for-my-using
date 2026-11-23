@@ -55,7 +55,7 @@ export function ChecklistInstancePreview({ instanceId, onBack, t }: { instanceId
     <div>
       {back}
       <h1 style={{ marginBottom: 4 }}><RichText value={report.checklist.title} /></h1>
-      <p style={{ color: '#6b7280', marginTop: 0 }}>{t('checklists.instanceReport.title', 'Preview of the filled-in sheet')}</p>
+      <p style={{ color: 'var(--color-text-muted)', marginTop: 0 }}>{t('checklists.instanceReport.title', 'Preview of the filled-in sheet')}</p>
       <div className="no-print" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '12px 0' }}>
         <Button type="button" variant="secondary" style={{ minHeight: 44 }} onClick={() => window.print()}>{t('checklists.instanceReport.print', 'Print')}</Button>
         <Button type="button" variant="secondary" style={{ minHeight: 44 }} disabled={pdf.status === 'loading'} onClick={() => void downloadPdf()}>
@@ -65,7 +65,7 @@ export function ChecklistInstancePreview({ instanceId, onBack, t }: { instanceId
       {pdf.status === 'error' && <InlineFeedback tone="error" title={t('checklists.instanceReport.pdfError', 'Unable to download the PDF.')}>{pdf.message}</InlineFeedback>}
       <ReportHeader report={report} t={t} />
       {report.summary === null ? (
-        <p role="status" style={{ color: '#6b7280' }}>{t('checklists.instanceReport.notFinished', 'The check is not completed yet: points and the result are shown after it is completed.')}</p>
+        <p role="status" style={{ color: 'var(--color-text-muted)' }}>{t('checklists.instanceReport.notFinished', 'The check is not completed yet: points and the result are shown after it is completed.')}</p>
       ) : showPoints ? (
         <>
           <ReportTotal summary={report.summary} t={t} />

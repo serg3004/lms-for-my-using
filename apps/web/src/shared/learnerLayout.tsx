@@ -5,6 +5,7 @@ import { AccountSwitcher } from './accountSwitcher.js';
 import { SESSION_ENDED_EVENT, getUnreadNotificationCount, listNotifications, markAllNotificationsAsRead, markNotificationAsRead } from './apiClient.js';
 import type { NotificationSummary } from './apiClient.js';
 import { logout } from './logout.js';
+import { ThemeToggle } from './ThemeToggle.js';
 import { describeNotification, markAllReadLocally, markReadLocally, NOTIFICATION_COUNT_EVENT } from './notifications.js';
 import { supportedLocales } from '../i18n/index.js';
 import { useOptionalSession } from './session.js';
@@ -28,6 +29,8 @@ export function LanguageSwitcher() {
   const current = LANG_LABELS[i18n.language] ?? 'RU';
 
   return (
+    <>
+    <ThemeToggle />
     <div className="lang-switcher">
       <button
         className="lang-switcher__btn"
@@ -52,6 +55,7 @@ export function LanguageSwitcher() {
         </div>
       )}
     </div>
+    </>
   );
 }
 

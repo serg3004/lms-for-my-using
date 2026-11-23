@@ -69,7 +69,7 @@ describe('criterionStatus', () => {
 describe('highlightedRowStyle', () => {
   it('paints a stripe and fill from the server colours, nothing when there is no colour', () => {
     expect(highlightedRowStyle(green)).toMatchObject({ background: '#DDEBDE', color: '#111111', borderLeft: '6px solid #2E7D32' });
-    expect(highlightedRowStyle(null)).toEqual({ border: '1px solid #e3e8ef' });
+    expect(highlightedRowStyle(null)).toEqual({ border: '1px solid var(--color-border)' });
   });
 });
 

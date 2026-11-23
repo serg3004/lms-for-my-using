@@ -24,16 +24,16 @@ type AssignmentDetailData = {
 };
 
 const COLORS = {
-  surface: '#ffffff',
-  soft: '#f8fafc',
-  text: '#172033',
-  muted: '#6b7280',
-  border: '#e3e8ef',
-  primary: '#4f46e5',
-  primarySoft: '#eef2ff',
-  success: '#0f9f6e',
-  warning: '#d97706',
-  warningSoft: '#fff7e8',
+  surface: 'var(--color-surface)',
+  soft: 'var(--color-surface-muted)',
+  text: 'var(--color-text)',
+  muted: 'var(--color-text-muted)',
+  border: 'var(--color-border)',
+  primary: 'var(--color-primary)',
+  primarySoft: 'var(--color-accent-soft)',
+  success: 'var(--color-success)',
+  warning: 'var(--color-warning)',
+  warningSoft: 'var(--color-warning-bg)',
 };
 
 function getCourseTitle(assignment: ReadableAssignmentSummary, fallback: string) {
@@ -187,7 +187,7 @@ export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: st
               <span>{t('assignmentDetail.progressLabel')}</span>
               <strong style={{ color: COLORS.text }}>{progressPercent}%</strong>
             </div>
-            <div style={{ height: '10px', background: '#edf0f5', borderRadius: '999px', overflow: 'hidden' }}>
+            <div style={{ height: '10px', background: 'var(--color-surface-muted)', borderRadius: '999px', overflow: 'hidden' }}>
               <div style={{ width: `${progressPercent}%`, height: '100%', background: `linear-gradient(90deg,${COLORS.primary},#7c3aed)`, borderRadius: '999px' }} />
             </div>
           </section>
@@ -217,7 +217,7 @@ export function LearnerAssignmentDetailPage({ assignmentId }: { assignmentId: st
           </section>
 
           <section style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, borderRadius: '18px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
-            <div style={{ padding: '14px', borderRadius: '12px', background: COLORS.warningSoft, color: '#8a4b05', fontSize: '13px', lineHeight: 1.5, marginBottom: '16px' }}>
+            <div style={{ padding: '14px', borderRadius: '12px', background: COLORS.warningSoft, color: 'var(--color-warning-text)', fontSize: '13px', lineHeight: 1.5, marginBottom: '16px' }}>
               {t('assignmentDetail.notice')}
             </div>
             {assessmentHref ? (

@@ -22,14 +22,25 @@ for (const file of files.filter((file) => file !== 'index.css')) {
 }
 
 const customPropertyDefinitions = new Map();
+// PR 573: tokens.css may restate a light token inside its one `:root[data-theme='dark']` block; that is an override, not a duplicate.
+const darkBlockMarker = ":root[data-theme='dark']";
 for (const file of files) {
   const contents = await readFile(new URL(file, stylesDirectory), 'utf8');
-  for (const match of contents.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gim)) {
+  const darkStart = file === 'tokens.css' ? contents.indexOf(darkBlockMarker) : -1;
+  const lightContents = darkStart >= 0 ? contents.slice(0, darkStart) : contents;
+  for (const match of lightContents.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gim)) {
     const previousFile = customPropertyDefinitions.get(match[1]);
     if (previousFile) {
       throw new Error(`${match[1]} is defined in both ${previousFile} and ${file}.`);
     }
     customPropertyDefinitions.set(match[1], file);
+  }
+  if (darkStart >= 0) {
+    for (const match of contents.slice(darkStart).matchAll(/^\s*(--[a-z0-9-]+)\s*:/gim)) {
+      if (!customPropertyDefinitions.has(match[1])) {
+        throw new Error(`${match[1]} is only defined in the dark theme block; define the light value first.`);
+      }
+    }
   }
 }
 

@@ -20,7 +20,7 @@ export function ChecklistDeadlineMeta({ instance }: { instance: Pick<ChecklistIn
         marginTop: 4,
         fontSize: 12,
         fontWeight: state === 'expired' || state === 'due_soon' ? 700 : 500,
-        color: state === 'expired' ? '#b91c1c' : state === 'due_soon' ? '#b45309' : '#6b7280',
+        color: state === 'expired' ? '#b91c1c' : state === 'due_soon' ? '#b45309' : 'var(--color-text-muted)',
       }}
     >
       {label}
