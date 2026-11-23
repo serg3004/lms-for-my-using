@@ -1,5 +1,5 @@
 import { useEffect, useReducer, useRef, useState } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AdminPageHeader, AdminPageLayout, FormField } from '../../shared/adminPage.js';
 import { Badge, Button, ConfirmDialog, PageState } from '../../shared/ui.js';
@@ -30,11 +30,13 @@ export function AssessmentEditorPage() {
   );
   const targetTab = tabs.find((tab) => tab === params.get('tab')) ?? 'main';
   const listLink = `${listPath}${params.get('list') ? `?${params.get('list')}` : ''}`;
+  const ready = state.status === 'loaded' && (assessmentId ? state.data?.assessment.id === assessmentId : state.data === null);
+  const loading = state.status === 'loading' || state.status === 'loaded';
   return <AdminPageLayout brandLabel={t('admin.navLink')} sidebarLabel={t('admin.navLink')}
     navItems={[{ label: t('admin.assessmentBuilder.title'), href: listLink, isCurrent: true }]}>
-    {state.status === 'loaded' ? <Editor key={assessmentId ?? 'new'} initial={state.data} initialTab={targetTab} listLink={listLink} />
-      : <PageState variant={state.status === 'loading' ? 'loading' : 'error'}
-        message={state.status === 'loading' ? t('admin.assessmentBuilder.loading') : t('admin.assessmentBuilder.loadError')} />}
+    {ready ? <Editor key={assessmentId ?? 'new'} initial={state.data} initialTab={targetTab} listLink={listLink} />
+      : <PageState variant={loading ? 'loading' : 'error'}
+        message={loading ? t('admin.assessmentBuilder.loading') : t('admin.assessmentBuilder.loadError')} />}
   </AdminPageLayout>;
 }
 
@@ -54,6 +56,7 @@ function Usage({ document }: { document: EditorDocument }) {
 
 function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | null; initialTab: Tab; listLink: string }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const label = (key: string) => t(`admin.assessmentBuilder.editor.${key}`);
   const [form, dispatch] = useReducer(assessmentFormReducer, initial, (document) => document
     ? assessmentToForm({ ...document.assessment, ...document.draft?.settings })
@@ -193,22 +196,21 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
   return <>
     <a href={listLink}>{t('admin.assessmentBuilder.backToDashboard')}</a>
     <AdminPageHeader title={form.title.trim() || t(initial ? 'admin.assessmentBuilder.editTitle' : 'admin.assessmentBuilder.createTitle')}
-      action={<div className="assessment-editor-actions">
+      action={<div className="admin-header-actions">
         <Badge variant={status === 'published' ? 'published' : status === 'draft' ? 'draft' : 'neutral'}>{t(`admin.assessmentBuilder.status.${status}`)}</Badge>
         {unpublished && <Badge variant="draft">{label('unpublished')}</Badge>}
         {initial && <Button type="button" disabled={dirty || busy || copying} onClick={() => void copy()}>{t('admin.checklists.copy')}</Button>}
       </div>} />
-    <nav className="assessment-editor-tabs" aria-label={t('admin.assessmentBuilder.editTitle')}>
+    <nav className="admin-builder-tabbar__actions" aria-label={t('admin.assessmentBuilder.editTitle')}>
       {tabs.filter((item) => initial || item === 'main' || item === 'settings').map((item) =>
         <Button key={item} type="button" aria-pressed={tab === item} variant={tab === item ? 'primary' : 'secondary'}
           onClick={() => setTab(item)}>{label(item)}</Button>)}
     </nav>
-    <fieldset disabled={busy || copying || pending !== null} className="assessment-editor-panel admin-form">
+    <fieldset disabled={busy || copying || pending !== null} className="assessment-editor-panel admin-theme-settings__fieldset admin-form">
       {!initial && <div hidden={tab !== 'main'}><CreationPlacement onChange={() => setPlacementDirty(true)} form={form} onCreated={(id) => {
-          bypassGuard.current = true;
           const params = new URLSearchParams({ tab: 'questions' });
           if (listLink.includes('?')) params.set('list', listLink.split('?')[1]);
-          window.location.replace(`${listPath}/${id}/edit?${params}`);
+          navigate(`${listPath}/${id}/edit?${params}`, { replace: true });
         }} onError={setFeedback} /></div>}
       {tab === 'main' && <>
         <FormField id="assessment-editor-title" label={t('admin.assessmentBuilder.assessmentTitle')} required>
@@ -242,7 +244,7 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
       {tab === 'usage' && initial && <Usage document={initial} />}
     </fieldset>
     {feedback.length > 0 && <ul role="alert" className="admin-form__error">{feedback.map((message, index) => <li key={index}>{message}</li>)}</ul>}
-    <div className="assessment-editor-footer assessment-editor-actions">
+    <div className="assessment-editor-footer admin-header-actions">
       {dirty && <span role="status">{label('unsaved')}</span>}
       {!initial && <Button variant="primary" type="submit" form="assessment-editor-create">{t('admin.assessmentBuilder.create')}</Button>}
       {initial && <>

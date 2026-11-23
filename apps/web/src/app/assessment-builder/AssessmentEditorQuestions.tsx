@@ -24,7 +24,7 @@ function ReorderList<T extends { id: string }>({ items, onChange, children }: {
         event.stopPropagation();
         onChange(moveEditorItem(items, id, index));
       }}>
-      <div className="assessment-editor-actions">
+      <div className="admin-header-actions">
         <span draggable aria-hidden="true" className="assessment-editor-grip"
           onDragStart={(event) => {
             event.dataTransfer.effectAllowed = 'move';
@@ -95,7 +95,7 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview }: {
             options: [...question.options, { id: crypto.randomUUID(), text: null, imageUrl: null, isCorrect: false }],
           })}>{t('admin.assessmentBuilder.addOption')}</Button>
         </>}
-        <div className="assessment-editor-actions">
+        <div className="admin-header-actions">
           <Button type="button" onClick={() => onChange([...questions.slice(0, index + 1), copyEditorQuestion(question), ...questions.slice(index + 1)])}>
             {t('admin.assessmentBuilder.editor.copyQuestion')}
           </Button>

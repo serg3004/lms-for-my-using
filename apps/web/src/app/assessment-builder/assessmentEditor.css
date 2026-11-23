@@ -1,21 +1,5 @@
-.assessment-editor-tabs,
-.assessment-editor-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.assessment-editor-tabs {
-  margin-block-end: 1rem;
-}
-
 .assessment-editor-panel {
   max-inline-size: 60rem;
-  min-inline-size: 0;
-  border: 0;
-  padding: 0;
-  margin: 0;
 }
 
 .assessment-editor-list {
@@ -42,8 +26,6 @@
   inset-block-end: 0;
   z-index: 1;
   padding: 0.75rem;
-  margin-block-start: 1rem;
-  border-block-start: 1px solid var(--color-border);
   background: var(--color-surface);
 }
 
