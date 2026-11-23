@@ -17,6 +17,8 @@ const attemptResultSummarySelect = {
   id: true,
   organizationId: true,
   assessmentId: true,
+  placementId: true,
+  courseId: true,
   userId: true,
   status: true,
   score: true,
@@ -94,6 +96,8 @@ type AttemptResultInput = {
   longreadMetadata?: unknown;
   organizationId: string;
   assessmentId: string;
+  placementId: string | null;
+  courseId: string | null;
   userId: string;
   status: string;
   score: number;
@@ -151,7 +155,7 @@ type AttemptResultInput = {
 export class AssessmentResultsService {
   constructor(private readonly prisma: PrismaService, private readonly teamScope: ManagerTeamScope = new ManagerTeamScope()) {}
 
-  async listAssessmentResults(assessmentId: string, actorInput: TeamScopeActor | string) {
+  async listAssessmentResults(assessmentId: string, actorInput: TeamScopeActor | string, placementId?: string | null) {
     const actor = normalizeActor(actorInput);
     const organizationId = actor.organizationId;
     await this.ensureAssessmentExists(assessmentId, organizationId);
@@ -159,6 +163,8 @@ export class AssessmentResultsService {
     const attempts = await this.prisma.assessmentAttempt.findMany({
       where: {
         assessmentId,
+        placementId,
+        ...(placementId === null ? { longreadRevisionId: null } : {}),
         organizationId,
         countsTowardResults: true,
         ...attemptScope(this.teamScope, actor),
@@ -296,6 +302,8 @@ export class AssessmentResultsService {
       id: attempt.id,
       organizationId: attempt.organizationId,
       assessmentId: attempt.assessmentId,
+      placementId: attempt.placementId,
+      courseId: attempt.courseId,
       userId: attempt.userId,
       status: attempt.status,
       score: attempt.score,

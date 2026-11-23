@@ -95,7 +95,13 @@ export class LongreadExercisesService {
       }
       const graded = gradeAssessmentAnswers([block.question], [input.answer])[0]!;
       const percentage = Math.round(graded.score / block.question.points * 100);
-      const id = await recordCompletedAssessment(tx, { organizationId: actor.organizationId, userId: actor.id, assessmentId: block.question.assessment.id, status: 'completed',
+      const assessmentId = block.question.assessment.id;
+      const locationKey = `block:${block.id}`;
+      const placement = await tx.assessmentPlacement.findUnique({
+        where: { assessmentId_locationKey: { assessmentId, locationKey } },
+        select: { id: true },
+      });
+      const id = await recordCompletedAssessment(tx, { organizationId: actor.organizationId, userId: actor.id, assessmentId, placementId: placement?.id, status: 'completed',
         score: graded.score, maxScore: block.question.points, percentage, passed: percentage >= block.content.passingScore, completedAt: new Date(), countsTowardResults: false,
         longreadRevisionId: revision.id, longreadBlockId: block.id, longreadSequence: input.expectedAttempt, longreadRequestId: input.requestId, longreadRequestHash: hash,
         longreadMetadata: { lessonId, version: input.version, title: block.question.assessment.title, passingScore: block.question.assessment.passingScore } },
@@ -123,7 +129,8 @@ export class LongreadExercisesService {
       const maxScore = graded.reduce((sum, block) => sum + block.question.points, 0), score = best.reduce((sum, item) => sum + (item.attempt?.score ?? 0), 0);
       if (maxScore > 2147483647) throw new BadRequestException('Test score exceeds storage limit');
       const percentage = Math.round(score / maxScore * 100), passed = percentage >= assessment.passingScore && best.every(({ block, attempt }) => !block.content.required || attempt?.passed);
-      return recordCompletedAssessment(tx, { organizationId: actor.organizationId, userId: actor.id, assessmentId, status: 'completed', score, maxScore, percentage, passed, completedAt: new Date(),
+      const placementId = graded.length === 1 ? best[0]?.attempt?.placementId : undefined;
+      return recordCompletedAssessment(tx, { organizationId: actor.organizationId, userId: actor.id, assessmentId, placementId, status: 'completed', score, maxScore, percentage, passed, completedAt: new Date(),
         longreadRevisionId: revision.id, longreadResultKey: fingerprint, longreadMetadata: { lessonId, version, title: assessment.title, passingScore: assessment.passingScore } },
       best.flatMap(({ attempt }) => attempt?.answers.map((answer) => ({ questionId: answer.questionId, selectedOptionId: answer.selectedOptionId,
         selectedOptionIds: answer.selectedOptionIds ?? undefined, response: answer.response ?? undefined, score: answer.score, isCorrect: answer.isCorrect, frozenQuestion: answer.frozenQuestion ?? undefined })) ?? []), progress.courseId, assessment.title);

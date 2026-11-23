@@ -73,7 +73,7 @@ describe('CourseAccessPolicy', () => {
     expect(courseFindFirst).not.toHaveBeenCalled();
   });
 
-  it('joins two levels deep for attempt/question resources (via assessment.course)', async () => {
+  it('scopes attempts by the course where they were taken', async () => {
     const resourceId = '55555555-5555-5555-5555-555555555555';
     const attemptFindFirst = jest.fn(async () => ({ id: resourceId }));
     const policy = new CourseAccessPolicy({
@@ -87,12 +87,10 @@ describe('CourseAccessPolicy', () => {
         id: resourceId,
         organizationId,
         deletedAt: null,
-        assessment: {
-          course: {
-            organizationId,
-            deletedAt: null,
-            instructors: { some: { instructorId, organizationId, deletedAt: null } },
-          },
+        course: {
+          organizationId,
+          deletedAt: null,
+          instructors: { some: { instructorId, organizationId, deletedAt: null } },
         },
       },
       select: { id: true },

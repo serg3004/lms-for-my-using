@@ -31,6 +31,7 @@ export type AnalyticsProgress = {
 export type AnalyticsAssessment = { id: string; courseId: string };
 export type AnalyticsAttempt = {
   assessmentId: string;
+  courseId: string | null;
   userId: string;
   status: 'in_progress' | 'completed';
   percentage: number;
@@ -116,7 +117,7 @@ export function buildCourseUserRows(input: CourseAnalyticsInput): CourseUserRow[
   const lessonsByCourse = groupBy(input.lessons, (lesson) => lesson.courseId);
   const assessmentsByCourse = groupBy(input.assessments, (assessment) => assessment.courseId);
   const progressByPair = groupBy(input.progress, (row) => key(row.courseId, row.userId));
-  const attemptsByUser = groupBy(input.attempts, (attempt) => attempt.userId);
+  const attemptsByPair = groupBy(input.attempts, (attempt) => key(attempt.courseId ?? '', attempt.userId));
   const certificateByPair = new Map(input.certificates.map((certificate) => [key(certificate.courseId, certificate.userId), certificate]));
   const assignmentsByPair = groupBy(input.assignments, (assignment) => key(assignment.courseId, assignment.userId));
 
@@ -132,7 +133,7 @@ export function buildCourseUserRows(input: CourseAnalyticsInput): CourseUserRow[
     const allLessonsDone = lessonsTotal > 0 && lessonsCompleted >= lessonsTotal;
 
     const assessmentIds = new Set((assessmentsByCourse.get(courseId) ?? []).map((assessment) => assessment.id));
-    const counted = (attemptsByUser.get(userId) ?? []).filter((attempt) => assessmentIds.has(attempt.assessmentId) && attempt.status === 'completed');
+    const counted = (attemptsByPair.get(key(courseId, userId)) ?? []).filter((attempt) => assessmentIds.has(attempt.assessmentId) && attempt.status === 'completed');
     const bestByAssessment = new Map<string, AnalyticsAttempt>();
     for (const attempt of counted) {
       const best = bestByAssessment.get(attempt.assessmentId);
@@ -147,10 +148,10 @@ export function buildCourseUserRows(input: CourseAnalyticsInput): CourseUserRow[
     else testResult = 'pending';
 
     const completed = allLessonsDone || pairAssignments.some((assignment) => assignment.completed);
-    const touched = progress.some((row) => row.status !== 'not_started') || (attemptsByUser.get(userId) ?? []).some((attempt) => assessmentIds.has(attempt.assessmentId));
+    const touched = progress.some((row) => row.status !== 'not_started') || (attemptsByPair.get(key(courseId, userId)) ?? []).some((attempt) => assessmentIds.has(attempt.assessmentId));
     const startedAt = earliest([
       ...progress.filter((row) => row.status !== 'not_started').map((row) => row.createdAt),
-      ...(attemptsByUser.get(userId) ?? []).filter((attempt) => assessmentIds.has(attempt.assessmentId)).map((attempt) => attempt.startedAt),
+      ...(attemptsByPair.get(key(courseId, userId)) ?? []).filter((attempt) => assessmentIds.has(attempt.assessmentId)).map((attempt) => attempt.startedAt),
     ]);
     const completedAt = completed ? latest(progress.flatMap((row) => (row.completedAt ? [row.completedAt] : []))) : null;
     const durationMinutes = startedAt && completedAt && completedAt >= startedAt ? Math.round((completedAt.getTime() - startedAt.getTime()) / 60_000) : null;

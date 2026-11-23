@@ -169,7 +169,7 @@ export type ProgressSummaryStreakDay = {
 
 export type ProgressSummaryActivityItem = {
   type: 'lesson_completed' | 'assessment_passed' | 'certificate_issued';
-  courseId: string;
+  courseId: string | null;
   courseTitle: string;
   score?: number;
   date: string;
@@ -205,7 +205,7 @@ export type AssignmentSummary = {
 export type AssessmentSummary = {
   id: string;
   organizationId: string;
-  courseId: string;
+  courseId: string | null;
   lessonId: string | null;
   title: string;
   slug: string;
@@ -300,6 +300,8 @@ export type AssessmentAttemptSummary = {
   id: string;
   organizationId: string;
   assessmentId: string;
+  placementId?: string | null;
+  courseId?: string | null;
   userId: string;
   status: string;
   score: number;
@@ -317,6 +319,8 @@ export type AssessmentAttemptResult = {
   id: string;
   organizationId: string;
   assessmentId: string;
+  placementId?: string | null;
+  courseId?: string | null;
   userId: string;
   status: string;
   score: number;

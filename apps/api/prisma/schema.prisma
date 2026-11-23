@@ -354,7 +354,7 @@ enum ChecklistScaleStatus {
 }
 
 model Organization {
-  activationQrCode String? @unique @map("activation_qr_code")
+  activationQrCode           String?                     @unique @map("activation_qr_code")
   id                         String                      @id @default(uuid()) @db.Uuid
   name                       String
   slug                       String                      @unique
@@ -449,6 +449,8 @@ model Organization {
   customRolePermissions      CustomRolePermission[]
   userCustomRoleAssignments  UserCustomRoleAssignment[]
 
+  assessmentPlacements AssessmentPlacement[]
+
   @@map("organizations")
 }
 
@@ -512,9 +514,9 @@ model User {
   sessions                   Session[]
   passwordResetTokens        PasswordResetToken[]
   invitations                UserInvitation[]
-  qrLoginRequests QrLoginRequest[]
-  badges          UserBadge[]
-  inspector       ExternalInspector?
+  qrLoginRequests            QrLoginRequest[]
+  badges                     UserBadge[]
+  inspector                  ExternalInspector?
   telegramLink               UserTelegramLink?
   telegramLinkCodes          TelegramLinkCode[]
   messageDeliveries          MessageDelivery[]
@@ -582,7 +584,7 @@ model PasswordHistory {
 }
 
 model UserInvitation {
-  activationQr Boolean @default(false) @map("activation_qr")
+  activationQr   Boolean   @default(false) @map("activation_qr")
   id             String    @id @default(uuid()) @db.Uuid
   userId         String    @map("user_id") @db.Uuid
   organizationId String    @map("organization_id") @db.Uuid
@@ -719,7 +721,7 @@ model DepartmentType {
 }
 
 model Department {
-  activationQrCode String? @unique @map("activation_qr_code")
+  activationQrCode      String?                @unique @map("activation_qr_code")
   id                    String                 @id @default(uuid()) @db.Uuid
   organizationId        String                 @map("organization_id") @db.Uuid
   parentId              String?                @map("parent_id") @db.Uuid
@@ -974,6 +976,9 @@ model Course {
   instructors           CourseInstructor[]
   positionCourses       PositionCourse[]
 
+  assessmentPlacements AssessmentPlacement[]
+  assessmentAttempts   AssessmentAttempt[]
+
   @@unique([organizationId, slug])
   @@index([organizationId, status])
   @@index([organizationId, createdAt, id])
@@ -1014,6 +1019,8 @@ model Lesson {
   progress       Progress[]
   assessments    Assessment[]
   longread       LongreadDocument?
+
+  assessmentPlacements AssessmentPlacement[]
 
   @@unique([courseId, slug])
   @@index([organizationId, courseId, status])
@@ -1152,7 +1159,7 @@ model Progress {
 model Assessment {
   id                             String               @id @default(uuid()) @db.Uuid
   organizationId                 String               @map("organization_id") @db.Uuid
-  courseId                       String               @map("course_id") @db.Uuid
+  courseId                       String?              @map("course_id") @db.Uuid
   lessonId                       String?              @map("lesson_id") @db.Uuid
   title                          String
   slug                           String
@@ -1170,10 +1177,12 @@ model Assessment {
   updatedAt                      DateTime             @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt                      DateTime?            @map("deleted_at") @db.Timestamptz
   organization                   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  course                         Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course                         Course?              @relation(fields: [courseId], references: [id], onDelete: SetNull)
   lesson                         Lesson?              @relation(fields: [lessonId], references: [id], onDelete: SetNull)
   questions                      AssessmentQuestion[]
   attempts                       AssessmentAttempt[]
+
+  placements AssessmentPlacement[]
 
   @@unique([courseId, slug])
   @@index([organizationId, status])
@@ -1181,6 +1190,27 @@ model Assessment {
   @@index([courseId, status])
   @@index([lessonId])
   @@map("assessments")
+}
+
+model AssessmentPlacement {
+  id              String              @id @default(uuid()) @db.Uuid
+  organizationId  String              @map("organization_id") @db.Uuid
+  assessmentId    String              @map("assessment_id") @db.Uuid
+  courseId        String?             @map("course_id") @db.Uuid
+  lessonId        String?             @map("lesson_id") @db.Uuid
+  longreadBlockId String?             @map("longread_block_id") @db.Uuid
+  locationKey     String              @map("location_key")
+  legacy          Boolean             @default(false)
+  deletedAt       DateTime?           @map("deleted_at") @db.Timestamptz
+  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  assessment      Assessment          @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  course          Course?             @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  lesson          Lesson?             @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  attempts        AssessmentAttempt[]
+
+  @@unique([assessmentId, locationKey])
+  @@index([organizationId, courseId, deletedAt])
+  @@map("assessment_placements")
 }
 
 model AssessmentQuestion {
@@ -1232,6 +1262,10 @@ model AssessmentAttempt {
   id                  String                    @id @default(uuid()) @db.Uuid
   organizationId      String                    @map("organization_id") @db.Uuid
   assessmentId        String                    @map("assessment_id") @db.Uuid
+  placementId         String?                   @map("placement_id") @db.Uuid
+  courseId            String?                   @map("course_id") @db.Uuid
+  placement           AssessmentPlacement?      @relation(fields: [placementId], references: [id], onDelete: NoAction)
+  course              Course?                   @relation(fields: [courseId], references: [id], onDelete: SetNull)
   userId              String                    @map("user_id") @db.Uuid
   status              AssessmentAttemptStatus   @default(completed)
   score               Int                       @default(0)
@@ -1266,6 +1300,8 @@ model AssessmentAttempt {
   @@index([assessmentId, status])
   @@index([userId])
   @@index([completedAt])
+  @@index([organizationId, courseId, userId])
+  @@index([placementId, userId])
   @@map("assessment_attempts")
 }
 

@@ -275,14 +275,14 @@ export class CourseAnalyticsService {
 
     const [lessons, assessments, progress, attempts, certificates] = await Promise.all([
       this.prisma.lesson.findMany({ where: { organizationId, courseId: { in: pairCourseIds }, deletedAt: null, status: 'published' }, select: { id: true, courseId: true } }),
-      this.prisma.assessment.findMany({ where: { organizationId, courseId: { in: pairCourseIds }, deletedAt: null, status: 'published' }, select: { id: true, courseId: true } }),
+      this.prisma.assessmentPlacement.findMany({ where: { organizationId, courseId: { in: pairCourseIds }, deletedAt: null, assessment: { deletedAt: null, status: 'published' } }, select: { assessmentId: true, courseId: true } }),
       this.prisma.progress.findMany({
         where: { organizationId, courseId: { in: pairCourseIds }, userId: { in: userIds }, deletedAt: null },
         select: { courseId: true, userId: true, lessonId: true, status: true, createdAt: true, completedAt: true },
       }),
       this.prisma.assessmentAttempt.findMany({
-        where: { organizationId, userId: { in: userIds }, deletedAt: null, countsTowardResults: true, assessment: { courseId: { in: pairCourseIds }, deletedAt: null, status: 'published' } },
-        select: { assessmentId: true, userId: true, status: true, percentage: true, score: true, passed: true, startedAt: true, completedAt: true },
+        where: { organizationId, userId: { in: userIds }, deletedAt: null, countsTowardResults: true, courseId: { in: pairCourseIds }, assessment: { deletedAt: null, status: 'published' } },
+        select: { assessmentId: true, courseId: true, userId: true, status: true, percentage: true, score: true, passed: true, startedAt: true, completedAt: true },
       }),
       this.prisma.certificate.findMany({
         where: { organizationId, courseId: { in: pairCourseIds }, userId: { in: userIds }, deletedAt: null },
@@ -290,7 +290,9 @@ export class CourseAnalyticsService {
       }),
     ]);
 
-    const rows = buildCourseUserRows({ now: new Date(), assignments: limited, lessons, progress, assessments, attempts, certificates });
+    const rows = buildCourseUserRows({ now: new Date(), assignments: limited, lessons, progress,
+      assessments: assessments.flatMap(({ assessmentId, courseId }) => courseId ? [{ id: assessmentId, courseId }] : []),
+      attempts, certificates });
     rows.sort((a, b) => `${users.get(a.userId)?.lastName ?? ''}${users.get(a.userId)?.firstName ?? ''}`.localeCompare(`${users.get(b.userId)?.lastName ?? ''}${users.get(b.userId)?.firstName ?? ''}`, 'ru') || a.courseId.localeCompare(b.courseId));
     const field = presentation ? { label: presentation.label, values: await presentation.values(userIds) } : undefined;
     return { courses, rows, users, truncated, field };

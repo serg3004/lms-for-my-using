@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
@@ -11,6 +11,7 @@ import { isInstructorCourseScoped } from '../course-access/public.js';
 import { AssessmentsService } from './assessments.service.js';
 import {
   createAssessmentSchema,
+  assessmentPlacementSchema,
   CreateAssessmentInput,
   updateAssessmentStatusSchema,
   updateAssessmentSchema,
@@ -43,10 +44,29 @@ export class AssessmentsController {
   @Roles(...rolePolicies.assessmentsCreate)
   @OrganizationScope('body', 'organizationId')
   @CourseScope('body', 'courseId')
-  createAssessment(@Body() body: unknown) {
+  createAssessment(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input: CreateAssessmentInput = createAssessmentSchema.parse(body);
 
+    if (!input.courseId && isInstructorCourseScoped(request.currentUser!)) throw new ForbiddenException();
     return this.assessmentsService.createAssessment(input);
+  }
+
+  @Get(':id/placements')
+  @Roles('admin')
+  listPlacements(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.assessmentsService.listPlacements(id, request.currentUser!.organizationId);
+  }
+
+  @Post(':id/placements')
+  @Roles('admin')
+  attachPlacement(@Param('id') id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.assessmentsService.attachPlacement(id, request.currentUser!.organizationId, assessmentPlacementSchema.parse(body));
+  }
+
+  @Delete(':id/placements/:placementId')
+  @Roles('admin')
+  detachPlacement(@Param('id') id: string, @Param('placementId') placementId: string, @Req() request: AuthenticatedRequest) {
+    return this.assessmentsService.detachPlacement(id, placementId, request.currentUser!.organizationId);
   }
 
   @Patch(':id/status')
