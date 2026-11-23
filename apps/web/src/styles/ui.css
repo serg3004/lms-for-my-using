@@ -692,7 +692,7 @@
   font-weight: var(--fw-semibold);
   line-height: 1.25;
   cursor: pointer;
-  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+  transition: box-shadow 0.15s, transform 0.1s;
   white-space: nowrap;
   text-decoration: none;
 }
