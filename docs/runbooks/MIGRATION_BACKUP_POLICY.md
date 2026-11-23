@@ -6,6 +6,22 @@
 >
 > **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
 
+## Standalone assessment placements migration (PR 522)
+
+`20261124090000_assessment_placements` makes the source course optional, creates placement
+records and backfills the course and placement of historical attempts in a single transaction.
+The backfill covers attempts from longread blocks removed from the current draft. It preserves
+attempt IDs, scores and existing certificate references.
+
+Verify a recoverable backup using the standard policy below. Pause assessment writes from
+the old API before applying the migration and resume them with the updated API. The old API
+does not populate the new context columns when writing attempts. Allow for table locks and
+the attempt backfill when planning the deployment window.
+
+Keep the placement and attempt data on rollback. Check for standalone assessments and
+attempts from new placements before reverting the API. The old API requires a course on
+every assessment and cannot attribute attempts from shared tests to their recorded placements.
+
 ## Activation QR migration (PR 504)
 
 Migration `20261123090000_activation_qr` adds a personal QR flag to `user_invitations` and nullable shared code columns with unique indexes to `organizations` and `departments`. Existing invitations keep their email-link behavior. Shared codes are initially unset and issued by an administrator. The migration is additive and needs no data backfill. Apply it before deploying the QR-enabled API.
