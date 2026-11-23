@@ -63,7 +63,7 @@ async function openEditor(page: Page): Promise<Server> {
 test.describe('Criterion description and explanation (PR 415)', () => {
   test('the editor saves the description and the rule, and the row tells what is set', async ({ page }) => {
     const server = await openEditor(page);
-    await page.getByRole('button', { name: 'Действия' }).first().click();
+    await page.getByRole('button', { name: 'Действия', exact: true }).first().click();
     await page.getByRole('menuitem', { name: 'Описание и пояснение…' }).click();
     const dialog = page.getByRole('dialog', { name: 'Критерий: описание и пояснение' });
     await dialog.getByRole('switch').check();
@@ -136,7 +136,7 @@ test.describe('Explanation while filling a sheet (PR 415)', () => {
     test(`PR 443: boxes and switches stand right before their captions at ${width} px`, async ({ page }) => {
       await openEditor(page);
       await page.setViewportSize({ width, height: 1400 });
-      await page.getByRole('button', { name: 'Действия' }).first().click();
+      await page.getByRole('button', { name: 'Действия', exact: true }).first().click();
       await page.getByRole('menuitem', { name: 'Описание и пояснение…' }).click();
       const dialog = page.getByRole('dialog', { name: 'Критерий: описание и пояснение' });
       await dialog.getByRole('switch').check();

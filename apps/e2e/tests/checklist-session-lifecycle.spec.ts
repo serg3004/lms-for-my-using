@@ -537,7 +537,7 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       });
       const [download] = await Promise.all([
         page.waitForEvent('download'),
-        (async () => { await page.getByRole('button', { name: 'Ещё действия', exact: true }).click(); await page.getByRole('menuitem', { name: 'Скачать CSV', exact: true }).click(); })(),
+        page.getByRole('button', { name: 'Скачать CSV', exact: true }).click(),
       ]);
       expect(download.suggestedFilename()).toBe('checklist-employees-2026-03-01.csv');
       expect(new URL(exportUrl).searchParams.get('q')).toBe('Ivy');
@@ -552,7 +552,7 @@ test.describe('checklist session lifecycle (PR 307 E2E)', () => {
       });
       const [download] = await Promise.all([
         page.waitForEvent('download'),
-        (async () => { await page.getByRole('button', { name: 'Ещё действия', exact: true }).click(); await page.getByRole('menuitem', { name: 'Скачать Excel', exact: true }).click(); })(),
+        page.getByRole('button', { name: 'Скачать Excel', exact: true }).click(),
       ]);
       expect(download.suggestedFilename()).toBe('checklist-employees-2026-03-01.xlsx');
       expect(format).toBe('xlsx');

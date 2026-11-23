@@ -61,7 +61,7 @@ test.describe('manage a scheduled session (PR 333)', () => {
 
   test('writes to the participant with a trimmed text', async ({ page }) => {
     const calls = await openSessions(page);
-    await page.getByRole('button', { name: 'Действия' }).first().click();
+    await page.getByRole('button', { name: 'Действия', exact: true }).first().click();
     await page.getByRole('menuitem', { name: 'Написать участнику' }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toContainText('Alex Learner');
@@ -74,7 +74,7 @@ test.describe('manage a scheduled session (PR 333)', () => {
 
   test('edits time and observer in a single PATCH carrying the version and timezone', async ({ page }) => {
     const calls = await openSessions(page);
-    await page.getByRole('button', { name: 'Действия' }).first().click();
+    await page.getByRole('button', { name: 'Действия', exact: true }).first().click();
     await page.getByRole('menuitem', { name: 'Изменить время или наблюдателя' }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByRole('button', { name: 'Сохранить' })).toBeDisabled();
@@ -88,7 +88,7 @@ test.describe('manage a scheduled session (PR 333)', () => {
 
   test('deletes a not-started session after confirmation and refreshes the list', async ({ page }) => {
     const calls = await openSessions(page);
-    await page.getByRole('button', { name: 'Действия' }).first().click();
+    await page.getByRole('button', { name: 'Действия', exact: true }).first().click();
     await page.getByRole('menuitem', { name: 'Удалить' }).click();
     const dialog = page.getByRole('dialog', { name: 'Удаление сессии' });
     await expect(dialog).toBeVisible();
