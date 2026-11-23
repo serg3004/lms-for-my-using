@@ -8,7 +8,7 @@ import { assessmentCourseScope } from './assessment-author-scope.js';
 import { AssessmentAttemptInProgressException, AssessmentsService } from './assessments.service.js';
 import type { BulkAssessmentFolderInput, CreateAssessmentFolderInput, UpdateAssessmentFolderInput } from './assessments.schemas.js';
 
-const folderSelect = { id: true, name: true, parentId: true, createdBy: true, createdAt: true, updatedAt: true } as const;
+const folderSelect = { id: true, name: true, color: true, parentId: true, createdBy: true, createdAt: true, updatedAt: true } as const;
 
 type Folder = Prisma.AssessmentFolderGetPayload<{ select: typeof folderSelect }>;
 type DeleteImpact = { folders: number; movedToRoot: Array<{ id: string; title: string }> };
@@ -65,7 +65,7 @@ export class AssessmentFoldersService {
       }
       this.assertNameFree(folders, parentId, input.name);
       return tx.assessmentFolder.create({
-        data: { organizationId, createdBy: actorId, parentId, name: input.name },
+        data: { organizationId, createdBy: actorId, parentId, name: input.name, color: input.color },
         select: folderSelect,
       });
     });
@@ -89,9 +89,11 @@ export class AssessmentFoldersService {
         }
         this.assertDepth(folderDepth(parentId, indexFolders(folders)) + subtreeHeight(id, folders));
       }
-      if (parentId === current.parentId && name === current.name) return { folder: current, changed: false };
-      this.assertNameFree(folders, parentId, name, id);
-      const folder = await tx.assessmentFolder.update({ where: { id, organizationId }, data: { parentId, name }, select: folderSelect });
+      const color = input.color ?? current.color;
+      const locationChanged = parentId !== current.parentId || name !== current.name;
+      if (!locationChanged && color === current.color) return { folder: current, changed: false };
+      if (locationChanged) this.assertNameFree(folders, parentId, name, id);
+      const folder = await tx.assessmentFolder.update({ where: { id, organizationId }, data: { parentId, name, color }, select: folderSelect });
       return { folder, changed: true };
     });
   }

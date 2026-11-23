@@ -20,6 +20,7 @@ export async function openTypedAssessment(page: Page, { role = 'learner', type =
     if (path === '/notifications/unread-count') return route.fulfill({ json: { count: 0 } });
     if (path === `/assessments/${typedAssessmentId}`) return route.fulfill({ json: assessment });
     if (path === `/assessments/${typedAssessmentId}/quiz` || path === `/assessments/${typedAssessmentId}/questions`) return route.fulfill({ json: [question] });
+    if (path === '/assessment-folders') return route.fulfill({ json: { folders: [], rootAssessmentCount: 1, assessmentCount: 1 } });
     if (path === '/assessments') return route.fulfill({ json: [assessment] });
     if (path === '/courses') return route.fulfill({ json: { items: [{ id: assessment.courseId, title: 'Охрана труда', organizationId: assessment.organizationId, status: 'published' }], total: 1, page: 1, pageSize: 200 } });
     if (path.endsWith('/report')) return route.fulfill({ json: { attemptsCount: 0, passedCount: 0, failedCount: 0 } });

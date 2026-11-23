@@ -509,6 +509,39 @@
       }
     },
     "assessmentBuilder": {
+      "folders": {
+        "root": "All assessments",
+        "tree": "Assessment folders",
+        "loading": "Loading folders…",
+        "loadError": "Unable to load assessment folders.",
+        "forbidden": "You do not have access to these assessment folders or their contents.",
+        "retry": "Try again",
+        "empty": "This folder is empty. Create a folder or move an assessment here.",
+        "createInRoot": "The folder will be created at the top level ({{root}}).",
+        "color": "Folder color",
+        "colors": {
+          "purple": "Purple",
+          "green": "Green",
+          "blue": "Blue",
+          "orange": "Orange",
+          "pink": "Pink",
+          "gray": "Gray"
+        },
+        "expand": "Expand {{name}}",
+        "collapse": "Collapse {{name}}",
+        "contents": "Folders: {{folders}}, assessments: {{tests}}",
+        "longread": "Longread exercise",
+        "selectAll": "Select all folders and assessments",
+        "selectTest": "Select assessment: {{title}}",
+        "deleteFolders": "Folders to delete, including subfolders: {{count}}.",
+        "unfile": "Assessments moved to the root ({{count}}): {{names}}.",
+        "deleteTests": "Assessments to delete: {{count}}.",
+        "reasons": {
+          "forbidden": "outside your assigned courses",
+          "longread_exercise": "longread exercises stay at the root",
+          "attempt_in_progress": "has an attempt in progress"
+        }
+      },
       "eyebrow": "Knowledge control",
       "sessionExpired": "Your session expired. Sign in again.",
       "loadError": "Unable to load assessment builder.",

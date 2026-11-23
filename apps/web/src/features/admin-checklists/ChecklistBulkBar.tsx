@@ -3,6 +3,8 @@ import type { TFunction } from 'i18next';
 import { Button } from '../../shared/ui.js';
 import type { ChecklistBulkAction, ChecklistBulkResult, ChecklistBulkSkipReason, ChecklistFolder, ChecklistFolderBulkResult, ChecklistFolderBulkSkipReason, ChecklistFolderDeleteImpact, ChecklistSummary } from '../../shared/api/types.js';
 
+import { FolderBulkDelete, FolderBulkMove } from '../../shared/folders/FolderBulkActions.js';
+
 /** Titles listed in the delete confirmation before the rest is summarized as "and N more". */
 const LISTED_TITLES = 10;
 
@@ -105,11 +107,11 @@ export function ChecklistBulkBar({ selected, selectedFolders = [], busy, onActio
       <Button disabled={busy || !single} onClick={() => single && onEdit(single)} size="sm" title={unavailable} type="button" variant="secondary">{t('admin.checklists.edit', 'Edit')}</Button>
       <Button disabled={busy || !single} onClick={() => single && void onCopy(single)} size="sm" title={unavailable} type="button" variant="secondary">{t('admin.checklists.copy', 'Copy')}</Button>
       {onAnalytics && <Button disabled={busy || hasFolders || selected.length === 0} onClick={() => onAnalytics(selected)} size="sm" title={unavailable} type="button" variant="secondary">{t('admin.checklists.analytics', 'Analytics')}</Button>}
-      {onMove && <Button disabled={busy} onClick={() => onMove(selection)} size="sm" type="button" variant="secondary">{t('admin.checklists.folders.moveOpen', 'Move to folder…')}</Button>}
+      {onMove && <FolderBulkMove busy={busy} onClick={() => onMove(selection)} t={t} />}
       <Button disabled={busy || hasFolders} onClick={() => onAction('publish', selected)} size="sm" title={unavailable} type="button" variant="secondary">{t('admin.checklists.action.publish', 'Publish')}</Button>
       <Button disabled={busy || hasFolders} onClick={() => onAction('draft', selected)} size="sm" title={unavailable} type="button" variant="secondary">{t('admin.checklists.action.toDraft', 'Move to draft')}</Button>
       <Button disabled={busy || hasFolders} onClick={() => onAction('archive', selected)} size="sm" title={unavailable} type="button" variant="secondary">{t('admin.checklists.action.archive', 'Archive')}</Button>
-      <Button disabled={busy} onClick={() => (hasFolders && onDeleteSelection ? onDeleteSelection(selection) : onAction('delete', selected))} size="sm" type="button" variant="danger">{t('admin.checklists.delete', 'Delete')}</Button>
+      <FolderBulkDelete busy={busy} onClick={() => (hasFolders && onDeleteSelection ? onDeleteSelection(selection) : onAction('delete', selected))} t={t} />
       {hasFolders && <span className="ds-data-table__batch-hint" role="note">{t('admin.checklists.bulk.foldersHint', 'Edit, copy, publish, draft and archive are available only for a selection of checklists.')}</span>}
     </>
   );

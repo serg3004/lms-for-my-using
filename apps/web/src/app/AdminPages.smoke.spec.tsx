@@ -489,7 +489,7 @@ describe('admin page smoke rendering', () => {
   it('renders assessment builder loading state without crashing', () => {
     useLoadingState();
 
-    const html = renderToStaticMarkup(<AdminAssessmentBuilderPage />);
+    const html = renderToStaticMarkup(<MemoryRouter><AdminAssessmentBuilderPage /></MemoryRouter>);
 
     expect(html).toContain('role="status"');
   });
@@ -523,7 +523,7 @@ describe('admin page smoke rendering', () => {
       ],
     });
 
-    const html = renderToStaticMarkup(<AdminAssessmentBuilderPage />);
+    const html = renderToStaticMarkup(<MemoryRouter><AdminAssessmentBuilderPage /></MemoryRouter>);
 
     expect(html).toContain('Safety Knowledge Test');
     expect(html).toContain('Draft Quiz');
