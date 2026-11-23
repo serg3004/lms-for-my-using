@@ -210,23 +210,31 @@
   color: #596274;
 }
 
-.login-form__remember {
+.login-form .login-form__remember {
   display: inline-flex;
   align-items: center;
+  flex-direction: row;
   gap: 8px;
   white-space: nowrap;
   font-size: 14px;
   font-weight: 400;
 }
 
-.login-form__remember input[type='checkbox'] {
+.login-form .login-form__remember > input[type='checkbox'] {
+  display: inline-block;
   width: 16px;
+  min-width: 16px;
   height: 16px;
   min-height: 16px;
   margin: 0;
   padding: 0;
-  flex: 0 0 auto;
-  accent-color: #4f46e5;
+  flex: 0 0 16px;
+  accent-color: var(--color-primary);
+}
+
+.login-form .login-form__remember > span {
+  display: inline;
+  margin: 0;
 }
 
 .login-form__forgot {
