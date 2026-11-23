@@ -8,8 +8,9 @@ import { LanguageSwitcher, NotificationBell } from './learnerLayout.js';
 import { logout } from './logout.js';
 import { NavIcon, navIconForHref } from './navIcons.js';
 import { useNavigationDrawer } from './navigationDrawer.js';
+import { SidebarCollapseToggle, useSidebarCollapsed } from './sidebarCollapse.js';
 import { useOptionalSession } from './session.js';
-import { Avatar, SkipLink } from './ui.js';
+import { Avatar, MoreMenu, SkipLink } from './ui.js';
 
 const BRAND_NAME = 'LearnSpace';
 
@@ -148,6 +149,7 @@ export function AdminPageLayout({
   const { t } = useTranslation();
   const session = useOptionalSession();
   const drawer = useNavigationDrawer('860px');
+  const sidebar = useSidebarCollapsed();
   const currentUser = currentUserProp ?? session?.currentUser ?? undefined;
 
   async function handleLogout() {
@@ -166,7 +168,7 @@ export function AdminPageLayout({
   const breadcrumbs = buildAdminBreadcrumbs(t, pathname, navItems);
 
   return (
-    <div className="admin-layout">
+    <div className="admin-layout" data-nav={sidebar.navAttribute}>
       <SkipLink label={t('a11y.skipToContent')} />
       <div className="admin-mobile-bar">
         <button
@@ -223,6 +225,7 @@ export function AdminPageLayout({
                   aria-current={isSidebarItemActive(item) ? 'page' : undefined}
                   className="admin-nav-link"
                   href={item.href}
+                  title={sidebar.collapsed ? item.label : undefined}
                   key={item.href}
                 >
                   <NavIcon name={navIconForHref(item.href)} />
@@ -234,6 +237,7 @@ export function AdminPageLayout({
         </nav>
 
         <div className="admin-sidebar-footer">
+          <SidebarCollapseToggle collapsed={sidebar.collapsed} onToggle={sidebar.toggle} />
           {currentUser ? (
             <div className="admin-sidebar-user">
               <Avatar firstName={currentUser.firstName} lastName={currentUser.lastName ?? undefined} size="sm" />
@@ -430,10 +434,15 @@ type AdminPageHeaderProps = {
   eyebrow?: string;
   title: ReactNode;
   subtitle?: ReactNode;
+  /** Free-form actions of older pages; new pages use `primary` and `more`. */
   action?: ReactNode;
+  /** The one main button of the page (visual rule 2). */
+  primary?: ReactNode;
+  /** Rare actions behind the «⋯» button: `label` is its accessible name, `children` are `role="menuitem"` elements. */
+  more?: { label: string; children: ReactNode };
 };
 
-export function AdminPageHeader({ eyebrow, title, subtitle, action }: AdminPageHeaderProps) {
+export function AdminPageHeader({ eyebrow, title, subtitle, action, primary, more }: AdminPageHeaderProps) {
   return (
     <header className="admin-topbar">
       <div>
@@ -442,6 +451,7 @@ export function AdminPageHeader({ eyebrow, title, subtitle, action }: AdminPageH
         {subtitle ? <p>{subtitle}</p> : null}
       </div>
       {action}
+      {primary || more ? <div className="admin-header-actions">{primary}{more ? <MoreMenu label={more.label}>{more.children}</MoreMenu> : null}</div> : null}
     </header>
   );
 }

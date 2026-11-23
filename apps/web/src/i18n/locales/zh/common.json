@@ -3199,6 +3199,8 @@
     "skipToContent": "跳到主要内容",
     "breadcrumb": "面包屑导航",
     "openNav": "打开导航",
+    "collapseNav": "收起菜单",
+    "expandNav": "展开菜单",
     "closeNav": "关闭导航",
     "mainNavigation": "主导航"
   },
