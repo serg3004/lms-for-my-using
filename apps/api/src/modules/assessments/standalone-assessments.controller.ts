@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
-import { AuthGuard, Roles, RolesGuard, type AuthenticatedRequest } from '../auth/public.js';
+import { AuthenticatedAccess, AuthGuard, Roles, RolesGuard, type AuthenticatedRequest } from '../auth/public.js';
 import { assessmentLinkToken, assignmentInput, StandaloneAssessmentsService } from './standalone-assessments.service.js';
 
 @Controller('assessments')
@@ -9,12 +9,14 @@ export class StandaloneAssessmentsController {
   constructor(private readonly standalone: StandaloneAssessmentsService) {}
 
   @Get('standalone/mine')
+  @AuthenticatedAccess()
   mine(@Req() request: AuthenticatedRequest) {
     const { id, organizationId } = request.currentUser!;
     return this.standalone.listMine(organizationId, id);
   }
 
   @Get(':id/standalone/access')
+  @AuthenticatedAccess()
   async access(@Param('id') id: string, @Query('token') token: unknown, @Req() request: AuthenticatedRequest) {
     const actor = request.currentUser!;
     await this.standalone.assertAccess(z.guid().parse(id), actor.organizationId, actor.id, assessmentLinkToken.optional().parse(token), true);
