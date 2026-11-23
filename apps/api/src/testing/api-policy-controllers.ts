@@ -1,5 +1,6 @@
 import { AssessmentAttemptsController } from '../modules/assessment-attempts/assessment-attempts.controller.js';
 import { AssessmentQuestionsController } from '../modules/assessment-questions/assessment-questions.controller.js';
+import { AssessmentFoldersController } from '../modules/assessments/assessment-folders.controller.js';
 import { StandaloneAssessmentsController } from '../modules/assessments/standalone-assessments.controller.js';
 import { AssessmentsController } from '../modules/assessments/assessments.controller.js';
 import { AssignmentsController } from '../modules/assignments/assignments.controller.js';
@@ -48,6 +49,7 @@ export type EndpointHandler = (...args: never[]) => unknown;
 export const controllerEntries: ControllerEntry[] = [
   { file: 'assessment-attempts/assessment-attempts.controller.ts', Controller: AssessmentAttemptsController },
   { file: 'assessment-questions/assessment-questions.controller.ts', Controller: AssessmentQuestionsController },
+  { file: 'assessments/assessment-folders.controller.ts', Controller: AssessmentFoldersController },
   { file: 'assessments/assessments.controller.ts', Controller: AssessmentsController },
   { file: 'assessments/standalone-assessments.controller.ts', Controller: StandaloneAssessmentsController },
   { file: 'assignments/assignments.controller.ts', Controller: AssignmentsController },

@@ -52,3 +52,18 @@ export const assessmentPlacementSchema = z.object({
   questionId: z.guid().optional(),
 }).strict().refine((input) => input.longreadBlockId ? !!(input.lessonId && input.questionId) : !input.questionId);
 export type AssessmentPlacementInput = z.infer<typeof assessmentPlacementSchema>;
+
+const folderLocation = z.guid().nullable();
+export const createAssessmentFolderSchema = z.object({
+  name: z.string().trim().min(1).max(200),
+  parentId: folderLocation.optional(),
+}).strict();
+export const updateAssessmentFolderSchema = createAssessmentFolderSchema.partial();
+export const bulkAssessmentFolderSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('move'), kind: z.enum(['assessment', 'folder']), ids: z.array(z.guid()).min(1).max(100), parentId: folderLocation }).strict(),
+  z.object({ action: z.literal('delete'), kind: z.enum(['assessment', 'folder']), ids: z.array(z.guid()).min(1).max(100) }).strict(),
+]);
+
+export type CreateAssessmentFolderInput = z.infer<typeof createAssessmentFolderSchema>;
+export type UpdateAssessmentFolderInput = z.infer<typeof updateAssessmentFolderSchema>;
+export type BulkAssessmentFolderInput = z.infer<typeof bulkAssessmentFolderSchema>;

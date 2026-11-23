@@ -13,6 +13,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `AssessmentAssignment` |
 | `AssessmentAttempt` |
 | `AssessmentAttemptAnswer` |
+| `AssessmentFolder` |
 | `AssessmentPlacement` |
 | `AssessmentQuestion` |
 | `Assignment` |
