@@ -2149,6 +2149,26 @@ Omitting the filter returns results across places. Course progress, course analy
 issuance attribute an attempt to its recorded course. Standalone attempts have no course and
 do not issue course certificates.
 
+## Standalone assessment assignments (PR 523)
+
+Administrators use `POST /assessments/:id/standalone/assignments` for a published assessment
+created without a course. The body is `{ target: "user" | "group" | "department", targetId, dueAt }`.
+Group membership and primary department membership, including descendants, are expanded at
+assignment time. Repeating a request with the same deadline leaves each employee's assignment
+and notifications unchanged. Changing the deadline updates the existing assignment.
+
+`GET /assessments/standalone/mine` lists the caller's standalone assignments and published
+course tests, with the nearest deadlines first and only the caller's attempts. The in-app
+reminder runs through the background worker in the 24 hours before the deadline for employees
+without a passing attempt. A deadline is advisory.
+
+Administrators create or rotate a link with `POST /assessments/:id/standalone/link` and revoke
+it with `DELETE` on the same path. Only the digest is stored. A signed-in employee from the
+same organization may supply the token as `?token=` on quiz, timed start and submission
+requests. Rotation and revocation invalidate the old token. An employee with a direct
+assignment can still open the test from their list. Results use the existing standalone
+filter and team scope for managers.
+
 ## Assessment question types and server grading (PR 388)
 
 The existing `Assessment` question, quiz, preview, attempt, result, report and certificate endpoints

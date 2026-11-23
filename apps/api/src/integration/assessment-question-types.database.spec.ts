@@ -16,6 +16,9 @@ import { RolesGuard, type CurrentUser, type AuthenticatedRequest } from '../modu
 import { CourseAccessGuard, CourseAccessPolicy } from '../modules/course-access/public.js';
 import { assertSafeTestDatabase } from './database-test-safety.js';
 
+import { StandaloneAssessmentsService } from '../modules/assessments/public.js';
+import type { BackgroundJobsService } from '../modules/background-jobs/public.js';
+
 const items = ['a', 'b', 'c', 'd'].map((id) => ({ id, text: `Item ${id}` }));
 const definitions: QuestionDefinition[] = [
   { type: 'true_false', correctAnswer: false },
@@ -86,6 +89,47 @@ describe('seven assessment question types and legacy grading — database', () =
     await prisma.membership.deleteMany({ where: { organizationId: { in: [org, foreignOrg].filter(Boolean) } } });
     await prisma.user.deleteMany({ where: { organizationId: { in: [org, foreignOrg].filter(Boolean) } } });
     await prisma.organization.deleteMany({ where: { id: { in: [org, foreignOrg].filter(Boolean) } } });
+  });
+
+  it('assigns a standalone test through all three targets and scopes attempts and links', async () => {
+    const service = new StandaloneAssessmentsService(prisma, {} as BackgroundJobsService);
+    const paper = await prisma.assessment.create({
+      data: { organizationId: org, title: 'Standalone', slug: 'standalone', status: 'published' },
+    });
+    const group = await prisma.group.create({ data: { organizationId: org, name: 'Team', slug: 'team' } });
+    await prisma.groupMember.create({ data: { organizationId: org, groupId: group.id, userId: learner.id } });
+    await prisma.managerGroup.create({ data: { organizationId: org, groupId: group.id, managerId: instructor.id } });
+    const parent = await prisma.department.create({ data: { organizationId: org, name: 'Parent' } });
+    const child = await prisma.department.create({ data: { organizationId: org, parentId: parent.id, name: 'Child' } });
+    await prisma.departmentMembership.create({ data: { organizationId: org, departmentId: child.id, userId: unassigned.id, isPrimary: true } });
+    const now = new Date();
+    const dueAt = new Date(now.getTime() + 60 * 60_000);
+    const assign = (target: 'user' | 'group' | 'department', targetId: string) => service.assign(paper.id, org, { target, targetId, dueAt });
+    await expect(service.assertAccess(paper.id, org, learner.id)).rejects.toThrow(NotFoundException);
+    expect(await assign('group', group.id)).toEqual({ assigned: 1, changed: 1 });
+    expect(await assign('user', learner.id)).toEqual({ assigned: 1, changed: 0 });
+    expect(await assign('department', parent.id)).toEqual({ assigned: 1, changed: 1 });
+    expect(await service.listMine(org, unassigned.id)).toMatchObject([{ assessment: { id: paper.id }, dueAt }]);
+    await service.remind(now);
+    await service.remind(now);
+    expect(await prisma.notification.count({ where: { organizationId: org, type: 'assessment_assigned' } })).toBe(2);
+    expect(await prisma.notification.count({ where: { organizationId: org, type: 'assessment_due_soon' } })).toBe(2);
+    const { token } = await service.setLink(paper.id, org, true);
+    await service.assertAccess(paper.id, org, learner.id, token!);
+    await expect(service.assertAccess(paper.id, foreignOrg, learner.id, token!)).rejects.toThrow(NotFoundException);
+    await service.setLink(paper.id, org, false);
+    await expect(service.assertAccess(paper.id, org, learner.id, token!)).rejects.toThrow(NotFoundException);
+
+    const question = await prisma.assessmentQuestion.create({
+      data: { organizationId: org, assessmentId: paper.id, type: 'true_false', title: 'Question', definition: { type: 'true_false', correctAnswer: true } },
+    });
+    const input = { answers: [{ questionId: question.id, response: { type: 'true_false' as const, value: true } }] };
+    const own = await attempts.createAttempt(paper.id, learner.id, org, input);
+    await attempts.createAttempt(paper.id, unassigned.id, org, input);
+    expect(own).toMatchObject({ passed: true, courseId: null, placementId: null });
+    expect(await prisma.progress.count({ where: { organizationId: org } })).toBe(0);
+    expect(await prisma.certificate.count({ where: { organizationId: org } })).toBe(0);
+    expect(await results.listAssessmentResults(paper.id, { ...instructor, roles: ['manager'] }, null)).toMatchObject([{ id: own.id }]);
   });
 
   it('round-trips all seven types, grades on the server, records answers, report and certificate; author preview writes nothing', async () => {

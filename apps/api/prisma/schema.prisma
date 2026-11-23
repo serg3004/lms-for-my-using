@@ -451,6 +451,8 @@ model Organization {
 
   assessmentPlacements AssessmentPlacement[]
 
+  assessmentAssignments AssessmentAssignment[]
+
   @@map("organizations")
 }
 
@@ -545,6 +547,8 @@ model User {
   checklistAnswerSetsCreated ChecklistAnswerSet[]       @relation("ChecklistAnswerSetCreatedBy")
   orgStructureEvents         OrgStructureEvent[]        @relation("OrgStructureEventActor")
   longreadRevisionsCreated   LongreadRevision[]
+
+  assessmentAssignments AssessmentAssignment[]
 
   @@unique([organizationId, email])
   @@unique([id, organizationId])
@@ -1184,12 +1188,31 @@ model Assessment {
 
   placements AssessmentPlacement[]
 
+  standaloneAssignments AssessmentAssignment[]
+  standaloneTokenHash   String?                @map("standalone_token_hash")
+
   @@unique([courseId, slug])
   @@index([organizationId, status])
   @@index([organizationId, createdAt, id])
   @@index([courseId, status])
   @@index([lessonId])
   @@map("assessments")
+}
+
+model AssessmentAssignment {
+  assessmentId   String       @map("assessment_id") @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  dueAt          DateTime     @map("due_at") @db.Timestamptz
+  remindedAt     DateTime?    @map("reminded_at") @db.Timestamptz
+  assessment     Assessment   @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([assessmentId, userId])
+  @@index([organizationId, userId, dueAt])
+  @@index([remindedAt, dueAt])
+  @@map("assessment_assignments")
 }
 
 model AssessmentPlacement {

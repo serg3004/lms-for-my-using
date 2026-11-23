@@ -1,7 +1,7 @@
 import { type FormEvent, useEffect, useReducer, useRef, useState } from 'react';
 import { RichText, plainText } from '../shared/RichText.js';
 import { useTranslation } from 'react-i18next';
-import { ApiClientError, apiRequest } from '../shared/apiClient.js';
+import { ApiClientError, apiRequest, getCurrentUser } from '../shared/apiClient.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
@@ -11,6 +11,7 @@ import { buildAssessmentAnswers, countAnsweredQuestions, getAnswerOutcome, getAs
 import { AssessmentSettingsForm } from './assessment-builder/AssessmentSettingsForm.js';
 import { QuestionsEditor } from './assessment-builder/QuestionsEditor.js';
 import { ASSESSMENT_STATUSES, assessmentFormReducer, assessmentToForm, buildPreviewQuestionsWithOptions, describePreviewAnswerSelection, emptyAssessmentForm, filterAssessments, mapAssessmentForm, type AnswerOption, type Assessment, type AssessmentPreviewResult, type AssessmentStatus, type Question, type SaveState } from './assessment-builder/model.js';
+import { StandaloneAssessmentDialog } from './assessment-builder/StandaloneAssessmentDialog.js';
 import { useAssessmentBuilder } from './assessment-builder/useAssessmentBuilder.js';
 
 export function AdminAssessmentBuilderPage() {
@@ -18,6 +19,9 @@ export function AdminAssessmentBuilderPage() {
   const builder = useAssessmentBuilder(t);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | AssessmentStatus>('all');
+  const [createStandalone, setCreateStandalone] = useState(false);
+  const [managedAssessment, setManagedAssessment] = useState<Assessment | null>(null);
+  const standaloneDialogRef = useRef<HTMLDialogElement>(null);
   const createDialogRef = useRef<HTMLDialogElement>(null);
   const [createForm, dispatchCreate] = useReducer(assessmentFormReducer, undefined, emptyAssessmentForm);
   const [createState, setCreateState] = useState<SaveState>({ status: 'idle' });
@@ -79,6 +83,7 @@ export function AdminAssessmentBuilderPage() {
   }, [builder.loadState]);
 
   function openCreateDialog() {
+    setCreateStandalone(builder.loadState.status === 'loaded' && !builder.loadState.courses.length);
     dispatchCreate({ type: 'reset' });
     builder.setSelectedLessonId('');
     setCreateTitleErrors({});
@@ -92,9 +97,24 @@ export function AdminAssessmentBuilderPage() {
     if (hasValidationErrors(titleErrors)) { setCreateTitleErrors(titleErrors); return; }
     setCreateTitleErrors({});
     const selectedCourse = builder.loadState.status === 'loaded' ? builder.loadState.courses.find((course) => course.id === builder.selectedCourseId) : undefined;
-    const values = mapAssessmentForm(createForm); if (!values || !selectedCourse) { setCreateState({ status: 'error', message: invalidMessage }); return; }
+    const values = mapAssessmentForm(createForm); if (!values || (!selectedCourse && !createStandalone)) { setCreateState({ status: 'error', message: invalidMessage }); return; }
     setCreateState({ status: 'saving' });
-    try { await apiRequest('/assessments', { method: 'POST', body: JSON.stringify({ ...values, description: values.description ?? undefined, maxAttempts: values.maxAttempts ?? undefined, organizationId: selectedCourse.organizationId, courseId: selectedCourse.id, lessonId: builder.selectedLessonId || undefined, status: 'draft' }) }); dispatchCreate({ type: 'reset' }); builder.setSelectedLessonId(''); setCreateState({ status: 'idle' }); createDialogRef.current?.close(); await builder.load(selectedCourse.id); }
+    try {
+      const organizationId = createStandalone ? (await getCurrentUser()).organizationId : selectedCourse!.organizationId;
+      await apiRequest('/assessments', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...values, description: values.description ?? undefined, maxAttempts: values.maxAttempts ?? undefined,
+          organizationId, courseId: createStandalone ? undefined : selectedCourse?.id,
+          lessonId: createStandalone ? undefined : builder.selectedLessonId || undefined, status: 'draft',
+        }),
+      });
+      dispatchCreate({ type: 'reset' });
+      builder.setSelectedLessonId('');
+      setCreateState({ status: 'idle' });
+      createDialogRef.current?.close();
+      await builder.load(selectedCourse?.id);
+    }
     catch (error) { setCreateState({ status: 'error', message: error instanceof ApiClientError && error.status === 409 ? t('admin.assessmentBuilder.assessmentExists', 'An assessment with this slug already exists.') : t('admin.assessmentBuilder.saveError', 'Unable to create assessment.') }); }
   }
   function openEdit(assessment: Assessment) { setEditAssessment(assessment); dispatchEdit({ type: 'reset', value: assessmentToForm(assessment) }); setEditState({ status: 'idle' }); setEditTitleErrors({}); editDialogRef.current?.showModal(); }
@@ -196,7 +216,7 @@ export function AdminAssessmentBuilderPage() {
       title={t('admin.assessmentBuilder.title', 'Assessment builder')}
       subtitle={t('admin.assessmentBuilder.subtitle', 'Create and manage assessments for courses and lessons.')}
       action={
-        <Button variant="primary" type="button" onClick={openCreateDialog} disabled={data.courses.length === 0}>
+        <Button variant="primary" type="button" onClick={openCreateDialog}>
           + {t('admin.assessmentBuilder.create', 'Create assessment')}
         </Button>
       }
@@ -256,6 +276,10 @@ export function AdminAssessmentBuilderPage() {
             <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => openEdit(a)}>{t('admin.assessmentBuilder.edit', 'Edit')}</button>
             <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void openQuestions(a)}>{t('admin.assessmentBuilder.questions', 'Questions')}</button>
             <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void openPreview(a)}>{t('admin.assessmentBuilder.preview', 'Preview')}</button>
+            {a.courseId === null && a.status === 'published' && <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => {
+              setManagedAssessment(a);
+              standaloneDialogRef.current?.showModal();
+            }}>{t('assessments.standalone.manage')}</button>}
             <button className="admin-btn admin-btn--sm admin-btn--danger" type="button" onClick={() => setDeleteTarget(a)}>{t('admin.assessmentBuilder.delete', 'Delete')}</button>
           </div>
         )},
@@ -266,18 +290,21 @@ export function AdminAssessmentBuilderPage() {
       emptyMessage={t('admin.assessmentBuilder.empty', 'No assessments found.')}
     />
 
+    <dialog ref={standaloneDialogRef} className="admin-dialog" onClose={() => setManagedAssessment(null)}>
+      {managedAssessment && <StandaloneAssessmentDialog assessment={managedAssessment} dialog={standaloneDialogRef} />}
+    </dialog>
     <dialog ref={createDialogRef} className="admin-dialog">
       <header className="admin-dialog__header"><h2>{t('admin.assessmentBuilder.createTitle', 'Create assessment')}</h2><button className="admin-dialog__close" type="button" aria-label={t('admin.assessmentBuilder.close', 'Close')} onClick={() => createDialogRef.current?.close()}>×</button></header>
-      {data.courses.length === 0 ? <EmptyState message={t('admin.assessmentBuilder.noCourses', 'Create a course before adding assessments.')}/> : (
-        <>
-          <FormField id="assessment-create-course" label={t('admin.assessmentBuilder.course', 'Course')}>
-            <select id="assessment-create-course" value={builder.selectedCourseId} onChange={(e) => { setCreateState({ status: 'idle' }); void builder.selectCourse(e.target.value); }}>
-              {data.courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
-            </select>
-          </FormField>
-          <AssessmentSettingsForm form={createForm} dispatch={dispatchCreate} state={createState} onSubmit={createAssessment} t={t} lessons={data.lessons} lessonId={builder.selectedLessonId} onLessonChange={builder.setSelectedLessonId} titleError={createTitleErrors.title} onTitleChange={() => setCreateTitleErrors((prev) => clearFieldError(prev, 'title'))} onCancel={() => createDialogRef.current?.close()}/>
-        </>
-      )}
+      <label className="admin-field">
+        <input type="checkbox" checked={createStandalone} disabled={!data.courses.length} onChange={(event) => setCreateStandalone(event.target.checked)} />
+        {t('assessments.standalone.label')}
+      </label>
+      {!createStandalone && <FormField id="assessment-create-course" label={t('admin.assessmentBuilder.course', 'Course')}>
+        <select id="assessment-create-course" value={builder.selectedCourseId} onChange={(e) => { setCreateState({ status: 'idle' }); void builder.selectCourse(e.target.value); }}>
+          {data.courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
+        </select>
+      </FormField>}
+      <AssessmentSettingsForm form={createForm} dispatch={dispatchCreate} state={createState} onSubmit={createAssessment} t={t} lessons={createStandalone ? [] : data.lessons} lessonId={createStandalone ? '' : builder.selectedLessonId} onLessonChange={builder.setSelectedLessonId} titleError={createTitleErrors.title} onTitleChange={() => setCreateTitleErrors((prev) => clearFieldError(prev, 'title'))} onCancel={() => createDialogRef.current?.close()}/>
     </dialog>
     <dialog ref={editDialogRef} className="admin-dialog"><header className="admin-dialog__header"><h2>{t('admin.assessmentBuilder.editTitle', 'Edit assessment')}</h2><button className="admin-dialog__close" type="button" aria-label={t('admin.assessmentBuilder.close', 'Close')} onClick={() => editDialogRef.current?.close()}>×</button></header><AssessmentSettingsForm form={editForm} dispatch={dispatchEdit} state={editState} onSubmit={updateAssessment} t={t} editing statusLabels={statusLabels} onCancel={() => editDialogRef.current?.close()} titleError={editTitleErrors.title} onTitleChange={() => setEditTitleErrors((prev) => clearFieldError(prev, 'title'))}/></dialog>
     <dialog ref={questionsDialogRef} className="admin-dialog" style={{ maxWidth: '720px', width: '100%' }}><header className="admin-dialog__header"><h2>{questionsAssessment?.title} — {t('admin.assessmentBuilder.questionsTitle', 'Questions')}</h2><button className="admin-dialog__close" type="button" aria-label={t('admin.assessmentBuilder.close', 'Close')} onClick={() => questionsDialogRef.current?.close()}>×</button></header><QuestionsEditor assessment={questionsAssessment} courses={data.courses} loading={questionsLoading} questions={questions} setQuestions={setQuestions} options={options} setOptions={setOptions} t={t}/></dialog>

@@ -2573,6 +2573,30 @@
     "attemptsLeft": "剩余尝试次数"
   },
   "assessments": {
+    "standalone": {
+      "label": "独立测验",
+      "manage": "分配与链接",
+      "target": "分配对象类型",
+      "user": "员工",
+      "group": "小组",
+      "department": "部门及其下级部门",
+      "recipient": "接收人",
+      "choose": "请选择",
+      "due": "截止时间",
+      "dueLabel": "截止：{{date}}",
+      "assign": "分配",
+      "assigned": "已分配给 {{count}} 名员工",
+      "rotate": "生成新链接",
+      "revoke": "撤销链接",
+      "link": "测验链接",
+      "qr": "下载二维码",
+      "linkReady": "新链接已生成，旧链接已撤销。",
+      "linkRevoked": "链接已撤销。",
+      "error": "无法完成测验操作。",
+      "results": "独立测验结果",
+      "chooseAssessment": "选择测验",
+      "noResults": "暂无答题记录。"
+    },
     "typedQuestionUnavailable": "此表单暂不支持本测试中的题目。请联系培训组织者。",
     "navLink": "测验",
     "title": "测验",
@@ -3036,6 +3060,14 @@
     "markAllRead": "全部标记为已读",
     "loadError": "无法加载通知。",
     "types": {
+      "assessment_assigned": {
+        "title": "已分配测验",
+        "message": "您已获分配测验《{{assessmentTitle}}》。"
+      },
+      "assessment_due_soon": {
+        "title": "测验即将截止",
+        "message": "请在截止前完成《{{assessmentTitle}}》。"
+      },
       "assessment_passed": {
         "title": "测试已通过",
         "message": "您已通过测试“{{assessmentTitle}}”，得分 {{percentage}}%。"

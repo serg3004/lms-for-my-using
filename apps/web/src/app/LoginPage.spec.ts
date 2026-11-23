@@ -7,6 +7,11 @@ describe('getLoginRedirectPath', () => {
     expect(getLoginRedirectPath({ from: { pathname: '/admin/users' } })).toBe('/admin/users');
   });
 
+  it('keeps the query of the assessment link after login', () => {
+    expect(getLoginRedirectPath({ from: { pathname: '/learn/assessments/test/take', search: '?token=link' } }))
+      .toBe('/learn/assessments/test/take?token=link');
+  });
+
   it('falls back to learner home when location state is missing', () => {
     expect(getLoginRedirectPath(null)).toBe('/learn');
   });
