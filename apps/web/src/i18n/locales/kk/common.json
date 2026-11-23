@@ -3232,6 +3232,8 @@
     "skipToContent": "Негізгі мазмұнға өту",
     "breadcrumb": "Шолу жолы",
     "openNav": "Навигацияны ашу",
+    "collapseNav": "Мәзірді жию",
+    "expandNav": "Мәзірді жаю",
     "closeNav": "Навигацияны жабу",
     "mainNavigation": "Негізгі навигация"
   },

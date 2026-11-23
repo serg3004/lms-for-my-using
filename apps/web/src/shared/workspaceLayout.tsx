@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 
 import { NavIcon, navIconForHref } from './navIcons.js';
 import { useNavigationDrawer } from './navigationDrawer.js';
+import { SidebarCollapseToggle, useSidebarCollapsed } from './sidebarCollapse.js';
 import { Avatar, SkipLink } from './ui.js';
 
 export type WorkspaceNavItem = {
@@ -60,10 +61,11 @@ export function WorkspaceLayout({
   mobileNavigation,
 }: WorkspaceLayoutProps) {
   const drawer = useNavigationDrawer('820px');
+  const sidebar = useSidebarCollapsed();
   const current = navigation.find((item) => item.isCurrent);
 
   return (
-    <div className="learner-app workspace-app workspace-app--sidebar">
+    <div className="learner-app workspace-app workspace-app--sidebar" data-nav={sidebar.navAttribute}>
       <SkipLink label={skipLinkLabel} />
       {drawer.isOpen && <div aria-hidden="true" className="workspace-drawer-backdrop" onClick={drawer.close} />}
       <aside
@@ -96,6 +98,7 @@ export function WorkspaceLayout({
               className={`learner-sidebar__link${item.isCurrent ? ' learner-sidebar__link--active' : ''}`}
               href={item.href}
               key={item.href}
+              title={sidebar.collapsed ? item.label : undefined}
             >
               <NavIcon name={navIconForHref(item.href)} />
               <span>{item.label}</span>
@@ -103,6 +106,7 @@ export function WorkspaceLayout({
           ))}
         </nav>
         <div className="learner-sidebar__footer">
+          <SidebarCollapseToggle collapsed={sidebar.collapsed} onToggle={sidebar.toggle} />
           {firstName ? (
             <div className="learner-sidebar__user">
               <Avatar firstName={firstName} lastName={lastName} size="sm" />
