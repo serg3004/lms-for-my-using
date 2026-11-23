@@ -540,6 +540,8 @@
         "retry": "Try again",
         "empty": "This folder is empty. Create a folder or move an assessment here.",
         "createInRoot": "The folder will be created at the top level ({{root}}).",
+        "settings": "Folder settings",
+        "createTest": "Test",
         "color": "Folder color",
         "colors": {
           "purple": "Purple",

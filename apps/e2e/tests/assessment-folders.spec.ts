@@ -63,7 +63,8 @@ test('creates, colors, moves and removes assessment folders on desktop and at 36
   await expect(table.getByText('Longread exercise')).toBeVisible();
   await table.getByRole('button', { name: 'Open folder: Operations' }).click();
   await expect(page).toHaveURL(/folder=parent/);
-  await page.getByRole('button', { name: 'Create folder', exact: true }).click();
+  await page.getByRole('button', { name: 'Create', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Folder…', exact: true }).click();
   await dialog.getByRole('textbox', { name: 'Folder name' }).fill('Induction');
   await dialog.getByRole('radio', { name: 'Green' }).check();
   await dialog.getByRole('button', { name: 'Create', exact: true }).click();

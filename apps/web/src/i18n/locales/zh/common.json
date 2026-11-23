@@ -540,6 +540,8 @@
         "retry": "重试",
         "empty": "此文件夹为空。请创建子文件夹或将测验移到这里。",
         "createInRoot": "将在顶层（{{root}}）创建文件夹。",
+        "settings": "文件夹设置",
+        "createTest": "测试",
         "color": "文件夹颜色",
         "colors": {
           "purple": "紫色",
