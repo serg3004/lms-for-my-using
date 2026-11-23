@@ -10,7 +10,8 @@ for (const role of ['admin', 'manager'] as const) {
       await page.setViewportSize({ width, height: 812 });
       if (role === 'admin') {
         await page.goto('/admin/checklists/sessions');
-        await page.getByRole('link', { name: 'Аналитика чек-листов', exact: true }).click();
+        await page.getByRole('button', { name: 'Ещё действия', exact: true }).click();
+        await page.getByRole('menuitem', { name: 'Аналитика чек-листов', exact: true }).click();
         await expect(page).toHaveURL(/\/admin\/checklists\/analytics$/);
       } else await page.goto('/manager/checklists');
       const section = page.locator('section[aria-labelledby="manager-checklists-managers"]');

@@ -1059,7 +1059,8 @@ for (const width of widths) {
         await installManagerReportMocks(page, role);
         if (role === 'admin') {
           await page.goto('/admin/checklists/sessions');
-          await page.getByRole('link', { name: 'Аналитика чек-листов', exact: true }).click();
+          await page.getByRole('button', { name: 'Ещё действия', exact: true }).click();
+          await page.getByRole('menuitem', { name: 'Аналитика чек-листов', exact: true }).click();
         } else await page.goto('/manager/checklists');
         const section = page.locator('section[aria-labelledby="manager-checklists-managers"]');
         await expect(section.getByText('=Alice Manager', { exact: true })).toBeVisible();
@@ -1378,7 +1379,8 @@ for (const width of widths) {
         total: 1, page: 1, pageSize: 20,
       } }));
       await page.goto('/admin/checklists/sessions');
-      await page.getByRole('button', { name: /Настройки/ }).click();
+      await page.getByRole('button', { name: 'Ещё действия', exact: true }).click();
+      await page.getByRole('menuitem', { name: /Настройки/ }).click();
       const dialog = page.getByRole('dialog');
       await expect(dialog.getByText('Кто может быть наблюдателем')).toBeVisible();
       await expect(dialog.getByRole('group', { name: 'Разрешённые роли', exact: true }).getByRole('checkbox', { name: 'Инструктор', exact: true })).toBeChecked();
