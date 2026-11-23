@@ -11,7 +11,30 @@
 }
 
 .ui-state--error {
-  border-color: rgb(220 38 38 / 32%);
+  border-color: color-mix(in srgb, var(--color-danger) 32%, transparent);
+}
+
+/* Empty state: a short explanation and one action, no large empty block (rule 8). */
+.ui-state--empty {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 28px 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+  box-shadow: none;
+  background: var(--color-surface-muted);
+}
+
+.ui-state--empty h1 {
+  margin: 0;
+  font-size: var(--text-section);
+  color: var(--color-text);
+}
+
+.ui-state--empty p {
+  margin: 0;
+  max-width: 44ch;
 }
 
 .ui-state__action {
@@ -71,12 +94,12 @@
 
 .ui-status-badge--success {
   color: var(--color-success);
-  background: rgb(21 128 61 / 12%);
+  background: var(--color-success-bg);
 }
 
 .ui-status-badge--danger {
   color: var(--color-danger);
-  background: rgb(220 38 38 / 12%);
+  background: var(--color-danger-bg);
 }
 
 @keyframes ui-skeleton-pulse {
@@ -199,35 +222,6 @@
   color: var(--color-primary);
 }
 
-.learner-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  padding: 0.625rem 1.25rem;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  cursor: pointer;
-  text-decoration: none;
-  transition: opacity 0.15s;
-}
-
-.learner-btn:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.learner-btn--primary {
-  color: var(--color-on-primary);
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-}
-
-.learner-btn--primary:hover:not(:disabled) {
-  opacity: 0.85;
-}
-
 .learner-lessons__list {
   display: grid;
   gap: 12px;
@@ -275,7 +269,7 @@
 }
 
 .learner-lesson-card--done .learner-lesson-card__order {
-  background: rgb(21 128 61 / 12%);
+  background: var(--color-success-bg);
   color: var(--color-success);
 }
 
@@ -539,7 +533,7 @@
 }
 
 .learner-quiz__breakdown-item--correct .learner-quiz__breakdown-icon {
-  background: rgb(21 128 61 / 12%);
+  background: var(--color-success-bg);
   color: var(--color-success);
 }
 
@@ -549,7 +543,7 @@
 }
 
 .learner-quiz__breakdown-item--incorrect .learner-quiz__breakdown-icon {
-  background: rgb(220 38 38 / 12%);
+  background: var(--color-danger-bg);
   color: var(--color-danger);
 }
 
@@ -590,16 +584,6 @@
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-.learner-btn--secondary {
-  color: var(--color-text);
-  background: var(--color-surface);
-  border-color: var(--color-border);
-}
-
-.learner-btn--secondary:hover:not(:disabled) {
-  background: var(--color-border);
 }
 
 /* ── Certificate page ────────────────────────────────────────────────────── */
@@ -696,71 +680,83 @@
 
 /* ── Button ──────────────────────────────────────────────────────────────── */
 
-.ds-button {
+:is(.ds-button, .admin-btn, .learner-btn) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  border: 1px solid transparent;
+  border: 0;
   border-radius: var(--radius-md);
-  padding: 0.5625rem 1.125rem;
+  padding: 0.625rem 1.125rem;
   font-size: var(--text-sm);
   font-weight: var(--fw-semibold);
   line-height: 1.25;
   cursor: pointer;
-  transition: opacity 0.15s, background 0.15s, border-color 0.15s;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
   white-space: nowrap;
   text-decoration: none;
 }
 
-.ds-button:disabled {
+:is(.ds-button, .admin-btn, .learner-btn):active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+:is(.ds-button, .admin-btn, .learner-btn):disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.ds-button--sm {
-  padding: 0.3125rem 0.75rem;
+:is(.ds-button--sm, .admin-btn--sm, .learner-btn--sm) {
+  padding: 0.375rem 0.75rem;
   font-size: var(--text-xs);
 }
 
-.ds-button--primary {
+/* «⋯» menu trigger for rare actions: a square text button. */
+.ds-button--icon {
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0.25rem;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+:is(.ds-button--primary, .admin-btn--primary, .learner-btn--primary) {
   color: var(--color-on-primary);
   background: var(--color-primary);
-  border-color: var(--color-primary);
 }
 
-.ds-button--primary:hover:not(:disabled) {
-  opacity: 0.88;
+:is(.ds-button--primary, .admin-btn--primary, .learner-btn--primary):hover:not(:disabled) {
+  background: var(--color-primary-hover);
 }
 
-.ds-button--secondary {
+:is(.ds-button--secondary, .admin-btn--secondary, .learner-btn--secondary) {
   color: var(--color-text);
   background: var(--color-surface);
-  border-color: var(--color-border);
+  box-shadow: var(--shadow-button);
 }
 
-.ds-button--secondary:hover:not(:disabled) {
+:is(.ds-button--secondary, .admin-btn--secondary, .learner-btn--secondary):hover:not(:disabled) {
   background: var(--color-surface-muted);
 }
 
-.ds-button--ghost {
+.ds-button--ghost,
+.ds-button--text {
   color: var(--color-primary);
   background: transparent;
-  border-color: transparent;
 }
 
-.ds-button--ghost:hover:not(:disabled) {
-  background: var(--color-surface-muted);
+.ds-button--ghost:hover:not(:disabled),
+.ds-button--text:hover:not(:disabled) {
+  background: var(--color-accent-soft);
 }
 
-.ds-button--danger {
+:is(.ds-button--danger, .admin-btn--danger, .learner-btn--danger) {
   color: var(--color-on-danger);
   background: var(--color-danger);
-  border-color: var(--color-danger);
 }
 
-.ds-button--danger:hover:not(:disabled) {
-  opacity: 0.88;
+:is(.ds-button--danger, .admin-btn--danger, .learner-btn--danger):hover:not(:disabled) {
+  filter: brightness(0.92);
 }
 
 /* ── Badge / Tag ─────────────────────────────────────────────────────────── */
@@ -877,7 +873,7 @@
 
 .ds-input {
   width: 100%;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   padding: 0.5625rem 0.75rem;
   font-size: var(--text-sm);
@@ -886,8 +882,19 @@
   transition: border-color 0.15s;
 }
 
+.ds-input:hover:not(:disabled),
+.ds-search__input:hover {
+  border-color: var(--color-text-muted);
+}
+
+.ds-input:disabled {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
 .ds-input:focus-visible {
-  outline: 3px solid rgb(37 99 235 / 20%);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 1px;
   border-color: var(--color-primary);
 }
@@ -897,7 +904,7 @@
 }
 
 .ds-input--error:focus-visible {
-  outline-color: rgb(220 38 38 / 20%);
+  outline-color: color-mix(in srgb, var(--color-danger) 28%, transparent);
 }
 
 /* ── Search input ────────────────────────────────────────────────────────── */
@@ -919,7 +926,7 @@
 
 .ds-search__input {
   width: 100%;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-md);
   padding: 0.5rem 0.75rem 0.5rem 2.25rem;
   font-size: var(--text-sm);
@@ -929,7 +936,7 @@
 }
 
 .ds-search__input:focus {
-  outline: 3px solid rgb(37 99 235 / 20%);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 1px;
   border-color: var(--color-primary);
 }
@@ -1874,9 +1881,14 @@
 }
 
 .admin-table-wrap th {
+  background: transparent;
   font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+.admin-table-wrap td {
+  border-bottom-color: color-mix(in srgb, var(--color-border) 55%, transparent);
 }
 
 .admin-table-wrap tbody tr {

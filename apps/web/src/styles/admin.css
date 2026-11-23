@@ -920,62 +920,6 @@
   font-size: 0.875rem;
 }
 
-/* ── Buttons ─────────────────────────────────────────────────────────────── */
-
-.admin-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.15s;
-  white-space: nowrap;
-}
-
-.admin-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.admin-btn--sm {
-  padding: 0.25rem 0.625rem;
-  font-size: 0.8125rem;
-}
-
-.admin-btn--primary {
-  color: var(--color-on-primary);
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-}
-
-.admin-btn--primary:hover:not(:disabled) {
-  opacity: 0.85;
-}
-
-.admin-btn--secondary {
-  color: var(--color-text);
-  background: var(--color-surface);
-  border-color: var(--color-border);
-}
-
-.admin-btn--secondary:hover:not(:disabled) {
-  background: var(--color-border);
-}
-
-.admin-btn--danger {
-  color: var(--color-on-danger);
-  background: var(--color-danger, #dc2626);
-  border-color: var(--color-danger, #dc2626);
-}
-
-.admin-btn--danger:hover:not(:disabled) {
-  opacity: 0.85;
-}
-
 /* ── Inline banner ───────────────────────────────────────────────────────── */
 
 .admin-inline-banner {

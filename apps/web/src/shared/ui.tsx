@@ -7,6 +7,7 @@ import {
   type CSSProperties,
   type HTMLAttributes,
   type InputHTMLAttributes,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   type RefObject,
   type SelectHTMLAttributes,
@@ -100,7 +101,13 @@ type EmptyStateProps = {
 };
 
 export function EmptyState({ title, message, action }: EmptyStateProps) {
-  return <PageState title={title} message={message} action={action} />;
+  return (
+    <section className="ui-state ui-state--empty" role="status">
+      {title ? <h1>{title}</h1> : null}
+      <p>{message}</p>
+      {action ? <div className="ui-state__action">{action}</div> : null}
+    </section>
+  );
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -109,7 +116,7 @@ export function EmptyState({ title, message, action }: EmptyStateProps) {
 
 // ── Button ──────────────────────────────────────────────────────────────────
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'text' | 'danger';
 type ButtonSize = 'sm' | 'md';
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -790,9 +797,9 @@ export function WizardDialog({ open, title, steps, currentStep, onClose, onBack,
   </Dialog>;
 }
 
-type MenuProps = { label: ReactNode; children: ReactNode; align?: 'start' | 'end'; className?: string; buttonClassName?: string };
+type MenuProps = { label: ReactNode; children: ReactNode; align?: 'start' | 'end'; className?: string; buttonClassName?: string; ariaLabel?: string };
 
-export function Menu({ label, children, align = 'start', className, buttonClassName }: MenuProps) {
+export function Menu({ label, children, align = 'start', className, buttonClassName, ariaLabel }: MenuProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -841,9 +848,48 @@ export function Menu({ label, children, align = 'start', className, buttonClassN
   }, [open, align]);
 
   return <div className={['ds-menu', className].filter(Boolean).join(' ')} ref={rootRef}>
-    <button aria-controls={menuId} aria-expanded={open} aria-haspopup="menu" className={buttonClassName ?? 'ds-button ds-button--secondary ds-button--md'} onClick={() => setOpen((value) => !value)} ref={buttonRef} type="button">{label}</button>
+    <button aria-controls={menuId} aria-expanded={open} aria-label={ariaLabel} aria-haspopup="menu" className={buttonClassName ?? 'ds-button ds-button--secondary ds-button--md'} onClick={() => setOpen((value) => !value)} ref={buttonRef} type="button">{label}</button>
     {open ? <div className={`ds-menu__content ds-menu__content--${align}`} id={menuId} style={placement} onClick={() => { setOpen(false); requestAnimationFrame(() => buttonRef.current?.focus()); }} role="menu">{children}</div> : null}
   </div>;
+}
+
+type MoreMenuProps = { label: string; children: ReactNode; align?: 'start' | 'end'; className?: string };
+
+/** The «⋯» menu for rare actions (visual rule 2): one icon button, the caller supplies the accessible name. */
+export function MoreMenu({ label, children, align = 'end', className }: MoreMenuProps) {
+  return <Menu align={align} ariaLabel={label} buttonClassName="ds-button ds-button--text ds-button--icon" className={className} label={<span aria-hidden="true">⋯</span>}>{children}</Menu>;
+}
+
+// ── Tabs ────────────────────────────────────────────────────────────────────
+
+export type TabItem = { key: string; label: ReactNode; disabled?: boolean };
+
+type TabsProps = { label: string; tabs: TabItem[]; value: string; onChange: (key: string) => void; idPrefix?: string; className?: string };
+
+/** A tab strip with the arrow-key, Home and End behaviour of the ARIA tabs pattern; the caller renders the panel (id `${idPrefix}-panel`). */
+export function Tabs({ label, tabs, value, onChange, idPrefix = 'tabs', className }: TabsProps) {
+  const enabled = tabs.filter((tab) => !tab.disabled);
+
+  function onKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    const index = enabled.findIndex((tab) => tab.key === value);
+    let next = -1;
+    if (event.key === 'ArrowRight') next = (index + 1) % enabled.length;
+    else if (event.key === 'ArrowLeft') next = (index - 1 + enabled.length) % enabled.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = enabled.length - 1;
+    if (next < 0 || !enabled[next]) return;
+    event.preventDefault();
+    onChange(enabled[next].key);
+    requestAnimationFrame(() => document.getElementById(`${idPrefix}-tab-${enabled[next]!.key}`)?.focus());
+  }
+
+  return (
+    <div aria-label={label} className={['admin-org-tabs', className].filter(Boolean).join(' ')} onKeyDown={onKeyDown} role="tablist">
+      {tabs.map((tab) => (
+        <button aria-controls={`${idPrefix}-panel`} aria-selected={tab.key === value} className="admin-org-tabs__tab" disabled={tab.disabled} id={`${idPrefix}-tab-${tab.key}`} key={tab.key} onClick={() => onChange(tab.key)} role="tab" tabIndex={tab.key === value ? 0 : -1} type="button">{tab.label}</button>
+      ))}
+    </div>
+  );
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
