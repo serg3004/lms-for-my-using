@@ -6,6 +6,14 @@
 >
 > **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
 
+## Standalone assessment assignments migration (PR 523)
+
+`20261124100000_assessment_assignments` adds a nullable token digest to assessments and
+an assignment table with a unique assessment and employee pair. Apply it before deploying
+the updated API and worker. The migration needs no backfill or special backup procedure.
+On application rollback, retain the table and digest column to preserve deadlines and link
+state. Older API versions do not enforce the new standalone link and assignment checks.
+
 ## Standalone assessment placements migration (PR 522)
 
 `20261124090000_assessment_placements` makes the source course optional, creates placement

@@ -2573,6 +2573,30 @@
     "attemptsLeft": "Осталось попыток"
   },
   "assessments": {
+    "standalone": {
+      "label": "Самостоятельный тест",
+      "manage": "Назначения и ссылка",
+      "target": "Тип назначения",
+      "user": "Сотрудник",
+      "group": "Группа",
+      "department": "Подразделение с вложенными",
+      "recipient": "Получатель",
+      "choose": "Выберите",
+      "due": "Срок",
+      "dueLabel": "Срок: {{date}}",
+      "assign": "Назначить",
+      "assigned": "Назначено сотрудникам: {{count}}",
+      "rotate": "Создать новую ссылку",
+      "revoke": "Отозвать ссылку",
+      "link": "Ссылка на тест",
+      "qr": "Скачать QR-код",
+      "linkReady": "Новая ссылка готова. Прежние ссылки отозваны.",
+      "linkRevoked": "Ссылка отозвана.",
+      "error": "Не удалось выполнить действие с тестом.",
+      "results": "Результаты самостоятельных тестов",
+      "chooseAssessment": "Выберите тест",
+      "noResults": "Попыток пока нет."
+    },
     "typedQuestionUnavailable": "Вопросы этого теста пока недоступны в этой форме. Обратитесь к организатору обучения.",
     "navLink": "Оценивания",
     "title": "Assessments",
@@ -3036,6 +3060,14 @@
     "markAllRead": "Отметить все как прочитанные",
     "loadError": "Не удалось загрузить уведомления.",
     "types": {
+      "assessment_assigned": {
+        "title": "Назначен тест",
+        "message": "Вам назначен тест «{{assessmentTitle}}»."
+      },
+      "assessment_due_soon": {
+        "title": "Приближается срок теста",
+        "message": "Пройдите тест «{{assessmentTitle}}» до истечения срока."
+      },
       "assessment_passed": {
         "title": "Тест сдан",
         "message": "Вы сдали тест «{{assessmentTitle}}» с результатом {{percentage}}%."

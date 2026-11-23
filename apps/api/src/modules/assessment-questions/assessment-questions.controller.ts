@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
@@ -15,12 +15,13 @@ import {
   CreateAssessmentAnswerOptionInput,
   CreateAssessmentQuestionInput,
 } from './assessment-questions.schemas.js';
+import { assessmentLinkToken, StandaloneAssessmentsService } from '../assessments/public.js';
 import { AssessmentQuestionsService } from './assessment-questions.service.js';
 
 @Controller()
 @UseGuards(AuthGuard, RolesGuard, CourseAccessGuard)
 export class AssessmentQuestionsController {
-  constructor(private readonly assessmentQuestionsService: AssessmentQuestionsService) {}
+  constructor(private readonly assessmentQuestionsService: AssessmentQuestionsService, private readonly standalone: StandaloneAssessmentsService) {}
 
   @Get('assessments/:assessmentId/questions')
   @Roles(...rolePolicies.assessmentQuestionsRead)
@@ -32,7 +33,9 @@ export class AssessmentQuestionsController {
   @Get('assessments/:assessmentId/quiz')
   @Roles(...rolePolicies.assessmentsRead)
   @CourseScope('param', 'assessmentId', 'assessment')
-  listLearnerQuizQuestions(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest) {
+  async listLearnerQuizQuestions(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest, @Query('token') token?: string) {
+    const actor = request.currentUser!;
+    await this.standalone.assertAccess(assessmentId, actor.organizationId, actor.id, assessmentLinkToken.optional().parse(token));
     return this.assessmentQuestionsService.listLearnerQuizQuestions(assessmentId, request.currentUser!.organizationId, request.currentUser!.id);
   }
 

@@ -1,5 +1,6 @@
 import { AssessmentAttemptsController } from '../modules/assessment-attempts/assessment-attempts.controller.js';
 import { AssessmentQuestionsController } from '../modules/assessment-questions/assessment-questions.controller.js';
+import { StandaloneAssessmentsController } from '../modules/assessments/standalone-assessments.controller.js';
 import { AssessmentsController } from '../modules/assessments/assessments.controller.js';
 import { AssignmentsController } from '../modules/assignments/assignments.controller.js';
 import { AuditLogController } from '../modules/audit-log/audit-log.controller.js';
@@ -48,6 +49,7 @@ export const controllerEntries: ControllerEntry[] = [
   { file: 'assessment-attempts/assessment-attempts.controller.ts', Controller: AssessmentAttemptsController },
   { file: 'assessment-questions/assessment-questions.controller.ts', Controller: AssessmentQuestionsController },
   { file: 'assessments/assessments.controller.ts', Controller: AssessmentsController },
+  { file: 'assessments/standalone-assessments.controller.ts', Controller: StandaloneAssessmentsController },
   { file: 'assignments/assignments.controller.ts', Controller: AssignmentsController },
   { file: 'audit-log/audit-log.controller.ts', Controller: AuditLogController },
   { file: 'auth/auth.controller.ts', Controller: AuthController },

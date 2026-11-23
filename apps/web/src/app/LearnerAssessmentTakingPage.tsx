@@ -1,3 +1,4 @@
+import { assessmentTokenQuery } from '../shared/api/assessments.js';
 import { type FormEvent, useEffect, useState } from 'react';
 import { RichText, plainText } from '../shared/RichText.js';
 import { useTranslation } from 'react-i18next';
@@ -36,7 +37,7 @@ type SubmitState =
   | { status: 'done'; result: AssessmentAttemptResult; certificateId: string | null }
   | { status: 'error'; message: string };
 
-export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: string }) {
+export function LearnerAssessmentTakingPage({ assessmentId, token }: { assessmentId: string; token?: string }) {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<SelectedAnswers>({});
   const [submitState, setSubmitState] = useState<SubmitState>({ status: 'idle' });
@@ -48,11 +49,11 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
     async () => {
       const assessment = await getAssessment(assessmentId);
       const questionsWithOptions = await apiRequest<QuestionWithOptions[]>(
-        `/assessments/${encodeURIComponent(assessmentId)}/quiz`,
+        `/assessments/${encodeURIComponent(assessmentId)}/quiz${assessmentTokenQuery(token)}`,
       );
       return { assessment, questions: questionsWithOptions };
     },
-    [assessmentId, t],
+    [assessmentId, t, token],
     { unauthenticated: t('assessments.sessionExpired'), error: t('assessments.loadError') },
   );
 
@@ -78,7 +79,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
 
     void (async () => {
       try {
-        const attempt = await startAssessmentAttempt(assessmentId);
+        const attempt = await startAssessmentAttempt(assessmentId, token);
         if (cancelled) return;
         setSecondsLeft(computeSecondsLeft(attempt.startedAt, timeLimitMinutes));
       } catch (error) {
@@ -90,7 +91,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
     })();
 
     return () => { cancelled = true; };
-  }, [loadState, assessmentId]);
+  }, [loadState, assessmentId, token]);
 
   useEffect(() => {
     if (secondsLeft === null || secondsLeft <= 0) return;
@@ -130,7 +131,7 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
     setSubmitState({ status: 'submitting' });
 
     try {
-      const attempt = await createAssessmentAttempt(assessmentId, buildAssessmentAnswers(loadState.data.questions, selected));
+      const attempt = await createAssessmentAttempt(assessmentId, buildAssessmentAnswers(loadState.data.questions, selected), token);
       const result = await getAttemptResult(attempt.id);
 
       let certificateId: string | null = null;

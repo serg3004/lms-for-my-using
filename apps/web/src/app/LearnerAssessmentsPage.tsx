@@ -1,17 +1,19 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { listAssessmentAttempts, listAssessmentQuestions, listAssessments } from '../shared/api/assessments.js';
+import { listMyAssessments } from '../shared/api/assessments.js';
 import { listCourses } from '../shared/api/courses.js';
 import type { AssessmentSummary } from '../shared/api/types.js';
 import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 
 type AssessmentRow = {
-  assessment: AssessmentSummary;
+  assessment: Pick<AssessmentSummary, 'id' | 'title' | 'courseId' | 'maxAttempts' | 'passingScore'>;
+  dueAt?: string | null;
   courseTitle: string;
   questionCount: number;
   attemptsUsed: number;
+  lastCompletedAttemptId?: string | null;
   bestPercentage: number | null;
   completed: boolean;
 };
@@ -39,40 +41,18 @@ function getAssessmentHref(assessmentId: string) {
 type StatusFilter = 'all' | 'available' | 'completed';
 
 export function LearnerAssessmentsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [courseFilter, setCourseFilter] = useState<string>('all');
 
   const { state: loadState } = useAsyncData<LearnerAssessmentsData>(
     async () => {
-      const [assessments, coursesResult] = await Promise.all([listAssessments(), listCourses({ page: 1, pageSize: 100 })]);
+      const [assessments, coursesResult] = await Promise.all([listMyAssessments(), listCourses({ page: 1, pageSize: 100 })]);
       const courseTitleById = new Map(coursesResult.items.map((course) => [course.id, course.title]));
-
-      const rows = await Promise.all(
-        assessments.map(async (assessment): Promise<AssessmentRow> => {
-          const [questions, attempts] = await Promise.all([
-            listAssessmentQuestions(assessment.id),
-            listAssessmentAttempts(assessment.id),
-          ]);
-          const completedAttempts = attempts.filter((attempt) => attempt.status === 'completed');
-          const bestPercentage = completedAttempts.reduce<number | null>(
-            (best, attempt) => (best === null || attempt.percentage > best ? attempt.percentage : best),
-            null,
-          );
-
-          return {
-            assessment,
-            courseTitle: (assessment.courseId && courseTitleById.get(assessment.courseId)) || '',
-            questionCount: questions.length,
-            attemptsUsed: attempts.length,
-            bestPercentage,
-            completed: completedAttempts.some((attempt) => attempt.passed),
-          };
-        }),
-      );
-
-      return { rows };
+      return { rows: assessments.map((row) => ({
+        ...row, courseTitle: (row.assessment.courseId && courseTitleById.get(row.assessment.courseId)) || '',
+      })) };
     },
     [t],
     { unauthenticated: t('assessments.sessionExpired'), error: t('assessments.loadError') },
@@ -97,7 +77,7 @@ export function LearnerAssessmentsPage() {
       const matchesQuery = !q || row.assessment.title.toLowerCase().includes(q);
       const matchesStatus =
         statusFilter === 'all' || (statusFilter === 'completed' ? row.completed : !row.completed);
-      const matchesCourse = courseFilter === 'all' || row.assessment.courseId === courseFilter;
+      const matchesCourse = courseFilter === 'all' || (courseFilter === 'standalone' ? row.assessment.courseId === null : row.assessment.courseId === courseFilter);
       return matchesQuery && matchesStatus && matchesCourse;
     });
   }, [loadState, query, statusFilter, courseFilter]);
@@ -183,6 +163,7 @@ export function LearnerAssessmentsPage() {
           style={{ border: `1px solid ${COLORS.border}`, background: COLORS.surface, borderRadius: '12px', padding: '11px 13px' }}
         >
           <option value="all">{t('assessments.filterAllCourses')}</option>
+          <option value="standalone">{t('assessments.standalone.label')}</option>
           {courseOptions.map(([id, title]) => (
             <option key={id} value={id}>
               {title}
@@ -205,7 +186,7 @@ export function LearnerAssessmentsPage() {
             const badgeBg = row.completed ? COLORS.successSoft : COLORS.primarySoft;
             const badgeColor = row.completed ? COLORS.success : COLORS.primary;
             const badgeLabel = row.completed ? t('assessments.statusCompleted') : t('assessments.statusAvailable');
-            const attemptsRemaining = Math.max(assessment.maxAttempts - row.attemptsUsed, 0);
+            const attemptsRemaining = assessment.maxAttempts == null ? null : Math.max(assessment.maxAttempts - row.attemptsUsed, 0);
 
             return (
               <article
@@ -230,6 +211,7 @@ export function LearnerAssessmentsPage() {
                 </div>
 
                 <h2 style={{ fontSize: '19px', margin: '0 0 6px', color: COLORS.text, fontWeight: 800 }}>{assessment.title}</h2>
+                {row.dueAt && <div>{t('assessments.standalone.dueLabel', { date: new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(row.dueAt)) })}</div>}
                 {row.courseTitle ? (
                   <div style={{ color: COLORS.muted, fontSize: '13px', marginBottom: '14px' }}>
                     {t('assessments.courseLabel', { course: row.courseTitle })}
@@ -250,7 +232,7 @@ export function LearnerAssessmentsPage() {
                           {t('assessments.metaAttempt')}
                         </span>
                         <strong style={{ fontSize: '14px', color: COLORS.text }}>
-                          {row.attemptsUsed} {t('assessments.of')} {assessment.maxAttempts}
+                          {row.attemptsUsed}{assessment.maxAttempts != null ? ` ${t('assessments.of')} ${assessment.maxAttempts}` : ''}
                         </strong>
                       </div>
                     </>
@@ -266,7 +248,7 @@ export function LearnerAssessmentsPage() {
                         <span style={{ display: 'block', color: COLORS.muted, fontSize: '11px', marginBottom: '4px' }}>
                           {t('assessments.metaAttemptsLeft')}
                         </span>
-                        <strong style={{ fontSize: '14px', color: COLORS.text }}>{attemptsRemaining}</strong>
+                        <strong style={{ fontSize: '14px', color: COLORS.text }}>{attemptsRemaining ?? '∞'}</strong>
                       </div>
                       <div style={{ padding: '11px', background: COLORS.soft, borderRadius: '12px' }}>
                         <span style={{ display: 'block', color: COLORS.muted, fontSize: '11px', marginBottom: '4px' }}>
@@ -285,15 +267,15 @@ export function LearnerAssessmentsPage() {
                 ) : null}
 
                 <div style={{ marginTop: 'auto', display: 'flex', gap: '10px' }}>
-                  <a
-                    href={getAssessmentHref(assessment.id)}
+                  {(assessment.courseId || row.lastCompletedAttemptId) && <a
+                    href={assessment.courseId ? getAssessmentHref(assessment.id) : `/learn/attempts/${encodeURIComponent(row.lastCompletedAttemptId!)}`}
                     style={{ flex: 1, border: `1px solid ${COLORS.border}`, background: COLORS.surface, borderRadius: '12px', padding: '11px 14px', fontWeight: 800, fontSize: '14px', textAlign: 'center', textDecoration: 'none', color: COLORS.text }}
                   >
                     {t('assessments.actionDetails')}
-                  </a>
+                  </a>}
                   {!row.completed && (
                     <a
-                      href={getAssessmentHref(assessment.id)}
+                      href={getAssessmentHref(assessment.id) + (assessment.courseId === null ? '/take' : '')}
                       style={{ flex: 1, border: `1px solid ${COLORS.primary}`, background: COLORS.primary, borderRadius: '12px', padding: '11px 14px', fontWeight: 800, fontSize: '14px', textAlign: 'center', textDecoration: 'none', color: '#fff' }}
                     >
                       {t('assessments.actionStart')}
