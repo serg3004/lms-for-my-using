@@ -12,7 +12,9 @@ import { AssessmentSettingsForm } from './assessment-builder/AssessmentSettingsF
 import { QuestionsEditor } from './assessment-builder/QuestionsEditor.js';
 import { ASSESSMENT_STATUSES, assessmentFormReducer, assessmentToForm, buildPreviewQuestionsWithOptions, describePreviewAnswerSelection, emptyAssessmentForm, mapAssessmentForm, type AnswerOption, type Assessment, type AssessmentPreviewResult, type AssessmentStatus, type Question, type SaveState } from './assessment-builder/model.js';
 import { StandaloneAssessmentDialog } from './assessment-builder/StandaloneAssessmentDialog.js';
-import { AssessmentLibrary } from './assessment-builder/AssessmentLibrary.js';
+import { AssessmentLibrary, type AssessmentLibraryActions } from './assessment-builder/AssessmentLibrary.js';
+import { FolderCreateMenu } from '../shared/folders/FolderCreateMenu.js';
+import { canAddSubfolder } from '../shared/folders/folderTree.js';
 import { useAssessmentFolders } from './assessment-builder/useAssessmentFolders.js';
 import { useAssessmentBuilder } from './assessment-builder/useAssessmentBuilder.js';
 
@@ -29,6 +31,7 @@ export function AdminAssessmentBuilderPage() {
   const [managedAssessment, setManagedAssessment] = useState<Assessment | null>(null);
   const standaloneDialogRef = useRef<HTMLDialogElement>(null);
   const createDialogRef = useRef<HTMLDialogElement>(null);
+  const libraryActions = useRef<AssessmentLibraryActions | null>(null);
   const [createForm, dispatchCreate] = useReducer(assessmentFormReducer, undefined, emptyAssessmentForm);
   const [createState, setCreateState] = useState<SaveState>({ status: 'idle' });
   const [createTitleErrors, setCreateTitleErrors] = useState<FormValidationErrors<'title'>>({});
@@ -235,9 +238,13 @@ export function AdminAssessmentBuilderPage() {
       title={t('admin.assessmentBuilder.title', 'Assessment builder')}
       subtitle={t('admin.assessmentBuilder.subtitle', 'Create and manage assessments for courses and lessons.')}
       action={
-        <Button variant="primary" type="button" onClick={openCreateDialog}>
-          + {t('admin.assessmentBuilder.create', 'Create assessment')}
-        </Button>
+        <FolderCreateMenu
+          canCreateFolder={Boolean(library.data) && canAddSubfolder(library.data?.folders ?? [], library.id)}
+          itemLabel={t('admin.assessmentBuilder.folders.createTest', 'Assessment')}
+          onCreateFolder={() => libraryActions.current?.createFolder()}
+          onCreateItem={openCreateDialog}
+          t={t}
+        />
       }
     />
 
@@ -283,7 +290,7 @@ export function AdminAssessmentBuilderPage() {
       </>}
     />
 
-    <AssessmentLibrary list={list} library={library} renderActions={renderActions} t={t}
+    <AssessmentLibrary actionsRef={libraryActions} list={list} library={library} renderActions={renderActions} t={t}
       columns={[
         { key: 'title', label: t('admin.assessmentBuilder.col.title'), priority: 'primary', sortable: true, render: (a) => a.title },
         { key: 'course', label: t('admin.assessmentBuilder.list.course'), priority: 'secondary', sortable: true, render: (a) => a.courseTitle ?? '—' },

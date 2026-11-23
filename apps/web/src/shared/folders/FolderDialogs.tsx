@@ -72,11 +72,12 @@ export function FolderDialog<F extends DialogFolder>({ target, onClose, onSubmit
           </label>
           <p className="admin-form__hint">{t('admin.checklists.folders.visibleHint', 'Without the flag the folder is visible only to its creator and administrators. A learner never sees folders.')}</p>
         </>}
-        {colors && <fieldset>
+        {colors && <fieldset className="folder-colors">
           <legend>{t('admin.assessmentBuilder.folders.color')}</legend>
-          {FOLDER_COLORS.map((value) => <label key={value} className="admin-checkbox-field">
+          {FOLDER_COLORS.map((value) => <label className="folder-colors__option" key={value}>
             <input checked={color === value} name={`${titleId}-color`} onChange={() => setColor(value)} type="radio" />
-            <FolderGlyph color={value} /> {t(`admin.assessmentBuilder.folders.colors.${value}`)}
+            <FolderGlyph color={value} />
+            <span className="ui-visually-hidden">{t(`admin.assessmentBuilder.folders.colors.${value}`)}</span>
           </label>)}
         </fieldset>}
         <div className="ds-dialog__actions">
