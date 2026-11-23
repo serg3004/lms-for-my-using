@@ -45,7 +45,7 @@ export class LongreadsController {
   @CourseScope('param', 'id', 'lesson')
   saveQuestion(@Param('id', ParseUUIDPipe) id: string, @Body() raw: unknown, @Req() req: AuthenticatedRequest) {
     const { revision, question } = z.object({ revision: z.number().int().min(1), question: writeLongreadQuestionSchema }).strict().parse(raw);
-    return this.questionBank!.save(id, req.currentUser!.organizationId, revision, question);
+    return this.questionBank!.save(id, req.currentUser!.organizationId, revision, question, req.currentUser!.id);
   }
 
   @Get('lessons/:id/longread/exercises')

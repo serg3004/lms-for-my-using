@@ -509,6 +509,28 @@
       }
     },
     "assessmentBuilder": {
+      "list": {
+        "course": "Курс",
+        "allCourses": "Все курсы",
+        "standalone": "Без курса",
+        "allFolders": "Все папки",
+        "root": "Корневая папка",
+        "anyAttempts": "Любое число попыток",
+        "withAttempts": "С попытками",
+        "withoutAttempts": "Без попыток",
+        "mine": "Только мои",
+        "pagination": "Страницы списка тестов",
+        "previous": "Назад",
+        "next": "Далее",
+        "passRate": "Процент сдачи",
+        "lastAttempt": "Последняя попытка",
+        "copyError": "Не удалось скопировать тест.",
+        "resultsError": "Не удалось загрузить результаты теста.",
+        "score": "Результат",
+        "inProgress": "В процессе",
+        "passed": "Сдан",
+        "failed": "Не сдан"
+      },
       "folders": {
         "root": "Все тесты",
         "tree": "Папки тестов",

@@ -509,6 +509,28 @@
       }
     },
     "assessmentBuilder": {
+      "list": {
+        "course": "Course",
+        "allCourses": "All courses",
+        "standalone": "No course",
+        "allFolders": "All folders",
+        "root": "Root folder",
+        "anyAttempts": "Any attempts",
+        "withAttempts": "With attempts",
+        "withoutAttempts": "Without attempts",
+        "mine": "Only mine",
+        "pagination": "Assessment pages",
+        "previous": "Previous",
+        "next": "Next",
+        "passRate": "Pass rate",
+        "lastAttempt": "Last attempt",
+        "copyError": "Unable to copy assessment.",
+        "resultsError": "Unable to load assessment results.",
+        "score": "Score",
+        "inProgress": "In progress",
+        "passed": "Passed",
+        "failed": "Failed"
+      },
       "folders": {
         "root": "All assessments",
         "tree": "Assessment folders",

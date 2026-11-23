@@ -495,32 +495,15 @@ describe('admin page smoke rendering', () => {
   });
 
   it('renders assessment builder happy path without crashing', () => {
-    useFirstCallReadyState({
-      status: 'loaded',
-      courses: [course],
-      lessons: [lesson],
-      assessments: [
-        {
-          id: 'assessment-1',
-          title: 'Safety Knowledge Test',
-          slug: 'safety-knowledge-test',
-          description: null,
-          passingScore: 70,
-          maxAttempts: 3,
-          availableAfterCourseCompletion: false,
-          status: 'published',
-        },
-        {
-          id: 'assessment-2',
-          title: 'Draft Quiz',
-          slug: 'draft-quiz',
-          description: null,
-          passingScore: 70,
-          maxAttempts: 3,
-          availableAfterCourseCompletion: false,
-          status: 'draft',
-        },
-      ],
+    useStateAtCalls({
+      1: { status: 'loaded', courses: [course], lessons: [lesson] },
+      7: {
+        key: '/assessments/library?page=1&sort=createdAt&direction=desc&folderId=root:0',
+        data: { page: 1, pageSize: 25, total: 2, items: [
+          { id: 'assessment-1', title: 'Safety Knowledge Test', status: 'published', questionsCount: 3 },
+          { id: 'assessment-2', title: 'Draft Quiz', status: 'draft', questionsCount: 0 },
+        ] },
+      },
     });
 
     const html = renderToStaticMarkup(<MemoryRouter><AdminAssessmentBuilderPage /></MemoryRouter>);

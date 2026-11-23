@@ -69,3 +69,18 @@ export const bulkAssessmentFolderSchema = z.discriminatedUnion('action', [
 export type CreateAssessmentFolderInput = z.infer<typeof createAssessmentFolderSchema>;
 export type UpdateAssessmentFolderInput = z.infer<typeof updateAssessmentFolderSchema>;
 export type BulkAssessmentFolderInput = z.infer<typeof bulkAssessmentFolderSchema>;
+
+export const assessmentLibrarySchema = z.object({
+  search: z.string().trim().max(200).optional(),
+  status: assessmentStatusSchema.optional(),
+  courseId: z.union([z.guid(), z.literal('standalone')]).optional(),
+  folderId: z.union([z.guid(), z.literal('root')]).optional(),
+  mine: z.enum(['true', 'false']).transform((value) => value === 'true').optional(),
+  attempts: z.enum(['with', 'without']).optional(),
+  sort: z.enum(['createdAt', 'title', 'course', 'status', 'questions', 'attempts', 'passRate', 'lastAttemptAt']).default('createdAt'),
+  direction: z.enum(['asc', 'desc']).default('desc'),
+  page: z.coerce.number().int().min(1).max(1_000_000).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(25),
+}).strict();
+
+export type AssessmentLibraryQuery = z.infer<typeof assessmentLibrarySchema>;
