@@ -6,8 +6,10 @@ import { AssessmentAttemptsController } from './assessment-attempts.controller.j
 import { AssessmentAttemptsService } from './assessment-attempts.service.js';
 import { AssessmentResultsService } from './assessment-results.service.js';
 
+import { AssessmentsModule } from '../assessments/public.js';
+
 @Module({
-  imports: [AuthModule, DatabaseModule],
+  imports: [AuthModule, DatabaseModule, AssessmentsModule],
   controllers: [AssessmentAttemptsController],
   providers: [AssessmentAttemptsService, AssessmentResultsService],
 })

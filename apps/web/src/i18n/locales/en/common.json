@@ -2573,6 +2573,30 @@
     "attemptsLeft": "Attempts remaining"
   },
   "assessments": {
+    "standalone": {
+      "label": "Standalone assessment",
+      "manage": "Assignments and link",
+      "target": "Assign to",
+      "user": "Employee",
+      "group": "Group",
+      "department": "Department and subdepartments",
+      "recipient": "Recipient",
+      "choose": "Select",
+      "due": "Deadline",
+      "dueLabel": "Due {{date}}",
+      "assign": "Assign",
+      "assigned": "Employees assigned: {{count}}",
+      "rotate": "Generate new link",
+      "revoke": "Revoke link",
+      "link": "Assessment link",
+      "qr": "Download QR code",
+      "linkReady": "Link generated. Previous links are revoked.",
+      "linkRevoked": "Link revoked.",
+      "error": "Unable to complete the assessment action.",
+      "results": "Standalone assessment results",
+      "chooseAssessment": "Select an assessment",
+      "noResults": "No attempts yet."
+    },
     "typedQuestionUnavailable": "This form does not support the questions in this test yet. Contact your training organizer.",
     "navLink": "Assessments",
     "title": "Assessments",
@@ -3036,6 +3060,14 @@
     "markAllRead": "Mark all as read",
     "loadError": "Unable to load notifications.",
     "types": {
+      "assessment_assigned": {
+        "title": "Assessment assigned",
+        "message": "You have been assigned {{assessmentTitle}}."
+      },
+      "assessment_due_soon": {
+        "title": "Assessment deadline approaching",
+        "message": "Complete {{assessmentTitle}} before the deadline."
+      },
       "assessment_passed": {
         "title": "Test passed",
         "message": "You passed \"{{assessmentTitle}}\" with {{percentage}}%."

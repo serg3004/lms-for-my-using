@@ -28,6 +28,12 @@ function ParamRoute<Param extends string>({ param, Page }: { param: Param; Page:
   return value ? <Page {...({ [param]: value } as Record<Param, string>)} /> : <NotFoundPage />;
 }
 
+function LearnerAssessmentTakingRoute() {
+  const { assessmentId } = useParams();
+  const [params] = useSearchParams();
+  return assessmentId ? <LearnerAssessmentTakingPage assessmentId={assessmentId} token={params.get('token') ?? undefined} /> : <NotFoundPage />;
+}
+
 function LearnerLayoutRoute() {
   return <LearnerPageLayout><Outlet /></LearnerPageLayout>;
 }
@@ -52,7 +58,7 @@ export function LearnerRoutes() {
       <Route path="/learn/notifications" element={<LearnerNotificationsPage />} />
       <Route path="/learn/profile" element={<Navigate replace to="/profile" />} />
       <Route path="/learn/certificates/:certificateId" element={<ParamRoute param="certificateId" Page={LearnerCertificateDetailPage} />} />
-      <Route path="/learn/assessments/:assessmentId/take" element={<ParamRoute param="assessmentId" Page={LearnerAssessmentTakingPage} />} />
+      <Route path="/learn/assessments/:assessmentId/take" element={<LearnerAssessmentTakingRoute />} />
       <Route path="/learn/assessments/:assessmentId" element={<ParamRoute param="assessmentId" Page={LearnerAssessmentDetailPage} />} />
       <Route path="/learn/attempts/:attemptId" element={<ParamRoute param="attemptId" Page={LearnerAssessmentReviewPage} />} />
       <Route path="/learn/assignments/:assignmentId" element={<ParamRoute param="assignmentId" Page={LearnerAssignmentDetailPage} />} />

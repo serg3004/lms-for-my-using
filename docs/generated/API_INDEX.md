@@ -8,6 +8,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 |---|---|---|---|
 | `GET` | `/api/v1/assessments` | `Assessments` | `bearer` |
 | `POST` | `/api/v1/assessments` | `Assessments` | `bearer` |
+| `GET` | `/api/v1/assessments/standalone/mine` | `StandaloneAssessments` | `bearer` |
 | `GET` | `/api/v1/assessments/{assessmentId}/attempts` | `AssessmentAttempts` | `bearer` |
 | `POST` | `/api/v1/assessments/{assessmentId}/attempts` | `AssessmentAttempts` | `bearer` |
 | `POST` | `/api/v1/assessments/{assessmentId}/attempts/preview` | `AssessmentAttempts` | `bearer` |
@@ -23,6 +24,10 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/assessments/{id}/placements` | `Assessments` | `bearer` |
 | `POST` | `/api/v1/assessments/{id}/placements` | `Assessments` | `bearer` |
 | `DELETE` | `/api/v1/assessments/{id}/placements/{placementId}` | `Assessments` | `bearer` |
+| `GET` | `/api/v1/assessments/{id}/standalone/access` | `StandaloneAssessments` | `bearer` |
+| `POST` | `/api/v1/assessments/{id}/standalone/assignments` | `StandaloneAssessments` | `bearer` |
+| `POST` | `/api/v1/assessments/{id}/standalone/link` | `StandaloneAssessments` | `bearer` |
+| `DELETE` | `/api/v1/assessments/{id}/standalone/link` | `StandaloneAssessments` | `bearer` |
 | `PATCH` | `/api/v1/assessments/{id}/status` | `Assessments` | `bearer` |
 | `GET` | `/api/v1/assignments` | `Assignments` | `bearer` |
 | `POST` | `/api/v1/assignments` | `Assignments` | `bearer` |

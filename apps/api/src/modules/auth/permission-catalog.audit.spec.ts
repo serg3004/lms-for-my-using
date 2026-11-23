@@ -52,6 +52,9 @@ const adminOnlyPlacementRoutes = [
   'AssessmentsController.attachPlacement',
   'AssessmentsController.detachPlacement',
   'AssessmentsController.listPlacements',
+  'StandaloneAssessmentsController.assign',
+  'StandaloneAssessmentsController.rotate',
+  'StandaloneAssessmentsController.revoke',
 ];
 
 type Route = { id: string; file: string; roles: readonly UserRole[] };

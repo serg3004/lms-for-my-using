@@ -1,3 +1,4 @@
+import { useOptionalSession } from '../shared/session.js';
 import { ChangeEvent, FormEvent, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +24,7 @@ type LoginFormField = keyof LoginFormState;
 type LoginLocationState = {
   from?: {
     pathname?: unknown;
+    search?: unknown;
   };
 };
 
@@ -60,9 +62,11 @@ function getInitialLoginFormState(): LoginFormState {
 export function getLoginRedirectPath(locationState: unknown, user?: { roles: string[]; inspector?: unknown }) {
   // PR 507: an outside inspector has only the employee card.
   if (user?.inspector) return '/employee-card';
-  const fromPath = (locationState as LoginLocationState | null)?.from?.pathname;
+  const from = (locationState as LoginLocationState | null)?.from;
+  const fromPath = from?.pathname;
   if (typeof fromPath === 'string' && fromPath.startsWith('/') && !fromPath.startsWith('//')) {
-    return fromPath;
+    const search = typeof from?.search === 'string' && from.search.startsWith('?') ? from.search : '';
+    return fromPath + search;
   }
 
   if (user?.roles.includes('admin')) {
@@ -93,6 +97,11 @@ export function LoginPage() {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
+  const session = useOptionalSession();
+  function finishSignIn(user: Parameters<typeof getLoginRedirectPath>[1]) {
+    session?.clearSession();
+    navigate(getLoginRedirectPath(location.state, user), { replace: true });
+  }
   const [formState, setFormState] = useState(getInitialLoginFormState);
   const [validationErrors, setValidationErrors] = useState<FormValidationErrors<LoginFormField>>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -179,7 +188,7 @@ export function LoginPage() {
         ...currentFormState,
         password: '',
       }));
-      navigate(getLoginRedirectPath(location.state, loginResult.user), { replace: true });
+      finishSignIn(loginResult.user);
     } catch (error) {
       setErrorMessage(getLoginErrorMessage(error, t));
     } finally {
@@ -226,7 +235,7 @@ export function LoginPage() {
             ))}
           </div>
 
-          {byQr ? <QrLoginPanel onSignedIn={(user) => navigate(getLoginRedirectPath(location.state, user), { replace: true })} /> : null}
+          {byQr ? <QrLoginPanel onSignedIn={finishSignIn} /> : null}
 
           <form className="login-form" style={byQr ? { display: "none" } : undefined} onSubmit={handleSubmit}>
             <label htmlFor="organizationId">

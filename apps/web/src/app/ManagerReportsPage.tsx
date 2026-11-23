@@ -8,6 +8,8 @@ import { Card, DataTable, PageState, StatCard, StatsGrid, type Column } from '..
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { buildManagerReport, filterReportMembers, type ManagerReportStatus } from './manager-reports/model.js';
 
+import { StandaloneAssessmentResults } from './assessment-builder/StandaloneAssessmentResults.js';
+
 function memberName(member: ManagerTeamMember) {
   return [member.firstName, member.lastName].filter(Boolean).join(' ') || member.email;
 }
@@ -49,6 +51,7 @@ export function ManagerReportsPage() {
       <StatCard label={t('manager.reports.progress')} value={members.length} />
     </StatsGrid>
     <nav style={{ display: 'flex', gap: 16, margin: '18px 0', flexWrap: 'wrap' }} aria-label={t('manager.reports.drilldown')}><Link to="/manager/team">{t('manager.reports.openTeam')}</Link><Link to="/manager/overdue">{t('manager.reports.openOverdue')}</Link><Link to="/manager/reports/courses">{t('courseAnalytics.title')}</Link></nav>
+    <StandaloneAssessmentResults />
     <DataTable columns={columns} density="dense" emptyMessage={t('manager.reports.empty')} keyExtractor={(member) => member.userId} label={t('manager.reports.tableLabel')} responsiveDetails={{ label: t('courses.details'), expandLabel: (member) => `${t('courses.details')}: ${memberName(member)}`, collapseLabel: (member) => `${t('courses.details')}: ${memberName(member)}` }} rows={report.members} />
   </ManagerPageLayout>;
 }

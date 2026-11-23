@@ -6,6 +6,7 @@ import type { AuthenticatedRequest } from '../auth/public.js';
 import { Roles, rolePolicies } from '../auth/public.js';
 import { RolesGuard } from '../auth/public.js';
 import { isInstructorCourseScoped, CourseAccessGuard, CourseScope } from '../course-access/public.js';
+import { assessmentLinkToken, StandaloneAssessmentsService } from '../assessments/public.js';
 import { AssessmentAttemptsService } from './assessment-attempts.service.js';
 import {
   createAssessmentAttemptSchema,
@@ -21,6 +22,7 @@ export class AssessmentAttemptsController {
   constructor(
     private readonly assessmentAttemptsService: AssessmentAttemptsService,
     private readonly assessmentResultsService: AssessmentResultsService,
+    private readonly standalone: StandaloneAssessmentsService,
   ) {}
 
   @Get('assessments/:assessmentId/attempts')
@@ -76,9 +78,11 @@ export class AssessmentAttemptsController {
   @Post('assessments/:assessmentId/attempts/start')
   @Roles(...rolePolicies.assessmentAttemptsCreate)
   @CourseScope('param', 'assessmentId', 'assessment')
-  startAttempt(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest, @Query('placementId') placementId?: string) {
+  async startAttempt(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest, @Query('placementId') placementId?: string, @Query('token') token?: string) {
     const placement = placementQuery.parse(placementId);
     if (placement !== undefined && isInstructorCourseScoped(request.currentUser!)) throw new ForbiddenException();
+    const actor = request.currentUser!;
+    await this.standalone.assertAccess(assessmentId, actor.organizationId, actor.id, assessmentLinkToken.optional().parse(token), placement === null, typeof placement === 'string');
     return this.assessmentAttemptsService.startAttempt(
       assessmentId,
       request.currentUser!.id,
@@ -90,14 +94,17 @@ export class AssessmentAttemptsController {
   @Post('assessments/:assessmentId/attempts')
   @Roles(...rolePolicies.assessmentAttemptsCreate)
   @CourseScope('param', 'assessmentId', 'assessment')
-  createAttempt(
+  async createAttempt(
     @Param('assessmentId') assessmentId: string,
     @Req() request: AuthenticatedRequest,
     @Body() body: unknown,
+    @Query('token') token?: string,
   ) {
     const input: CreateAssessmentAttemptInput = createAssessmentAttemptSchema.parse(body);
 
     if (input.placementId !== undefined && isInstructorCourseScoped(request.currentUser!)) throw new ForbiddenException();
+    const actor = request.currentUser!;
+    await this.standalone.assertAccess(assessmentId, actor.organizationId, actor.id, assessmentLinkToken.optional().parse(token), input.placementId === null, typeof input.placementId === 'string');
     return this.assessmentAttemptsService.createAttempt(
       assessmentId,
       request.currentUser!.id,
