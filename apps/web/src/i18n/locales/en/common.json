@@ -528,6 +528,7 @@
         "invalidQuestions": "Enter a title and valid points for every question and fill in all options.",
         "missingAnswer": "Provide a valid correct answer for “{{title}}”.",
         "unsaved": "Unsaved changes",
+        "returnToDraft": "Move to draft",
         "unpublished": "Unpublished changes",
         "leave": "Leave and discard unsaved changes?",
         "noUsage": "This assessment is not used anywhere yet.",

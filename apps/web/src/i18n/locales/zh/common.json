@@ -528,6 +528,7 @@
         "invalidQuestions": "请输入每道题的标题和有效分值，并填写所有选项。",
         "missingAnswer": "请检查“{{title}}”的正确答案。",
         "unsaved": "未保存的更改",
+        "returnToDraft": "移回草稿",
         "unpublished": "未发布的更改",
         "leave": "要离开并放弃未保存的更改吗？",
         "noUsage": "此测试尚未在任何位置使用。",

@@ -115,7 +115,7 @@ export const assessmentEditorContentSchema = z.object({
 
 export const saveAssessmentEditorSchema = z.object({
   revision: z.iso.datetime(),
-  action: z.enum(['save', 'publish', 'archive']),
+  action: z.enum(['save', 'publish', 'archive', 'draft']),
   confirmPublished: z.boolean(),
   content: assessmentEditorContentSchema,
 });

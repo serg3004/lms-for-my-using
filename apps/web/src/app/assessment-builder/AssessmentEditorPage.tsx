@@ -16,7 +16,7 @@ import './assessmentEditor.css';
 
 const tabs = ['main', 'questions', 'settings', 'preview', 'usage'] as const;
 type Tab = typeof tabs[number];
-type Action = 'save' | 'publish' | 'archive';
+type Action = 'save' | 'publish' | 'archive' | 'draft';
 const listPath = '/admin/assessments';
 
 export function AssessmentEditorPage() {
@@ -130,7 +130,7 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
       });
       setRevision(result.updatedAt);
       setStatus(result.status);
-      setUnpublished(status === 'published' && action !== 'publish');
+      setUnpublished(status === 'published' && (action === 'save' || action === 'archive'));
       setBaseline(snapshot);
       setFeedback([]);
     } catch (error) {
@@ -251,6 +251,8 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
         <Button type="button" disabled={!dirty || busy || copying} onClick={() => void requestSave('save')}>{t('admin.assessmentBuilder.update')}</Button>
         <Button variant="primary" type="button" disabled={busy || copying || (status === 'published' && !dirty && !unpublished)}
           onClick={() => void requestSave('publish')}>{t('admin.assessmentBuilder.publish')}</Button>
+        {status !== 'draft' && <Button type="button" disabled={busy || copying}
+          onClick={() => void requestSave('draft')}>{label('returnToDraft')}</Button>}
         {status !== 'archived' && <Button type="button" disabled={busy || copying}
           onClick={() => void requestSave('archive')}>{t('admin.checklists.action.archive')}</Button>}
       </>}

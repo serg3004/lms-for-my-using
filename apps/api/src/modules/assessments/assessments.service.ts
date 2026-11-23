@@ -194,7 +194,7 @@ export class AssessmentsService {
       if (current.status === 'published' && !confirmPublished) throw new ConflictException('Confirm changes to the published assessment');
 
       const updatedAt = new Date(Math.max(Date.now(), current.updatedAt.getTime() + 1));
-      if (current.status === 'published' && action !== 'publish') {
+      if (current.status === 'published' && (action === 'save' || action === 'archive')) {
         return tx.assessment.update({
           where, data: { updatedAt, editorDraft: content, ...(action === 'archive' ? { status: 'archived' } : {}) }, select: { updatedAt: true, status: true },
         });
@@ -241,7 +241,7 @@ export class AssessmentsService {
         data: {
           ...content.settings,
           updatedAt,
-          status: action === 'publish' ? 'published' : action === 'archive' ? 'archived' : current.status,
+          status: action === 'save' ? current.status : ({ publish: 'published', archive: 'archived', draft: 'draft' } as const)[action],
           editorDraft: Prisma.DbNull,
         },
         select: { updatedAt: true, status: true },

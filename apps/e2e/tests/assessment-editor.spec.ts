@@ -99,6 +99,11 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
       }
       const scan = await new AxeBuilder({ page }).include('main').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
       expect(scan.violations.map(({ id, nodes }) => ({ id, targets: nodes.map((node) => node.target) }))).toEqual([]);
+
+      await page.getByRole('button', { name: 'Вернуть в черновики' }).click();
+      await page.getByRole('button', { name: 'Подтвердить изменения', exact: true }).click();
+      await expect(page.getByText('Черновик', { exact: true })).toBeVisible();
+      expect(await json(request.get(endpoint, { headers }))).toMatchObject({ status: 'draft' });
     } finally {
       await context.close();
     }

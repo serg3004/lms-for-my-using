@@ -2596,12 +2596,13 @@ The route requires assessment author access and permission to read questions
 and answer options at the applicable course scope.
 
 `PATCH /assessments/:id/editor` accepts the last observed `revision` (the
-assessment's `updatedAt`), an `action` of `save`, `publish` or `archive`,
+assessment's `updatedAt`), an `action` of `save`, `publish`, `archive` or `draft`,
 `confirmPublished`, and `content` with settings and ordered questions and options.
 The route requires author, question edit and option edit access. On a published
 test, `save` stores an author draft. `publish` validates the submitted
 questions and applies their order and settings in one transaction. Updates to a
-published test require confirmation. A stale revision returns HTTP 409.
+published test require confirmation. The `draft` action applies the content and
+returns the test to draft status. A stale revision returns HTTP 409.
 
 `POST /assessments/:id/editor/preview` accepts editor content, question IDs and
 answers and returns grades without recording an attempt. It requires author and
