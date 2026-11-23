@@ -39,6 +39,8 @@
   --admin-sidebar-text-muted: #cbd5e1;
 
   --shadow-card: 0 1px 2px rgb(23 32 51 / 5%), 0 8px 28px rgb(23 32 51 / 6%);
+  --shadow-button: 0 1px 2px rgb(23 32 51 / 8%), 0 0 0 1px rgb(23 32 51 / 7%);
+  --focus-ring: color-mix(in srgb, var(--color-primary) 28%, transparent);
   --color-card-border: transparent;
   --radius-sm: 6px;
   --radius-md: 12px;
@@ -113,6 +115,7 @@
   --color-info-soft: #0f2536;
   --color-info-text: #93c5fd;
   --shadow-card: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-button: 0 0 0 1px rgb(255 255 255 / 12%);
   --admin-sidebar-background: #0b0e13;
   --admin-sidebar-text: #e8ebf2;
   --admin-sidebar-text-muted: #aab3c5;
