@@ -288,8 +288,8 @@ export class CertificatesService {
         passed: true,
         countsTowardResults: true,
         deletedAt: null,
+        courseId: input.courseId,
         assessment: {
-          courseId: input.courseId,
           deletedAt: null,
         },
       },

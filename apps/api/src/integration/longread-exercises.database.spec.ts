@@ -1,9 +1,12 @@
 /// <reference types="jest" />
+import { AssessmentsService } from '../modules/assessments/assessments.service.js';
+import { createAssessmentSchema } from '../modules/assessments/assessments.schemas.js';
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, UnprocessableEntityException, type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { AssessmentAnswer, QuestionDefinition, QuestionResponse } from '@lms/shared/assessment-question-types';
 import { exerciseContentSchema, writeLongreadQuestionSchema } from '@lms/shared/longread-exercises';
+import { CertificatesService } from '../modules/certificates/certificates.service.js';
 import { ReportsService } from '../modules/reports/reports.service.js';
 import { ProgressService } from '../modules/progress/progress.service.js';
 import { PrismaService } from '../database/prisma.service.js';
@@ -84,6 +87,58 @@ describe('longread versioned exercises (PR 389) — database', () => {
     await prisma.lesson.deleteMany({ where }); await prisma.assignment.deleteMany({ where }); await prisma.courseInstructor.deleteMany({ where }); await prisma.course.deleteMany({ where });
     await prisma.membership.deleteMany({ where }); await prisma.user.deleteMany({ where }); await prisma.organization.deleteMany({ where: { id: { in: ids } } });
   });
+  it('shares a standalone assessment across courses and a longread while preserving attempt context', async () => {
+    const papers = new AssessmentsService(prisma);
+    const shared = await papers.createAssessment(createAssessmentSchema.parse({
+      organizationId: org, title: 'Shared', slug: 'shared', availableAfterCourseCompletion: false, maxAttempts: 1,
+    }));
+    const question = await prisma.assessmentQuestion.create({ data: {
+      organizationId: org, assessmentId: shared.id, type: 'true_false', title: 'Shared question',
+      definition: { type: 'true_false', correctAnswer: true }, points: 1,
+    } });
+    await papers.updateAssessmentStatus(shared.id, org, 'published');
+    const secondCourse = await prisma.course.create({ data: {
+      organizationId: org, title: 'Second', slug: 'second', status: 'published',
+    } });
+    const first = await papers.attachPlacement(shared.id, org, { courseId });
+    const secondPlacement = await papers.attachPlacement(shared.id, org, { courseId: secondCourse.id });
+    const block = await papers.attachPlacement(shared.id, org, { courseId, lessonId, longreadBlockId: blocks[0]!, questionId: question.id });
+    await papers.updateAssessment(shared.id, org, { title: 'Updated' });
+    expect(await papers.listPlacements(shared.id, org)).toHaveLength(3);
+    const draft = await drafts.getDraft(lessonId, org);
+    await versions.publish(lessonId, org, draft.revision, admin.id);
+    expect(await reader.read(lessonId, learner)).toMatchObject({ version: 2 });
+    const answer: AssessmentAnswer = { questionId: question.id, response: { type: 'true_false', value: true } };
+    const component = await submit(0, 1, answer, learner, 2);
+    expect(await prisma.assessmentAttempt.findUnique({ where: { id: component.acceptedAttemptId } }))
+      .toMatchObject({ assessmentId: shared.id, placementId: block.id, courseId, countsTowardResults: false });
+    const progress = new ProgressService(prisma);
+    expect((await progress.getProgressSummary(learner, 30)).courses).toContainEqual(expect.objectContaining({ courseId, latestAssessmentScore: null }));
+    const solo = await attempts.createAttempt(shared.id, learner.id, org, { answers: [answer] });
+    expect(solo).toMatchObject({ placementId: null, courseId: null, passed: true });
+    expect(await prisma.certificate.count({ where: { organizationId: org } })).toBe(0);
+    const certificate = new CertificatesService(prisma);
+    await expect(certificate.issueCertificate({
+      organizationId: org, courseId, userId: learner.id, assessmentAttemptId: solo.id,
+    }, learner)).rejects.toThrow(ForbiddenException);
+    const located = await attempts.createAttempt(shared.id, learner.id, org, { placementId: first.id, answers: [answer] });
+    expect(located).toMatchObject({ placementId: first.id, courseId, passed: true });
+    expect(await prisma.certificate.findMany({ where: { organizationId: org } })).toMatchObject([{ courseId, assessmentAttemptId: located.id }]);
+    expect((await progress.getProgressSummary(learner, 30)).courses).toContainEqual(expect.objectContaining({ courseId, latestAssessmentScore: 100 }));
+    await expect(certificate.issueCertificate({
+      organizationId: org, courseId: secondCourse.id, userId: learner.id, assessmentAttemptId: located.id,
+    }, learner)).rejects.toThrow(ForbiddenException);
+    const longreadResult = await exercises.finish(lessonId, learner, 2, shared.id);
+    expect(await results.getAttemptResult(longreadResult.attemptId, learner)).toMatchObject({
+      assessment: { id: shared.id, title: 'Updated' }, placementId: block.id, courseId,
+    });
+    expect(await attempts.createAttempt(shared.id, learner.id, org, { placementId: secondPlacement.id, answers: [answer] }))
+      .toMatchObject({ placementId: secondPlacement.id, courseId: secondCourse.id });
+    await papers.detachPlacement(shared.id, first.id, org);
+    expect(await attempts.listAttempts(shared.id, admin, first.id)).toMatchObject([{ id: located.id }]);
+    await expect(attempts.createAttempt(shared.id, learner.id, org, { placementId: first.id, answers: [answer] })).rejects.toThrow(NotFoundException);
+  });
+
   it('grades and persists correct and incorrect answers for all seven types without exposing keys before checking', async () => {
     const view = await reader.read(lessonId, learner);
     expect(JSON.stringify(view)).not.toMatch(/correctAnswer|correctPairs|correctOrder|acceptedAnswers|isCorrect/);

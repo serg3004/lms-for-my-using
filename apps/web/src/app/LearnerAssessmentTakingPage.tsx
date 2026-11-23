@@ -134,11 +134,12 @@ export function LearnerAssessmentTakingPage({ assessmentId }: { assessmentId: st
       const result = await getAttemptResult(attempt.id);
 
       let certificateId: string | null = null;
-      if (result.passed) {
+      const courseId = result.courseId === undefined ? loadState.data.assessment.courseId : result.courseId;
+      if (result.passed && courseId) {
         try {
           const cert = await issueCertificate({
             organizationId: result.organizationId,
-            courseId: loadState.data.assessment.courseId,
+            courseId,
             userId: result.userId,
             assessmentAttemptId: result.id,
           });

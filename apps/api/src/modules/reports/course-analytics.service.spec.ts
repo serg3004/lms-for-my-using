@@ -25,7 +25,7 @@ function build(options: { courses?: unknown[]; users?: unknown[]; audit?: unknow
     departmentMembership: { findMany: rec('departmentMembership', []) },
     user: { findMany: rec('user', options.users ?? [{ id: userId, firstName: 'Анна', lastName: 'Иванова', email: 'a@x.kz' }]), findFirst: async () => (options.users?.length === 0 ? null : { id: userId, firstName: 'Анна', lastName: 'Иванова', email: 'a@x.kz' }) },
     lesson: { findMany: rec('lesson', []) },
-    assessment: { findMany: rec('assessment', []) },
+    assessmentPlacement: { findMany: rec('assessmentPlacement', []) },
     progress: { findMany: rec('progress', []) },
     assessmentAttempt: { findMany: rec('assessmentAttempt', []) },
     certificate: { findMany: rec('certificate', []) },

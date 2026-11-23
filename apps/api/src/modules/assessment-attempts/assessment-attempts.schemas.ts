@@ -4,6 +4,7 @@ import { assessmentAnswerSchema } from '@lms/shared/assessment-question-types';
 export const createAssessmentAttemptAnswerSchema = assessmentAnswerSchema;
 
 export const createAssessmentAttemptSchema = z.object({
+  placementId: z.guid().nullable().optional(),
   answers: z.array(createAssessmentAttemptAnswerSchema).nonempty(),
 }).strict();
 

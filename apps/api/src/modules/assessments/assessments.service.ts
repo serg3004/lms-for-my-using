@@ -6,6 +6,7 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { LEGACY_LIST_LIMIT } from '../../common/query-limits.js';
 import {
   CreateAssessmentInput,
+  AssessmentPlacementInput,
   UpdateAssessmentInput,
   UpdateAssessmentStatusInput,
 } from './assessments.schemas.js';
@@ -66,9 +67,10 @@ export class AssessmentsService {
   }
 
   async createAssessment(input: CreateAssessmentInput) {
-    await this.ensureCourseExists(input.courseId, input.organizationId);
+    if (input.courseId) await this.ensureCourseExists(input.courseId, input.organizationId);
 
     if (input.lessonId) {
+      if (!input.courseId) throw new BadRequestException('A lesson requires a course');
       await this.ensureLessonBelongsToCourse(input.lessonId, input.courseId, input.organizationId);
     }
 
@@ -76,6 +78,65 @@ export class AssessmentsService {
       data: input,
       select: assessmentSelect,
     });
+  }
+
+  async listPlacements(assessmentId: string, organizationId: string) {
+    await this.getAssessment(assessmentId, organizationId);
+    return this.prisma.assessmentPlacement.findMany({
+      where: { assessmentId, organizationId, deletedAt: null, course: { deletedAt: null } },
+      orderBy: { id: 'asc' },
+    });
+  }
+
+  async attachPlacement(assessmentId: string, organizationId: string, input: AssessmentPlacementInput) {
+    const { questionId, ...location } = input;
+    await this.ensureCourseExists(input.courseId, organizationId);
+    if (input.lessonId) await this.ensureLessonBelongsToCourse(input.lessonId, input.courseId, organizationId);
+    return this.prisma.$transaction(async (tx) => {
+      const assessment = await tx.assessment.findFirst({
+        where: { id: assessmentId, organizationId, deletedAt: null }, select: { id: true },
+      });
+      if (!assessment) throw new NotFoundException('Assessment not found');
+      if (input.longreadBlockId) {
+        const document = await tx.longreadDocument.findFirst({
+          where: { lessonId: input.lessonId, organizationId }, select: { id: true },
+        });
+        if (!document) throw new NotFoundException('Longread not found');
+        await tx.$queryRaw`SELECT id FROM longread_documents WHERE id = ${document.id}::uuid FOR UPDATE`;
+        const block = await tx.longreadBlock.findFirst({
+          where: { id: input.longreadBlockId, organizationId, type: 'exercise',
+            chapter: { documentId: document.id } },
+          select: { id: true, content: true },
+        });
+        if (!block) throw new NotFoundException('Longread exercise not found');
+        const question = await tx.assessmentQuestion.findFirst({
+          where: { id: questionId, assessmentId, organizationId, deletedAt: null }, select: { id: true },
+        });
+        if (!question) throw new NotFoundException('Assessment question not found');
+        await tx.assessmentPlacement.updateMany({
+          where: { organizationId, longreadBlockId: block.id, assessmentId: { not: assessmentId }, deletedAt: null },
+          data: { deletedAt: new Date() },
+        });
+        const content = block.content && typeof block.content === 'object' && !Array.isArray(block.content) ? block.content : {};
+        await tx.longreadBlock.update({ where: { id: block.id }, data: { content: { ...content, questionId: question.id } } });
+        await tx.longreadDocument.update({ where: { id: document.id }, data: { draftRevision: { increment: 1 } } });
+      }
+      const locationKey = input.longreadBlockId ? `block:${input.longreadBlockId}`
+        : input.lessonId ? `lesson:${input.lessonId}` : `course:${input.courseId}`;
+      return tx.assessmentPlacement.upsert({
+        where: { assessmentId_locationKey: { assessmentId, locationKey } },
+        create: { assessmentId, organizationId, locationKey, ...location },
+        update: { deletedAt: null },
+      });
+    });
+  }
+
+  async detachPlacement(assessmentId: string, placementId: string, organizationId: string) {
+    const result = await this.prisma.assessmentPlacement.updateMany({
+      where: { id: placementId, assessmentId, organizationId, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    if (!result.count) throw new NotFoundException('Assessment placement not found');
   }
 
   async updateAssessmentStatus(

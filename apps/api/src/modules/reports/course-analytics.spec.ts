@@ -14,7 +14,7 @@ const base: CourseAnalyticsInput = {
 };
 const assign = (userId: string, dueAt: Date | null = null, completed = false) => ({ courseId: 'c1', userId, dueAt, completed });
 const attempt = (userId: string, percentage: number, passed: boolean, startedAt = d(2)) => ({
-  assessmentId: 't1', userId, status: 'completed' as const, percentage, score: percentage, passed, startedAt, completedAt: startedAt,
+  assessmentId: 't1', courseId: 'c1', userId, status: 'completed' as const, percentage, score: percentage, passed, startedAt, completedAt: startedAt,
 });
 const lesson = (userId: string, lessonId: string, day: number) => ({
   courseId: 'c1', userId, lessonId, status: 'completed' as const, createdAt: d(1), completedAt: d(day),
@@ -79,4 +79,15 @@ describe('course analytics rules', () => {
     expect(median([5, 1, 3])).toBe(3);
     expect(median([1, 2, 3, 4])).toBe(2.5);
   });
+});
+
+it('attributes attempts only to their course when an assessment is shared', () => {
+  const rows = buildCourseUserRows({
+    ...base,
+    assignments: [assign('u1'), { ...assign('u1'), courseId: 'c2' }],
+    assessments: [...base.assessments, { id: 't1', courseId: 'c2' }],
+    attempts: [attempt('u1', 40, false), { ...attempt('u1', 100, true), courseId: null }],
+  });
+  expect(rows.find((row) => row.courseId === 'c1')).toMatchObject({ attempts: 1, testPercent: 40 });
+  expect(rows.find((row) => row.courseId === 'c2')).toMatchObject({ attempts: 0, testResult: 'pending' });
 });

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { frozenAssessmentQuestionSchema } from '../../common/assessment-frozen.js';
-import { captureExerciseQuestions, publicExerciseQuestion } from './longread-exercise-snapshot.js';
+import { captureExerciseQuestions, publicExerciseQuestion, visibleExercises } from './longread-exercise-snapshot.js';
 import { stableJson } from '../../common/stable-json.js';
 import { checkLongreadFiles } from './longread-file-references.js';
 import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
@@ -83,6 +83,17 @@ export class LongreadVersionsService {
       const settings = readSettings(document.settings);
       const reasons = [...captured.reasons, ...checkPublishable(snapshot, settings), ...await checkLongreadFiles(tx, document.id, { settings, chapters: snapshot }, true)];
       if (reasons.length) throw new UnprocessableEntityException({ message: 'The longread cannot be published', reasons });
+      const exercises = visibleExercises(snapshot);
+      if (exercises.length) {
+        const lesson = await tx.lesson.findUniqueOrThrow({ where: { id: lessonId }, select: { courseId: true } });
+        await tx.assessmentPlacement.createMany({
+          data: exercises.map((block) => ({
+            assessmentId: block.question.assessment.id, organizationId, courseId: lesson.courseId,
+            lessonId, longreadBlockId: block.id, locationKey: `block:${block.id}`,
+          })),
+          skipDuplicates: true,
+        });
+      }
       let revision;
       let republished = false;
       if (latest && latest.sourceDraftRevision === document.draftRevision && stableJson(latest.snapshot) === stableJson(snapshot)) {

@@ -265,7 +265,7 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
       ) : null}
 
       <nav style={{ marginTop: '18px' }}>
-        <a href={getCourseHref(assessment.courseId)}>{courseTitle}</a>
+        {assessment.courseId && <a href={getCourseHref(assessment.courseId)}>{courseTitle}</a>}
       </nav>
     </>
   );

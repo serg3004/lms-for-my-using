@@ -1,16 +1,19 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { z } from 'zod';
+import { Body, Controller, ForbiddenException, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
 import { Roles, rolePolicies } from '../auth/public.js';
 import { RolesGuard } from '../auth/public.js';
-import { CourseAccessGuard, CourseScope } from '../course-access/public.js';
+import { isInstructorCourseScoped, CourseAccessGuard, CourseScope } from '../course-access/public.js';
 import { AssessmentAttemptsService } from './assessment-attempts.service.js';
 import {
   createAssessmentAttemptSchema,
   CreateAssessmentAttemptInput,
 } from './assessment-attempts.schemas.js';
 import { AssessmentResultsService } from './assessment-results.service.js';
+
+const placementQuery = z.union([z.guid(), z.literal('standalone').transform(() => null)]).optional();
 
 @Controller()
 @UseGuards(AuthGuard, RolesGuard, CourseAccessGuard)
@@ -23,15 +26,15 @@ export class AssessmentAttemptsController {
   @Get('assessments/:assessmentId/attempts')
   @Roles(...rolePolicies.assessmentAttemptsRead)
   @CourseScope('param', 'assessmentId', 'assessment')
-  listAttempts(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest) {
-    return this.assessmentAttemptsService.listAttempts(assessmentId, request.currentUser!);
+  listAttempts(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest, @Query('placementId') placementId?: string) {
+    return this.assessmentAttemptsService.listAttempts(assessmentId, request.currentUser!, placementQuery.parse(placementId));
   }
 
   @Get('assessments/:assessmentId/results')
   @Roles(...rolePolicies.assessmentAttemptsRead)
   @CourseScope('param', 'assessmentId', 'assessment')
-  listAssessmentResults(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest) {
-    return this.assessmentResultsService.listAssessmentResults(assessmentId, request.currentUser!);
+  listAssessmentResults(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest, @Query('placementId') placementId?: string) {
+    return this.assessmentResultsService.listAssessmentResults(assessmentId, request.currentUser!, placementQuery.parse(placementId));
   }
 
   @Get('assessments/:assessmentId/report')
@@ -73,11 +76,14 @@ export class AssessmentAttemptsController {
   @Post('assessments/:assessmentId/attempts/start')
   @Roles(...rolePolicies.assessmentAttemptsCreate)
   @CourseScope('param', 'assessmentId', 'assessment')
-  startAttempt(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest) {
+  startAttempt(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest, @Query('placementId') placementId?: string) {
+    const placement = placementQuery.parse(placementId);
+    if (placement !== undefined && isInstructorCourseScoped(request.currentUser!)) throw new ForbiddenException();
     return this.assessmentAttemptsService.startAttempt(
       assessmentId,
       request.currentUser!.id,
       request.currentUser!.organizationId,
+      placement,
     );
   }
 
@@ -91,6 +97,7 @@ export class AssessmentAttemptsController {
   ) {
     const input: CreateAssessmentAttemptInput = createAssessmentAttemptSchema.parse(body);
 
+    if (input.placementId !== undefined && isInstructorCourseScoped(request.currentUser!)) throw new ForbiddenException();
     return this.assessmentAttemptsService.createAttempt(
       assessmentId,
       request.currentUser!.id,
