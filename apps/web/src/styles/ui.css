@@ -713,8 +713,8 @@
 
 /* «⋯» menu trigger for rare actions: a square text button. */
 .ds-button--icon {
-  min-width: 2.25rem;
-  min-height: 2.25rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   padding: 0.25rem;
   font-size: 1.25rem;
   line-height: 1;
