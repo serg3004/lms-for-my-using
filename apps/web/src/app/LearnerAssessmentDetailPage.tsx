@@ -22,15 +22,15 @@ type AssessmentDetailData = {
 };
 
 const COLORS = {
-  surface: '#ffffff',
-  soft: '#f8fafc',
-  text: '#172033',
-  muted: '#6b7280',
-  border: '#e3e8ef',
-  primary: '#4f46e5',
-  warning: '#d97706',
-  warningSoft: '#fff7e8',
-  primarySoft: '#eef2ff',
+  surface: 'var(--color-surface)',
+  soft: 'var(--color-surface-muted)',
+  text: 'var(--color-text)',
+  muted: 'var(--color-text-muted)',
+  border: 'var(--color-border)',
+  primary: 'var(--color-primary)',
+  warning: 'var(--color-warning)',
+  warningSoft: 'var(--color-warning-bg)',
+  primarySoft: 'var(--color-accent-soft)',
 };
 
 function getCourseTitle(assessment: ReadableAssessmentSummary, fallback: string) {
@@ -186,7 +186,7 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
           </div>
 
           {isAvailable ? (
-            <div style={{ padding: '14px', borderRadius: '12px', background: COLORS.warningSoft, color: '#8a4b05', fontSize: '13px', lineHeight: 1.5, margin: '18px 0' }}>
+            <div style={{ padding: '14px', borderRadius: '12px', background: COLORS.warningSoft, color: 'var(--color-warning-text)', fontSize: '13px', lineHeight: 1.5, margin: '18px 0' }}>
               {t('assessments.startNotice')}
             </div>
           ) : null}

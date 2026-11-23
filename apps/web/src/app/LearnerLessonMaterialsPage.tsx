@@ -23,13 +23,13 @@ type LessonMaterialsLoadState =
 
 const COLORS = {
   bg: '#f4f7fb',
-  surface: '#ffffff',
-  soft: '#f8fafc',
-  text: '#172033',
-  muted: '#6b7280',
-  border: '#e3e8ef',
-  primary: '#4f46e5',
-  warningSoft: '#fff7e8',
+  surface: 'var(--color-surface)',
+  soft: 'var(--color-surface-muted)',
+  text: 'var(--color-text)',
+  muted: 'var(--color-text-muted)',
+  border: 'var(--color-border)',
+  primary: 'var(--color-primary)',
+  warningSoft: 'var(--color-warning-bg)',
   warningText: '#8a4b05',
 };
 
@@ -276,7 +276,7 @@ export function LearnerLessonMaterialsPage({ lessonId }: { lessonId: string }) {
                         borderRadius: '15px',
                         display: 'grid',
                         placeItems: 'center',
-                        background: '#eef2ff',
+                        background: 'var(--color-accent-soft)',
                         color: COLORS.primary,
                         fontWeight: 900,
                       }}

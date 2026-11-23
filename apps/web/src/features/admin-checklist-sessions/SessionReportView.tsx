@@ -23,16 +23,16 @@ import { formatParticipantName } from './domain.js';
 type Report = ChecklistSessionReport | ChecklistInstanceReport;
 type ReportCriterion = Report['criteria'][number];
 
-const muted = { color: '#6b7280', fontSize: 13 } as const;
+const muted = { color: 'var(--color-text-muted)', fontSize: 13 } as const;
 const gridColumns = (min: number) => ({ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${min}px, 1fr))`, gap: 12 }) as const;
 
 /** The painted look of one highlighted row: soft fill, readable text and a coloured stripe on the left. */
 export function highlightedRowStyle(color: ChecklistReportHighlight | null) {
-  if (!color) return { border: '1px solid #e3e8ef' };
+  if (!color) return { border: '1px solid var(--color-border)' };
   return {
     background: color.light.fill,
     color: color.light.text,
-    border: '1px solid #e3e8ef',
+    border: '1px solid var(--color-border)',
     borderLeft: `6px solid ${color.color}`,
   };
 }
@@ -88,7 +88,7 @@ function ResultArc({ percentage, color }: { percentage: number | null; color: Ch
       <circle cx={52} cy={52} fill="none" r={radius} stroke="#e3e8ef" strokeWidth={10} />
       {percentage !== null && (
         <circle
-          cx={52} cy={52} fill="none" r={radius} stroke={color?.color ?? '#6b7280'} strokeDasharray={`${filled} ${circumference}`}
+          cx={52} cy={52} fill="none" r={radius} stroke={color?.color ?? 'var(--color-text-muted)'} strokeDasharray={`${filled} ${circumference}`}
           strokeLinecap="round" strokeWidth={10} transform="rotate(-90 52 52)"
         />
       )}
@@ -207,8 +207,8 @@ export function ReportGroups({ groups, showNumbering, t }: { showNumbering?: boo
                   : t('admin.checklists.report.groupScore', '{{percent}}% — {{earned}} of {{max}}', { percent: group.percentage, earned: group.score, max: group.maxScore })}
               </span>
             </div>
-            <div aria-hidden style={{ background: '#ffffff', borderRadius: 4, height: 8, marginTop: 8, overflow: 'hidden' }}>
-              <div style={{ background: group.color?.color ?? '#6b7280', height: '100%', width: `${group.percentage ?? 0}%` }} />
+            <div aria-hidden style={{ background: 'var(--color-surface)', borderRadius: 4, height: 8, marginTop: 8, overflow: 'hidden' }}>
+              <div style={{ background: group.color?.color ?? 'var(--color-text-muted)', height: '100%', width: `${group.percentage ?? 0}%` }} />
             </div>
           </li>
         ))}
@@ -293,7 +293,7 @@ export function ReportCriteria({ report, t }: { report: Report; t: TFunction }) 
     const cell = { padding: 8, verticalAlign: 'top', ...fill } as const;
     rows.push(
       <tr key={criterion.id}>
-        <td style={{ ...cell, borderLeft: `6px solid ${criterion.color?.color ?? '#e3e8ef'}` }}>
+        <td style={{ ...cell, borderLeft: `6px solid ${criterion.color?.color ?? 'var(--color-border)'}` }}>
           {report.checklist.showNumbering !== false && criterion.number && <><strong>{checklistLabel('', criterion.number, true, '')}</strong>{' '}</>}<span><RichText value={criterion.text} /></span>
           {criterion.description && <p><RichDescription value={criterion.description} /></p>}
         </td>

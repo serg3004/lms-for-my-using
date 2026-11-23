@@ -35,16 +35,16 @@ const storageKey = 'lms.adminThemeSettings';
 export const defaultThemeSettings: ThemeSettings = {
   colorPrimary: '#4f46e5',
   colorPrimaryHover: '#4338ca',
-  colorBackground: '#f5f7fb',
+  colorBackground: '#f4f5fb',
   colorSurface: '#ffffff',
   colorSurfaceMuted: '#f8fafc',
   colorBorder: '#e3e8ef',
   colorText: '#172033',
   colorTextMuted: '#667085',
-  shadowCard: '0 8px 24px rgb(23 32 51 / 5%)',
+  shadowCard: '0 1px 2px rgb(23 32 51 / 5%), 0 8px 28px rgb(23 32 51 / 6%)',
   radiusSm: '6px',
-  radiusMd: '11px',
-  radiusLg: '18px',
+  radiusMd: '12px',
+  radiusLg: '20px',
   spacePage: 'clamp(16px, 4vw, 48px)',
   adminSidebarBackground: '#111827',
   adminSidebarText: '#ffffff',
@@ -129,16 +129,68 @@ function normalizeThemeSettings(value: unknown): ThemeSettings {
   };
 }
 
+/** Values that were the default before the "C + indigo" refresh (PR 566). A saved theme still holding one of them is treated as "not customised", so it follows the new default look. */
+const legacyDefaults: Partial<Record<CssThemeKey, string>> = {
+  colorBackground: '#f5f7fb',
+  shadowCard: '0 8px 24px rgb(23 32 51 / 5%)',
+  radiusMd: '11px',
+  radiusLg: '18px',
+};
+
+/** Organisation colours that only make sense on the light theme; in the dark theme the dark tokens win. */
+const lightOnlyKeys: ReadonlySet<CssThemeKey> = new Set<CssThemeKey>([
+  'colorBackground',
+  'colorSurface',
+  'colorSurfaceMuted',
+  'colorBorder',
+  'colorText',
+  'colorTextMuted',
+  'shadowCard',
+  'adminSidebarBackground',
+  'adminSidebarText',
+  'adminSidebarTextMuted',
+]);
+
+function isDefaultValue(key: CssThemeKey, value: string) {
+  const normalized = value.trim().toLowerCase();
+
+  return normalized === defaultThemeSettings[key].toLowerCase() || normalized === legacyDefaults[key]?.toLowerCase();
+}
+
+let appliedSettings: ThemeSettings = defaultThemeSettings;
+
+/**
+ * Writes only what the organisation really customised as inline variables. Everything left at its default is removed,
+ * so the stylesheet (light or dark tokens) decides. In the dark theme the brand colour is lightened so it stays readable.
+ */
 export function applyThemeSettings(settings: ThemeSettings) {
+  appliedSettings = settings;
+
   if (typeof document === 'undefined') {
     return;
   }
 
   const root = document.documentElement;
+  const dark = root.dataset.theme === 'dark';
 
   (Object.entries(themeVariables) as Array<[CssThemeKey, string]>).forEach(([key, variable]) => {
-    root.style.setProperty(variable, settings[key]);
+    const value = settings[key];
+
+    if (isDefaultValue(key, value) || (dark && lightOnlyKeys.has(key))) {
+      root.style.removeProperty(variable);
+    } else if (dark && key === 'colorPrimary') {
+      root.style.setProperty(variable, `color-mix(in srgb, ${value} 60%, white)`);
+    } else if (dark && key === 'colorPrimaryHover') {
+      root.style.setProperty(variable, `color-mix(in srgb, ${value} 45%, white)`);
+    } else {
+      root.style.setProperty(variable, value);
+    }
   });
+}
+
+/** Re-applies the last organisation theme, e.g. after the light/dark mode changed. */
+export function reapplyThemeSettings() {
+  applyThemeSettings(appliedSettings);
 }
 
 export function getStoredThemeSettings() {

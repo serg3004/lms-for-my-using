@@ -19,6 +19,25 @@
   --color-danger-bg: #fee2e2;
   --color-info-bg: #e0f2fe;
 
+  --color-text-subtle: #596274;
+  --color-accent-soft: #eef2ff;
+  --color-accent-strong: #3730a3;
+  --color-accent-border: #c7d2fe;
+  --color-violet-soft: #ede9fe;
+  --color-violet: #6d28d9;
+  --color-warning-text: #8a4b05;
+  --color-danger-soft: #fef2f2;
+  --color-danger-text: #b91c1c;
+  --color-on-danger: #ffffff;
+  --color-success-soft: #ecfdf5;
+  --color-info-soft: #eff6ff;
+  --color-info-text: #1d4ed8;
+  --color-border-strong: #b8c8e0;
+  --color-surface-secondary: #f0f4fa;
+  --admin-sidebar-background: #111827;
+  --admin-sidebar-text: #ffffff;
+  --admin-sidebar-text-muted: #cbd5e1;
+
   --shadow-card: 0 1px 2px rgb(23 32 51 / 5%), 0 8px 28px rgb(23 32 51 / 6%);
   --color-card-border: transparent;
   --radius-sm: 6px;
@@ -56,4 +75,45 @@
   --fw-medium: 500;
   --fw-semibold: 600;
   --fw-bold: 700;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-background: #0f1218;
+  --color-surface: #181c24;
+  --color-surface-muted: #1d222b;
+  --color-surface-secondary: #1d222b;
+  --color-border: #2a303b;
+  --color-border-strong: #3a4250;
+  --color-card-border: #2a303b;
+  --color-text: #e8ebf2;
+  --color-text-muted: #98a2b3;
+  --color-text-subtle: #98a2b3;
+  --color-primary: #8b85ff;
+  --color-primary-hover: #a09bff;
+  --color-on-primary: #10131a;
+  --color-accent-soft: #25234a;
+  --color-accent-strong: #c7c3ff;
+  --color-accent-border: #3b3a7a;
+  --color-violet-soft: #2e2557;
+  --color-violet: #c4b5fd;
+  --color-danger: #f87171;
+  --color-danger-bg: #3b1414;
+  --color-danger-soft: #2f1515;
+  --color-danger-text: #fca5a5;
+  --color-on-danger: #1a0b0b;
+  --color-success: #5fd08b;
+  --color-success-bg: #12301f;
+  --color-success-soft: #112a1c;
+  --color-warning: #f0b04c;
+  --color-warning-text: #f0b04c;
+  --color-warning-bg: #3a2b0c;
+  --color-info: #7cc4ff;
+  --color-info-bg: #0f2a3d;
+  --color-info-soft: #0f2536;
+  --color-info-text: #93c5fd;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 40%);
+  --admin-sidebar-background: #0b0e13;
+  --admin-sidebar-text: #e8ebf2;
+  --admin-sidebar-text-muted: #aab3c5;
 }

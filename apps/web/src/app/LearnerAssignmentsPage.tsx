@@ -48,12 +48,12 @@ function getEffectiveStatus(a: ExtendedAssignment): 'overdue' | 'completed' | 'a
 }
 
 const STATUS_BADGE = {
-  overdue:   { labelKey: 'assignments.statusBadgeUrgent',  bg: '#fef2f2', color: '#dc2626' },
-  assigned:  { labelKey: 'assignments.statusBadgeActive',  bg: '#eef2ff', color: '#4f46e5' },
+  overdue:   { labelKey: 'assignments.statusBadgeUrgent',  bg: '#fef2f2', color: 'var(--color-danger)' },
+  assigned:  { labelKey: 'assignments.statusBadgeActive',  bg: 'var(--color-accent-soft)', color: 'var(--color-primary)' },
   completed: { labelKey: 'assignments.statusBadgeDone',    bg: '#e9f8f2', color: '#0f9f6e' },
 } as const;
 
-const TYPE_BADGE = { labelKey: 'assignments.typeBadgeCourse', bg: '#eef2ff', color: '#4f46e5' } as const;
+const TYPE_BADGE = { labelKey: 'assignments.typeBadgeCourse', bg: 'var(--color-accent-soft)', color: 'var(--color-primary)' } as const;
 
 function Badge({ bg, color, label }: { bg: string; color: string; label: string }) {
   return (
@@ -70,11 +70,11 @@ function Badge({ bg, color, label }: { bg: string; color: string; label: string 
 function SummaryCard({ value, label }: { value: number; label: string }) {
   return (
     <div style={{
-      background: '#fff', border: '1px solid #e3e8ef', borderRadius: '14px',
+      background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '14px',
       padding: '18px', boxShadow: '0 6px 18px rgba(23,32,51,.04)',
     }}>
-      <strong style={{ display: 'block', fontSize: '28px', marginBottom: '5px', color: '#172033' }}>{value}</strong>
-      <span style={{ color: '#6b7280', fontSize: '13px' }}>{label}</span>
+      <strong style={{ display: 'block', fontSize: '28px', marginBottom: '5px', color: 'var(--color-text)' }}>{value}</strong>
+      <span style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>{label}</span>
     </div>
   );
 }
@@ -83,10 +83,10 @@ function ProgressBar({ pct, success, label }: { pct: number; success?: boolean; 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginBottom: '8px', fontSize: '13px' }}>
-        <span style={{ color: '#6b7280' }}>{label}</span>
-        <strong style={{ color: '#172033' }}>{pct}%</strong>
+        <span style={{ color: 'var(--color-text-muted)' }}>{label}</span>
+        <strong style={{ color: 'var(--color-text)' }}>{pct}%</strong>
       </div>
-      <div style={{ height: '9px', background: '#edf0f5', borderRadius: '999px', overflow: 'hidden' }}>
+      <div style={{ height: '9px', background: 'var(--color-surface-muted)', borderRadius: '999px', overflow: 'hidden' }}>
         <div style={{
           height: '100%', borderRadius: '999px', width: `${pct}%`,
           background: success ? '#0f9f6e' : 'linear-gradient(90deg,#4f46e5,#7c3aed)',
@@ -149,13 +149,13 @@ export function LearnerAssignmentsPage() {
       {/* Page header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px', marginBottom: '22px' }}>
         <div>
-          <div style={{ color: '#4f46e5', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '8px' }}>
+          <div style={{ color: 'var(--color-primary)', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: '8px' }}>
             {t('learner.navLink')}
           </div>
-          <h1 style={{ margin: '0', fontSize: 'clamp(28px,4vw,38px)', fontWeight: 800, color: '#172033' }}>
+          <h1 style={{ margin: '0', fontSize: 'clamp(28px,4vw,38px)', fontWeight: 800, color: 'var(--color-text)' }}>
             {t('assignments.title')}
           </h1>
-          <p style={{ margin: '10px 0 0', color: '#6b7280', lineHeight: 1.6, maxWidth: '760px', fontSize: '14px' }}>
+          <p style={{ margin: '10px 0 0', color: 'var(--color-text-muted)', lineHeight: 1.6, maxWidth: '760px', fontSize: '14px' }}>
             {t('assignments.subtitle')}
           </p>
         </div>
@@ -177,14 +177,14 @@ export function LearnerAssignmentsPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={{
-            padding: '11px 14px', border: '1px solid #e3e8ef', borderRadius: '12px',
-            background: '#f8fafc', outline: 'none', fontSize: '14px', minWidth: '220px',
+            padding: '11px 14px', border: '1px solid var(--color-border)', borderRadius: '12px',
+            background: 'var(--color-surface-muted)', outline: 'none', fontSize: '14px', minWidth: '220px',
           }}
         />
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-          style={{ padding: '11px 13px', border: '1px solid #e3e8ef', background: '#fff', borderRadius: '12px', fontSize: '14px', color: '#172033' }}
+          style={{ padding: '11px 13px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', borderRadius: '12px', fontSize: '14px', color: 'var(--color-text)' }}
         >
           <option value="all">{t('assignments.filterAll')}</option>
           <option value="assigned">{t('assignments.filterActive')}</option>
@@ -194,7 +194,7 @@ export function LearnerAssignmentsPage() {
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
-          style={{ padding: '11px 13px', border: '1px solid #e3e8ef', background: '#fff', borderRadius: '12px', fontSize: '14px', color: '#172033' }}
+          style={{ padding: '11px 13px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', borderRadius: '12px', fontSize: '14px', color: 'var(--color-text)' }}
         >
           <option value="all">{t('assignments.filterAllTypes')}</option>
           <option value="course">{t('assignments.filterTypeCourse')}</option>
@@ -202,7 +202,7 @@ export function LearnerAssignmentsPage() {
         <div style={{ flex: 1 }} />
         <button
           type="button"
-          style={{ height: '42px', border: '1px solid #e3e8ef', background: '#fff', borderRadius: '12px', padding: '0 13px', fontSize: '14px', cursor: 'pointer', color: '#172033' }}
+          style={{ height: '42px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', borderRadius: '12px', padding: '0 13px', fontSize: '14px', cursor: 'pointer', color: 'var(--color-text)' }}
           onClick={() => { /* sort by due date */ }}
         >
           {t('assignments.sortNearest', 'Сначала ближайшие')}
@@ -212,14 +212,14 @@ export function LearnerAssignmentsPage() {
       {/* Assignment list */}
       {filtered.length === 0 ? (
         <div style={{
-          textAlign: 'center', padding: '50px 20px', background: '#fff',
-          border: '1px solid #e3e8ef', borderRadius: '20px',
+          textAlign: 'center', padding: '50px 20px', background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)', borderRadius: '20px',
         }}>
           <div style={{ fontSize: '40px', marginBottom: '10px' }}>⌕</div>
-          <strong style={{ display: 'block', fontSize: '22px', margin: '10px 0 6px', color: '#172033' }}>
+          <strong style={{ display: 'block', fontSize: '22px', margin: '10px 0 6px', color: 'var(--color-text)' }}>
             {t('assignments.empty')}
           </strong>
-          <span style={{ color: '#6b7280' }}>{t('assignments.emptyHint')}</span>
+          <span style={{ color: 'var(--color-text-muted)' }}>{t('assignments.emptyHint')}</span>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '14px' }}>
@@ -235,7 +235,7 @@ export function LearnerAssignmentsPage() {
             return (
               <a key={assignment.id} href={href} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <article style={{
-                  background: '#fff', border: '1px solid #e3e8ef', borderRadius: '20px',
+                  background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '20px',
                   boxShadow: '0 10px 28px rgba(23,32,51,.07)', padding: '20px',
                   display: 'grid',
                   gridTemplateColumns: 'minmax(0,1fr) 210px 160px',
@@ -248,15 +248,15 @@ export function LearnerAssignmentsPage() {
                       <Badge bg={statusBadge.bg} color={statusBadge.color} label={t(statusBadge.labelKey)} />
                       <Badge bg={TYPE_BADGE.bg} color={TYPE_BADGE.color} label={t(TYPE_BADGE.labelKey)} />
                     </div>
-                    <h2 style={{ margin: '0 0 7px', fontSize: '20px', fontWeight: 700, color: '#172033', lineHeight: 1.35 }}>
+                    <h2 style={{ margin: '0 0 7px', fontSize: '20px', fontWeight: 700, color: 'var(--color-text)', lineHeight: 1.35 }}>
                       {courseTitle ?? t('assignments.courseLabel')}
                     </h2>
                     {(assignment.userName ?? assignment.groupName) ? (
-                      <div style={{ color: '#6b7280', fontSize: '13px', marginBottom: '12px' }}>
+                      <div style={{ color: 'var(--color-text-muted)', fontSize: '13px', marginBottom: '12px' }}>
                         {assignment.userName ?? assignment.groupName}
                       </div>
                     ) : courseTitle ? (
-                      <div style={{ color: '#6b7280', fontSize: '13px', marginBottom: '12px' }}>
+                      <div style={{ color: 'var(--color-text-muted)', fontSize: '13px', marginBottom: '12px' }}>
                         {t('assignments.courseLabel')}: {courseTitle}
                       </div>
                     ) : null}
@@ -270,21 +270,21 @@ export function LearnerAssignmentsPage() {
                   {/* Due date column */}
                   <div style={{ display: 'grid', gap: '8px', justifyItems: 'end' }}>
                     <div>
-                      <div style={{ color: '#6b7280', fontSize: '12px', marginBottom: '4px' }}>
+                      <div style={{ color: 'var(--color-text-muted)', fontSize: '12px', marginBottom: '4px' }}>
                         {assignment.status === 'completed' ? t('assignments.completedAt') : t('assignments.dueAt')}
                       </div>
                       {dueDate ? (
-                        <strong style={{ fontSize: '15px', color: overdue ? '#dc2626' : '#172033' }}>
+                        <strong style={{ fontSize: '15px', color: overdue ? '#dc2626' : 'var(--color-text)' }}>
                           {dueDate}
                         </strong>
                       ) : (
-                        <span style={{ color: '#6b7280', fontSize: '13px' }}>{t('assignments.notAvailable')}</span>
+                        <span style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>{t('assignments.notAvailable')}</span>
                       )}
                     </div>
                     <span style={{
                       display: 'inline-block', padding: '11px 14px',
-                      background: assignment.status === 'completed' ? '#fff' : '#4f46e5',
-                      color: assignment.status === 'completed' ? '#172033' : '#fff',
+                      background: assignment.status === 'completed' ? '#fff' : 'var(--color-primary)',
+                      color: assignment.status === 'completed' ? 'var(--color-text)' : '#fff',
                       borderRadius: '12px', fontSize: '14px', fontWeight: 800,
                       border: assignment.status === 'completed' ? '1px solid #e3e8ef' : 'none',
                       width: '100%', textAlign: 'center',

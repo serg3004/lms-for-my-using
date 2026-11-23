@@ -21,17 +21,17 @@ type AssessmentRow = {
 type LearnerAssessmentsData = { rows: AssessmentRow[] };
 
 const COLORS = {
-  surface: '#ffffff',
-  soft: '#f8fafc',
-  text: '#172033',
-  muted: '#6b7280',
-  border: '#e3e8ef',
-  primary: '#4f46e5',
-  success: '#0f9f6e',
-  successSoft: '#e9f8f2',
-  warning: '#d97706',
-  warningSoft: '#fff7e8',
-  primarySoft: '#eef2ff',
+  surface: 'var(--color-surface)',
+  soft: 'var(--color-surface-muted)',
+  text: 'var(--color-text)',
+  muted: 'var(--color-text-muted)',
+  border: 'var(--color-border)',
+  primary: 'var(--color-primary)',
+  success: 'var(--color-success)',
+  successSoft: 'var(--color-success-bg)',
+  warning: 'var(--color-warning)',
+  warningSoft: 'var(--color-warning-bg)',
+  primarySoft: 'var(--color-accent-soft)',
 };
 
 function getAssessmentHref(assessmentId: string) {
@@ -261,7 +261,7 @@ export function LearnerAssessmentsPage() {
                 </div>
 
                 {row.completed && row.bestPercentage !== null ? (
-                  <div style={{ height: '9px', background: '#edf0f5', borderRadius: '999px', overflow: 'hidden', marginBottom: '18px' }}>
+                  <div style={{ height: '9px', background: 'var(--color-surface-muted)', borderRadius: '999px', overflow: 'hidden', marginBottom: '18px' }}>
                     <div style={{ width: `${row.bestPercentage}%`, height: '100%', background: COLORS.success, borderRadius: '999px' }} />
                   </div>
                 ) : null}

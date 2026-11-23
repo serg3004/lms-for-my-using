@@ -24,13 +24,13 @@ type LearnerLessonsData = {
 };
 
 const COLORS = {
-  surface: '#ffffff',
-  soft: '#f8fafc',
-  text: '#172033',
-  muted: '#6b7280',
-  border: '#e3e8ef',
-  primary: '#4f46e5',
-  primarySoft: '#eef2ff',
+  surface: 'var(--color-surface)',
+  soft: 'var(--color-surface-muted)',
+  text: 'var(--color-text)',
+  muted: 'var(--color-text-muted)',
+  border: 'var(--color-border)',
+  primary: 'var(--color-primary)',
+  primarySoft: 'var(--color-accent-soft)',
 };
 
 export function LearnerLessonsPage({ courseId }: { courseId: string }) {
@@ -139,7 +139,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.25fr) minmax(280px,.75fr)', gap: '22px', alignItems: 'start' }}>
         <div className="ds-card" style={{ padding: '24px' }}>
-          <h3 style={{ margin: '0 0 18px', fontSize: '18px', color: '#172033' }}>{t('lessons.listTitle')}</h3>
+          <h3 style={{ margin: '0 0 18px', fontSize: '18px', color: 'var(--color-text)' }}>{t('lessons.listTitle')}</h3>
           {publishedLessons.length === 0 ? (
             <EmptyState message={t('lessons.empty')} />
           ) : (
@@ -191,7 +191,7 @@ export function LearnerLessonsPage({ courseId }: { courseId: string }) {
               <span style={{ color: COLORS.muted }}>{t('lessons.heroProgress')}</span>
               <strong style={{ color: COLORS.text }}>{completedCount} / {publishedLessons.length}</strong>
             </div>
-            <div style={{ height: '10px', background: '#edf0f5', borderRadius: '999px', overflow: 'hidden' }}>
+            <div style={{ height: '10px', background: 'var(--color-surface-muted)', borderRadius: '999px', overflow: 'hidden' }}>
               <div style={{ height: '100%', borderRadius: '999px', width: `${overallPercent}%`, background: `linear-gradient(90deg,${COLORS.primary},#7c3aed)`, transition: 'width .3s ease' }} />
             </div>
           </section>

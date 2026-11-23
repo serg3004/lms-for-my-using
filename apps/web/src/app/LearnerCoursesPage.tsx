@@ -53,13 +53,13 @@ export function mergeCourseProgress(
 }
 
 const SEL_STYLE: React.CSSProperties = {
-  border: '1px solid #e3e8ef',
-  background: '#fff',
+  border: '1px solid var(--color-border)',
+  background: 'var(--color-surface)',
   borderRadius: '12px',
   padding: '11px 13px',
   fontSize: '14px',
   cursor: 'pointer',
-  color: '#172033',
+  color: 'var(--color-text)',
 };
 
 export function LearnerCoursesPage() {
@@ -133,7 +133,7 @@ export function LearnerCoursesPage() {
         <div>
           <div
             style={{
-              color: '#4f46e5',
+              color: 'var(--color-primary)',
               fontSize: '12px',
               fontWeight: 800,
               textTransform: 'uppercase',
@@ -143,16 +143,16 @@ export function LearnerCoursesPage() {
           >
             {t('learner.navLink')}
           </div>
-          <h1 style={{ margin: 0, fontSize: '38px', fontWeight: 800, color: '#172033', lineHeight: 1.2 }}>
+          <h1 style={{ margin: 0, fontSize: '38px', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1.2 }}>
             {t('courses.title')}
           </h1>
-          <p style={{ margin: '10px 0 0', color: '#6b7280', fontSize: '15px' }}>{t('courses.subtitle')}</p>
+          <p style={{ margin: '10px 0 0', color: 'var(--color-text-muted)', fontSize: '15px' }}>{t('courses.subtitle')}</p>
         </div>
         <button
           style={{
-            border: '1px solid #4f46e5',
-            background: '#4f46e5',
-            color: '#fff',
+            border: '1px solid var(--color-primary)',
+            background: 'var(--color-primary)',
+            color: 'var(--color-on-primary)',
             borderRadius: '12px',
             padding: '12px 16px',
             fontWeight: 800,
@@ -177,10 +177,10 @@ export function LearnerCoursesPage() {
         ].map((s, i) => (
           <div
             key={i}
-            style={{ background: '#fff', border: '1px solid #e3e8ef', borderRadius: '14px', padding: '18px' }}
+            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '14px', padding: '18px' }}
           >
-            <strong style={{ display: 'block', fontSize: '28px', color: '#172033' }}>{s.value}</strong>
-            <span style={{ color: '#6b7280', fontSize: '13px' }}>{s.label}</span>
+            <strong style={{ display: 'block', fontSize: '28px', color: 'var(--color-text)' }}>{s.value}</strong>
+            <span style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>{s.label}</span>
           </div>
         ))}
       </div>
@@ -219,14 +219,14 @@ export function LearnerCoursesPage() {
           style={{
             textAlign: 'center',
             padding: '50px',
-            background: '#fff',
-            border: '1px solid #e3e8ef',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
             borderRadius: '20px',
           }}
         >
           <div style={{ fontSize: '40px', marginBottom: '12px' }}>⌕</div>
-          <strong style={{ fontSize: '16px', color: '#172033' }}>{t('courses.empty')}</strong>
-          <p style={{ color: '#6b7280', margin: '8px 0 0' }}>{t('courses.emptyHint')}</p>
+          <strong style={{ fontSize: '16px', color: 'var(--color-text)' }}>{t('courses.empty')}</strong>
+          <p style={{ color: 'var(--color-text-muted)', margin: '8px 0 0' }}>{t('courses.emptyHint')}</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '18px' }}>
@@ -236,16 +236,16 @@ export function LearnerCoursesPage() {
             const lessonsCount = course.totalLessons;
             const remainingLessons = Math.max(lessonsCount - course.completedLessons, 0);
 
-            const badgeBg = isCompleted ? '#e9f8f2' : '#eef2ff';
-            const badgeColor = isCompleted ? '#0f9f6e' : '#4f46e5';
+            const badgeBg = isCompleted ? '#e9f8f2' : 'var(--color-accent-soft)';
+            const badgeColor = isCompleted ? '#0f9f6e' : 'var(--color-primary)';
             const badgeLabel = isCompleted ? t('courses.statusCompleted') : t('courses.statusActive');
 
             return (
               <article
                 key={course.id}
                 style={{
-                  background: '#fff',
-                  border: '1px solid #e3e8ef',
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '20px',
                   overflow: 'hidden',
                   display: 'flex',
@@ -302,8 +302,8 @@ export function LearnerCoursesPage() {
                           padding: '7px 10px',
                           fontSize: '12px',
                           fontWeight: 800,
-                          background: '#eef2ff',
-                          color: '#4f46e5',
+                          background: 'var(--color-accent-soft)',
+                          color: 'var(--color-primary)',
                         }}
                       >
                         {lessonsCount} {t('courses.lessons')}
@@ -312,13 +312,13 @@ export function LearnerCoursesPage() {
                   </div>
 
                   {/* Title */}
-                  <h2 style={{ fontSize: '20px', margin: 0, color: '#172033', fontWeight: 800 }}>
+                  <h2 style={{ fontSize: '20px', margin: 0, color: 'var(--color-text)', fontWeight: 800 }}>
                     {course.title}
                   </h2>
 
                   {/* Description */}
                   {course.description && (
-                    <p style={{ margin: 0, color: '#6b7280', fontSize: '14px', lineHeight: 1.5 }}>
+                    <p style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '14px', lineHeight: 1.5 }}>
                       {(() => { const text = plainText(course.description); return text.length > 120 ? `${text.slice(0, 120)}…` : text; })()}
                     </p>
                   )}
@@ -327,24 +327,24 @@ export function LearnerCoursesPage() {
                   {lessonsCount > 0 && (
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                       <div
-                        style={{ padding: '11px', background: '#f8fafc', borderRadius: '12px' }}
+                        style={{ padding: '11px', background: 'var(--color-surface-muted)', borderRadius: '12px' }}
                       >
                         <span
-                          style={{ display: 'block', color: '#6b7280', fontSize: '11px', marginBottom: '4px' }}
+                          style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: '11px', marginBottom: '4px' }}
                         >
                           {t('courses.lessons')}
                         </span>
-                        <strong style={{ fontSize: '14px', color: '#172033' }}>{lessonsCount}</strong>
+                        <strong style={{ fontSize: '14px', color: 'var(--color-text)' }}>{lessonsCount}</strong>
                       </div>
                       <div
-                        style={{ padding: '11px', background: '#f8fafc', borderRadius: '12px' }}
+                        style={{ padding: '11px', background: 'var(--color-surface-muted)', borderRadius: '12px' }}
                       >
                         <span
-                          style={{ display: 'block', color: '#6b7280', fontSize: '11px', marginBottom: '4px' }}
+                          style={{ display: 'block', color: 'var(--color-text-muted)', fontSize: '11px', marginBottom: '4px' }}
                         >
                           {t('courses.remaining')}
                         </span>
-                        <strong style={{ fontSize: '14px', color: '#172033' }}>
+                        <strong style={{ fontSize: '14px', color: 'var(--color-text)' }}>
                           {remainingLessons} {t('courses.lessons')}
                         </strong>
                       </div>
@@ -357,18 +357,18 @@ export function LearnerCoursesPage() {
                       style={{
                         display: 'flex',
                         justifyContent: 'space-between',
-                        color: '#6b7280',
+                        color: 'var(--color-text-muted)',
                         fontSize: '12px',
                         marginBottom: '6px',
                       }}
                     >
                       <span>{t('courses.progress')}</span>
-                      <strong style={{ color: '#172033' }}>{pct}%</strong>
+                      <strong style={{ color: 'var(--color-text)' }}>{pct}%</strong>
                     </div>
                     <div
                       style={{
                         height: '9px',
-                        background: '#edf0f5',
+                        background: 'var(--color-surface-muted)',
                         borderRadius: '999px',
                         overflow: 'hidden',
                       }}
@@ -392,15 +392,15 @@ export function LearnerCoursesPage() {
                       href={`/learn/courses/${encodeURIComponent(course.id)}`}
                       style={{
                         flex: 1,
-                        border: '1px solid #e3e8ef',
-                        background: '#fff',
+                        border: '1px solid var(--color-border)',
+                        background: 'var(--color-surface)',
                         borderRadius: '12px',
                         padding: '11px 14px',
                         fontWeight: 800,
                         fontSize: '14px',
                         textAlign: 'center',
                         textDecoration: 'none',
-                        color: '#172033',
+                        color: 'var(--color-text)',
                       }}
                     >
                       {t('courses.details')}
@@ -409,8 +409,8 @@ export function LearnerCoursesPage() {
                       href={`/learn/courses/${encodeURIComponent(course.id)}`}
                       style={{
                         flex: 1,
-                        border: '1px solid #4f46e5',
-                        background: '#4f46e5',
+                        border: '1px solid var(--color-primary)',
+                        background: 'var(--color-primary)',
                         borderRadius: '12px',
                         padding: '11px 14px',
                         fontWeight: 800,

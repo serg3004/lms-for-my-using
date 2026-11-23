@@ -28,7 +28,7 @@ export function matchesSearch(title: string, query: string): boolean {
   return needle === '' || plainText(title).toLowerCase().includes(needle);
 }
 
-const COLORS = { text: '#172033', muted: '#6b7280', border: '#e3e8ef', primary: '#4f46e5' };
+const COLORS = { text: 'var(--color-text)', muted: 'var(--color-text-muted)', border: 'var(--color-border)', primary: 'var(--color-primary)' };
 
 export function LearnerChecklistFilters({ tab, counts, query, onTab, onQuery, t }: {
   tab: LearnerListTab; counts: Record<LearnerListTab, number>; query: string;

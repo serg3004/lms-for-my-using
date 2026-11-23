@@ -16,16 +16,16 @@ import { useOptionalSession } from '../shared/session.js';
 import { checklistResultToAnswer, isChecklistAnswerComplete } from './checklistCompletion.js';
 
 const COLORS = {
-  surface: '#ffffff',
-  text: '#172033',
-  muted: '#6b7280',
-  border: '#e3e8ef',
-  primary: '#4f46e5',
-  success: '#0f9f6e',
-  successSoft: '#e9f8f2',
-  warning: '#d97706',
-  warningSoft: '#fff7e8',
-  primarySoft: '#eef2ff',
+  surface: 'var(--color-surface)',
+  text: 'var(--color-text)',
+  muted: 'var(--color-text-muted)',
+  border: 'var(--color-border)',
+  primary: 'var(--color-primary)',
+  success: 'var(--color-success)',
+  successSoft: 'var(--color-success-bg)',
+  warning: 'var(--color-warning)',
+  warningSoft: 'var(--color-warning-bg)',
+  primarySoft: 'var(--color-accent-soft)',
 };
 
 function findResultForItem(results: ChecklistInstanceSummary['results'], itemId: string) {

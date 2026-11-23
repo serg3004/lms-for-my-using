@@ -100,7 +100,7 @@ function PercentBar({ value, label }: { value: number | null; label: string }) {
     <div style={{ display: 'grid', gap: 4, minWidth: 90 }}>
       <strong>{percent(value)}</strong>
       <div aria-hidden="true" style={{ height: 6, borderRadius: 3, background: 'var(--color-border, #e3e8ef)', overflow: 'hidden' }} title={label}>
-        <div style={{ width: `${value ?? 0}%`, height: '100%', background: '#4f46e5' }} />
+        <div style={{ width: `${value ?? 0}%`, height: '100%', background: 'var(--color-primary)' }} />
       </div>
     </div>
   );
@@ -120,7 +120,7 @@ function FeedbackCard({ field, t }: { field: ItemAnalyticsFeedbackField; t: T })
             <span style={{ overflowWrap: 'anywhere' }}>{plainText(option.name)}</span>
             <strong>{option.count} · {share}%</strong>
             <div aria-hidden="true" style={{ gridColumn: '1 / -1', height: 8, borderRadius: 4, background: 'var(--color-border, #e3e8ef)', overflow: 'hidden' }}>
-              <div style={{ width: `${share}%`, height: '100%', background: '#4f46e5' }} />
+              <div style={{ width: `${share}%`, height: '100%', background: 'var(--color-primary)' }} />
             </div>
           </div>
         );

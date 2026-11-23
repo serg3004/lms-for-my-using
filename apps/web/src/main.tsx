@@ -8,9 +8,11 @@ import './i18n/index.js';
 import { listenForInstallOffer, registerServiceWorker } from './shared/pwa.js';
 import { SelectPopup } from './shared/SelectPopup.js';
 import { applyThemeSettings, getStoredThemeSettings } from './shared/theme.js';
+import { initThemeMode } from './shared/themeMode.js';
 import './styles/index.css';
 
 applyThemeSettings(getStoredThemeSettings());
+initThemeMode();
 listenForInstallOffer();
 registerServiceWorker();
 
