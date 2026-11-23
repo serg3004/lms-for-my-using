@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { FOLDER_COLORS } from '@lms/shared/constants/folder-colors';
 import { richTextSchema } from '@lms/shared/rich-text';
 
 export const assessmentStatusSchema = z.enum(['draft', 'published', 'archived']);
@@ -56,6 +57,7 @@ export type AssessmentPlacementInput = z.infer<typeof assessmentPlacementSchema>
 const folderLocation = z.guid().nullable();
 export const createAssessmentFolderSchema = z.object({
   name: z.string().trim().min(1).max(200),
+  color: z.enum(FOLDER_COLORS).optional(),
   parentId: folderLocation.optional(),
 }).strict();
 export const updateAssessmentFolderSchema = createAssessmentFolderSchema.partial();

@@ -1,3 +1,4 @@
+import { FolderBreadcrumbs } from '../shared/folders/FolderTree.js';
 import { plainText } from '@lms/shared/rich-text';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -12,7 +13,7 @@ import { ChecklistBuilder } from '../features/admin-checklists/ChecklistBuilder.
 import { ChecklistCreateMenu } from '../features/admin-checklists/ChecklistCreateMenu.js';
 import { ChecklistTemplateDialog } from '../features/admin-checklists/ChecklistTemplateDialog.js';
 import { ChecklistBulkBar, bulkDeleteMessage, bulkResultSummary, folderBulkResultSummary, mergeBulkReports, selectionDeleteMessage, type BulkReport } from '../features/admin-checklists/ChecklistBulkBar.js';
-import { FolderDialog, MoveToFolderDialog, type FolderDialogTarget } from '../features/admin-checklists/FolderDialogs.js';
+import { FolderDialog, MoveToFolderDialog, type FolderDialogTarget } from '../shared/folders/FolderDialogs.js';
 import { canAddSubfolder, deleteImpactMessage, folderErrorMessage, folderPath, libraryContents, resolveSelectedFolder } from '../features/admin-checklists/folders.js';
 import { ChecklistTable } from '../features/admin-checklists/ChecklistTable.js';
 import { CHECKLIST_STATUSES, filterChecklists, isUntouchedDraft } from '../features/admin-checklists/domain.js';
@@ -117,7 +118,7 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
   }, [searchParams, setSearchParams, loadState]);
   // Without a chosen sort, folders go by name and checklists keep the server order (newest first).
   const [sort, setSort] = useState<DataTableSort | undefined>(undefined);
-  const [folderDialog, setFolderDialog] = useState<FolderDialogTarget | null>(null);
+  const [folderDialog, setFolderDialog] = useState<FolderDialogTarget<ChecklistFolder> | null>(null);
   const [folderDelete, setFolderDelete] = useState<{ folder: ChecklistFolder; message: string } | null>(null);
   // PR 410: what the "Move to folder…" dialog moves: checklists and/or folders (one row, a selection, or a mix).
   const [moveTargets, setMoveTargets] = useState<{ sheets: ChecklistSummary[]; folders: ChecklistFolder[] } | null>(null);
@@ -421,17 +422,7 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
       <div className="checklist-library">
         <div className="checklist-folders__main">
           {staleFolder && <div className="ui-state admin-inline-banner" role="status"><p>{t('admin.checklists.folders.staleFolder', 'The folder is hidden or deleted. Showing the root.')}</p></div>}
-          <nav aria-label={t('admin.checklists.folders.crumbs', 'Folder path')}>
-            <ol className="checklist-folders__crumbs">
-              <li>{crumbs.length === 0 ? <b aria-current="page">{t('admin.checklists.folders.all', 'All checklists')}</b> : <button className="ds-button ds-button--secondary ds-button--sm" onClick={() => selectFolder(null)} type="button">{t('admin.checklists.folders.all', 'All checklists')}</button>}</li>
-              {crumbs.map((folder, index) => (
-                <li key={folder.id}>
-                  <span aria-hidden="true">› </span>
-                  {index === crumbs.length - 1 ? <b aria-current="page">{folder.name}</b> : <button className="ds-button ds-button--secondary ds-button--sm" onClick={() => selectFolder(folder.id)} type="button">{folder.name}</button>}
-                </li>
-              ))}
-            </ol>
-          </nav>
+          <FolderBreadcrumbs folders={crumbs} label={t('admin.checklists.folders.crumbs', 'Folder path')} rootLabel={t('admin.checklists.folders.all', 'All checklists')} onSelect={selectFolder} />
           <Toolbar
             left={<SearchInput value={search} onChange={changeSearch} placeholder={t('admin.checklists.searchPlaceholder', 'Find checklist')} />}
             right={

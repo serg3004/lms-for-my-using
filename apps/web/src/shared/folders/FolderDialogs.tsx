@@ -1,25 +1,30 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import type { TFunction } from 'i18next';
 
-import type { ChecklistFolder } from '../../shared/api/types.js';
-import { Button, Dialog } from '../../shared/ui.js';
-import { ContextMenu, useContextMenu } from '../../shared/ContextMenu.js';
-import { MAX_FOLDER_DEPTH, folderAndDescendantIds, folderRows } from './folders.js';
+import { FOLDER_COLORS, type FolderColor } from '@lms/shared/constants/folder-colors';
+import { Button, Dialog } from '../ui.js';
+import { ContextMenu, useContextMenu } from '../ContextMenu.js';
+import { MAX_FOLDER_DEPTH, folderAndDescendantIds, type FolderNode } from './folderTree.js';
+import { FolderGlyph, FolderTreeRows } from './FolderTree.js';
 
-export type FolderDialogTarget =
-  | { kind: 'create'; parent: ChecklistFolder | null }
-  | { kind: 'edit'; folder: ChecklistFolder };
+type DialogFolder = FolderNode & { visibleToStaff?: boolean; color?: FolderColor; canManage?: boolean };
+export type FolderDialogTarget<F extends DialogFolder = DialogFolder> =
+  | { kind: 'create'; parent: F | null }
+  | { kind: 'edit'; folder: F };
 
-/** PR 396: creates or renames a folder and sets its "visible to all roles except the learner" flag (shown to those who manage the folder, i.e. always here). */
-export function FolderDialog({ target, onClose, onSubmit, t }: {
-  target: FolderDialogTarget | null;
+/** Creates or renames a folder with the settings available in its library. */
+export function FolderDialog<F extends DialogFolder>({ target, onClose, onSubmit, t, rootLabel, colors = false }: {
+  target: FolderDialogTarget<F> | null;
+  rootLabel?: string;
+  colors?: boolean;
   onClose: () => void;
-  onSubmit: (values: { name: string; visibleToStaff: boolean }) => Promise<void>;
+  onSubmit: (values: { name: string; visibleToStaff: boolean; color: FolderColor }) => Promise<void>;
   t: TFunction;
 }) {
   const titleId = useId();
   const nameRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState('');
+  const [color, setColor] = useState<FolderColor>('purple');
   const [visibleToStaff, setVisibleToStaff] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +32,8 @@ export function FolderDialog({ target, onClose, onSubmit, t }: {
   useEffect(() => {
     if (!target) return;
     setName(target.kind === 'edit' ? target.folder.name : '');
-    setVisibleToStaff(target.kind === 'edit' ? target.folder.visibleToStaff : false);
+    setVisibleToStaff(target.kind === 'edit' ? target.folder.visibleToStaff ?? false : false);
+    setColor(target.kind === 'edit' ? target.folder.color ?? 'purple' : 'purple');
     setError(null);
     setBusy(false);
   }, [target]);
@@ -38,7 +44,7 @@ export function FolderDialog({ target, onClose, onSubmit, t }: {
     setBusy(true);
     setError(null);
     try {
-      await onSubmit({ name: name.trim(), visibleToStaff });
+      await onSubmit({ name: name.trim(), visibleToStaff, color });
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
       setBusy(false);
@@ -53,17 +59,26 @@ export function FolderDialog({ target, onClose, onSubmit, t }: {
     <Dialog initialFocusRef={nameRef} labelledBy={titleId} onClose={onClose} open={target !== null}>
       <form onSubmit={(event) => void submit(event)}>
         <h2 id={titleId}>{title}</h2>
-        {target?.kind === 'create' && <p className="admin-form__hint">{target.parent ? t('admin.checklists.folders.createIn', 'The folder will be created in "{{name}}".', { name: target.parent.name }) : t('admin.checklists.folders.createInRoot', 'The folder will be created at the top level (All checklists).')}</p>}
+        {target?.kind === 'create' && <p className="admin-form__hint">{target.parent ? t('admin.checklists.folders.createIn', 'The folder will be created in "{{name}}".', { name: target.parent.name }) : rootLabel ? t('admin.assessmentBuilder.folders.createInRoot', { root: rootLabel }) : t('admin.checklists.folders.createInRoot', 'The folder will be created at the top level (All checklists).')}</p>}
         {error && <p className="learner-quiz__submit-error" role="alert">{error}</p>}
         <div className="admin-form__field">
           <label htmlFor={`${titleId}-name`}>{t('admin.checklists.folders.name', 'Folder name')}</label>
-          <input id={`${titleId}-name`} maxLength={255} onChange={(event) => setName(event.target.value)} ref={nameRef} required value={name} />
+          <input id={`${titleId}-name`} maxLength={colors ? 200 : 255} onChange={(event) => setName(event.target.value)} ref={nameRef} required value={name} />
         </div>
-        <label className="admin-checkbox-field">
-          <input checked={visibleToStaff} onChange={(event) => setVisibleToStaff(event.target.checked)} type="checkbox" />
-          {t('admin.checklists.folders.visibleToStaff', 'Visible to all roles except the learner')}
-        </label>
-        <p className="admin-form__hint">{t('admin.checklists.folders.visibleHint', 'Without the flag the folder is visible only to its creator and administrators. A learner never sees folders.')}</p>
+        {!colors && <>
+          <label className="admin-checkbox-field">
+            <input checked={visibleToStaff} onChange={(event) => setVisibleToStaff(event.target.checked)} type="checkbox" />
+            {t('admin.checklists.folders.visibleToStaff', 'Visible to all roles except the learner')}
+          </label>
+          <p className="admin-form__hint">{t('admin.checklists.folders.visibleHint', 'Without the flag the folder is visible only to its creator and administrators. A learner never sees folders.')}</p>
+        </>}
+        {colors && <fieldset>
+          <legend>{t('admin.assessmentBuilder.folders.color')}</legend>
+          {FOLDER_COLORS.map((value) => <label key={value} className="admin-checkbox-field">
+            <input checked={color === value} name={`${titleId}-color`} onChange={() => setColor(value)} type="radio" />
+            <FolderGlyph color={value} /> {t(`admin.assessmentBuilder.folders.colors.${value}`)}
+          </label>)}
+        </fieldset>}
         <div className="ds-dialog__actions">
           <Button onClick={onClose} type="button" variant="secondary">{t('admin.checklists.cancel', 'Cancel')}</Button>
           <Button disabled={busy || !name.trim()} type="submit" variant="primary">{target?.kind === 'create' ? t('admin.checklists.folders.createSubmit', 'Create') : t('admin.checklists.folders.save', 'Save')}</Button>
@@ -74,17 +89,19 @@ export function FolderDialog({ target, onClose, onSubmit, t }: {
 }
 
 /** "Move to folder…": the root and the tree as a list of choices. */
-export function MoveToFolderDialog({ open, count, folders, currentFolderId, title, excludeFolderIds, onRenameFolder, onCreateFolder, onClose, onMove, t }: {
+export function MoveToFolderDialog<F extends DialogFolder>({ rootLabel, busy, open, count, folders, currentFolderId, title, excludeFolderIds, onRenameFolder, onCreateFolder, onClose, onMove, t }: {
   open: boolean;
+  rootLabel?: string;
+  busy?: boolean;
   count: number;
   /** PR 408/410: replaces the default "Move N checklist(s)" title (folders are being moved too). */
   title?: string;
   /** The moved folders: neither they nor anything below them can be the target. */
   excludeFolderIds?: readonly string[];
-  folders: ChecklistFolder[];
+  folders: F[];
   /** PR 411: the context menu of the list (right button, menu key, Shift+F10, long press); deleting is deliberately absent here. */
-  onRenameFolder?: (folder: ChecklistFolder) => void;
-  onCreateFolder?: (parent: ChecklistFolder | null) => void;
+  onRenameFolder?: (folder: F) => void;
+  onCreateFolder?: (parent: F | null) => void;
   /** Preselected: the folder all the moved sheets share, or null (root). */
   currentFolderId: string | null;
   onClose: () => void;
@@ -94,9 +111,8 @@ export function MoveToFolderDialog({ open, count, folders, currentFolderId, titl
   const titleId = useId();
   const [choice, setChoice] = useState<string | null>(currentFolderId);
   useEffect(() => { if (open) setChoice(currentFolderId); }, [open, currentFolderId]);
-  const menu = useContextMenu<{ kind: 'folder'; folder: ChecklistFolder; level: number } | { kind: 'root' }>();
+  const menu = useContextMenu<{ kind: 'folder'; folder: F; level: number } | { kind: 'root' }>();
   const blocked = new Set((excludeFolderIds ?? []).flatMap((id) => [...folderAndDescendantIds(folders, id)]));
-  const rows = folderRows(folders, 'all').filter(({ folder }) => !blocked.has(folder.id));
 
   return (
     <Dialog labelledBy={titleId} onClose={onClose} open={open}>
@@ -104,14 +120,14 @@ export function MoveToFolderDialog({ open, count, folders, currentFolderId, titl
       <div role="radiogroup" aria-labelledby={titleId} onContextMenu={onCreateFolder ? menu.triggerProps({ kind: 'root' }).onContextMenu : undefined}>
         <label className="admin-checkbox-field" {...(onCreateFolder ? menu.triggerProps({ kind: 'root' }) : {})}>
           <input checked={choice === null} name={`${titleId}-folder`} onChange={() => setChoice(null)} type="radio" />
-          {t('admin.checklists.folders.all', 'All checklists')}
+          {rootLabel ?? t('admin.checklists.folders.all', 'All checklists')}
         </label>
-        {rows.map(({ folder, level }) => (
+        <FolderTreeRows folders={folders} hidden={blocked} render={({ folder, level }) => (
           <label className="admin-checkbox-field" key={folder.id} style={{ paddingInlineStart: `${level * 16}px` }} {...(onRenameFolder || onCreateFolder ? menu.triggerProps({ kind: 'folder', folder, level }) : {})}>
             <input checked={choice === folder.id} name={`${titleId}-folder`} onChange={() => setChoice(folder.id)} type="radio" />
-            {folder.name}
+            {folder.color && <FolderGlyph color={folder.color} />}{folder.name}
           </label>
-        ))}
+        )} />
       </div>
       <ContextMenu
         label={menu.state?.target.kind === 'folder'
@@ -133,7 +149,7 @@ export function MoveToFolderDialog({ open, count, folders, currentFolderId, titl
       </ContextMenu>
       <div className="ds-dialog__actions">
         <Button onClick={onClose} type="button" variant="secondary">{t('admin.checklists.cancel', 'Cancel')}</Button>
-        <Button onClick={() => onMove(choice)} type="button" variant="primary">{t('admin.checklists.folders.moveHere', 'Move')}</Button>
+        <Button disabled={busy || (choice !== null && (blocked.has(choice) || !folders.some(({ id }) => id === choice)))} onClick={() => onMove(choice)} type="button" variant="primary">{t('admin.checklists.folders.moveHere', 'Move')}</Button>
       </div>
     </Dialog>
   );

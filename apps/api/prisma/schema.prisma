@@ -1210,6 +1210,7 @@ model AssessmentFolder {
   organizationId String             @map("organization_id") @db.Uuid
   parentId       String?            @map("parent_id") @db.Uuid
   name           String
+  color          String             @default("purple")
   createdBy      String?            @map("created_by") @db.Uuid
   createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz

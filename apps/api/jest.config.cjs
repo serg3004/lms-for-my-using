@@ -11,6 +11,7 @@ module.exports = {
     '^@lms/shared/assessment-question-types$': '<rootDir>/../../packages/shared/src/assessment-question-types.ts',
     '^@lms/shared/longread-media$': '<rootDir>/../../packages/shared/src/longread-media.ts',
     '^@lms/shared/permission-catalog$': '<rootDir>/../../packages/shared/src/permission-catalog.ts',
+    '^@lms/shared/constants/folder-colors$': '<rootDir>/../../packages/shared/src/constants/folder-colors.ts',
     '^@lms/shared/constants/roles$': '<rootDir>/../../packages/shared/src/constants/roles.ts',
     '^@lms/shared$': '<rootDir>/../../packages/shared/src/index.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',

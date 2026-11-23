@@ -3,78 +3,8 @@ import type { TFunction } from 'i18next';
 import { ApiClientError } from '../../shared/apiClient.js';
 import type { ChecklistFolder, ChecklistFolderDeleteImpact } from '../../shared/api/types.js';
 
-/** PR 396: pure helpers of the checklist folder tree on the list screen. The server enforces every rule; these only present it. */
-export const MAX_FOLDER_DEPTH = 5;
-
-export type FolderRow = { folder: ChecklistFolder; level: number; hasChildren: boolean };
-
-export function childrenByParent(folders: readonly ChecklistFolder[]) {
-  const map = new Map<string | null, ChecklistFolder[]>();
-  for (const folder of folders) map.set(folder.parentId, [...(map.get(folder.parentId) ?? []), folder]);
-  for (const list of map.values()) list.sort((a, b) => a.name.localeCompare(b.name));
-  return map;
-}
-
-/** Folders in tree order with their level (1 = top level). A folder whose parent is not in the list is shown at the top. */
-export function folderRows(folders: readonly ChecklistFolder[], expanded: ReadonlySet<string> | 'all' = 'all'): FolderRow[] {
-  const ids = new Set(folders.map((folder) => folder.id));
-  const children = childrenByParent(folders.map((folder) => (folder.parentId !== null && !ids.has(folder.parentId) ? { ...folder, parentId: null } : folder)));
-  const rows: FolderRow[] = [];
-  const walk = (parentId: string | null, level: number, trail: ReadonlySet<string>) => {
-    for (const folder of children.get(parentId) ?? []) {
-      if (trail.has(folder.id)) continue;
-      const hasChildren = (children.get(folder.id) ?? []).length > 0;
-      rows.push({ folder, level, hasChildren });
-      if (hasChildren && (expanded === 'all' || expanded.has(folder.id))) walk(folder.id, level + 1, new Set(trail).add(folder.id));
-    }
-  };
-  walk(null, 1, new Set());
-  return rows;
-}
-
-/** Folders from the top down to the given one; empty for the root or an unknown id. */
-export function folderPath(folders: readonly ChecklistFolder[], folderId: string | null | undefined): ChecklistFolder[] {
-  if (!folderId) return [];
-  const byId = new Map(folders.map((folder) => [folder.id, folder]));
-  const path: ChecklistFolder[] = [];
-  for (let current = byId.get(folderId); current && !path.includes(current); current = current.parentId ? byId.get(current.parentId) : undefined) path.unshift(current);
-  return path;
-}
-
-export function folderPathLabel(folders: readonly ChecklistFolder[], folderId: string | null | undefined, separator = ' / '): string {
-  return folderPath(folders, folderId).map((folder) => folder.name).join(separator);
-}
-
-/** Ancestors that must be expanded for the folder to be visible in the tree. */
-export function ancestorIds(folders: readonly ChecklistFolder[], folderId: string | null | undefined): string[] {
-  return folderPath(folders, folderId).slice(0, -1).map((folder) => folder.id);
-}
-
-/** A folder from the URL that no longer exists (or is hidden) falls back to "all checklists". */
-export function resolveSelectedFolder(folders: readonly ChecklistFolder[], requested: string | null): string | null {
-  return requested && folders.some((folder) => folder.id === requested) ? requested : null;
-}
-
-/** PR 408: what the open folder shows: its direct subfolders (by name) and its direct sheets. A folder or sheet whose parent is not visible is shown at the root. */
-export function libraryContents<S extends { folderId?: string | null }>(folders: readonly ChecklistFolder[], sheets: readonly S[], openFolderId: string | null): { folders: ChecklistFolder[]; sheets: S[] } {
-  const ids = new Set(folders.map((folder) => folder.id));
-  const parentOf = (folder: ChecklistFolder) => (folder.parentId !== null && ids.has(folder.parentId) ? folder.parentId : null);
-  const sheetFolder = (sheet: S) => (sheet.folderId && ids.has(sheet.folderId) ? sheet.folderId : null);
-  return {
-    folders: folders.filter((folder) => parentOf(folder) === openFolderId).sort((a, b) => a.name.localeCompare(b.name)),
-    sheets: sheets.filter((sheet) => sheetFolder(sheet) === openFolderId),
-  };
-}
-
-/** The folder and everything below it (the folder itself first). */
-export function folderAndDescendantIds(folders: readonly ChecklistFolder[], folderId: string): Set<string> {
-  const result = new Set<string>([folderId]);
-  for (let added = true; added;) {
-    added = false;
-    for (const folder of folders) if (folder.parentId && result.has(folder.parentId) && !result.has(folder.id)) { result.add(folder.id); added = true; }
-  }
-  return result;
-}
+import { folderAndDescendantIds } from '../../shared/folders/folderTree.js';
+export { MAX_FOLDER_DEPTH, ancestorIds, canAddSubfolder, childrenByParent, folderAndDescendantIds, folderPath, folderPathLabel, folderRows, libraryContents, resolveSelectedFolder } from '../../shared/folders/folderTree.js';
 
 /** PR 408: live assignments of every sheet in the folder, subfolders included. */
 export function folderAssignmentTotal(folders: readonly ChecklistFolder[], sheets: ReadonlyArray<{ folderId?: string | null; assignmentCount?: number }>, folderId: string): number {
@@ -85,11 +15,6 @@ export function folderAssignmentTotal(folders: readonly ChecklistFolder[], sheet
 /** PR 408: the number of subfolders plus sheets directly inside a folder, for the "Items" column. */
 export function folderDirectCounts(folders: readonly ChecklistFolder[], sheets: ReadonlyArray<{ folderId?: string | null }>, folderId: string) {
   return { folders: folders.filter((folder) => folder.parentId === folderId).length, sheets: sheets.filter((sheet) => sheet.folderId === folderId).length };
-}
-
-/** A new subfolder is possible only while the parent leaves room below the depth limit. */
-export function canAddSubfolder(folders: readonly ChecklistFolder[], parentId: string | null): boolean {
-  return folderPath(folders, parentId).length < MAX_FOLDER_DEPTH;
 }
 
 export function deleteImpactMessage(name: string, impact: ChecklistFolderDeleteImpact, t: TFunction): string {

@@ -20,6 +20,11 @@
       "types": "./src/types/api.ts",
       "import": "./dist/types/api.js"
     },
+    "./constants/folder-colors": {
+      "types": "./src/constants/folder-colors.ts",
+      "development": "./src/constants/folder-colors.ts",
+      "import": "./dist/constants/folder-colors.js"
+    },
     "./constants/roles": {
       "types": "./src/constants/roles.ts",
       "import": "./dist/constants/roles.js"

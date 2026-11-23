@@ -901,3 +901,9 @@ Apply before deploying the updated API. An application rollback can leave the
 new schema in place. If the previous API has created new exercise assessments
 during a rollback, reapply the migration's marking predicate to those rows
 before re-enabling folder operations.
+
+### Assessment folder color (PR 525)
+
+Migration `20261124120000_assessment_folder_color` adds a color key to assessment
+folders. Existing folders get the purple default. Apply before deploying the
+updated API. Application rollback can leave the column and its values in place.

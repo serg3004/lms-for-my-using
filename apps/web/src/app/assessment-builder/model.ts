@@ -6,7 +6,7 @@ import { getAssessmentOptionLabel, type QuestionWithOptions } from '../assessmen
 export type Course = { id: string; organizationId: string; title: string; status: string };
 export type Lesson = { id: string; title: string; order: number };
 export type AssessmentStatus = 'draft' | 'published' | 'archived';
-export type Assessment = { id: string; courseId?: string | null; title: string; slug: string; description: string | null; passingScore: number; maxAttempts: number | null; availableAfterCourseCompletion: boolean; passMessage: string | null; failMessage: string | null; showCorrectAnswers: boolean; randomizeOrder: boolean; status: string };
+export type Assessment = { id: string; courseId?: string | null; folderId?: string | null; isLongreadExercise?: boolean; title: string; slug: string; description: string | null; passingScore: number; maxAttempts: number | null; availableAfterCourseCompletion: boolean; passMessage: string | null; failMessage: string | null; showCorrectAnswers: boolean; randomizeOrder: boolean; status: string };
 export type QuestionType = ApiQuestionType;
 export type Question = { id: string; organizationId: string; type: QuestionType; definition?: QuestionDefinition | null; title: string; text: string | null; points: number; order: number };
 export type AnswerOption = { id: string; text: string | null; imageUrl: string | null; isCorrect: boolean; order: number };

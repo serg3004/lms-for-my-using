@@ -509,6 +509,39 @@
       }
     },
     "assessmentBuilder": {
+      "folders": {
+        "root": "全部测验",
+        "tree": "测验文件夹",
+        "loading": "正在加载文件夹…",
+        "loadError": "无法加载测验文件夹。",
+        "forbidden": "您无权访问这些测验文件夹或其内容。",
+        "retry": "重试",
+        "empty": "此文件夹为空。请创建子文件夹或将测验移到这里。",
+        "createInRoot": "将在顶层（{{root}}）创建文件夹。",
+        "color": "文件夹颜色",
+        "colors": {
+          "purple": "紫色",
+          "green": "绿色",
+          "blue": "蓝色",
+          "orange": "橙色",
+          "pink": "粉色",
+          "gray": "灰色"
+        },
+        "expand": "展开「{{name}}」",
+        "collapse": "折叠「{{name}}」",
+        "contents": "文件夹：{{folders}}，测验：{{tests}}",
+        "longread": "长文练习",
+        "selectAll": "选择所有文件夹和测验",
+        "selectTest": "选择测验：{{title}}",
+        "deleteFolders": "将删除 {{count}} 个文件夹（含子文件夹）。",
+        "unfile": "将移回根目录的测验（{{count}}）：{{names}}。",
+        "deleteTests": "将删除 {{count}} 个测验。",
+        "reasons": {
+          "forbidden": "不属于分配给您的课程",
+          "longread_exercise": "长文练习保留在根目录",
+          "attempt_in_progress": "有正在进行的答题记录"
+        }
+      },
       "eyebrow": "知识控制",
       "sessionExpired": "会话已过期。请重新登录。",
       "loadError": "无法加载测试构建器。",
