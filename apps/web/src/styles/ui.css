@@ -2211,7 +2211,7 @@
 .ds-pagination__info {
   min-width: 4rem;
   text-align: center;
-  color: var(--color-text-secondary, #6b7280);
+  color: var(--color-text-subtle);
   font-size: 0.875rem;
 }
 
