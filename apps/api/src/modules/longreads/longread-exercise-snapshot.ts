@@ -23,7 +23,7 @@ export async function captureExerciseQuestions(db: Pick<Prisma.TransactionClient
   const ids = blocks.flatMap((block) => { const value = exerciseContentSchema.safeParse(block.content); return value.success && value.data.questionId ? [value.data.questionId] : []; });
   // One PostgreSQL statement supplies one MVCC snapshot, including keys/options/parent settings.
   // Independent ORM relation reads could straddle a concurrent edit through the ordinary test API.
-  const captured = ids.length ? await db.$queryRaw<{ question: FrozenQuestion }[]>(Prisma.sql`
+  const captured = ids.length ? await db.$queryRaw<{ question: FrozenQuestion; lessonId: string | null; placements: { blockId: string; active: boolean }[] }[]>(Prisma.sql`
     SELECT jsonb_build_object(
       'id', q.id, 'type', q.type, 'title', q.title, 'text', q.text, 'imageUrl', q.image_url,
       'order', q."order", 'points', q.points, 'scoringMode', q.scoring_mode, 'definition', q.definition,
@@ -31,18 +31,23 @@ export async function captureExerciseQuestions(db: Pick<Prisma.TransactionClient
         'isCorrect', o.is_correct, 'order', o."order") ORDER BY o."order", o.id)
         FROM assessment_answer_options o WHERE o.question_id = q.id AND o.organization_id = ${organizationId}::uuid AND o.deleted_at IS NULL), '[]'::jsonb),
       'assessment', jsonb_build_object('id', a.id, 'title', a.title, 'passingScore', a.passing_score, 'maxAttempts', a.max_attempts)
-    ) AS question
+    ) AS question, a.lesson_id AS "lessonId",
+    COALESCE((SELECT jsonb_agg(jsonb_build_object('blockId', p.longread_block_id, 'active', p.deleted_at IS NULL))
+      FROM assessment_placements p WHERE p.assessment_id = a.id AND p.organization_id = a.organization_id
+        AND p.lesson_id = ${lessonId}::uuid AND p.longread_block_id IS NOT NULL), '[]'::jsonb) AS placements
     FROM assessment_questions q JOIN assessments a ON a.id = q.assessment_id
     WHERE q.id IN (${Prisma.join([...new Set(ids)].map((id) => Prisma.sql`${id}::uuid`))})
       AND q.organization_id = ${organizationId}::uuid AND q.deleted_at IS NULL
-      AND a.organization_id = ${organizationId}::uuid AND a.lesson_id = ${lessonId}::uuid AND a.deleted_at IS NULL
+      AND a.organization_id = ${organizationId}::uuid AND a.deleted_at IS NULL
   `) : [];
-  const rows = captured.map((row) => row.question);
-  const byId = new Map(rows.map((row) => [row.id, row]));
+  const byId = new Map(captured.map((row) => [row.question.id, row]));
   const reasons: PublishRefusal[] = [];
   const result = chapters.map((chapter) => ({ ...chapter, blocks: chapter.blocks.map((block, blockIndex) => {
     if (block.type !== 'exercise') return block;
-    const parsed = exerciseContentSchema.safeParse(block.content), source = parsed.success && parsed.data.questionId ? byId.get(parsed.data.questionId) : null;
+    const parsed = exerciseContentSchema.safeParse(block.content);
+    const row = parsed.success && parsed.data.questionId ? byId.get(parsed.data.questionId) : null;
+    const placement = row?.placements.find((candidate) => candidate.blockId === block.id);
+    const source = (placement ? placement.active : row?.lessonId === lessonId) ? row?.question : null;
     try {
       if (!parsed.success || !source || !block.id) throw new Error('Missing exercise question');
       const definition = validateQuestionDefinition(source.type, source.definition);
@@ -50,7 +55,7 @@ export async function captureExerciseQuestions(db: Pick<Prisma.TransactionClient
       const question: FrozenQuestion = frozenAssessmentQuestionSchema.parse({ ...source, definition, points: parsed.data.weight });
       return { ...block, content: parsed.data, question };
     } catch {
-      reasons.push({ code: 'question_unavailable', message: 'Exercise requires a valid question of this lesson and organization', chapter: chapter.title, blockIndex });
+      reasons.push({ code: 'question_unavailable', message: 'Exercise requires a valid question linked to this lesson or block', chapter: chapter.title, blockIndex });
       return block;
     }
   }) }));

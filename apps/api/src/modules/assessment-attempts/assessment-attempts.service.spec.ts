@@ -90,6 +90,7 @@ describe('Assessment attempts validation', () => {
 
 function createBasePrismaMock(status: AssessmentStatus) {
   return {
+    assessmentPlacement: { findFirst: async () => ({ id: assessmentId, courseId }) },
     assessment: {
       findFirst: async () => ({
         id: assessmentId,
@@ -173,6 +174,7 @@ describe('AssessmentAttemptsService attempt eligibility', () => {
   it('creates an in-app notification carrying the result as translation-ready type + data', async () => {
     const notificationCreate = jest.fn(async () => ({ id: 'notification-id' }));
     const prisma = {
+      assessmentPlacement: { findFirst: async () => ({ id: assessmentId, courseId }) },
       assessment: {
         findFirst: async () => ({
           id: assessmentId, title: 'Safety Basics', courseId, status: 'published', passingScore: 70, maxAttempts: null, availableAfterCourseCompletion: false,
@@ -229,6 +231,7 @@ describe('AssessmentAttemptsService attempt eligibility', () => {
   it('rejects attempt when gated assessment course is incomplete', async () => {
     let createAttemptCalled = false;
     const prisma = {
+      assessmentPlacement: { findFirst: async () => ({ id: assessmentId, courseId }) },
       assessment: {
         findFirst: async () => ({
           id: assessmentId,
@@ -321,6 +324,7 @@ describe('AssessmentAttemptsService multiple_choice scoring modes', () => {
   function buildPrisma(scoringMode: string, selectedOptionIds: string[]) {
     const createManyCalls: { data: { score: number; isCorrect: boolean }[] }[] = [];
     const prisma = {
+      assessmentPlacement: { findFirst: async () => ({ id: assessmentId, courseId }) },
       assessment: {
         findFirst: async () => ({
           id: assessmentId,
@@ -446,6 +450,7 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
     const create = jest.fn(async () => ({ id: 'attempt-id' }));
     let findFirstCalls = 0;
     const prisma = {
+      assessmentPlacement: { findFirst: async () => ({ id: assessmentId, courseId }) },
       assessment: { findFirst: async () => buildAssessment() },
       user: { findFirst: async () => ({ id: userId }) },
       assessmentAttempt: {
@@ -478,6 +483,7 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
   it('throws NotFoundException without creating an attempt when the assessment was deleted concurrently, before the row lock could be acquired', async () => {
     const create = jest.fn();
     const prisma = {
+      assessmentPlacement: { findFirst: async () => ({ id: assessmentId, courseId }) },
       assessment: { findFirst: async () => buildAssessment() },
       user: { findFirst: async () => ({ id: userId }) },
       assessmentAttempt: { findFirst: async () => null },
@@ -499,6 +505,7 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
   it('is idempotent — resumes an existing in_progress attempt instead of creating a new one', async () => {
     const create = jest.fn();
     const prisma = {
+      assessmentPlacement: { findFirst: async () => ({ id: assessmentId, courseId }) },
       assessment: { findFirst: async () => buildAssessment() },
       user: { findFirst: async () => ({ id: userId }) },
       assessmentAttempt: {
@@ -527,6 +534,7 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
   it('enforces the attempts limit before starting a fresh attempt', async () => {
     const create = jest.fn();
     const prisma = {
+      assessmentPlacement: { findFirst: async () => ({ id: assessmentId, courseId }) },
       assessment: { findFirst: async () => buildAssessment({ maxAttempts: 1 }) },
       user: { findFirst: async () => ({ id: userId }) },
       assessmentAttempt: {
@@ -543,6 +551,7 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
 
   it('rejects submitting answers for a timed assessment that was never started', async () => {
     const prisma = {
+      assessmentPlacement: { findFirst: async () => ({ id: assessmentId, courseId }) },
       assessment: { findFirst: async () => buildAssessment() },
       user: { findFirst: async () => ({ id: userId }) },
       assessmentAttempt: { findFirst: async () => null },
@@ -561,6 +570,7 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
     }));
     let findFirstCalls = 0;
     const prisma = {
+      assessmentPlacement: { findFirst: async () => ({ id: assessmentId, courseId }) },
       assessment: { findFirst: async () => buildAssessment() },
       user: { findFirst: async () => ({ id: userId }) },
       assessmentAttempt: {
@@ -683,7 +693,7 @@ describe('AssessmentAttemptsService auto-finalizing expired in_progress attempts
           status: 'in_progress',
           startedAt: expiredStartedAt,
           answers: [],
-          assessment: { timeLimitMinutes },
+      assessment: { timeLimitMinutes },
         }),
       },
     } as unknown as PrismaService;
@@ -707,7 +717,7 @@ describe('AssessmentAttemptsService auto-finalizing expired in_progress attempts
           status: 'in_progress',
           startedAt: new Date(),
           answers: [],
-          assessment: { timeLimitMinutes },
+      assessment: { timeLimitMinutes },
         }),
       },
     } as unknown as PrismaService;

@@ -20,6 +20,8 @@ const attemptSelect = {
   id: true,
   organizationId: true,
   assessmentId: true,
+  placementId: true,
+  courseId: true,
   userId: true,
   status: true,
   score: true,
@@ -50,7 +52,7 @@ const attemptAnswerSelect = {
 export class AssessmentAttemptsService {
   constructor(private readonly prisma: PrismaService, private readonly teamScope: ManagerTeamScope = new ManagerTeamScope()) {}
 
-  async listAttempts(assessmentId: string, actorInput: TeamScopeActor | string) {
+  async listAttempts(assessmentId: string, actorInput: TeamScopeActor | string, placementId?: string | null) {
     const actor = normalizeActor(actorInput);
     const organizationId = actor.organizationId;
     const assessment = await this.ensureAssessmentExists(assessmentId, organizationId);
@@ -59,6 +61,8 @@ export class AssessmentAttemptsService {
     const attempts = await this.prisma.assessmentAttempt.findMany({
       where: {
         assessmentId,
+        placementId,
+        ...(placementId === null ? { longreadRevisionId: null } : {}),
         organizationId,
         countsTowardResults: true,
         ...attemptScope(this.teamScope, actor),
@@ -155,12 +159,13 @@ export class AssessmentAttemptsService {
     input = createAssessmentAttemptSchema.parse(input);
     const assessment = await this.loadAssessmentForAttempt(assessmentId, organizationId);
 
+    const location = await this.resolvePlacement(assessment, organizationId, input.placementId);
     await this.ensureUserExists(userId, organizationId);
-    await this.ensureAssessmentIsAvailable(assessment.courseId, userId, organizationId, assessment.availableAfterCourseCompletion);
+    await this.ensureAssessmentIsAvailable(location.courseId, userId, organizationId, assessment.availableAfterCourseCompletion);
 
     const inProgress = assessment.timeLimitMinutes
       ? await this.prisma.assessmentAttempt.findFirst({
-          where: { assessmentId, userId, organizationId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
+          where: { assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
           select: { id: true, startedAt: true },
         })
       : null;
@@ -170,7 +175,7 @@ export class AssessmentAttemptsService {
     }
 
     if (!inProgress) {
-      await this.ensureAttemptsLimit(assessmentId, userId, organizationId, assessment.maxAttempts);
+      await this.ensureAttemptsLimit(assessmentId, userId, organizationId, assessment.maxAttempts, location.placementId);
     }
 
     const questions = await this.getQuestions(assessmentId, organizationId);
@@ -186,10 +191,10 @@ export class AssessmentAttemptsService {
 
     const attemptId = await this.prisma.$transaction(async (tx) => {
       return recordCompletedAssessment(tx,
-        { organizationId, assessmentId, userId, score, maxScore, percentage, passed, completedAt, status: 'completed' },
+        { organizationId, assessmentId, userId, ...location, score, maxScore, percentage, passed, completedAt, status: 'completed' },
         gradedAnswers.map((answer) => ({ questionId: answer.questionId, selectedOptionId: answer.selectedOptionId,
           selectedOptionIds: answer.selectedOptionIds, response: answer.response, isCorrect: answer.isCorrect, score: answer.score })),
-        assessment.courseId, assessment.title, inProgress?.id);
+        location.courseId, assessment.title, inProgress?.id);
 
     });
 
@@ -229,18 +234,19 @@ export class AssessmentAttemptsService {
    * returns the existing in_progress attempt rather than restarting the clock. Untimed assessments
    * (the default) don't use this at all; submit directly via createAttempt.
    */
-  async startAttempt(assessmentId: string, userId: string, organizationId: string) {
+  async startAttempt(assessmentId: string, userId: string, organizationId: string, placementId?: string | null) {
     const assessment = await this.loadAssessmentForAttempt(assessmentId, organizationId);
 
     if (!assessment.timeLimitMinutes) {
       throw new BadRequestException('This assessment has no time limit — submit answers directly');
     }
 
+    const location = await this.resolvePlacement(assessment, organizationId, placementId);
     await this.ensureUserExists(userId, organizationId);
-    await this.ensureAssessmentIsAvailable(assessment.courseId, userId, organizationId, assessment.availableAfterCourseCompletion);
+    await this.ensureAssessmentIsAvailable(location.courseId, userId, organizationId, assessment.availableAfterCourseCompletion);
 
     const existing = await this.prisma.assessmentAttempt.findFirst({
-      where: { assessmentId, userId, organizationId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
+      where: { assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
       select: { id: true },
     });
 
@@ -248,7 +254,7 @@ export class AssessmentAttemptsService {
       return this.getAttempt(existing.id, { id: userId, organizationId, roles: ['learner'] });
     }
 
-    await this.ensureAttemptsLimit(assessmentId, userId, organizationId, assessment.maxAttempts);
+    await this.ensureAttemptsLimit(assessmentId, userId, organizationId, assessment.maxAttempts, location.placementId);
 
     // SELECT ... FOR UPDATE takes the same lock deleteAssessment() takes before soft-deleting,
     // so the two are fully serialized: whichever of the two transactions acquires the lock
@@ -265,7 +271,7 @@ export class AssessmentAttemptsService {
       }
 
       const attempt = await tx.assessmentAttempt.create({
-        data: { organizationId, assessmentId, userId, status: 'in_progress', startedAt: new Date() },
+        data: { organizationId, assessmentId, userId, ...location, status: 'in_progress', startedAt: new Date() },
         select: { id: true },
       });
 
@@ -273,6 +279,22 @@ export class AssessmentAttemptsService {
     });
 
     return this.getAttempt(attemptId, { id: userId, organizationId, roles: ['learner'] });
+  }
+
+  private async resolvePlacement(assessment: { id: string; courseId: string | null }, organizationId: string, placementId?: string | null) {
+    if (placementId === null || (placementId === undefined && !assessment.courseId)) {
+      return { placementId: null, courseId: null };
+    }
+    const placement = await this.prisma.assessmentPlacement.findFirst({
+      where: {
+        assessmentId: assessment.id, organizationId, deletedAt: null, longreadBlockId: null,
+        course: { deletedAt: null },
+        ...(placementId ? { id: placementId, course: { deletedAt: null, status: 'published' } } : { legacy: true }),
+      },
+      select: { id: true, courseId: true },
+    });
+    if (!placement?.courseId) throw new NotFoundException('Assessment placement not found');
+    return { placementId: placement.id, courseId: placement.courseId };
   }
 
   private async loadAssessmentForAttempt(assessmentId: string, organizationId: string) {
@@ -337,8 +359,8 @@ export class AssessmentAttemptsService {
     }
   }
 
-  private async ensureAssessmentIsAvailable(courseId: string, userId: string, organizationId: string, availableAfterCourseCompletion: boolean) {
-    if (!availableAfterCourseCompletion) {
+  private async ensureAssessmentIsAvailable(courseId: string | null, userId: string, organizationId: string, availableAfterCourseCompletion: boolean) {
+    if (!courseId || !availableAfterCourseCompletion) {
       return;
     }
 
@@ -372,7 +394,7 @@ export class AssessmentAttemptsService {
     }
   }
 
-  private async ensureAttemptsLimit(assessmentId: string, userId: string, organizationId: string, maxAttempts: number | null) {
+  private async ensureAttemptsLimit(assessmentId: string, userId: string, organizationId: string, maxAttempts: number | null, placementId: string | null) {
     if (!maxAttempts) {
       return;
     }
@@ -380,6 +402,7 @@ export class AssessmentAttemptsService {
     const attemptsCount = await this.prisma.assessmentAttempt.count({
       where: {
         assessmentId,
+        placementId,
         longreadRevisionId: null,
         countsTowardResults: true,
         userId,

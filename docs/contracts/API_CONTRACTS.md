@@ -2125,6 +2125,30 @@ immutable settings/chapter snapshots, so removing/replacing a draft file does no
 The existing editor supplies alt/caption/size/alignment, covers and batches of attachments; text is safely rendered
 and decorative images may use empty alt text. RU/EN/KK/ZH and existing role shells are retained.
 
+## Assessment placements (PR 522)
+
+`POST /assessments` accepts an omitted `courseId` for an organization administrator.
+`lessonId` requires a course. Existing course-bound clients can continue to create and attempt
+assessments using their original course and lesson. The assessment response keeps the original
+`courseId`, which is nullable. Edit questions and settings through the existing assessment endpoints.
+
+Organization administrators use `GET /assessments/:id/placements` to list active placements,
+`POST /assessments/:id/placements` with `{ courseId, lessonId?, longreadBlockId?, questionId? }`
+to attach an existing assessment, and `DELETE /assessments/:id/placements/:placementId` to detach it.
+A longread placement requires the target lesson, exercise block and a question from that assessment.
+The block is updated in the draft and takes effect when published. Published longread versions keep
+their frozen questions and results. Detaching preserves stored attempts and their placement IDs.
+
+`POST /assessments/:id/attempts` takes optional `placementId` in the body.
+The timed start endpoint takes it in the query string. Omission selects the original placement
+for older assessments or standalone mode for assessments created without a course.
+Explicit standalone submission uses JSON `null`, and timed start uses `?placementId=standalone`.
+An explicit course or lesson placement uses its UUID. Exercise blocks use the longread endpoints.
+Attempts and results can be filtered by `?placementId=<uuid>` or `?placementId=standalone`.
+Omitting the filter returns results across places. Course progress, course analytics and certificate
+issuance attribute an attempt to its recorded course. Standalone attempts have no course and
+do not issue course certificates.
+
 ## Assessment question types and server grading (PR 388)
 
 The existing `Assessment` question, quiz, preview, attempt, result, report and certificate endpoints
@@ -2253,7 +2277,7 @@ failure cases stay fail-closed. No migration, new storage provider, upload size 
 
 ## Longread exercises and versioned final results (PR 389)
 
-The top-level `exercise` block references a question of an existing `Assessment` belonging to this lesson and organization.
+The top-level `exercise` block references a question from a test authored in this lesson or attached through a block placement in the same organization.
 Authors can select that question or create/edit all seven types in the longread editor. If the lesson has no assessment,
 the question writer creates a draft one using the existing assessment model. Image-option questions can be linked;
 their options are edited in the existing test editor. Exercises are not allowed inside composite containers.

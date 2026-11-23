@@ -53,7 +53,7 @@ export class CourseAccessPolicy {
       case 'assignment': record = await this.prisma.assignment.findFirst({ where: { ...where, course }, select: { id: true } }); break;
       case 'progress': record = await this.prisma.progress.findFirst({ where: { ...where, course }, select: { id: true } }); break;
       case 'attempt':
-        record = await this.prisma.assessmentAttempt.findFirst({ where: { ...where, assessment: { course } }, select: { id: true } });
+        record = await this.prisma.assessmentAttempt.findFirst({ where: { ...where, course }, select: { id: true } });
         break;
       case 'certificate': record = await this.prisma.certificate.findFirst({ where: { ...where, course }, select: { id: true } }); break;
       case 'question':

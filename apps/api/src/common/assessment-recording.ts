@@ -6,13 +6,13 @@ export function buildAttemptResultNotification(assessmentTitle: string, assessme
 
 /** The same persisted attempt/certificate/notification contract for standalone and longread tests. */
 export async function recordCompletedAssessment(tx: Prisma.TransactionClient, data: Prisma.AssessmentAttemptUncheckedCreateInput,
-  answers: Omit<Prisma.AssessmentAttemptAnswerCreateManyInput, 'attemptId' | 'organizationId'>[], courseId: string, title: string, existingId?: string) {
+  answers: Omit<Prisma.AssessmentAttemptAnswerCreateManyInput, 'attemptId' | 'organizationId'>[], courseId: string | null, title: string, existingId?: string) {
   const attempt = existingId
     ? await tx.assessmentAttempt.update({ where: { id: existingId, organizationId: data.organizationId }, data: { score: data.score, maxScore: data.maxScore, percentage: data.percentage, passed: data.passed, completedAt: data.completedAt, status: 'completed' }, select: { id: true } })
-    : await tx.assessmentAttempt.create({ data, select: { id: true } });
+    : await tx.assessmentAttempt.create({ data: { ...data, courseId }, select: { id: true } });
   await tx.assessmentAttemptAnswer.createMany({ data: answers.map((answer) => ({ ...answer, organizationId: data.organizationId, attemptId: attempt.id })) });
   if (data.countsTowardResults !== false) {
-    if (data.passed) await tx.certificate.upsert({
+    if (data.passed && courseId) await tx.certificate.upsert({
       where: { organizationId_courseId_userId: { organizationId: data.organizationId, courseId, userId: data.userId } },
       update: { assessmentAttemptId: attempt.id, status: 'issued', revokedAt: null },
       create: { organizationId: data.organizationId, courseId, userId: data.userId, assessmentAttemptId: attempt.id },

@@ -63,7 +63,7 @@ export function LearnerAssessmentsPage() {
 
           return {
             assessment,
-            courseTitle: courseTitleById.get(assessment.courseId) ?? '',
+            courseTitle: (assessment.courseId && courseTitleById.get(assessment.courseId)) || '',
             questionCount: questions.length,
             attemptsUsed: attempts.length,
             bestPercentage,
@@ -85,7 +85,7 @@ export function LearnerAssessmentsPage() {
     if (loadState.status !== 'loaded') return [];
     const seen = new Map<string, string>();
     for (const row of loadState.data.rows) {
-      if (!seen.has(row.assessment.courseId)) seen.set(row.assessment.courseId, row.courseTitle);
+      if (row.assessment.courseId && !seen.has(row.assessment.courseId)) seen.set(row.assessment.courseId, row.courseTitle);
     }
     return [...seen.entries()];
   }, [loadState]);

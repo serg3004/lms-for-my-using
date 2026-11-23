@@ -241,7 +241,7 @@ export class ProgressService {
           id: true,
           percentage: true,
           completedAt: true,
-          assessment: { select: { courseId: true, title: true } },
+          courseId: true,
         },
         orderBy: { completedAt: 'desc' },
       }),
@@ -281,8 +281,8 @@ export class ProgressService {
 
     const latestScoreByCourseId = new Map<string, number>();
     for (const attempt of attemptRows) {
-      const courseId = attempt.assessment.courseId;
-      if (!latestScoreByCourseId.has(courseId)) {
+      const courseId = attempt.courseId;
+      if (courseId && !latestScoreByCourseId.has(courseId)) {
         latestScoreByCourseId.set(courseId, attempt.percentage);
       }
     }
@@ -358,8 +358,8 @@ export class ProgressService {
       })),
       ...attemptsInPeriod.map((attempt) => ({
         type: 'assessment_passed' as const,
-        courseId: attempt.assessment.courseId,
-        courseTitle: courseTitleById.get(attempt.assessment.courseId) ?? '',
+        courseId: attempt.courseId,
+        courseTitle: (attempt.courseId && courseTitleById.get(attempt.courseId)) || '',
         score: attempt.percentage,
         date: attempt.completedAt!.toISOString(),
       })),

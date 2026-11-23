@@ -55,7 +55,7 @@ describe('ProgressService getProgressSummary', () => {
             id: 'attempt-1',
             percentage: 80,
             completedAt: daysAgo(2),
-            assessment: { courseId: courseAId, title: 'Course A Test' },
+            courseId: courseAId,
           },
         ],
       },

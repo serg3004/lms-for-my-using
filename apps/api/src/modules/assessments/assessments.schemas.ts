@@ -5,7 +5,7 @@ export const assessmentStatusSchema = z.enum(['draft', 'published', 'archived'])
 
 export const createAssessmentSchema = z.object({
   organizationId: z.guid(),
-  courseId: z.guid(),
+  courseId: z.guid().optional(),
   lessonId: z.guid().optional(),
   title: z.string().trim().min(1).max(200),
   slug: z.string().trim().min(1).max(120),
@@ -44,3 +44,11 @@ export const updateAssessmentSchema = z
   })
   .partial();
 export type UpdateAssessmentInput = z.infer<typeof updateAssessmentSchema>;
+
+export const assessmentPlacementSchema = z.object({
+  courseId: z.guid(),
+  lessonId: z.guid().optional(),
+  longreadBlockId: z.guid().optional(),
+  questionId: z.guid().optional(),
+}).strict().refine((input) => input.longreadBlockId ? !!(input.lessonId && input.questionId) : !input.questionId);
+export type AssessmentPlacementInput = z.infer<typeof assessmentPlacementSchema>;

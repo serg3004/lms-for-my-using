@@ -20,6 +20,9 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/assessments/{id}` | `Assessments` | `bearer` |
 | `PATCH` | `/api/v1/assessments/{id}` | `Assessments` | `bearer` |
 | `DELETE` | `/api/v1/assessments/{id}` | `Assessments` | `bearer` |
+| `GET` | `/api/v1/assessments/{id}/placements` | `Assessments` | `bearer` |
+| `POST` | `/api/v1/assessments/{id}/placements` | `Assessments` | `bearer` |
+| `DELETE` | `/api/v1/assessments/{id}/placements/{placementId}` | `Assessments` | `bearer` |
 | `PATCH` | `/api/v1/assessments/{id}/status` | `Assessments` | `bearer` |
 | `GET` | `/api/v1/assignments` | `Assignments` | `bearer` |
 | `POST` | `/api/v1/assignments` | `Assignments` | `bearer` |
