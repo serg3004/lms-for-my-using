@@ -24,3 +24,37 @@ test.describe('learner sidebar stays in place while the page scrolls (PR 452)', 
     });
   }
 });
+
+test.describe('sidebar collapse and phone frame (PR 568)', () => {
+  async function open(page: import('@playwright/test').Page, width: number) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.route('**/api/v1/**', async (route) => {
+      const path = new URL(route.request().url()).pathname.replace('/api/v1', '');
+      if (path === '/auth/me') return route.fulfill({ json: { id: 'learner', organizationId: 'org', email: 'l@example.invalid', firstName: 'Lena', lastName: 'Learner', roles: ['learner'], status: 'active', locale: 'ru', timezone: 'UTC' } });
+      if (path.endsWith('/theme')) return route.fulfill({ json: { themeSettings: {} } });
+      return route.fulfill({ json: path === '/checklist-instances/mine' ? [] : { items: [], total: 0, page: 1, pageSize: 20 } });
+    });
+    await page.goto('/learn');
+  }
+
+  test('on a desktop the menu collapses to icons, keeps names for assistive technology and remembers the choice', async ({ page }) => {
+    await open(page, 1280);
+    const sidebar = page.locator('.learner-sidebar');
+    expect((await sidebar.boundingBox())!.width).toBeGreaterThan(200);
+    await page.getByRole('button', { name: 'Свернуть меню' }).click();
+    await expect(page.getByRole('button', { name: 'Развернуть меню' })).toHaveAttribute('aria-pressed', 'true');
+    expect((await sidebar.boundingBox())!.width).toBeLessThan(100);
+    const link = page.locator('.learner-sidebar__link').first();
+    await expect(link).toHaveAttribute('title', /.+/);
+    expect(await link.evaluate((element) => element.textContent?.trim().length)).toBeGreaterThan(0);
+    await page.reload();
+    expect((await sidebar.boundingBox())!.width).toBeLessThan(100);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+
+  test('on a phone there is no collapse button and no sideways scrolling', async ({ page }) => {
+    await open(page, 390);
+    await expect(page.locator('.nav-collapse')).toBeHidden();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+});

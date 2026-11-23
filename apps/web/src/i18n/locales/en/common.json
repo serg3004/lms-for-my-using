@@ -3199,6 +3199,8 @@
     "skipToContent": "Skip to main content",
     "breadcrumb": "Breadcrumb",
     "openNav": "Open navigation",
+    "collapseNav": "Collapse menu",
+    "expandNav": "Expand menu",
     "closeNav": "Close navigation",
     "mainNavigation": "Main navigation"
   },
