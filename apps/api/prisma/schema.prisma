@@ -1198,6 +1198,7 @@ model Assessment {
 
   standaloneAssignments AssessmentAssignment[]
   standaloneTokenHash   String?                @map("standalone_token_hash")
+  editorDraft           Json?                  @map("editor_draft")
 
   @@unique([courseId, slug])
   @@index([organizationId, status])

@@ -5,6 +5,7 @@ import type { DataTableSort } from '../../shared/ui.js';
 import { ASSESSMENT_STATUSES, type Assessment, type AssessmentStatus } from './model.js';
 
 export type AssessmentListRow = Assessment & {
+  hasUnpublishedChanges?: boolean;
   courseTitle: string | null;
   questionsCount: number;
   attemptsCount: number;
