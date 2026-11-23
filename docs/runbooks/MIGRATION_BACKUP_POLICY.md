@@ -6,6 +6,15 @@
 >
 > **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
 
+## Assessment editor draft migration (PR 527)
+
+`20261124140000_assessment_editor_draft` adds a nullable JSONB column, `assessments.editor_draft`.
+Apply it before deploying the updated API. Existing tests open in the editor with their stored
+settings and questions. The migration needs no backfill or special backup procedure.
+
+On application rollback, retain the column so saved drafts can be reopened after redeployment.
+The older editor reads and writes the canonical test settings and question records.
+
 ## Standalone assessment assignments migration (PR 523)
 
 `20261124100000_assessment_assignments` adds a nullable token digest to assessments and

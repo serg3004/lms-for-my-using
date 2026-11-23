@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { assessmentAnswerSchema, questionDefinitionSchema, questionTypeSchema, scoringModeSchema } from '@lms/shared/assessment-question-types';
 import { FOLDER_COLORS } from '@lms/shared/constants/folder-colors';
 import { richTextSchema } from '@lms/shared/rich-text';
 
@@ -84,3 +85,45 @@ export const assessmentLibrarySchema = z.object({
 }).strict();
 
 export type AssessmentLibraryQuery = z.infer<typeof assessmentLibrarySchema>;
+
+const editorOptionSchema = z.object({
+  id: z.guid(),
+  text: z.string().trim().max(2000).nullable(),
+  imageUrl: z.string().trim().min(1).max(2000).nullable(),
+  isCorrect: z.boolean(),
+}).refine((option) => option.text || option.imageUrl);
+
+const editorQuestionSchema = z.object({
+  id: z.guid(),
+  type: questionTypeSchema,
+  title: z.string().trim().min(1).max(200),
+  text: z.string().max(4000).nullable(),
+  imageUrl: z.string().max(2000).nullable(),
+  points: z.number().int().min(1).max(2147483647),
+  definition: questionDefinitionSchema.nullable(),
+  scoringMode: scoringModeSchema,
+  options: z.array(editorOptionSchema),
+});
+
+export const assessmentEditorContentSchema = z.object({
+  settings: updateAssessmentSchema.omit({ status: true }).required(),
+  questions: z.array(editorQuestionSchema),
+}).refine(({ questions }) => {
+  const ids = questions.flatMap((question) => [question.id, ...question.options.map((option) => option.id)]);
+  return new Set(ids).size === ids.length;
+}, 'Duplicate question or option IDs');
+
+export const saveAssessmentEditorSchema = z.object({
+  revision: z.iso.datetime(),
+  action: z.enum(['save', 'publish', 'archive', 'draft']),
+  confirmPublished: z.boolean(),
+  content: assessmentEditorContentSchema,
+});
+
+export type SaveAssessmentEditorInput = z.infer<typeof saveAssessmentEditorSchema>;
+
+export const previewAssessmentEditorSchema = z.object({
+  content: assessmentEditorContentSchema,
+  answers: z.array(assessmentAnswerSchema),
+  questionIds: z.array(z.guid()).min(1),
+});

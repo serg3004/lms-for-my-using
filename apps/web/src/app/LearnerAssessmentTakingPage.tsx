@@ -31,29 +31,36 @@ import {
 
 type LearnerAssessmentTakingData = { assessment: AssessmentSummary; questions: QuestionWithOptions[] };
 
+type TakingResult = Pick<AssessmentAttemptResult, 'passed' | 'score' | 'maxScore' | 'percentage' | 'assessment' | 'answers'>;
+type TakingPreview = LearnerAssessmentTakingData & {
+  startIndex: number;
+  submit: (questions: QuestionWithOptions[], selected: SelectedAnswers) => Promise<TakingResult>;
+};
+
 type SubmitState =
   | { status: 'idle' }
   | { status: 'submitting' }
-  | { status: 'done'; result: AssessmentAttemptResult; certificateId: string | null }
+  | { status: 'done'; result: TakingResult; certificateId: string | null }
   | { status: 'error'; message: string };
 
-export function LearnerAssessmentTakingPage({ assessmentId, token }: { assessmentId: string; token?: string }) {
+export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { assessmentId: string; token?: string; preview?: TakingPreview }) {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<SelectedAnswers>({});
   const [submitState, setSubmitState] = useState<SubmitState>({ status: 'idle' });
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(preview?.startIndex ?? 0);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
   const [timerError, setTimerError] = useState<string | null>(null);
 
   const { state: loadState } = useAsyncData<LearnerAssessmentTakingData>(
     async () => {
+      if (preview) return { assessment: preview.assessment, questions: preview.questions };
       const assessment = await getAssessment(assessmentId);
       const questionsWithOptions = await apiRequest<QuestionWithOptions[]>(
         `/assessments/${encodeURIComponent(assessmentId)}/quiz${assessmentTokenQuery(token)}`,
       );
       return { assessment, questions: questionsWithOptions };
     },
-    [assessmentId, t, token],
+    [assessmentId, t, token, preview],
     { unauthenticated: t('assessments.sessionExpired'), error: t('assessments.loadError') },
   );
 
@@ -74,6 +81,10 @@ export function LearnerAssessmentTakingPage({ assessmentId, token }: { assessmen
     }
 
     const timeLimitMinutes = loadState.data.assessment.timeLimitMinutes;
+    if (preview) {
+      setSecondsLeft(timeLimitMinutes * 60);
+      return;
+    }
     let cancelled = false;
     setTimerError(null);
 
@@ -91,7 +102,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token }: { assessmen
     })();
 
     return () => { cancelled = true; };
-  }, [loadState, assessmentId, token]);
+  }, [loadState, assessmentId, token, preview]);
 
   useEffect(() => {
     if (secondsLeft === null || secondsLeft <= 0) return;
@@ -122,8 +133,9 @@ export function LearnerAssessmentTakingPage({ assessmentId, token }: { assessmen
 
     if (loadState.status !== 'loaded' || loadState.data.questions.some((question) => !supportsOptionQuestion(question))) return;
 
-    const answeredCount = countAnsweredQuestions(loadState.data.questions, selected);
-    if (answeredCount < loadState.data.questions.length) {
+    const answeredQuestions = loadState.data.questions.slice(preview?.startIndex ?? 0);
+    const answeredCount = countAnsweredQuestions(answeredQuestions, selected);
+    if (answeredCount < answeredQuestions.length) {
       setSubmitState({ status: 'error', message: t('assessments.errorAnswerAll') });
       return;
     }
@@ -131,6 +143,11 @@ export function LearnerAssessmentTakingPage({ assessmentId, token }: { assessmen
     setSubmitState({ status: 'submitting' });
 
     try {
+      if (preview) {
+        const result = await preview.submit(answeredQuestions, selected);
+        setSubmitState({ status: 'done', result, certificateId: null });
+        return;
+      }
       const attempt = await createAssessmentAttempt(assessmentId, buildAssessmentAnswers(loadState.data.questions, selected), token);
       const result = await getAttemptResult(attempt.id);
 
@@ -200,11 +217,11 @@ export function LearnerAssessmentTakingPage({ assessmentId, token }: { assessmen
     const { result, certificateId } = submitState;
     return (
       <div className="learner-quiz">
-        <nav className="learner-breadcrumb">
+        {!preview && <nav className="learner-breadcrumb">
           <a href="/learn/assessments">{t('assessments.navLink')}</a>
           <span>›</span>
           <a href={backLink}>{assessment.title}</a>
-        </nav>
+        </nav>}
 
         <div className={`learner-quiz__result-banner ${result.passed ? 'learner-quiz__result-banner--passed' : 'learner-quiz__result-banner--failed'}`}>
           <span className="learner-quiz__result-label">
@@ -258,18 +275,18 @@ export function LearnerAssessmentTakingPage({ assessmentId, token }: { assessmen
         ) : null}
 
         <div className="learner-quiz__result-actions">
-          {certificateId ? (
+          {!preview && (certificateId ? (
             <a className="learner-btn learner-btn--primary" href={`/learn/certificates/${encodeURIComponent(certificateId)}`}>
               {t('assessments.viewCertificate')}
             </a>
           ) : (
             <a className="learner-btn learner-btn--primary" href={backLink}>{t('assessments.backToAssessment')}</a>
-          )}
-          {!result.passed ? (
+          ))}
+          {preview || !result.passed ? (
             <button
               className="learner-btn learner-btn--secondary"
               type="button"
-              onClick={() => { setSelected({}); setSubmitState({ status: 'idle' }); }}
+              onClick={() => { setSelected({}); if (preview) setCurrentIndex(preview.startIndex); setSubmitState({ status: 'idle' }); }}
             >
               {t('assessments.retryBtn')}
             </button>
@@ -283,11 +300,11 @@ export function LearnerAssessmentTakingPage({ assessmentId, token }: { assessmen
 
   return (
     <div className="learner-quiz">
-      <nav className="learner-breadcrumb">
+      {!preview && <nav className="learner-breadcrumb">
         <a href="/learn/assessments">{t('assessments.navLink')}</a>
         <span>›</span>
         <a href={backLink}>{assessment.title}</a>
-      </nav>
+      </nav>}
 
       <section style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px', marginBottom: '18px', flexWrap: 'wrap' }}>
         <div>
@@ -329,7 +346,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token }: { assessmen
       {questions.length === 0 ? (
         <p className="learner-quiz__empty">{t('assessments.noQuestions')}</p>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.35fr) minmax(220px,.65fr)', gap: '22px', alignItems: 'start' }}>
+        <div className={preview ? "edit-layout" : undefined} style={preview ? undefined : { display: 'grid', gridTemplateColumns: 'minmax(0,1.35fr) minmax(220px,.65fr)', gap: '22px', alignItems: 'start' }}>
           <form className="learner-quiz__form" onSubmit={handleSubmit}>
             {(() => {
               const question = questions[currentIndex];

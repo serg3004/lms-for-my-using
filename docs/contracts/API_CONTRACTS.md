@@ -2587,3 +2587,24 @@ access. It creates a draft owned by the caller with an independent slug, setting
 and active questions and options. It preserves the source folder and course
 and excludes attempts, assignment links, and placements. Copies of longread
 exercises are regular tests without a longread lesson binding.
+
+### Assessment editor (PR 527)
+
+`GET /assessments/:id/editor` returns the assessment, its canonical questions,
+a saved editor draft when present, placements and standalone assignments.
+The route requires assessment author access and permission to read questions
+and answer options at the applicable course scope.
+
+`PATCH /assessments/:id/editor` accepts the last observed `revision` (the
+assessment's `updatedAt`), an `action` of `save`, `publish`, `archive` or `draft`,
+`confirmPublished`, and `content` with settings and ordered questions and options.
+The route requires author, question edit and option edit access. On a published
+test, `save` stores an author draft. `publish` validates the submitted
+questions and applies their order and settings in one transaction. Updates to a
+published test require confirmation. The `draft` action applies the content and
+returns the test to draft status. A stale revision returns HTTP 409.
+
+`POST /assessments/:id/editor/preview` accepts editor content, question IDs and
+answers and returns grades without recording an attempt. It requires author and
+source course access. The author library exposes `hasUnpublishedChanges`.
+Copying a test with a saved author draft uses that draft's content.

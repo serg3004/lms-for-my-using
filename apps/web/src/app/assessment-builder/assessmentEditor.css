@@ -1,0 +1,45 @@
+.assessment-editor-panel {
+  max-inline-size: 60rem;
+}
+
+.assessment-editor-list {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+  margin-block: 0 0.75rem;
+}
+
+.assessment-editor-list > li {
+  min-inline-size: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  background: var(--color-surface);
+}
+
+.assessment-editor-grip {
+  cursor: grab;
+  padding: 0.25rem;
+}
+
+.assessment-editor-footer {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  flex-wrap: wrap;
+}
+
+.assessment-editor-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (max-width: 860px) {
+  .assessment-editor-row {
+    grid-template-columns: 1fr;
+  }
+}

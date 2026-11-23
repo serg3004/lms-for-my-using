@@ -54,7 +54,7 @@ export async function queryAssessmentLibrary(
       SELECT a.id, a.organization_id, a.course_id, a.lesson_id, a.folder_id, a.title, a.slug,
              a.status, a.description, a.passing_score, a.max_attempts, a.available_after_course_completion,
              a.pass_message, a.fail_message, a.show_correct_answers, a.randomize_order, a.is_longread_exercise,
-             a.created_at, c.title AS course_title
+             (a.editor_draft IS NOT NULL) AS has_unpublished_changes, a.created_at, c.title AS course_title
       FROM assessments a
       LEFT JOIN courses c ON c.id = a.course_id AND c.organization_id = a.organization_id AND c.deleted_at IS NULL
       WHERE ${Prisma.join(filters, ' AND ')}
@@ -80,7 +80,7 @@ export async function queryAssessmentLibrary(
       coalesce(jsonb_agg(jsonb_build_object(
         'id', a.id, 'courseId', a.course_id, 'courseTitle', a.course_title, 'lessonId', a.lesson_id,
         'folderId', a.folder_id, 'title', a.title, 'slug', a.slug, 'description', a.description,
-        'status', a.status, 'passingScore', a.passing_score, 'maxAttempts', a.max_attempts,
+        'status', a.status, 'hasUnpublishedChanges', a.has_unpublished_changes, 'passingScore', a.passing_score, 'maxAttempts', a.max_attempts,
         'availableAfterCourseCompletion', a.available_after_course_completion,
         'passMessage', a.pass_message, 'failMessage', a.fail_message, 'showCorrectAnswers', a.show_correct_answers,
         'randomizeOrder', a.randomize_order, 'isLongreadExercise', a.is_longread_exercise, 'createdAt', a.created_at,

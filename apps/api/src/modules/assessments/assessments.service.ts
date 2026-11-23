@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { validateQuestionDefinition } from '../../common/assessment-question-definition.js';
 
 import { releaseSlugOnDelete } from '../../common/soft-delete-slug.js';
@@ -8,6 +8,8 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { LEGACY_LIST_LIMIT } from '../../common/query-limits.js';
 import {
   AssessmentLibraryQuery,
+  SaveAssessmentEditorInput,
+  assessmentEditorContentSchema,
   CreateAssessmentInput,
   AssessmentPlacementInput,
   UpdateAssessmentInput,
@@ -101,6 +103,7 @@ export class AssessmentsService {
         where: { id, organizationId, deletedAt: null },
         select: {
           ...assessmentSelect,
+          editorDraft: true,
           questions: {
             where: { organizationId, deletedAt: null },
             select: {
@@ -113,14 +116,20 @@ export class AssessmentsService {
       if (!source) throw new NotFoundException('Assessment not found');
       const { questions, isLongreadExercise, courseId, folderId, title, description, passingScore, maxAttempts,
         timeLimitMinutes, availableAfterCourseCompletion, passMessage, failMessage, showCorrectAnswers, randomizeOrder } = source;
+      const draft = source.editorDraft == null ? null : assessmentEditorContentSchema.parse(source.editorDraft);
+      const copiedQuestions = draft?.questions.map(({ type, title, text, imageUrl, points, definition, scoringMode, options }, order) => ({
+        type, title, text, imageUrl, points, definition, scoringMode, order,
+        options: options.map(({ text, imageUrl, isCorrect }, order) => ({ text, imageUrl, isCorrect, order })),
+      })) ?? questions;
       return tx.assessment.create({
         data: {
           courseId, folderId, title, description, passingScore, maxAttempts, timeLimitMinutes,
           availableAfterCourseCompletion, passMessage, failMessage, showCorrectAnswers, randomizeOrder,
+          ...draft?.settings,
           organizationId, createdBy, slug: `copy-${randomUUID()}`, status: 'draft',
           // A copy is an independent assessment, even when the source came from a longread.
           lessonId: isLongreadExercise ? null : source.lessonId,
-          questions: { create: questions.map(({ options, definition, ...question }) => ({
+          questions: { create: copiedQuestions.map(({ options, definition, ...question }) => ({
             ...question, organizationId, definition: definition ?? Prisma.DbNull,
             options: { create: options.map((option) => ({ ...option, organizationId })) },
           })) },
@@ -128,6 +137,116 @@ export class AssessmentsService {
         select: assessmentSelect,
       });
     });
+  }
+
+  async getEditor(id: string, organizationId: string) {
+    const record = await this.prisma.assessment.findFirst({
+      where: { id, organizationId, deletedAt: null },
+      select: {
+        ...assessmentSelect,
+        editorDraft: true,
+        questions: {
+          where: { organizationId, deletedAt: null },
+          orderBy: [{ order: 'asc' }, { id: 'asc' }],
+          select: {
+            id: true, type: true, title: true, text: true, imageUrl: true, points: true, definition: true, scoringMode: true,
+            options: {
+              where: { organizationId, deletedAt: null },
+              orderBy: [{ order: 'asc' }, { id: 'asc' }],
+              select: { id: true, text: true, imageUrl: true, isCorrect: true },
+            },
+          },
+        },
+        placements: {
+          where: { organizationId, deletedAt: null, course: { deletedAt: null } },
+          select: { id: true, longreadBlockId: true, course: { select: { title: true } }, lesson: { select: { title: true } } },
+        },
+        standaloneAssignments: {
+          where: { organizationId, user: { deletedAt: null } },
+          select: { userId: true, dueAt: true, user: { select: { firstName: true, lastName: true } } },
+          orderBy: { dueAt: 'asc' },
+        },
+      },
+    });
+    if (!record) throw new NotFoundException('Assessment not found');
+    const { editorDraft, questions, placements, standaloneAssignments, ...assessment } = record;
+    return { assessment, draft: editorDraft, questions, placements, assignments: standaloneAssignments };
+  }
+
+  async saveEditor(id: string, organizationId: string, input: SaveAssessmentEditorInput) {
+    const { content, action, confirmPublished, revision } = input;
+    for (const question of content.questions) validateQuestionDefinition(question.type, question.definition);
+    if (action === 'publish') {
+      if (!content.questions.length) throw new BadRequestException('Cannot publish assessment: it has no questions');
+      const missing = content.questions.filter((question) => {
+        const correct = question.options.filter((option) => option.isCorrect).length;
+        return !question.definition && (correct === 0 || (question.type !== 'multiple_choice' && correct !== 1));
+      });
+      if (missing.length) throw new BadRequestException(missing.map((question) => question.title).join(', '));
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM assessments WHERE id = ${id}::uuid AND organization_id = ${organizationId}::uuid FOR UPDATE`;
+      const where = { id, organizationId, deletedAt: null };
+      const current = await tx.assessment.findFirst({ where, select: { updatedAt: true, status: true, timeLimitMinutes: true } });
+      if (!current) throw new NotFoundException('Assessment not found');
+      if (current.updatedAt.toISOString() !== revision) throw new ConflictException('Assessment was changed by another editor');
+      if (current.status === 'published' && !confirmPublished) throw new ConflictException('Confirm changes to the published assessment');
+
+      const updatedAt = new Date(Math.max(Date.now(), current.updatedAt.getTime() + 1));
+      if (current.status === 'published' && (action === 'save' || action === 'archive')) {
+        return tx.assessment.update({
+          where, data: { updatedAt, editorDraft: content, ...(action === 'archive' ? { status: 'archived' } : {}) }, select: { updatedAt: true, status: true },
+        });
+      }
+
+      if (action === 'publish' && current.status === 'published') {
+        const active = await tx.assessmentAttempt.findFirst({
+          where: {
+            assessmentId: id, organizationId, status: 'in_progress', deletedAt: null,
+            ...(current.timeLimitMinutes ? { startedAt: { gt: new Date(Date.now() - current.timeLimitMinutes * 60_000) } } : {}),
+          },
+          select: { id: true },
+        });
+        if (active) throw new ConflictException('Cannot publish while an attempt is in progress');
+      }
+
+      const deletedAt = new Date();
+      await tx.assessmentQuestion.updateMany({
+        where: { assessmentId: id, organizationId, deletedAt: null, id: { notIn: content.questions.map((question) => question.id) } },
+        data: { deletedAt },
+      });
+      for (const [order, { id: questionId, options, definition, ...fields }] of content.questions.entries()) {
+        const question = { ...fields, order, definition: definition ?? Prisma.DbNull, deletedAt: null };
+        await tx.assessmentQuestion.upsert({
+          where: { id: questionId, assessmentId: id, organizationId },
+          update: question,
+          create: { ...question, id: questionId, assessmentId: id, organizationId },
+        });
+        await tx.assessmentAnswerOption.updateMany({
+          where: { questionId, organizationId, deletedAt: null, id: { notIn: options.map((option) => option.id) } },
+          data: { deletedAt },
+        });
+        for (const [optionOrder, { id: optionId, ...fields }] of options.entries()) {
+          const option = { ...fields, order: optionOrder, deletedAt: null };
+          await tx.assessmentAnswerOption.upsert({
+            where: { id: optionId, questionId, organizationId },
+            update: option,
+            create: { ...option, id: optionId, questionId, organizationId },
+          });
+        }
+      }
+      return tx.assessment.update({
+        where,
+        data: {
+          ...content.settings,
+          updatedAt,
+          status: action === 'save' ? current.status : ({ publish: 'published', archive: 'archived', draft: 'draft' } as const)[action],
+          editorDraft: Prisma.DbNull,
+        },
+        select: { updatedAt: true, status: true },
+      });
+    }, { timeout: 15000 });
   }
 
   async listPlacements(assessmentId: string, organizationId: string) {

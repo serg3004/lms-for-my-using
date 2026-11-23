@@ -1,16 +1,20 @@
 import { Body, Controller, ForbiddenException, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 
-import { AuthGuard } from '../auth/public.js';
+import type { PermissionActionKey } from '@lms/shared/permission-catalog';
+import { AuthGuard, EffectivePermissionsLookup, hasPermission } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
 import { OrganizationScope } from '../auth/public.js';
 import { OrganizationScopeGuard } from '../auth/public.js';
 import { Roles, rolePolicies } from '../auth/public.js';
 import { RolesGuard } from '../auth/public.js';
-import { CourseAccessGuard, CourseScope } from '../course-access/public.js';
+import { CourseAccessGuard, CourseAccessPolicy, CourseScope } from '../course-access/public.js';
 import { isInstructorCourseScoped } from '../course-access/public.js';
+import { gradeAssessmentAnswers } from '../../common/assessment-grading.js';
 import { AssessmentsService } from './assessments.service.js';
 import {
   assessmentLibrarySchema,
+  saveAssessmentEditorSchema,
+  previewAssessmentEditorSchema,
   createAssessmentSchema,
   assessmentPlacementSchema,
   CreateAssessmentInput,
@@ -21,7 +25,11 @@ import {
 @Controller('assessments')
 @UseGuards(AuthGuard, RolesGuard, CourseAccessGuard)
 export class AssessmentsController {
-  constructor(private readonly assessmentsService: AssessmentsService) {}
+  constructor(
+    private readonly assessmentsService: AssessmentsService,
+    private readonly permissions: EffectivePermissionsLookup,
+    private readonly courseAccess: CourseAccessPolicy,
+  ) {}
 
   @Get()
   @Roles(...rolePolicies.assessmentsRead)
@@ -57,6 +65,41 @@ export class AssessmentsController {
 
     if (!input.courseId && isInstructorCourseScoped(request.currentUser!)) throw new ForbiddenException();
     return this.assessmentsService.createAssessment(input, request.currentUser!.id);
+  }
+
+  @Get(':id/editor')
+  @Roles(...rolePolicies.assessmentsCreate)
+  async getEditor(@Param('id', ParseUUIDPipe) id: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    await this.assertEditorAccess(id, user, ['assessment.author', 'assessment.question.read', 'assessment.option.read']);
+    return this.assessmentsService.getEditor(id, user.organizationId);
+  }
+
+  @Patch(':id/editor')
+  @Roles(...rolePolicies.assessmentsCreate)
+  async saveEditor(@Param('id', ParseUUIDPipe) id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    await this.assertEditorAccess(id, user, ['assessment.author', 'assessment.question.edit', 'assessment.option.edit']);
+    return this.assessmentsService.saveEditor(id, user.organizationId, saveAssessmentEditorSchema.parse(body));
+  }
+
+  private async assertEditorAccess(id: string, user: NonNullable<AuthenticatedRequest['currentUser']>, actions: PermissionActionKey[]) {
+    if (user.roles.includes('admin')) return;
+    const permissions = await this.permissions.forUser(user);
+    if (!actions.every((action) => hasPermission(permissions, action))) throw new ForbiddenException();
+    if (actions.some((action) => !permissions.get(action)?.scopes.has('organization'))) {
+      await this.courseAccess.assertResourceAccess('assessment', id, { ...user, roles: ['instructor'] });
+    }
+  }
+
+  @Post(':id/editor/preview')
+  @Roles(...rolePolicies.assessmentsCreate)
+  @CourseScope('param', 'id', 'assessment')
+  async previewEditor(@Param('id', ParseUUIDPipe) id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    await this.assessmentsService.getAssessment(id, request.currentUser!.organizationId);
+    const { content, answers, questionIds } = previewAssessmentEditorSchema.parse(body);
+    const questions = content.questions.filter((question) => questionIds.includes(question.id));
+    return gradeAssessmentAnswers(questions, answers);
   }
 
   @Post(':id/copy')
