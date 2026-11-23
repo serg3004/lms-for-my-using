@@ -1541,6 +1541,7 @@
         "exportCsv": "CSV жүктеу",
         "exportError": "Сессияларды жүктеу мүмкін болмады.",
         "exportXlsx": "Excel жүктеу",
+        "more": "Қосымша әрекеттер",
         "summarySameChecklist": "Бір парақтың сессияларын таңдаңыз.",
         "summarySelectAll": "Барлық аяқталған сессияларды таңдау",
         "summarySelectRow": "Жиынтыққа таңдау: {{title}}, {{employee}}"

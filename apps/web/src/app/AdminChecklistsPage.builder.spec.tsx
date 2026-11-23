@@ -77,7 +77,7 @@ describe('ChecklistBuilder (real hooks)', () => {
     expect(html).toContain('Номер магазина');
     expect(html).toContain('Приветствие');
     expect(html).toContain('Ungrouped');
-    expect(html).toContain('Evaluation scales');
+    expect(html).toContain('More actions');
     // PR 317: each group is its own card, criteria render as a table row (not the old flex row
     // whose text input could collapse to 0px -- see admin.css's `.admin-checklist-item input`
     // comment), with per-row order arrows and a row menu instead of an inline delete button.

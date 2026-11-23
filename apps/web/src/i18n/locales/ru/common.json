@@ -1541,6 +1541,7 @@
         "exportCsv": "Скачать CSV",
         "exportError": "Не удалось выгрузить сессии.",
         "exportXlsx": "Скачать Excel",
+        "more": "Ещё действия",
         "summarySameChecklist": "Выберите сессии одного листа.",
         "summarySelectAll": "Выбрать все завершённые сессии",
         "summarySelectRow": "Выбрать для сводки: {{title}}, {{employee}}"

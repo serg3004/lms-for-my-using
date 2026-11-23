@@ -1541,6 +1541,7 @@
         "exportCsv": "下载 CSV",
         "exportError": "无法导出会话。",
         "exportXlsx": "下载 Excel",
+        "more": "更多操作",
         "summarySameChecklist": "请选择同一观察表的会话。",
         "summarySelectAll": "选择所有已完成的会话",
         "summarySelectRow": "选择用于汇总：{{title}}，{{employee}}"

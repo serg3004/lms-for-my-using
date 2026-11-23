@@ -19,7 +19,8 @@ async function openScaleEditor(page: Page) {
   await page.goto('/admin/checklists');
   if (page.viewportSize()!.width <= 860) await page.getByRole('button', { name: /Opening shift checklist$/ }).click();
   await page.getByRole('button', { name: 'Редактировать' }).click();
-  await page.getByRole('button', { name: 'Оценочные шкалы' }).click();
+  await page.getByRole('button', { name: 'Ещё действия', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Оценочные шкалы' }).click();
   await page.getByRole('button', { name: 'Новая шкала' }).click();
   await expect(page.getByRole('dialog', { name: 'Новая шкала' }).getByLabel('Название уровня 1')).toBeVisible();
 }

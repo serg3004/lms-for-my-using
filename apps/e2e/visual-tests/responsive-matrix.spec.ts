@@ -1316,7 +1316,8 @@ for (const width of widths) {
       await expect(page.getByRole('heading', { name: 'Чек-листы' })).toBeVisible();
       if (width <= 860) await page.getByRole('button', { name: /Opening shift checklist$/ }).click();
       await page.getByRole('button', { name: 'Редактировать' }).click();
-      await page.getByRole('button', { name: 'Оценочные шкалы' }).click();
+      await page.getByRole('button', { name: 'Ещё действия', exact: true }).click();
+      await page.getByRole('menuitem', { name: 'Оценочные шкалы' }).click();
       await page.getByRole('button', { name: 'Новая шкала' }).click();
       const dialog = page.getByRole('dialog', { name: 'Новая шкала' });
       await expect(dialog.getByLabel('Название уровня 2')).toBeVisible();

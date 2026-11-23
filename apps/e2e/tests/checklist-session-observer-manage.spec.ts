@@ -56,7 +56,8 @@ test.describe('instructor and mentor manage organization sessions (PR 360б)', (
     await expect(page.getByText('Alex Learner').first()).toBeVisible();
     await expect(page.getByRole('link', { name: 'All sessions' })).toHaveAttribute('aria-current', 'page');
     // PR 362: the section settings belong to the four organization roles; the admin analytics link does not.
-    await expect(page.getByRole('button', { name: 'Module settings' })).toBeVisible();
+    await page.getByRole('button', { name: 'More actions' }).click();
+    await expect(page.getByRole('menuitem', { name: 'Module settings' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Session sections' }).getByRole('link', { name: 'Checklists' })).toHaveAttribute('href', '/instructor/checklists/library');
     await expect(page.getByRole('link', { name: 'Checklist analytics' })).toHaveCount(0);
     await expect(page.getByRole('link', { name: 'Open' }).first()).toHaveAttribute('href', `/instructor/checklists/sessions/all/${sessionId}`);
@@ -70,7 +71,8 @@ test.describe('instructor and mentor manage organization sessions (PR 360б)', (
     await page.goto('/mentor/sessions');
     await expect(page.getByText('Alex Learner').first()).toBeVisible();
     await expect(page.getByRole('link', { name: 'Open' }).first()).toHaveAttribute('href', `/mentor/sessions/${sessionId}`);
-    await expect(page.getByRole('button', { name: 'Module settings' })).toBeVisible();
+    await page.getByRole('button', { name: 'More actions' }).click();
+    await expect(page.getByRole('menuitem', { name: 'Module settings' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Session sections' }).getByRole('link', { name: 'Checklists' })).toHaveAttribute('href', '/mentor/library');
   });
 
