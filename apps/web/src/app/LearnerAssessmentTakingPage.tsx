@@ -346,7 +346,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
       {questions.length === 0 ? (
         <p className="learner-quiz__empty">{t('assessments.noQuestions')}</p>
       ) : (
-        <div className={preview ? "assessment-editor-preview-grid" : undefined} style={preview ? undefined : { display: 'grid', gridTemplateColumns: 'minmax(0,1.35fr) minmax(220px,.65fr)', gap: '22px', alignItems: 'start' }}>
+        <div className={preview ? "edit-layout" : undefined} style={preview ? undefined : { display: 'grid', gridTemplateColumns: 'minmax(0,1.35fr) minmax(220px,.65fr)', gap: '22px', alignItems: 'start' }}>
           <form className="learner-quiz__form" onSubmit={handleSubmit}>
             {(() => {
               const question = questions[currentIndex];

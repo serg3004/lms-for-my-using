@@ -38,19 +38,17 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
       await page.goto('/admin/assessments/new');
       await page.getByRole('checkbox', { name: /самостоятельный тест/i }).waitFor();
       await page.getByRole('textbox', { name: /^Название/ }).fill('Проверка знаний');
-      await page.getByRole('button', { name: 'Настройки', exact: true }).click();
       await page.getByLabel('Лимит времени (минуты)').fill('12');
-      await page.getByRole('button', { name: 'Основное', exact: true }).click();
       await page.locator('button[form="assessment-editor-create"]').click();
-      await expect(page.getByRole('button', { name: 'Добавить вопрос', exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: '+ Один вариант', exact: true })).toBeVisible();
       const id = new URL(page.url()).pathname.split('/')[3];
       const endpoint = `/api/v1/assessments/${id}`;
       await page.getByRole('button', { name: 'Опубликовать', exact: true }).click();
       await expect(page.getByRole('alert')).toBeVisible();
 
-      const questions = page.locator('.assessment-editor-panel > ol > li');
+      const questions = page.getByTestId('assessment-editor-questions').locator(':scope > ol > li');
       for (const [index, title] of ['Первый вопрос', 'Второй вопрос'].entries()) {
-        await page.getByRole('button', { name: 'Добавить вопрос', exact: true }).click();
+        await page.getByRole('button', { name: '+ Один вариант', exact: true }).click();
         const question = questions.nth(index);
         await question.getByRole('textbox').first().fill(title);
         await question.getByRole('button', { name: 'Добавить вариант', exact: true }).click();
@@ -64,7 +62,7 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
       await page.getByRole('radio', { name: 'Ответ 1' }).check();
       await page.getByRole('button', { name: 'Отправить ответы', exact: true }).click();
       await expect(page.locator('.learner-quiz__result-score')).toContainText('100%');
-      await page.getByRole('button', { name: 'С начала' }).click();
+      await page.getByRole('button', { name: 'Предпросмотр с начала' }).click();
       await expect(page.getByRole('heading', { name: 'Второй вопрос' })).toBeVisible();
       await page.getByRole('button', { name: 'Опубликовать', exact: true }).click();
       await expect(page.getByText('Опубликован', { exact: true })).toBeVisible();
@@ -80,6 +78,7 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
       expect(await json(request.get(endpoint, { headers }))).toMatchObject({ status: 'published', timeLimitMinutes: 12 });
 
       await page.getByRole('button', { name: 'Вопросы', exact: true }).click();
+      await questions.first().getByRole('button', { name: 'Редактировать' }).click();
       await questions.first().getByRole('textbox').first().fill('Изменённый вопрос');
       await page.getByRole('button', { name: 'Сохранить изменения', exact: true }).click();
       await expect(page.getByRole('dialog')).toContainText('Test Employee');
@@ -88,7 +87,7 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
       expect(await json(request.get(`${endpoint}/quiz`, { headers: learnerHeaders }))).toMatchObject(published);
       await page.reload();
       await page.getByRole('button', { name: 'Вопросы', exact: true }).click();
-      await expect(questions.first().getByRole('textbox').first()).toHaveValue('Изменённый вопрос');
+      await expect(questions.first()).toContainText('Изменённый вопрос');
       const copy = await json<{ id: string }>(request.post(`${endpoint}/copy`, { headers }));
       expect(await json(request.get(`/api/v1/assessments/${copy.id}/questions`, { headers }))).toMatchObject([{ title: 'Изменённый вопрос' }, { title: 'Первый вопрос' }]);
       expect(await prisma.assessmentAttempt.count({ where: { assessmentId: copy.id } })).toBe(0);

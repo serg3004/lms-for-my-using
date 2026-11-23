@@ -14,7 +14,7 @@ import { AssessmentEditorPreview } from './AssessmentEditorPreview.js';
 import type { EditorContent, EditorDocument } from './editorModel.js';
 import './assessmentEditor.css';
 
-const tabs = ['main', 'questions', 'settings', 'preview', 'usage'] as const;
+const tabs = ['questions', 'main', 'settings', 'preview', 'usage'] as const;
 type Tab = typeof tabs[number];
 type Action = 'save' | 'publish' | 'archive' | 'draft';
 const listPath = '/admin/assessments';
@@ -28,7 +28,7 @@ export function AssessmentEditorPage() {
     [assessmentId],
     { unauthenticated: t('admin.assessmentBuilder.sessionExpired'), error: t('admin.assessmentBuilder.loadError') },
   );
-  const targetTab = tabs.find((tab) => tab === params.get('tab')) ?? 'main';
+  const targetTab = tabs.find((tab) => tab === params.get('tab')) ?? (assessmentId ? 'questions' : 'main');
   const listLink = `${listPath}${params.get('list') ? `?${params.get('list')}` : ''}`;
   const ready = state.status === 'loaded' && (assessmentId ? state.data?.assessment.id === assessmentId : state.data === null);
   const loading = state.status === 'loading' || state.status === 'loaded';
@@ -195,18 +195,34 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
 
   return <>
     <a href={listLink}>{t('admin.assessmentBuilder.backToDashboard')}</a>
+    {dirty && <div className="assessment-editor-footer ui-state ui-state--warning admin-inline-banner">
+      <span role="status">{label('unsaved')}</span>
+      {initial && <Button type="button" disabled={busy || copying} onClick={() => void requestSave('save')}>{t('admin.assessmentBuilder.update')}</Button>}
+    </div>}
     <AdminPageHeader title={form.title.trim() || t(initial ? 'admin.assessmentBuilder.editTitle' : 'admin.assessmentBuilder.createTitle')}
-      action={<div className="admin-header-actions">
+      subtitle={<>
         <Badge variant={status === 'published' ? 'published' : status === 'draft' ? 'draft' : 'neutral'}>{t(`admin.assessmentBuilder.status.${status}`)}</Badge>
-        {unpublished && <Badge variant="draft">{label('unpublished')}</Badge>}
-        {initial && <Button type="button" disabled={dirty || busy || copying} onClick={() => void copy()}>{t('admin.checklists.copy')}</Button>}
+        {unpublished && <> <Badge variant="draft">{label('unpublished')}</Badge></>}
+      </>}
+      action={<div className="admin-header-actions">
+        {initial && <Button variant="secondary" type="button" disabled={dirty || busy || copying} onClick={() => void copy()}>{t('admin.checklists.copy')}</Button>}
+        {initial && <Button variant="secondary" type="button" onClick={() => startPreview(0)}>{label('previewFromStart')}</Button>}
+        {!initial && <Button variant="primary" type="submit" form="assessment-editor-create">{t('admin.assessmentBuilder.create')}</Button>}
+        {initial && <>
+          <Button variant="primary" type="button" disabled={busy || copying || (status === 'published' && !dirty && !unpublished)}
+            onClick={() => void requestSave('publish')}>{t('admin.assessmentBuilder.publish')}</Button>
+          {status !== 'draft' && <Button variant="secondary" type="button" disabled={busy || copying}
+            onClick={() => void requestSave('draft')}>{label('returnToDraft')}</Button>}
+          {status !== 'archived' && <Button variant="secondary" type="button" disabled={busy || copying}
+            onClick={() => void requestSave('archive')}>{t('admin.checklists.action.archive')}</Button>}
+        </>}
       </div>} />
     <nav className="admin-builder-tabbar__actions" aria-label={t('admin.assessmentBuilder.editTitle')}>
       {tabs.filter((item) => initial || item === 'main' || item === 'settings').map((item) =>
         <Button key={item} type="button" aria-pressed={tab === item} variant={tab === item ? 'primary' : 'secondary'}
           onClick={() => setTab(item)}>{label(item)}</Button>)}
     </nav>
-    <fieldset disabled={busy || copying || pending !== null} className="assessment-editor-panel admin-theme-settings__fieldset admin-form">
+    <fieldset disabled={busy || copying || pending !== null} className={`admin-theme-settings__fieldset admin-form ${tab === 'questions' ? '' : 'assessment-editor-panel'}`}>
       {!initial && <div hidden={tab !== 'main'}><CreationPlacement onChange={() => setPlacementDirty(true)} form={form} onCreated={(id) => {
           const params = new URLSearchParams({ tab: 'questions' });
           if (listLink.includes('?')) params.set('list', listLink.split('?')[1]);
@@ -216,6 +232,10 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
         <FormField id="assessment-editor-title" label={t('admin.assessmentBuilder.assessmentTitle')} required>
           <input id="assessment-editor-title" value={form.title} maxLength={200} onChange={(event) => change('title', event.target.value)} />
         </FormField>
+        <FormField id="timeLimitMinutes" label={label('timeLimit')} hint={label('timeHint')}>
+          <input id="timeLimitMinutes" type="number" min={1} value={form.timeLimitMinutes}
+            onChange={(event) => change('timeLimitMinutes', event.target.value)} />
+        </FormField>
         <RichTextField id="assessment-editor-description" label={t('admin.assessmentBuilder.description')}
           value={form.description} maxLength={2000} onChange={(value) => change('description', value)} />
       </>}
@@ -223,9 +243,7 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
         {([
           ['passingScore', t('admin.assessmentBuilder.passingScore'), 0, 100],
           ['maxAttempts', t('admin.assessmentBuilder.maxAttempts'), 1, undefined],
-          ['timeLimitMinutes', label('timeLimit'), 1, undefined],
-        ] as const).map(([field, title, min, max]) => <FormField key={field} id={field} label={title}
-          hint={field === 'timeLimitMinutes' ? label('timeHint') : undefined}>
+        ] as const).map(([field, title, min, max]) => <FormField key={field} id={field} label={title}>
           <input id={field} type="number" min={min} max={max} value={form[field]} onChange={(event) => change(field, event.target.value)} />
         </FormField>)}
         {(['availableAfterCourseCompletion', 'showCorrectAnswers', 'randomizeOrder'] as const).map((field) =>
@@ -238,25 +256,11 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
       </>}
       {tab === 'questions' && <AssessmentEditorQuestions questions={questions} onChange={setQuestions} onPreview={startPreview} />}
       {tab === 'preview' && initial && <>
-        <Button type="button" onClick={() => startPreview(0)}>{label('fromStart')}</Button>
         <AssessmentEditorPreview key={preview.run} assessment={initial.assessment} content={content} startIndex={preview.index} />
       </>}
       {tab === 'usage' && initial && <Usage document={initial} />}
     </fieldset>
     {feedback.length > 0 && <ul role="alert" className="admin-form__error">{feedback.map((message, index) => <li key={index}>{message}</li>)}</ul>}
-    <div className="assessment-editor-footer admin-header-actions">
-      {dirty && <span role="status">{label('unsaved')}</span>}
-      {!initial && <Button variant="primary" type="submit" form="assessment-editor-create">{t('admin.assessmentBuilder.create')}</Button>}
-      {initial && <>
-        <Button type="button" disabled={!dirty || busy || copying} onClick={() => void requestSave('save')}>{t('admin.assessmentBuilder.update')}</Button>
-        <Button variant="primary" type="button" disabled={busy || copying || (status === 'published' && !dirty && !unpublished)}
-          onClick={() => void requestSave('publish')}>{t('admin.assessmentBuilder.publish')}</Button>
-        {status !== 'draft' && <Button type="button" disabled={busy || copying}
-          onClick={() => void requestSave('draft')}>{label('returnToDraft')}</Button>}
-        {status !== 'archived' && <Button type="button" disabled={busy || copying}
-          onClick={() => void requestSave('archive')}>{t('admin.checklists.action.archive')}</Button>}
-      </>}
-    </div>
     <ConfirmDialog open={pending !== null} title={label('confirmTitle')}
       message={pending && <div><p>{label('confirmText')}</p><Usage document={pending.document} /></div>}
       confirmLabel={label('confirm')} cancelLabel={t('admin.assessmentBuilder.cancel')}

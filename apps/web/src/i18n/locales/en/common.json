@@ -521,7 +521,7 @@
         "moveDown": "Move item {{number}} down",
         "copyQuestion": "Copy question",
         "fromQuestion": "From this question",
-        "fromStart": "From the beginning",
+        "previewFromStart": "Preview from the beginning",
         "deleteOption": "Delete option",
         "deleteQuestion": "Delete question",
         "invalidFields": "Enter a title and valid settings.",

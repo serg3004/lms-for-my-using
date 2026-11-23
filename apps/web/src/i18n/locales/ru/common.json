@@ -521,7 +521,7 @@
         "moveDown": "Переместить элемент {{number}} вниз",
         "copyQuestion": "Копировать вопрос",
         "fromQuestion": "С этого вопроса",
-        "fromStart": "С начала",
+        "previewFromStart": "Предпросмотр с начала",
         "deleteOption": "Удалить вариант",
         "deleteQuestion": "Удалить вопрос",
         "invalidFields": "Укажите название и проверьте настройки.",

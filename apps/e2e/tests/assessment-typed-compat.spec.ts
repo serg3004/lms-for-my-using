@@ -17,8 +17,10 @@ test('assessment editor protects typed definitions and disables incompatible pre
   const row = page.getByRole('row', { name: /Проверка знаний/ });
   await row.getByRole('button', { name: /Действия/ }).click();
   await page.getByRole('menuitem', { name: 'Вопросы', exact: true }).click();
+  await expect(page).toHaveURL(/\/edit\?tab=questions/);
+  await expect(page.getByTestId('assessment-editor-questions')).toBeVisible({ timeout: 10_000 });
   await expect(page.getByText(typedQuestionMessage)).toBeVisible();
-  await expect(page.locator('.assessment-editor-panel').getByRole('textbox')).toBeDisabled();
+  await expect(page.getByTestId('assessment-editor-questions').getByRole('textbox')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /Добавить вариант/ })).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Предпросмотр', exact: true }).click();

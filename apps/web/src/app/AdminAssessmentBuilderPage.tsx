@@ -77,7 +77,7 @@ export function AdminAssessmentBuilderPage() {
     window.location.assign(`/admin/assessments/new?${params}`);
   }
 
-  function openEditor(assessment: Assessment, tab = 'main') {
+  function openEditor(assessment: Assessment, tab = 'questions') {
     const params = new URLSearchParams({ tab, list: window.location.search.slice(1) });
     window.location.assign(`/admin/assessments/${encodeURIComponent(assessment.id)}/edit?${params}`);
   }

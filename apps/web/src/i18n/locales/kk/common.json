@@ -521,7 +521,7 @@
         "moveDown": "{{number}}-элементті төмен жылжыту",
         "copyQuestion": "Сұрақты көшіру",
         "fromQuestion": "Осы сұрақтан бастап",
-        "fromStart": "Басынан бастап",
+        "previewFromStart": "Басынан бастап алдын ала қарау",
         "deleteOption": "Нұсқаны жою",
         "deleteQuestion": "Сұрақты жою",
         "invalidFields": "Атауын енгізіп, баптауларды тексеріңіз.",

@@ -521,7 +521,7 @@
         "moveDown": "向下移动第 {{number}} 项",
         "copyQuestion": "复制题目",
         "fromQuestion": "从此题开始",
-        "fromStart": "从头开始",
+        "previewFromStart": "从头开始预览",
         "deleteOption": "删除选项",
         "deleteQuestion": "删除题目",
         "invalidFields": "请输入标题并检查设置。",

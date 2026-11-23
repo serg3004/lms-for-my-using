@@ -1,14 +1,17 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormField } from '../../shared/adminPage.js';
-import { Button } from '../../shared/ui.js';
+import { Badge, Button } from '../../shared/ui.js';
 import { supportsOptionQuestion } from '../assessment-taking/model.js';
 import { copyEditorQuestion, moveEditorItem, newEditorQuestion, type EditorQuestion } from './editorModel.js';
+
+const optionTypes = { single_choice: 'singleChoice', multiple_choice: 'multipleChoice', true_false: 'trueFalse' } as const;
+type OptionType = keyof typeof optionTypes;
 
 function ReorderList<T extends { id: string }>({ items, onChange, children }: {
   items: T[];
   onChange: (items: T[]) => void;
-  children: (item: T, index: number) => ReactNode;
+  children: (item: T, index: number, reorder: ReactNode) => ReactNode;
 }) {
   const { t } = useTranslation();
   const dragType = 'application/x-lms-assessment-item';
@@ -24,18 +27,17 @@ function ReorderList<T extends { id: string }>({ items, onChange, children }: {
         event.stopPropagation();
         onChange(moveEditorItem(items, id, index));
       }}>
-      <div className="admin-header-actions">
+      {children(item, index, <>
         <span draggable aria-hidden="true" className="assessment-editor-grip"
           onDragStart={(event) => {
             event.dataTransfer.effectAllowed = 'move';
             event.dataTransfer.setData(dragType, item.id);
           }}>⠿</span>
-        <Button type="button" size="sm" aria-label={t('admin.assessmentBuilder.editor.moveUp', { number: index + 1 })}
+        <Button type="button" size="sm" variant="secondary" aria-label={t('admin.assessmentBuilder.editor.moveUp', { number: index + 1 })}
           disabled={index === 0} onClick={() => onChange(moveEditorItem(items, item.id, index - 1))}>↑</Button>
-        <Button type="button" size="sm" aria-label={t('admin.assessmentBuilder.editor.moveDown', { number: index + 1 })}
+        <Button type="button" size="sm" variant="secondary" aria-label={t('admin.assessmentBuilder.editor.moveDown', { number: index + 1 })}
           disabled={index === items.length - 1} onClick={() => onChange(moveEditorItem(items, item.id, index + 1))}>↓</Button>
-      </div>
-      {children(item, index)}
+      </>)}
     </li>)}
   </ol>;
 }
@@ -46,13 +48,44 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview }: {
   onPreview: (index: number) => void;
 }) {
   const { t } = useTranslation();
+  const [expanded, setExpanded] = useState<string | null>(null);
   function changeQuestion(id: string, patch: Partial<EditorQuestion>) {
     onChange(questions.map((question) => question.id === id ? { ...question, ...patch } : question));
   }
-  return <>
+  function addQuestion(type: OptionType) {
+    const question = { ...newEditorQuestion(), type };
+    onChange([...questions, question]);
+    setExpanded(question.id);
+  }
+  return <div className="edit-layout" data-testid="assessment-editor-questions">
     <ReorderList items={questions} onChange={onChange}>
-      {(question, index) => <div className="admin-form">
+      {(question, index, reorder) => <div className="admin-form">
+        <div className="assessment-editor-row">
+          <div className="admin-header-actions">
+            {reorder}
+            <div>
+              <small>{index + 1} · {t('admin.assessmentBuilder.points')} {question.points}</small>
+              <div><strong>{question.title || t('admin.assessmentBuilder.questionTitle')}</strong></div>
+            </div>
+          </div>
+          <div className="admin-header-actions">
+            {supportsOptionQuestion(question) && <Button type="button" variant="secondary" size="sm"
+              aria-expanded={expanded === question.id} onClick={() => setExpanded(expanded === question.id ? null : question.id)}>
+              {t('admin.assessmentBuilder.edit')}
+            </Button>}
+            <Button type="button" variant="secondary" size="sm" aria-label={t('admin.assessmentBuilder.editor.copyQuestion')}
+              onClick={() => onChange([...questions.slice(0, index + 1), copyEditorQuestion(question), ...questions.slice(index + 1)])}>
+              {t('admin.checklists.copy')}
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => onPreview(index)}>{t('admin.assessmentBuilder.editor.fromQuestion')}</Button>
+            <Button type="button" variant="danger" size="sm" aria-label={t('admin.assessmentBuilder.editor.deleteQuestion')}
+              onClick={() => onChange(questions.filter((item) => item.id !== question.id))}>
+              {t('admin.assessmentBuilder.delete')}
+            </Button>
+          </div>
+        </div>
         {!supportsOptionQuestion(question) && <p role="status">{t('assessments.typedQuestionUnavailable')}</p>}
+        {expanded === question.id && <>
         <FormField id={question.id} label={t('admin.assessmentBuilder.questionTitle')} required>
           <input id={question.id} maxLength={200} value={question.title} disabled={!supportsOptionQuestion(question)}
             onChange={(event) => changeQuestion(question.id, { title: event.target.value })} />
@@ -60,8 +93,8 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview }: {
         {supportsOptionQuestion(question) && <FormField id={`${question.id}-type`} label={t('admin.assessmentBuilder.questionType')}>
           <select id={`${question.id}-type`} value={question.type} onChange={(event) =>
             changeQuestion(question.id, { type: event.target.value as EditorQuestion['type'] })}>
-            {(['single_choice', 'multiple_choice', 'true_false'] as const).map((type) =>
-              <option key={type} value={type}>{t(`admin.assessmentBuilder.${{ single_choice: 'singleChoice', multiple_choice: 'multipleChoice', true_false: 'trueFalse' }[type]}`)}</option>)}
+            {(Object.entries(optionTypes)).map(([type, key]) =>
+              <option key={type} value={type}>{t(`admin.assessmentBuilder.${key}`)}</option>)}
           </select>
         </FormField>}
         <FormField id={`${question.id}-points`} label={t('admin.assessmentBuilder.points')}>
@@ -70,7 +103,8 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview }: {
         </FormField>
         {supportsOptionQuestion(question) && <>
           <ReorderList items={question.options} onChange={(options) => changeQuestion(question.id, { options })}>
-            {(option) => <div className="admin-form">
+            {(option, optionIndex, reorderOption) => <div className="admin-form">
+              <div className="admin-header-actions">{reorderOption}<Badge variant="neutral">{optionIndex + 1}</Badge></div>
               <FormField id={option.id} label={t('admin.assessmentBuilder.optionText')}>
                 <input id={option.id} maxLength={2000} value={option.text ?? ''} onChange={(event) =>
                   changeQuestion(question.id, { options: question.options.map((item) =>
@@ -95,17 +129,15 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview }: {
             options: [...question.options, { id: crypto.randomUUID(), text: null, imageUrl: null, isCorrect: false }],
           })}>{t('admin.assessmentBuilder.addOption')}</Button>
         </>}
-        <div className="admin-header-actions">
-          <Button type="button" onClick={() => onChange([...questions.slice(0, index + 1), copyEditorQuestion(question), ...questions.slice(index + 1)])}>
-            {t('admin.assessmentBuilder.editor.copyQuestion')}
-          </Button>
-          <Button type="button" onClick={() => onPreview(index)}>{t('admin.assessmentBuilder.editor.fromQuestion')}</Button>
-          <Button type="button" onClick={() => onChange(questions.filter((item) => item.id !== question.id))}>
-            {t('admin.assessmentBuilder.editor.deleteQuestion')}
-          </Button>
-        </div>
+        </>}
       </div>}
     </ReorderList>
-    <Button type="button" onClick={() => onChange([...questions, newEditorQuestion()])}>{t('admin.assessmentBuilder.addQuestionBtn')}</Button>
-  </>;
+    <section className="admin-card admin-form">
+      <h2>{t('admin.assessmentBuilder.addQuestionBtn')}</h2>
+      {(Object.entries(optionTypes) as [OptionType, string][]).map(([type, key]) =>
+        <Button key={type} type="button" variant="secondary" onClick={() => addQuestion(type)}>
+          + {t(`admin.assessmentBuilder.${key}`)}
+        </Button>)}
+    </section>
+  </div>;
 }
