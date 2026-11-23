@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
@@ -10,6 +10,7 @@ import { CourseAccessGuard, CourseScope } from '../course-access/public.js';
 import { isInstructorCourseScoped } from '../course-access/public.js';
 import { AssessmentsService } from './assessments.service.js';
 import {
+  assessmentLibrarySchema,
   createAssessmentSchema,
   assessmentPlacementSchema,
   CreateAssessmentInput,
@@ -32,6 +33,13 @@ export class AssessmentsController {
     );
   }
 
+  @Get('library')
+  @Roles(...rolePolicies.assessmentsCreate)
+  listLibrary(@Query() query: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.assessmentsService.listLibrary(user.organizationId, user.id, isInstructorCourseScoped(user), assessmentLibrarySchema.parse(query));
+  }
+
   @Get(':id')
   @Roles(...rolePolicies.assessmentsRead)
   @CourseScope('param', 'id', 'assessment')
@@ -48,7 +56,15 @@ export class AssessmentsController {
     const input: CreateAssessmentInput = createAssessmentSchema.parse(body);
 
     if (!input.courseId && isInstructorCourseScoped(request.currentUser!)) throw new ForbiddenException();
-    return this.assessmentsService.createAssessment(input);
+    return this.assessmentsService.createAssessment(input, request.currentUser!.id);
+  }
+
+  @Post(':id/copy')
+  @Roles(...rolePolicies.assessmentsCreate)
+  @CourseScope('param', 'id', 'assessment')
+  copyAssessment(@Param('id', ParseUUIDPipe) id: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.assessmentsService.copyAssessment(id, user.organizationId, user.id);
   }
 
   @Get(':id/placements')

@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { Prisma } from '@prisma/client';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { validateQuestionDefinition } from '../../common/assessment-question-definition.js';
 
@@ -5,6 +7,7 @@ import { releaseSlugOnDelete } from '../../common/soft-delete-slug.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { LEGACY_LIST_LIMIT } from '../../common/query-limits.js';
 import {
+  AssessmentLibraryQuery,
   CreateAssessmentInput,
   AssessmentPlacementInput,
   UpdateAssessmentInput,
@@ -13,6 +16,8 @@ import {
 
 import { lockAssessmentFolders } from './assessment-folder-lock.js';
 import { assessmentCourseScope } from './assessment-author-scope.js';
+
+import { queryAssessmentLibrary } from './assessment-library.query.js';
 
 const assessmentSelect = {
   id: true,
@@ -54,6 +59,10 @@ export class AssessmentsService {
     });
   }
 
+  listLibrary(organizationId: string, userId: string, courseScoped: boolean, query: AssessmentLibraryQuery) {
+    return queryAssessmentLibrary(this.prisma, organizationId, userId, courseScoped, query);
+  }
+
   async getAssessment(assessmentId: string, organizationId: string) {
     const assessment = await this.prisma.assessment.findFirst({
       where: {
@@ -71,7 +80,7 @@ export class AssessmentsService {
     return assessment;
   }
 
-  async createAssessment(input: CreateAssessmentInput) {
+  async createAssessment(input: CreateAssessmentInput, createdBy?: string) {
     if (input.courseId) await this.ensureCourseExists(input.courseId, input.organizationId);
 
     if (input.lessonId) {
@@ -80,8 +89,44 @@ export class AssessmentsService {
     }
 
     return this.prisma.assessment.create({
-      data: input,
+      data: { ...input, ...(createdBy ? { createdBy } : {}) },
       select: assessmentSelect,
+    });
+  }
+
+  copyAssessment(id: string, organizationId: string, createdBy: string) {
+    return this.prisma.$transaction(async (tx) => {
+      await lockAssessmentFolders(tx, organizationId);
+      const source = await tx.assessment.findFirst({
+        where: { id, organizationId, deletedAt: null },
+        select: {
+          ...assessmentSelect,
+          questions: {
+            where: { organizationId, deletedAt: null },
+            select: {
+              type: true, title: true, text: true, imageUrl: true, points: true, order: true, definition: true, scoringMode: true,
+              options: { where: { organizationId, deletedAt: null }, select: { text: true, imageUrl: true, isCorrect: true, order: true } },
+            },
+          },
+        },
+      });
+      if (!source) throw new NotFoundException('Assessment not found');
+      const { questions, isLongreadExercise, courseId, folderId, title, description, passingScore, maxAttempts,
+        timeLimitMinutes, availableAfterCourseCompletion, passMessage, failMessage, showCorrectAnswers, randomizeOrder } = source;
+      return tx.assessment.create({
+        data: {
+          courseId, folderId, title, description, passingScore, maxAttempts, timeLimitMinutes,
+          availableAfterCourseCompletion, passMessage, failMessage, showCorrectAnswers, randomizeOrder,
+          organizationId, createdBy, slug: `copy-${randomUUID()}`, status: 'draft',
+          // A copy is an independent assessment, even when the source came from a longread.
+          lessonId: isLongreadExercise ? null : source.lessonId,
+          questions: { create: questions.map(({ options, definition, ...question }) => ({
+            ...question, organizationId, definition: definition ?? Prisma.DbNull,
+            options: { create: options.map((option) => ({ ...option, organizationId })) },
+          })) },
+        },
+        select: assessmentSelect,
+      });
     });
   }
 

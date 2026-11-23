@@ -509,6 +509,28 @@
       }
     },
     "assessmentBuilder": {
+      "list": {
+        "course": "Курс",
+        "allCourses": "Барлық курстар",
+        "standalone": "Курссыз",
+        "allFolders": "Барлық қалталар",
+        "root": "Түбірлік қалта",
+        "anyAttempts": "Кез келген әрекет саны",
+        "withAttempts": "Әрекеті бар",
+        "withoutAttempts": "Әрекеті жоқ",
+        "mine": "Тек менікі",
+        "pagination": "Тест тізімінің беттері",
+        "previous": "Артқа",
+        "next": "Келесі",
+        "passRate": "Тапсыру пайызы",
+        "lastAttempt": "Соңғы әрекет",
+        "copyError": "Тестті көшіру мүмкін болмады.",
+        "resultsError": "Тест нәтижелерін жүктеу мүмкін болмады.",
+        "score": "Нәтиже",
+        "inProgress": "Орындалуда",
+        "passed": "Тапсырылды",
+        "failed": "Тапсырылмады"
+      },
       "folders": {
         "root": "Барлық тесттер",
         "tree": "Тест қалталары",

@@ -16,7 +16,12 @@ test('creates, colors, moves and removes assessment folders on desktop and at 36
       json: { id: 'admin', organizationId: 'org', email: 'admin@example.invalid', firstName: 'Ada', lastName: 'Admin', roles: ['admin'], status: 'active', locale: 'en', timezone: 'UTC' },
     });
     if (path.endsWith('/theme')) return route.fulfill({ json: { themeSettings: {} } });
-    if (path === '/assessments') return route.fulfill({ json: assessments });
+    if (path === '/assessments/library') {
+      const folderId = new URL(request.url()).searchParams.get('folderId');
+      const items = assessments.filter((item) => !folderId || item.folderId === (folderId === 'root' ? null : folderId))
+        .map((item) => ({ ...item, questionsCount: 1, attemptsCount: 0 }));
+      return route.fulfill({ json: { items, total: items.length, page: 1, pageSize: 25 } });
+    }
     if (path === '/assessment-folders' && request.method() === 'POST') {
       const folder = { id: 'child', ...request.postDataJSON() };
       folders.push(folder);
@@ -71,7 +76,7 @@ test('creates, colors, moves and removes assessment folders on desktop and at 36
   await tree.getByRole('button', { name: /All assessments/ }).click();
 
   await table.getByRole('row', { name: /Safety test/ }).dragTo(tree.getByRole('button', { name: /Induction/ }));
-  await expect(table.getByText('Safety test')).toHaveCount(0);
+  await expect(table.getByRole('cell', { name: 'Safety test', exact: true })).toHaveCount(0);
 
   await table.getByRole('checkbox', { name: 'Select assessment: Operations test' }).check();
   await table.getByRole('checkbox', { name: 'Select assessment: Stock test' }).check();
@@ -82,7 +87,7 @@ test('creates, colors, moves and removes assessment folders on desktop and at 36
   await tree.getByRole('button', { name: 'Induction (3)' }).click();
   await expect(page).toHaveURL(/folder=child/);
   await expect(page.getByRole('navigation', { name: 'Folder path' }).getByText('Induction')).toBeVisible();
-  await expect(table.getByText('Operations test')).toBeVisible();
+  await expect(table.getByRole('cell', { name: 'Operations test', exact: true })).toBeVisible();
   await tree.getByRole('button', { name: /Operations \(/ }).click();
 
   await page.setViewportSize({ width: 360, height: 800 });
@@ -98,5 +103,5 @@ test('creates, colors, moves and removes assessment folders on desktop and at 36
   await dialog.getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(table.getByRole('button', { name: 'Open folder: Induction' })).toHaveCount(0);
   await tree.getByRole('button', { name: /All assessments/ }).click();
-  await expect(table.getByText('Safety test')).toBeVisible();
+  await expect(table.getByRole('cell', { name: 'Safety test', exact: true })).toBeVisible();
 });

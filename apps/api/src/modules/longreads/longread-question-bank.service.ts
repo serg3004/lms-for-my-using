@@ -14,7 +14,7 @@ export class LongreadQuestionBankService {
     return this.prisma.assessment.findMany({ where: { lessonId, organizationId, deletedAt: null }, orderBy: { createdAt: 'asc' },
       select: { id: true, title: true, passingScore: true, maxAttempts: true, questions: { where: { deletedAt: null }, orderBy: [{ order: 'asc' }, { id: 'asc' }], include: { options: { where: { deletedAt: null }, orderBy: { order: 'asc' } } } } } });
   }
-  async save(lessonId: string, organizationId: string, revision: number, raw: WriteLongreadQuestion) {
+  async save(lessonId: string, organizationId: string, revision: number, raw: WriteLongreadQuestion, createdBy?: string) {
     const input = writeLongreadQuestionSchema.parse(raw), definition = validateQuestionDefinition(input.type, input.definition);
     if (definition ? input.options.length !== 0 : input.options.length < 2 || !input.options.some((option) => option.isCorrect) || input.type !== 'multiple_choice' && input.options.filter((option) => option.isCorrect).length !== 1) throw new BadRequestException('Invalid question options');
     if (new Set(input.options.flatMap((option) => option.id ? [option.id] : [])).size !== input.options.filter((option) => option.id).length) throw new BadRequestException('Duplicate option ids');
@@ -33,7 +33,7 @@ export class LongreadQuestionBankService {
       if (existing && input.assessmentId && input.assessmentId !== existing.assessmentId) throw new BadRequestException('Cannot move question to another assessment');
       let assessment = existing || input.assessmentId ? await tx.assessment.findFirst({ where: { id: existing?.assessmentId ?? input.assessmentId, lessonId, organizationId, deletedAt: null } }) : await tx.assessment.findFirst({ where: { lessonId, organizationId, deletedAt: null }, orderBy: { createdAt: 'asc' } });
       if (input.assessmentId && !assessment) throw new NotFoundException('Assessment not found');
-      if (!assessment) assessment = await tx.assessment.create({ data: { organizationId, courseId: lesson.courseId, lessonId, title: lesson.title, isLongreadExercise: true, slug: `longread-${randomUUID()}`, availableAfterCourseCompletion: false, status: 'draft' } });
+      if (!assessment) assessment = await tx.assessment.create({ data: { organizationId, courseId: lesson.courseId, lessonId, title: lesson.title, createdBy, isLongreadExercise: true, slug: `longread-${randomUUID()}`, availableAfterCourseCompletion: false, status: 'draft' } });
       await tx.assessment.update({ where: { id: assessment.id }, data: { passingScore: input.assessmentPassingScore, maxAttempts: input.assessmentMaxAttempts } });
       const data = { type: input.type, title: input.title, text: input.text, definition: definition ?? Prisma.DbNull, scoringMode: input.scoringMode };
       const question = existing ? await tx.assessmentQuestion.update({ where: { id: existing.id }, data }) : await tx.assessmentQuestion.create({ data: { ...data, organizationId, assessmentId: assessment.id } });
