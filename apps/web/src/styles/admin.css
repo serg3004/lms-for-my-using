@@ -80,7 +80,7 @@
   height: 32px;
   border-radius: var(--radius-sm);
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
   font-size: 14px;
   font-weight: 700;
 }
@@ -230,7 +230,7 @@
 .admin-sidebar-user__name {
   font-size: 13px;
   font-weight: 600;
-  color: #f1f5f9;
+  color: var(--admin-sidebar-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -255,7 +255,7 @@
   background: transparent;
   border: 1px solid rgb(255 255 255 / 16%);
   border-radius: var(--radius-md);
-  color: #f1f5f9;
+  color: var(--admin-sidebar-text);
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
@@ -947,7 +947,7 @@
 }
 
 .admin-btn--primary {
-  color: #fff;
+  color: var(--color-on-primary);
   background: var(--color-primary);
   border-color: var(--color-primary);
 }
@@ -967,7 +967,7 @@
 }
 
 .admin-btn--danger {
-  color: #fff;
+  color: var(--color-on-danger);
   background: var(--color-danger, #dc2626);
   border-color: var(--color-danger, #dc2626);
 }
@@ -1565,7 +1565,7 @@
   height: 26px;
   border-radius: 999px;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2130,7 +2130,7 @@
 
 .admin-preview-result--pass {
   background: var(--color-success-bg);
-  color: #166534;
+  color: var(--color-success);
 }
 
 /* ── Department tree (PR 270) ────────────────────────────────────────────── */

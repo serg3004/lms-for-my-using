@@ -50,12 +50,12 @@ export function ChecklistReviewPhotoEvidence({
   return (
     <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <span style={{ fontSize: 12, color: '#6b7280' }}>{result.photoFileName}</span>
+        <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{result.photoFileName}</span>
         <button
           type="button"
           onClick={() => void loadPhoto()}
           disabled={state.status === 'loading'}
-          style={{ border: 'none', background: 'none', color: '#4f46e5', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+          style={{ border: 'none', background: 'none', color: 'var(--color-primary)', fontWeight: 600, cursor: 'pointer', padding: 0 }}
         >
           {state.status === 'loading'
             ? t('checklistReview.photoLoading', 'Opening photo...')
@@ -64,13 +64,13 @@ export function ChecklistReviewPhotoEvidence({
               : t('checklistReview.photoOpen', 'Open photo')}
         </button>
       </div>
-      {state.status === 'error' && <p role="alert" style={{ color: '#dc2626', margin: 0 }}>{state.message}</p>}
+      {state.status === 'error' && <p role="alert" style={{ color: 'var(--color-danger)', margin: 0 }}>{state.message}</p>}
       {state.status === 'loaded' && (
         <a href={state.url} target="_blank" rel="noreferrer" aria-label={t('checklistReview.photoOpenNewTab', 'Open photo in a new tab')}>
           <img
             src={state.url}
             alt={result.photoFileName ?? t('checklistReview.photoEvidence', 'Checklist photo evidence')}
-            style={{ width: 160, maxHeight: 120, objectFit: 'cover', borderRadius: 10, border: '1px solid #e3e8ef' }}
+            style={{ width: 160, maxHeight: 120, objectFit: 'cover', borderRadius: 10, border: '1px solid var(--color-border)' }}
           />
         </a>
       )}

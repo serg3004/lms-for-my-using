@@ -32,7 +32,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const PERIOD_DAYS = { week: 7, month: 30, quarter: 90 } as const;
 type Period = keyof typeof PERIOD_DAYS | 'custom';
 
-const COLORS = { low: '#dc2626', mid: '#d97706', high: '#0f9f6e', line: '#4f46e5', text: '#172033', muted: '#6b7280', border: '#e3e8ef' };
+const COLORS = { low: '#dc2626', mid: '#d97706', high: '#0f9f6e', line: 'var(--color-primary)', text: 'var(--color-text)', muted: 'var(--color-text-muted)', border: 'var(--color-border)' };
 const TREND_ARROW: Record<NonNullable<ManagerChecklistAnalyticsEmployeeRow['trend']>, string> = { up: '▲', down: '▼', flat: '▬' };
 
 /** Exported for unit tests: resolves the period selector + optional custom bounds into an ISO `{from,to}` pair. */

@@ -1,7 +1,7 @@
 import type { SheetAnalyticsScale } from '../shared/api/manager.js';
 
 export const percent = (value: number | null) => (value === null ? '—' : `${value}%`);
-const FALLBACK_COLORS = ['#0f9f6e', '#d97706', '#dc2626', '#4f46e5', '#0e7490', '#6b7280'];
+const FALLBACK_COLORS = ['#0f9f6e', '#d97706', '#dc2626', 'var(--color-primary)', '#0e7490', 'var(--color-text-muted)'];
 
 /** The answer levels of one scale as bars: names and colours come from the scale itself, whatever its levels are called. */
 export function ScaleLevelBars({ scale, t }: { scale: SheetAnalyticsScale; t: (key: string, fallback: string) => string }) {

@@ -15,14 +15,14 @@ type ReadableCertificateSummary = CertificateSummary & {
 type LearnerCertificatesData = { certificates: ReadableCertificateSummary[]; total: number; pageSize: number };
 
 const COLORS = {
-  surface: '#ffffff',
-  soft: '#f8fafc',
-  text: '#172033',
-  muted: '#6b7280',
-  border: '#e3e8ef',
-  primary: '#4f46e5',
-  success: '#0f9f6e',
-  successSoft: '#e9f8f2',
+  surface: 'var(--color-surface)',
+  soft: 'var(--color-surface-muted)',
+  text: 'var(--color-text)',
+  muted: 'var(--color-text-muted)',
+  border: 'var(--color-border)',
+  primary: 'var(--color-primary)',
+  success: 'var(--color-success)',
+  successSoft: 'var(--color-success-bg)',
 };
 
 const BANNER_GRADIENTS = [

@@ -291,25 +291,25 @@ export function LearnerAssessmentTakingPage({ assessmentId, token }: { assessmen
 
       <section style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px', marginBottom: '18px', flexWrap: 'wrap' }}>
         <div>
-          <div style={{ color: '#4f46e5', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>
+          <div style={{ color: 'var(--color-primary)', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>
             {t('assessments.eyebrow')}
           </div>
-          <h1 style={{ margin: 0, fontSize: 'clamp(24px,3vw,32px)', fontWeight: 800, color: '#172033', lineHeight: 1.2 }}>
+          <h1 style={{ margin: 0, fontSize: 'clamp(24px,3vw,32px)', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1.2 }}>
             {assessment.title}
           </h1>
-          <p style={{ margin: '8px 0 0', color: '#6b7280', fontSize: '14px' }}>
+          <p style={{ margin: '8px 0 0', color: 'var(--color-text-muted)', fontSize: '14px' }}>
             {t('assessments.subtitleTaking', { current: currentIndex + 1, total: questions.length, score: assessment.passingScore })}
           </p>
         </div>
         {secondsLeft !== null && (
           <div
             aria-live="polite"
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '14px 20px', background: timerWarning ? '#fef2f2' : '#f8fafc', border: `1px solid ${timerWarning ? '#fca5a5' : '#e3e8ef'}`, borderRadius: '16px', minWidth: '120px' }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '14px 20px', background: timerWarning ? '#fef2f2' : 'var(--color-surface-muted)', border: `1px solid ${timerWarning ? '#fca5a5' : 'var(--color-border)'}`, borderRadius: '16px', minWidth: '120px' }}
           >
-            <span style={{ color: timerWarning ? '#dc2626' : '#6b7280', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            <span style={{ color: timerWarning ? '#dc2626' : 'var(--color-text-muted)', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               {t('assessments.timerLabel')}
             </span>
-            <strong style={{ color: timerWarning ? '#dc2626' : '#172033', fontSize: '26px', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, marginTop: '4px' }}>
+            <strong style={{ color: timerWarning ? '#dc2626' : 'var(--color-text)', fontSize: '26px', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, marginTop: '4px' }}>
               {secondsLeft > 0 ? formatTime(secondsLeft) : t('assessments.timerExpired')}
             </strong>
           </div>
@@ -317,11 +317,11 @@ export function LearnerAssessmentTakingPage({ assessmentId, token }: { assessmen
       </section>
 
       <section style={{ marginBottom: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6b7280', fontSize: '13px', marginBottom: '8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)', fontSize: '13px', marginBottom: '8px' }}>
           <span>{t('assessments.progressLabel')}</span>
           <strong>{Math.round(((currentIndex + 1) / questions.length) * 100)}%</strong>
         </div>
-        <div style={{ height: '8px', background: '#edf0f5', borderRadius: '999px', overflow: 'hidden' }}>
+        <div style={{ height: '8px', background: 'var(--color-surface-muted)', borderRadius: '999px', overflow: 'hidden' }}>
           <div style={{ width: `${((currentIndex + 1) / questions.length) * 100}%`, height: '100%', background: 'linear-gradient(90deg,#4f46e5,#7c3aed)', borderRadius: '999px' }} />
         </div>
       </section>
@@ -422,8 +422,8 @@ export function LearnerAssessmentTakingPage({ assessmentId, token }: { assessmen
           </form>
 
           <aside style={{ position: 'sticky', top: '98px' }}>
-            <div style={{ background: '#fff', border: '1px solid #e3e8ef', borderRadius: '20px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: '18px', color: '#172033' }}>{t('assessments.questionNavTitle')}</h3>
+            <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '20px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
+              <h3 style={{ margin: '0 0 16px', fontSize: '18px', color: 'var(--color-text)' }}>{t('assessments.questionNavTitle')}</h3>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
                 {questions.map((q, i) => {
@@ -438,9 +438,9 @@ export function LearnerAssessmentTakingPage({ assessmentId, token }: { assessmen
                       type="button"
                       onClick={() => setCurrentIndex(i)}
                       style={{
-                        border: `1px solid ${isCurrent ? '#4f46e5' : isDone ? '#b7ead6' : '#e3e8ef'}`,
-                        background: isCurrent ? '#4f46e5' : isDone ? '#e9f8f2' : '#fff',
-                        color: isCurrent ? '#fff' : isDone ? '#0f9f6e' : '#172033',
+                        border: `1px solid ${isCurrent ? 'var(--color-primary)' : isDone ? '#b7ead6' : 'var(--color-border)'}`,
+                        background: isCurrent ? 'var(--color-primary)' : isDone ? '#e9f8f2' : '#fff',
+                        color: isCurrent ? '#fff' : isDone ? '#0f9f6e' : 'var(--color-text)',
                         borderRadius: '10px',
                         height: '40px',
                         fontWeight: 700,
@@ -454,22 +454,22 @@ export function LearnerAssessmentTakingPage({ assessmentId, token }: { assessmen
                 })}
               </div>
 
-              <div style={{ display: 'grid', gap: '10px', marginTop: '18px', color: '#6b7280', fontSize: '13px' }}>
+              <div style={{ display: 'grid', gap: '10px', marginTop: '18px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: '#e9f8f2', border: '1px solid #b7ead6', flexShrink: 0, display: 'inline-block' }} />
+                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--color-success-bg)', border: '1px solid #b7ead6', flexShrink: 0, display: 'inline-block' }} />
                   {t('assessments.legendAnswered')}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: '#4f46e5', border: '1px solid #4f46e5', flexShrink: 0, display: 'inline-block' }} />
+                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--color-primary)', border: '1px solid var(--color-primary)', flexShrink: 0, display: 'inline-block' }} />
                   {t('assessments.legendCurrent')}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: '#fff', border: '1px solid #e3e8ef', flexShrink: 0, display: 'inline-block' }} />
+                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', flexShrink: 0, display: 'inline-block' }} />
                   {t('assessments.legendNoAnswer')}
                 </div>
               </div>
 
-              <div style={{ marginTop: '16px', padding: '14px', background: '#fff7e8', color: '#8a4b05', borderRadius: '12px', fontSize: '13px', lineHeight: 1.5 }}>
+              <div style={{ marginTop: '16px', padding: '14px', background: 'var(--color-warning-bg)', color: 'var(--color-warning)', borderRadius: '12px', fontSize: '13px', lineHeight: 1.5 }}>
                 {t('assessments.autoSaveNotice')}
               </div>
             </div>

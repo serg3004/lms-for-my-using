@@ -83,13 +83,13 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px', marginBottom: '22px', flexWrap: 'wrap' }}
       >
         <div>
-          <div style={{ color: '#4f46e5', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>
+          <div style={{ color: 'var(--color-primary)', fontWeight: 800, fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>
             {t('certificates.detailEyebrow')}
           </div>
-          <h1 style={{ margin: 0, fontSize: 'clamp(28px,4vw,38px)', fontWeight: 800, color: '#172033', lineHeight: 1.2 }}>
+          <h1 style={{ margin: 0, fontSize: 'clamp(28px,4vw,38px)', fontWeight: 800, color: 'var(--color-text)', lineHeight: 1.2 }}>
             {t('certificates.detailH1')}
           </h1>
-          <p style={{ margin: '10px 0 0', color: '#6b7280', lineHeight: 1.6 }}>
+          <p style={{ margin: '10px 0 0', color: 'var(--color-text-muted)', lineHeight: 1.6 }}>
             {t('certificates.detailSubtitle')}
           </p>
         </div>
@@ -131,30 +131,30 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
         </div>
 
         <aside className="no-print" style={{ display: 'grid', gap: '18px', position: 'sticky', top: '98px' }}>
-          <section style={{ background: '#fff', border: '1px solid #e3e8ef', borderRadius: '18px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
-            <h3 style={{ margin: '0 0 18px', fontSize: '18px', color: '#172033' }}>{t('certificates.infoTitle')}</h3>
+          <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '18px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
+            <h3 style={{ margin: '0 0 18px', fontSize: '18px', color: 'var(--color-text)' }}>{t('certificates.infoTitle')}</h3>
             <div style={{ display: 'grid', gap: '10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '14px' }}>
-                <span style={{ color: '#6b7280' }}>{t('certificates.owner')}</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>{t('certificates.owner')}</span>
                 <strong>{ownerName}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '14px' }}>
-                <span style={{ color: '#6b7280' }}>{t('certificates.courseLabel')}</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>{t('certificates.courseLabel')}</span>
                 <strong>{courseTitle}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '14px' }}>
-                <span style={{ color: '#6b7280' }}>{t('certificates.completedAt')}</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>{t('certificates.completedAt')}</span>
                 <strong>{formatIssuedAt(certificate.issuedAt)}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '14px' }}>
-                <span style={{ color: '#6b7280' }}>{t('certificates.validity')}</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>{t('certificates.validity')}</span>
                 <strong>{t('certificates.validityUnlimited')}</strong>
               </div>
             </div>
           </section>
 
-          <section style={{ background: '#fff', border: '1px solid #e3e8ef', borderRadius: '18px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '18px', color: '#172033' }}>{t('certificates.actionsTitle')}</h3>
+          <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '18px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: '18px', color: 'var(--color-text)' }}>{t('certificates.actionsTitle')}</h3>
             <div style={{ display: 'grid', gap: '10px' }}>
               <a className="learner-btn learner-btn--primary" href={getCertificatePdfPath(certificate.id)} download>
                 {t('certificates.downloadPdf')}
@@ -168,12 +168,12 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
             </div>
           </section>
 
-          <section style={{ background: '#fff', border: '1px solid #e3e8ef', borderRadius: '18px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
-            <h3 style={{ margin: '0 0 12px', fontSize: '18px', color: '#172033' }}>{t('certificates.verificationTitle')}</h3>
-            <p style={{ margin: '0 0 10px', color: '#6b7280', fontSize: '13px', lineHeight: 1.55 }}>
+          <section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '18px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: '18px', color: 'var(--color-text)' }}>{t('certificates.verificationTitle')}</h3>
+            <p style={{ margin: '0 0 10px', color: 'var(--color-text-muted)', fontSize: '13px', lineHeight: 1.55 }}>
               {t('certificates.verificationText')}
             </p>
-            <code style={{ display: 'block', padding: '8px 10px', borderRadius: '9px', background: '#f8fafc', border: '1px solid #e3e8ef', color: '#172033', overflowWrap: 'anywhere', fontFamily: 'monospace', fontSize: '13px' }}>
+            <code style={{ display: 'block', padding: '8px 10px', borderRadius: '9px', background: 'var(--color-surface-muted)', border: '1px solid var(--color-border)', color: 'var(--color-text)', overflowWrap: 'anywhere', fontFamily: 'monospace', fontSize: '13px' }}>
               {verificationCode}
             </code>
           </section>

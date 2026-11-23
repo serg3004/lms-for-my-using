@@ -122,15 +122,15 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
   const previousLesson = currentIndex > 0 ? sortedLessons[currentIndex - 1] : null;
 
   const C = {
-    text: '#172033',
-    muted: '#6b7280',
-    border: '#e3e8ef',
+    text: 'var(--color-text)',
+    muted: 'var(--color-text-muted)',
+    border: 'var(--color-border)',
     surface: '#fff',
-    primary: '#4f46e5',
-    primarySoft: '#eef2ff',
+    primary: 'var(--color-primary)',
+    primarySoft: 'var(--color-accent-soft)',
     success: '#0f9f6e',
     successSoft: '#e9f8f2',
-    soft: '#f8fafc',
+    soft: 'var(--color-surface-muted)',
   };
 
   const cardStyle = { background: C.surface, border: `1px solid ${C.border}`, borderRadius: '20px', boxShadow: '0 8px 24px rgba(23,32,51,.05)' };
@@ -205,7 +205,7 @@ export function LearnerLessonDetailPage({ lessonId }: { lessonId: string }) {
 
           {/* Error */}
           {completionState.status === 'error' ? (
-            <p style={{ margin: '0 0 12px', fontSize: '13px', color: '#dc2626' }} role="alert">
+            <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--color-danger)' }} role="alert">
               {completionState.message}
             </p>
           ) : null}

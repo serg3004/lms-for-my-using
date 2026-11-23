@@ -32,7 +32,7 @@ export function PinnedChecklistStartButton({ item }: { item: FreeChecklistSummar
       <button type="button" className="ds-button ds-button--secondary ds-button--sm" disabled={busy} onClick={() => void run()}>
         {item.activeInstanceId ? t('learner.dashboard.pinnedChecklists.continue') : t('learner.dashboard.pinnedChecklists.open')}
       </button>
-      {error && <p role="alert" style={{ color: '#b91c1c', margin: '6px 0 0', fontSize: 13 }}>{error}</p>}
+      {error && <p role="alert" style={{ color: 'var(--color-danger-text)', margin: '6px 0 0', fontSize: 13 }}>{error}</p>}
     </div>
   );
 }

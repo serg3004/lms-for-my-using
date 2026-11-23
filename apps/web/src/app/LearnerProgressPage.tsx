@@ -12,17 +12,17 @@ type Period = 30 | 90 | 365;
 
 const COLORS = {
   bg: '#f4f7fb',
-  surface: '#ffffff',
-  surfaceSoft: '#f8fafc',
-  text: '#172033',
-  muted: '#6b7280',
-  border: '#e3e8ef',
-  primary: '#4f46e5',
-  success: '#0f9f6e',
-  successSoft: '#e9f8f2',
-  warning: '#d97706',
-  warningSoft: '#fff7e8',
-  primarySoft: '#eef2ff',
+  surface: 'var(--color-surface)',
+  surfaceSoft: 'var(--color-surface-muted)',
+  text: 'var(--color-text)',
+  muted: 'var(--color-text-muted)',
+  border: 'var(--color-border)',
+  primary: 'var(--color-primary)',
+  success: 'var(--color-success)',
+  successSoft: 'var(--color-success-bg)',
+  warning: 'var(--color-warning)',
+  warningSoft: 'var(--color-warning-bg)',
+  primarySoft: 'var(--color-accent-soft)',
 };
 
 function formatActivityDate(dateIso: string, t: TFunction, locale: string): string {
@@ -57,7 +57,7 @@ function StatCard({ value, label }: { value: string | number; label: string }) {
 
 function CourseProgressBar({ pct, success }: { pct: number; success?: boolean }) {
   return (
-    <div style={{ height: '9px', background: '#edf0f5', borderRadius: '999px', overflow: 'hidden' }}>
+    <div style={{ height: '9px', background: 'var(--color-surface-muted)', borderRadius: '999px', overflow: 'hidden' }}>
       <div style={{
         height: '100%', borderRadius: '999px', width: `${pct}%`,
         background: success ? COLORS.success : `linear-gradient(90deg,${COLORS.primary},#7c3aed)`,

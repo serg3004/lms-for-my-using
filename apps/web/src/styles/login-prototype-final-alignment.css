@@ -6,8 +6,8 @@
   padding: 0;
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(420px, 0.9fr);
-  background: #f4f7fb;
-  color: #172033;
+  background: var(--color-background);
+  color: var(--color-text);
   font-family: Inter, system-ui, sans-serif;
 }
 
@@ -70,10 +70,10 @@
 .login-language__button {
   height: 42px;
   padding: 0 13px;
-  border: 1px solid #e3e8ef;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  background: #ffffff;
-  color: #172033;
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 
 .login-language__menu {
@@ -83,9 +83,9 @@
   position: absolute;
   top: 48px;
   right: 0;
-  border: 1px solid #e3e8ef;
+  border: 1px solid var(--color-border);
   border-radius: 14px;
-  background: #ffffff;
+  background: var(--color-surface);
   box-shadow: 0 12px 30px rgb(0 0 0 / 12%);
 }
 
@@ -99,36 +99,36 @@
   border: 0;
   border-radius: 9px;
   background: transparent;
-  color: #172033;
+  color: var(--color-text);
   text-align: left;
 }
 
 .login-language__option:hover,
 .login-language__option--active {
-  background: #eef2ff;
-  color: #4f46e5;
+  background: var(--color-accent-soft);
+  color: var(--color-primary);
 }
 
 .login-card {
   width: min(460px, 100%);
   margin: 0;
   padding: 32px;
-  border: 1px solid #e3e8ef;
+  border: 1px solid var(--color-border);
   border-radius: 24px;
-  background: #ffffff;
+  background: var(--color-surface);
   box-shadow: 0 20px 50px rgb(23 32 51 / 10%);
 }
 
 .login-header h2 {
   margin: 0 0 8px;
-  color: #172033;
+  color: var(--color-text);
   font-size: 32px;
   line-height: 1.2;
 }
 
 .login-header p {
   margin: 0 0 24px;
-  color: #596274;
+  color: var(--color-text-subtle);
   line-height: 1.5;
 }
 
@@ -141,7 +141,7 @@
   margin-bottom: 16px;
   display: grid;
   gap: 8px;
-  color: #172033;
+  color: var(--color-text);
   font-size: 14px;
   font-weight: 600;
 }
@@ -150,15 +150,15 @@
   width: 100%;
   min-height: 46px;
   padding: 13px;
-  border: 1px solid #e3e8ef;
+  border: 1px solid var(--color-border);
   border-radius: 12px;
-  background: #ffffff;
-  color: #172033;
+  background: var(--color-surface);
+  color: var(--color-text);
   outline: none;
 }
 
 .login-form input:focus {
-  border-color: #4f46e5;
+  border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgb(79 70 229 / 10%);
 }
 
@@ -183,12 +183,12 @@
   border: 0;
   border-radius: 9px;
   background: transparent;
-  color: #596274;
+  color: var(--color-text-subtle);
 }
 
 .login-form__toggle-password:hover {
-  background: #eef2ff;
-  color: #4f46e5;
+  background: var(--color-accent-soft);
+  color: var(--color-primary);
 }
 
 .login-form__toggle-password svg {
@@ -207,7 +207,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  color: #596274;
+  color: var(--color-text-subtle);
 }
 
 .login-form .login-form__remember {
@@ -241,7 +241,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: #4f46e5;
+  color: var(--color-primary);
   font-size: 14px;
   font-weight: 800;
   white-space: nowrap;
@@ -251,7 +251,7 @@
 .password-reset-secondary {
   margin-top: 18px;
   display: block;
-  color: #4f46e5;
+  color: var(--color-primary);
   font-weight: 700;
   text-align: center;
 }
@@ -271,8 +271,8 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: #eef2ff;
-  color: #4f46e5;
+  background: var(--color-accent-soft);
+  color: var(--color-primary);
   font-size: 26px;
   font-weight: 900;
 }
@@ -283,13 +283,13 @@
   padding: 13px;
   border: 0;
   border-radius: 12px;
-  background: #4f46e5;
-  color: #ffffff;
+  background: var(--color-primary);
+  color: var(--color-on-primary);
   font-weight: 800;
 }
 
 .login-form__submit:hover:not(:disabled) {
-  background: #4338ca;
+  background: var(--color-primary-hover);
 }
 
 .login-form__field-error,
@@ -304,18 +304,18 @@
 
 .login-form__field-error,
 .login-form__error {
-  color: #b91c1c;
-  background: #fef2f2;
+  color: var(--color-danger-text);
+  background: var(--color-danger-soft);
 }
 
 .login-form__info {
-  color: #1d4ed8;
-  background: #eff6ff;
+  color: var(--color-info-text);
+  background: var(--color-info-soft);
 }
 
 .login-form__success {
-  color: #047857;
-  background: #ecfdf5;
+  color: var(--color-success);
+  background: var(--color-success-soft);
 }
 
 @media (max-width: 850px) {

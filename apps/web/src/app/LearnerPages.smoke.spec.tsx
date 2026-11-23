@@ -142,8 +142,8 @@ describe('learner page smoke rendering', () => {
     expect(html).toContain('В процессе');
     // Progress bar and remaining-lessons count reflect the learner's own 2-of-5
     // completed lessons (40%, 3 remaining) — not a lifecycle-derived 0/100 guess.
-    expect(html).toContain('<strong style="color:#172033">40%</strong>');
-    expect(html).toContain('<strong style="font-size:14px;color:#172033">3 уроков</strong>');
+    expect(html).toContain('<strong style="color:var(--color-text)">40%</strong>');
+    expect(html).toContain('<strong style="font-size:14px;color:var(--color-text)">3 уроков</strong>');
   });
 
   it('renders assignments loading state without crashing', () => {

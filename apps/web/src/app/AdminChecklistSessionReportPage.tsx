@@ -114,7 +114,7 @@ export function RecalculateForm({ sessionId, onDone, t }: { sessionId: string; o
         {t('admin.checklists.report.recalculateReason', 'Reason for recalculation')}
         <textarea className="admin-input" disabled={status === 'saving'} maxLength={500} onChange={(event) => setReason(event.target.value)} required rows={2} value={reason} />
       </label>
-      {error && <p role="alert" style={{ color: '#dc2626', margin: 0 }}>{error}</p>}
+      {error && <p role="alert" style={{ color: 'var(--color-danger)', margin: 0 }}>{error}</p>}
       <button className="admin-btn admin-btn--secondary" disabled={status === 'saving' || reason.trim().length === 0} type="submit">
         {status === 'saving' ? t('admin.checklists.report.recalculating', 'Recalculating...') : t('admin.checklists.report.recalculate', 'Recalculate score')}
       </button>
@@ -213,7 +213,7 @@ export function LocationOverrideForm({
         {t('admin.checklists.report.locationOverrideReason', 'Reason for recording this on their behalf')}
         <textarea className="admin-input" onChange={(event) => setReason(event.target.value)} required rows={2} value={reason} />
       </label>
-      {error && <p role="alert" style={{ color: '#dc2626', margin: 0 }}>{error}</p>}
+      {error && <p role="alert" style={{ color: 'var(--color-danger)', margin: 0 }}>{error}</p>}
       <button className="admin-btn admin-btn--secondary" disabled={saveState === 'saving' || reason.trim().length === 0} type="submit">
         {saveState === 'saving' ? t('admin.checklists.report.locationOverrideSaving', 'Saving...') : t('admin.checklists.report.locationOverrideSubmit', 'Record location')}
       </button>
@@ -249,7 +249,7 @@ export function HistoryTab({ sessionId, t }: { sessionId: string; t: TFunction }
           {state.data.events.map((event) => (
             <li key={event.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
               <span>{t(`checklistSessions.event.${event.eventType}`, event.eventType)}</span>
-              <span style={{ color: '#6b7280' }}>{formatDate(event.createdAt, undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
+              <span style={{ color: 'var(--color-text-muted)' }}>{formatDate(event.createdAt, undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
             </li>
           ))}
         </ul>
@@ -261,13 +261,13 @@ export function HistoryTab({ sessionId, t }: { sessionId: string; t: TFunction }
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>
           {state.data.revisions.map((revision) => (
-            <li key={revision.id} style={{ border: '1px solid #e3e8ef', borderRadius: 10, padding: 10 }}>
+            <li key={revision.id} style={{ border: '1px solid var(--color-border)', borderRadius: 10, padding: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                 <strong>{revision.previousPercentage}% → {revision.newScored === false ? t('admin.checklists.report.notScored', 'Not scored') : `${revision.newPercentage}%`}</strong>
-                <span style={{ color: '#6b7280' }}>{formatDate(revision.createdAt, undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                <span style={{ color: 'var(--color-text-muted)' }}>{formatDate(revision.createdAt, undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
               </div>
               <p style={{ margin: '4px 0' }}>{describeScoreFormula(revision.formula, t)}</p>
-              {revision.reason && <p style={{ margin: '4px 0 0', color: '#6b7280' }}>{revision.reason}</p>}
+              {revision.reason && <p style={{ margin: '4px 0 0', color: 'var(--color-text-muted)' }}>{revision.reason}</p>}
             </li>
           ))}
         </ul>
@@ -505,7 +505,7 @@ export function SessionReportBody({
                     <li key={revision.id} style={{ display: 'flex', gap: 10 }}>
                       <span aria-hidden style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary)', marginTop: 6, flexShrink: 0 }} />
                       <div>
-                        <div style={{ color: '#6b7280', fontSize: 12.5 }}>{formatDate(revision.createdAt, undefined, { dateStyle: 'medium', timeStyle: 'short' })}</div>
+                        <div style={{ color: 'var(--color-text-muted)', fontSize: 12.5 }}>{formatDate(revision.createdAt, undefined, { dateStyle: 'medium', timeStyle: 'short' })}</div>
                         <div><strong>{revision.previousPercentage}% → {revision.newScored === false ? t('admin.checklists.report.notScored', 'Not scored') : `${revision.newPercentage}%`}</strong>{revision.reason ? ` — ${revision.reason}` : ''}</div>
                         <div>{describeScoreFormula(revision.formula, t)}</div>
                       </div>
@@ -574,7 +574,7 @@ export function SessionReportBody({
                 {locationState.data.map((capture) => (
                   <li key={capture.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                     <span>{capture.capturePoint} — {capture.status}</span>
-                    <span style={{ color: '#6b7280' }}>{formatDate(capture.capturedAt, undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                    <span style={{ color: 'var(--color-text-muted)' }}>{formatDate(capture.capturedAt, undefined, { dateStyle: 'medium', timeStyle: 'short' })}</span>
                   </li>
                 ))}
               </ul>

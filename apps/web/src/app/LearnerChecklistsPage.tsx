@@ -42,21 +42,21 @@ export function findResultForItem(results: ChecklistItemResultSummary[], itemId:
 }
 
 const COLORS = {
-  surface: '#ffffff',
-  soft: '#f8fafc',
-  text: '#172033',
-  muted: '#6b7280',
-  border: '#e3e8ef',
-  primary: '#4f46e5',
-  success: '#0f9f6e',
-  successSoft: '#e9f8f2',
+  surface: 'var(--color-surface)',
+  soft: 'var(--color-surface-muted)',
+  text: 'var(--color-text)',
+  muted: 'var(--color-text-muted)',
+  border: 'var(--color-border)',
+  primary: 'var(--color-primary)',
+  success: 'var(--color-success)',
+  successSoft: 'var(--color-success-bg)',
   // #d97706 (the design system's --color-warning token) only reaches a 2.99:1 contrast ratio
   // against warningSoft/white as *text* -- WCAG AA needs 4.5:1 for normal-size text. This darker
   // shade (~6.7:1 on warningSoft, ~4.9:1 on white) is used for warning-toned text specifically on
   // this page; warningSoft (the background) is unaffected.
   warning: '#92400e',
-  warningSoft: '#fff7e8',
-  primarySoft: '#eef2ff',
+  warningSoft: 'var(--color-warning-bg)',
+  primarySoft: 'var(--color-accent-soft)',
 };
 
 type LearnerChecklistRow = {
@@ -203,7 +203,7 @@ export function LearnerChecklistsPage({ linkedSessionId, onLinkedSessionBack, op
       {freeChecklists === null && (
         <p role="status" style={{ color: COLORS.muted }}>{t('checklists.free.loadError', 'Unable to load free checklists.')}</p>
       )}
-      {startError && <p style={{ color: '#dc2626' }} role="alert">{startError}</p>}
+      {startError && <p style={{ color: 'var(--color-danger)' }} role="alert">{startError}</p>}
       <PinnedChecklistTiles items={pinnedChecklists} title={t('checklists.free.pinnedTitle', 'Pinned checklists')} action={freeButton} />
       {rows.length > 0 && (
         <section aria-labelledby="all-checklists-title" style={{ marginTop: 24 }}>
@@ -431,7 +431,7 @@ export function ChecklistTaking({
       </AppearanceBlock>
       <ChecklistDeadlineMeta instance={instance} />
       {instance.status === 'expired' && (
-        <p style={{ color: '#b91c1c', background: '#fef2f2', borderRadius: 10, padding: '10px 12px' }} role="status">
+        <p style={{ color: 'var(--color-danger-text)', background: 'var(--color-danger-soft)', borderRadius: 10, padding: '10px 12px' }} role="status">
           {t('checklists.expiredReason', 'This checklist expired at its deadline and can no longer be changed.')}
         </p>
       )}
@@ -446,7 +446,7 @@ export function ChecklistTaking({
           })}
         </span>
       </div>
-      {error && <p style={{ color: '#dc2626' }} role="alert">{error}</p>}
+      {error && <p style={{ color: 'var(--color-danger)' }} role="alert">{error}</p>}
       <div style={{ display: 'grid', gap: 12 }}>
         {checklist.items.map((item) => {
           const result = resultFor(item.id);
@@ -536,7 +536,7 @@ export function ChecklistTaking({
       {editable && beforeFinish}
       {editable && <ChecklistFinishBar requiresReview={checklist.requiresReview === true} missing={missingTitles} onFinish={finish} t={t} />}
       {instance.status === 'completed' && checklist.scoringMode === 'none' && (
-        <div style={{ marginTop: 20, borderRadius: 14, padding: '16px 18px', background: COLORS.successSoft, color: '#166534' }}>
+        <div style={{ marginTop: 20, borderRadius: 14, padding: '16px 18px', background: COLORS.successSoft, color: 'var(--color-success)' }}>
           {t('checklists.finishedNoPointsDone', 'The check is completed')}
         </div>
       )}
