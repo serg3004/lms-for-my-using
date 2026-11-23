@@ -10,8 +10,8 @@ import {
 export type BlockTarget = { kind: BlockKind; id: string | null; name: string };
 export const sameTarget = (a: BlockTarget | null, b: BlockTarget | null) => !!a && !!b && a.kind === b.kind && a.id === b.id;
 
-const READY_COLORS = ['var(--color-text)', '#FFFFFF', '#F3F4F6', '#EAF2FB', '#F1F7EE', '#FFF7CC', '#1D4ED8', '#B91C1C'] as const;
-const DEFAULT_COLOR = 'var(--color-text)', DEFAULT_BACKGROUND = '#FFFFFF', DEFAULT_BORDER = '#D9DEE7';
+const READY_COLORS = ['#172033', '#FFFFFF', '#F3F4F6', '#EAF2FB', '#F1F7EE', '#FFF7CC', '#1D4ED8', '#B91C1C'] as const;
+const DEFAULT_COLOR = '#172033', DEFAULT_BACKGROUND = '#FFFFFF', DEFAULT_BORDER = '#D9DEE7';
 export const PANEL_WIDTH = 340;
 const row: CSSProperties = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 };
 const heading: CSSProperties = { margin: 0, fontSize: 14 };
