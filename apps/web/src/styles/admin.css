@@ -1504,20 +1504,6 @@
   padding: 4px 0;
 }
 
-.admin-checklist-item__index {
-  width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  flex: none;
-}
-
 .admin-checklist-item__photo {
   display: inline-flex;
   align-items: center;
@@ -2278,14 +2264,20 @@
   display: inline-grid;
   place-items: center;
   flex: none;
-  inline-size: 1.75rem;
-  block-size: 1.75rem;
+  inline-size: 2rem;
+  block-size: 2rem;
   margin-inline-end: var(--space-1);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   color: var(--color-folder);
-  background: color-mix(in srgb, var(--color-folder) 12%, var(--color-surface));
+  background: color-mix(in srgb, var(--color-folder) 14%, var(--color-surface));
   vertical-align: middle;
 }
+.folder-colors { display: flex; flex-wrap: wrap; gap: 8px; border: 0; padding: 0; }
+.folder-colors__option { position: relative; display: inline-flex; }
+.folder-colors input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.folder-colors .folder-glyph { margin: 0; border: 2px solid transparent; }
+.folder-colors input:checked + .folder-glyph { border-color: var(--color-folder); }
+.folder-colors input:focus-visible + .folder-glyph { outline: 2px solid var(--color-primary); outline-offset: 2px; }
 .folder-glyph--purple { --color-folder: var(--color-primary); }
 .folder-glyph--green { --color-folder: var(--color-success); }
 .folder-glyph--blue { --color-folder: var(--color-info); }

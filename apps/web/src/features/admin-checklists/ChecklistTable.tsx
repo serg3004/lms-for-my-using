@@ -8,6 +8,7 @@ import { formatDate } from '../../shared/formatDate.js';
 import { ChecklistAccessBadge } from '../../shared/checklistAccess.js';
 import { checklistStatusAction } from './domain.js';
 import { ContextMenu, useContextMenu } from '../../shared/ContextMenu.js';
+import { FolderGlyph } from '../../shared/folders/FolderTree.js';
 
 const STATUS_BADGE_VARIANT: Record<ChecklistStatus, BadgeVariant> = {
   draft: 'draft',
@@ -187,7 +188,7 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
   const columns = [
     { key: 'title', label: t('admin.checklists.col.title', 'Title'), priority: 'primary', sortable: Boolean(onSortChange), render: (row) => row.kind === 'sheet' ? plainText(row.checklist.title) : (
       <span className="checklist-library__folder">
-        <span aria-hidden="true">📁</span>
+        <FolderGlyph />
         <button className="checklist-library__open" onClick={() => onOpenFolder?.(row.folder)} type="button" aria-label={t('admin.checklists.folders.openFolder', 'Open folder: {{name}}', { name: row.folder.name })}>{row.folder.name}</button>
         {!row.folder.visibleToStaff && (
           <span role="img" aria-label={t('admin.checklists.folders.closed', 'Closed folder: visible only to its creator and administrators')} title={t('admin.checklists.folders.closed', 'Closed folder: visible only to its creator and administrators')}>🔒</span>

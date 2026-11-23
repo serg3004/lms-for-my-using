@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useImperativeHandle, useMemo, useState, type ReactNode, type Ref } from 'react';
 import type { TFunction } from 'i18next';
 
 import { bulkAssessmentFolders, getAssessmentFolderImpact, saveAssessmentFolder, type AssessmentFolder, type FolderBulkKind, type FolderBulkOperation } from '../../shared/api/assessmentFolders.js';
@@ -16,7 +16,11 @@ type Row = { kind: 'assessment'; item: AssessmentListRow } | { kind: 'folder'; i
 const rowKey = (row: Row) => `${row.kind}:${row.item.id}`;
 const rowTitle = (row: Row) => row.kind === 'folder' ? row.item.name : row.item.title;
 
-export function AssessmentLibrary({ list, columns, library, renderActions, t }: {
+/** What the page header can ask of the library: the "+ Create → Folder" item opens the folder dialog owned here. */
+export type AssessmentLibraryActions = { createFolder: () => void };
+
+export function AssessmentLibrary({ actionsRef, list, columns, library, renderActions, t }: {
+  actionsRef?: Ref<AssessmentLibraryActions>;
   list: ReturnType<typeof useAssessmentList>;
   columns: Column<AssessmentListRow>[];
   renderActions: (assessment: AssessmentListRow, move?: () => void) => ReactNode;
@@ -31,9 +35,12 @@ export function AssessmentLibrary({ list, columns, library, renderActions, t }: 
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<{ done: number; skipped: number; details: { key: string; text: string }[] } | null>(null);
 
-  const folders = library.data?.folders ?? [];
+  const folders = useMemo(() => library.data?.folders ?? [], [library.data]);
   const active = folders.find((folder) => folder.id === library.id) ?? null;
   const assessments = list.page.items;
+  useImperativeHandle(actionsRef, () => ({
+    createFolder: () => { if (library.data && !busy && canAddSubfolder(folders, library.id)) setEdit({ kind: 'create', parent: active }); },
+  }), [library.data, busy, folders, library.id, active]);
   const showFolders = !list.filtering && list.folder !== 'all' && list.page.page === 1;
   const rows: Row[] = [
     ...(showFolders ? (childrenByParent(folders).get(library.id) ?? []).map((item): Row => ({ kind: 'folder', item })) : []),
@@ -158,7 +165,7 @@ export function AssessmentLibrary({ list, columns, library, renderActions, t }: 
       </>;
       if (column.key === 'actions') return <Menu align="end" buttonClassName="ds-button ds-button--secondary ds-button--sm"
         label={<><span aria-hidden="true">⋮</span><span className="ui-visually-hidden">{t('admin.checklists.folders.actions', { name: folder.name })}</span></>}>
-        <button type="button" role="menuitem" onClick={() => setEdit({ kind: 'edit', folder })}>{t('admin.checklists.folders.renameFolder')}</button>
+        <button type="button" role="menuitem" onClick={() => setEdit({ kind: 'edit', folder })}>{t('admin.assessmentBuilder.folders.settings')}</button>
         <button type="button" role="menuitem" disabled={!canAddSubfolder(folders, folder.id)} onClick={() => setEdit({ kind: 'create', parent: folder })}>{t('admin.checklists.contextMenu.newInside')}</button>
         <button type="button" role="menuitem" onClick={() => setMove([row])}>{t('admin.checklists.folders.moveOpen')}</button>
         <button type="button" role="menuitem" onClick={() => void previewDelete([row])}>{t('admin.checklists.folders.delete')}</button>
@@ -176,8 +183,6 @@ export function AssessmentLibrary({ list, columns, library, renderActions, t }: 
     </>}
     {library.stale && <p role="status">{t('admin.checklists.folders.staleFolder')}</p>}
     <AssessmentFolderNavigation library={library} move={drop} t={t} />
-    {library.data && <Button variant="secondary" disabled={busy || !canAddSubfolder(folders, library.id)} type="button"
-      onClick={() => setEdit({ kind: 'create', parent: active })}>{t('admin.checklists.folders.createTitle')}</Button>}
     {error && <p role="alert">{error}</p>}
     {report && <div role="status" className="ui-state admin-inline-banner">
       <p>{t('admin.checklists.bulk.result', { done: report.done, skipped: report.skipped })}</p>
