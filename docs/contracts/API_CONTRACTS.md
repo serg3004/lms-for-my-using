@@ -2558,3 +2558,7 @@ contain `{ id, result: 'skipped', reason }`. Reasons are `not_found`, `forbidden
 `longread_exercise` and `attempt_in_progress`. Ancestor deletions cover selected
 descendants. Deleting tests explicitly uses the existing soft-delete rules,
 including the check for an attempt in progress.
+
+The assessment folder response also includes `color`. Create and update accept
+`purple`, `green`, `blue`, `orange`, `pink` and `gray`. The default is
+`purple`. Omitting color on update keeps the existing value.

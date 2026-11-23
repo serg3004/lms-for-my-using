@@ -48,7 +48,9 @@ describe('assessment folders (PostgreSQL)', () => {
 
   it('moves tests and nests folders with scoped counts, then safely unfiles a deleted subtree', async () => {
     const first = await folders.create(organizationId, actorId, { name: 'First' });
-    const second = await folders.create(organizationId, actorId, { name: 'Second' });
+    expect(first.color).toBe('purple');
+    const second = await folders.create(organizationId, actorId, { name: 'Second', color: 'green' });
+    expect(second.color).toBe('green');
     const child = await folders.create(organizationId, actorId, { name: 'Child', parentId: first.id });
     const course = await prisma.course.create({ data: { organizationId, title: 'Assigned course', slug: randomUUID() } });
     const test = await prisma.assessment.create({
@@ -63,8 +65,8 @@ describe('assessment folders (PostgreSQL)', () => {
         results: [{ id: test.id, result: 'done' }, { id: longread.id, result: 'skipped', reason: 'longread_exercise' }],
       });
 
-    await expect(folders.update(organizationId, child.id, { parentId: second.id, name: 'Renamed' }))
-      .resolves.toMatchObject({ parentId: second.id, name: 'Renamed' });
+    await expect(folders.update(organizationId, child.id, { parentId: second.id, name: 'Renamed', color: 'blue' }))
+      .resolves.toMatchObject({ parentId: second.id, name: 'Renamed', color: 'blue' });
     await expect(folders.update(organizationId, second.id, { parentId: child.id })).rejects.toBeInstanceOf(BadRequestException);
     await expect(folders.list(organizationId)).resolves.toMatchObject({
       rootAssessmentCount: 1,
@@ -72,7 +74,7 @@ describe('assessment folders (PostgreSQL)', () => {
       folders: expect.arrayContaining([
         expect.objectContaining({ id: first.id, assessmentCount: 0, totalAssessmentCount: 0 }),
         expect.objectContaining({ id: second.id, childFolderCount: 1, assessmentCount: 0, totalAssessmentCount: 1 }),
-        expect.objectContaining({ id: child.id, assessmentCount: 1, totalAssessmentCount: 1 }),
+        expect.objectContaining({ id: child.id, assessmentCount: 1, totalAssessmentCount: 1, color: 'blue' }),
       ]),
     });
     await expect(folders.list(organizationId, actorId)).resolves.toMatchObject({ assessmentCount: 0 });

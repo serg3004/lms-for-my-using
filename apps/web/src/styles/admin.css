@@ -2329,3 +2329,32 @@
 .admin-builder-tabbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; margin: 0 0 20px; border-bottom: 1px solid var(--color-border); }
 .admin-builder-tabbar .admin-org-tabs { flex: 1 1 200px; min-width: 0; margin: 0 0 -1px; border-bottom: 0; }
 .admin-builder-tabbar__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-bottom: 8px; }
+
+.folder-glyph {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  inline-size: 1.75rem;
+  block-size: 1.75rem;
+  margin-inline-end: var(--space-1);
+  border-radius: var(--radius-sm);
+  color: var(--color-folder);
+  background: color-mix(in srgb, var(--color-folder) 12%, var(--color-surface));
+  vertical-align: middle;
+}
+.folder-glyph--purple { --color-folder: var(--color-primary); }
+.folder-glyph--green { --color-folder: var(--color-success); }
+.folder-glyph--blue { --color-folder: var(--color-info); }
+.folder-glyph--orange { --color-folder: var(--color-warning); }
+.folder-glyph--pink { --color-folder: color-mix(in srgb, var(--color-danger), var(--color-primary)); }
+.folder-glyph--gray { --color-folder: var(--color-text-muted); }
+.assessment-folder-tree {
+  padding: var(--space-2) var(--space-3);
+  margin-block-end: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+.assessment-folder-tree__row { display: flex; align-items: center; gap: var(--space-1); }
+.assessment-folder-tree [aria-current="page"] { color: var(--color-text); text-decoration: underline; }
+.assessment-folder-tree__row > button:first-child:not(:only-child) { min-height: 44px; }

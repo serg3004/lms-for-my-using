@@ -5,18 +5,21 @@ import { ApiClientError, apiRequest, getCurrentUser } from '../shared/apiClient.
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
-import { Button, DataTable, EmptyState, PageState, SearchInput, Toolbar, type Column } from '../shared/ui.js';
+import { Button, EmptyState, PageState, SearchInput, Toolbar, type Column } from '../shared/ui.js';
 import type { AssessmentAttemptSummary } from '../shared/api/types.js';
 import { buildAssessmentAnswers, countAnsweredQuestions, getAnswerOutcome, getAssessmentOptionLabel, selectedIds, supportsOptionQuestion, type SelectedAnswers } from './assessment-taking/model.js';
 import { AssessmentSettingsForm } from './assessment-builder/AssessmentSettingsForm.js';
 import { QuestionsEditor } from './assessment-builder/QuestionsEditor.js';
-import { ASSESSMENT_STATUSES, assessmentFormReducer, assessmentToForm, buildPreviewQuestionsWithOptions, describePreviewAnswerSelection, emptyAssessmentForm, filterAssessments, mapAssessmentForm, type AnswerOption, type Assessment, type AssessmentPreviewResult, type AssessmentStatus, type Question, type SaveState } from './assessment-builder/model.js';
+import { ASSESSMENT_STATUSES, assessmentFormReducer, assessmentToForm, buildPreviewQuestionsWithOptions, describePreviewAnswerSelection, emptyAssessmentForm, mapAssessmentForm, type AnswerOption, type Assessment, type AssessmentPreviewResult, type AssessmentStatus, type Question, type SaveState } from './assessment-builder/model.js';
 import { StandaloneAssessmentDialog } from './assessment-builder/StandaloneAssessmentDialog.js';
+import { AssessmentLibrary } from './assessment-builder/AssessmentLibrary.js';
+import { useAssessmentFolders } from './assessment-builder/useAssessmentFolders.js';
 import { useAssessmentBuilder } from './assessment-builder/useAssessmentBuilder.js';
 
 export function AdminAssessmentBuilderPage() {
   const { t } = useTranslation();
   const builder = useAssessmentBuilder(t);
+  const library = useAssessmentFolders(t);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | AssessmentStatus>('all');
   const [createStandalone, setCreateStandalone] = useState(false);
@@ -208,7 +211,6 @@ export function AdminAssessmentBuilderPage() {
   if (builder.loadState.status === 'loading') return <main className="admin-state"><PageState message={t('admin.assessmentBuilder.loading', 'Loading assessment builder...')} variant="loading"/></main>;
   if (builder.loadState.status === 'error') return <main className="admin-state"><PageState title={t('admin.assessmentBuilder.title', 'Assessment builder')} message={builder.loadState.message} variant="error"/></main>;
   const data = builder.loadState;
-  const filteredAssessments = filterAssessments(data.assessments, search, statusFilter);
   const navItems: AdminNavItem[] = [{ label: t('admin.courseBuilder.title', 'Course builder'), href: '/admin/courses' }, { label: t('admin.lessons.title', 'Lesson editor'), href: '/admin/lessons' }, { label: t('admin.materials.title', 'Materials'), href: '/admin/materials' }, { label: t('admin.assessmentBuilder.title', 'Assessment builder'), href: '/admin/assessments', isCurrent: true }];
   return <AdminPageLayout brandLabel={t('admin.navLink', 'Admin')} sidebarLabel={t('admin.navLink', 'Admin')} navItems={navItems}>
     <AdminPageHeader
@@ -240,6 +242,7 @@ export function AdminAssessmentBuilderPage() {
       right={
         <select
           className="admin-status-select"
+          aria-label={t('admin.assessmentBuilder.allStatuses', 'All statuses')}
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as 'all' | AssessmentStatus)}
         >
@@ -251,8 +254,7 @@ export function AdminAssessmentBuilderPage() {
       }
     />
 
-    <DataTable<Assessment>
-      label={t('admin.assessmentBuilder.title', 'Assessments')}
+    <AssessmentLibrary assessments={builder.loadState.assessments} library={library} reloadAssessments={builder.reloadAssessments} search={search} status={statusFilter} t={t}
       columns={[
         { key: 'title', label: t('admin.assessmentBuilder.col.title', 'Title'), priority: 'primary', render: (a) => a.title },
         { key: 'questions', label: t('admin.assessmentBuilder.col.questions', 'Questions'), priority: 'secondary', render: (a) => rowStats[a.id]?.questionsCount ?? '—' },
@@ -284,10 +286,6 @@ export function AdminAssessmentBuilderPage() {
           </div>
         )},
       ] satisfies Column<Assessment>[]}
-      rows={filteredAssessments}
-      keyExtractor={(a) => a.id}
-      responsiveDetails={{ label: t('courses.details'), expandLabel: (a) => `${t('courses.details')}: ${a.title}`, collapseLabel: (a) => `${t('courses.details')}: ${a.title}` }}
-      emptyMessage={t('admin.assessmentBuilder.empty', 'No assessments found.')}
     />
 
     <dialog ref={standaloneDialogRef} className="admin-dialog" onClose={() => setManagedAssessment(null)}>
