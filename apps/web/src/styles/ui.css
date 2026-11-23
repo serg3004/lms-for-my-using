@@ -1,5 +1,5 @@
 .ui-state {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-card-border);
   border-radius: var(--radius-lg);
   padding: 24px;
   background: var(--color-surface);
@@ -837,7 +837,7 @@
 /* ── Card ────────────────────────────────────────────────────────────────── */
 
 .ds-card {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-card-border);
   border-radius: var(--radius-lg);
   padding: 24px;
   background: var(--color-surface);
@@ -1806,7 +1806,7 @@
 }
 
 .stat-card {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-card-border);
   border-radius: 15px;
   padding: 17px;
   background: var(--color-surface);
@@ -1858,7 +1858,7 @@
 /* ── Table wrapper ───────────────────────────────────────────────────────── */
 
 .admin-table-wrap {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-card-border);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
   box-shadow: var(--shadow-card);

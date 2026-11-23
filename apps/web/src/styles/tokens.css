@@ -1,5 +1,5 @@
 :root {
-  --color-background: #f5f7fb;
+  --color-background: #f4f5fb;
   --color-surface: #ffffff;
   --color-surface-muted: #f8fafc;
   --color-border: #e3e8ef;
@@ -19,10 +19,11 @@
   --color-danger-bg: #fee2e2;
   --color-info-bg: #e0f2fe;
 
-  --shadow-card: 0 8px 24px rgb(23 32 51 / 5%);
+  --shadow-card: 0 1px 2px rgb(23 32 51 / 5%), 0 8px 28px rgb(23 32 51 / 6%);
+  --color-card-border: transparent;
   --radius-sm: 6px;
-  --radius-md: 11px;
-  --radius-lg: 18px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -47,6 +48,9 @@
   --text-lg: 1.125rem;
   --text-xl: 1.25rem;
   --text-2xl: 1.5rem;
+  --text-page: 1.875rem;
+  --text-section: 1.125rem;
+  --tracking-heading: -0.02em;
 
   --fw-normal: 400;
   --fw-medium: 500;

@@ -438,15 +438,16 @@
   margin: 0 0 7px;
   color: var(--color-primary);
   font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .admin-topbar h1 {
   margin: 0;
-  font-size: 2.25rem;
+  font-size: var(--text-page);
   font-weight: var(--fw-bold, 700);
+  letter-spacing: var(--tracking-heading);
   line-height: 1.2;
 }
 
@@ -623,7 +624,7 @@
 
 .admin-card,
 .admin-section-card {
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-card-border);
   border-radius: var(--radius-lg);
   padding: 24px;
   background: var(--color-surface);
@@ -647,7 +648,9 @@
 
 .admin-section-card__head h2 {
   margin: 0;
-  font-size: var(--text-base, 1rem);
+  font-size: var(--text-section);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-heading);
 }
 
 .admin-section-card__head p {
@@ -1532,15 +1535,6 @@
   gap: 20px;
 }
 
-.admin-checklist-items {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
 .admin-checklist-item {
   display: flex;
   align-items: center;
@@ -1984,19 +1978,6 @@
   .admin-context-field-row__menu .ds-menu > button {
     min-height: 44px;
   }
-}
-
-.admin-checklist-add-item {
-  display: flex;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.admin-checklist-add-item input {
-  flex: 1;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  padding: 8px 10px;
 }
 
 .admin-seg {

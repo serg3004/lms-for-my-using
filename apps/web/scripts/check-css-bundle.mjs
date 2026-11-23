@@ -18,7 +18,12 @@ const assetDirectory = new URL('../dist/assets/', import.meta.url);
 // of a tablet/phone needed ~480 B. The two panel rules (width, margin) moved to the frame instead of being duplicated.
 // PR 504 adds an 875 B stylesheet for the QR sheet preview and print layout.
 // The existing bundle occupied 97,155 B, leaving 125 B under the previous cap.
-const maximumCssBytes = 96 * 1024;
+// PR 566 (visual foundation, direction "C + indigo"): merged the login patch stylesheets and removed two dead
+// checklist rules, which kept the net growth of the new tokens and card rules to ~0. The budget is raised
+// 96 KiB -> 100 KiB on purpose, not to absorb PR 566: PR 567-569 replace the old component rules with the new
+// light ones, and during that transition old and new rules coexist in the bundle. Each of those PRs must delete
+// what it replaces, and PR 570 (acceptance) re-checks that the bundle fits in 96 KiB again.
+const maximumCssBytes = 100 * 1024;
 
 const cssAssets = (await readdir(assetDirectory)).filter((file) => file.endsWith('.css'));
 

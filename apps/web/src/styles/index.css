@@ -10,4 +10,3 @@
 @import url('./admin.css') layer(features);
 @import url('./public-home.css') layer(features);
 @import url('./login-prototype-final-alignment.css') layer(features);
-@import url('./login-remember-checkbox-fix.css') layer(overrides);
