@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../../shared/apiClient.js';
 import type { DataTableSort } from '../../shared/ui.js';
@@ -18,7 +18,6 @@ const emptyPage: AssessmentPage = { items: [], total: 0, page: 1, pageSize: 25 }
 
 export function useAssessmentList(staleFolder: boolean) {
   const [params, setParams] = useSearchParams();
-  const pendingParams = useRef<{ source: URLSearchParams; next: URLSearchParams } | null>(null);
   const [revision, setRevision] = useState(0);
   const [loaded, setLoaded] = useState<{ key: string; data: AssessmentPage | null } | null>(null);
   const search = (params.get('search') ?? '').slice(0, 200);
@@ -48,17 +47,15 @@ export function useAssessmentList(staleFolder: boolean) {
   const key = `${path}:${revision}`;
 
   const set = useCallback((changes: Record<string, string>, replace = false) => {
-    // Several controls can change before the router commits a navigation.
-    const pending = pendingParams.current;
-    const next = new URLSearchParams(pending?.source === params ? pending.next : params);
+    // BrowserRouter updates history before React commits the corresponding render.
+    const next = new URLSearchParams(window.location.search);
     if (!Object.hasOwn(changes, 'page')) next.delete('page');
     for (const [name, value] of Object.entries(changes)) {
       if (value) next.set(name, value);
       else next.delete(name);
     }
-    pendingParams.current = { source: params, next };
     setParams(next, { replace });
-  }, [params, setParams]);
+  }, [setParams]);
 
   useEffect(() => {
     const controller = new AbortController();

@@ -42,12 +42,10 @@ export function useAssessmentFolders(t: TFunction) {
   }, [reload]);
 
   function select(id: string | null, replace = false) {
-    setParams((previous) => {
-      const next = new URLSearchParams(previous);
-      next.set('folder', id ?? 'root');
-      next.delete('page');
-      return next;
-    }, { replace });
+    const next = new URLSearchParams(window.location.search);
+    next.set('folder', id ?? 'root');
+    next.delete('page');
+    setParams(next, { replace });
   }
 
   useEffect(() => {

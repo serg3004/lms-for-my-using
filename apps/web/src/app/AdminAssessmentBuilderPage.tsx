@@ -248,35 +248,35 @@ export function AdminAssessmentBuilderPage() {
       </div>
     )}
 
-    <Toolbar className="assessment-list-toolbar"
+    <Toolbar
       left={<SearchInput value={list.search} onChange={(search) => list.set({ search }, true)}
         placeholder={t('admin.assessmentBuilder.searchPlaceholder')} />}
       right={<>
-        <select className="admin-status-select" aria-label={t('admin.assessmentBuilder.allStatuses')}
+        <div><select className="admin-status-select" aria-label={t('admin.assessmentBuilder.allStatuses')}
           value={list.status} onChange={(event) => list.set({ status: event.target.value })}>
           <option value="">{t('admin.assessmentBuilder.allStatuses')}</option>
           {ASSESSMENT_STATUSES.map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}
-        </select>
-        <select className="admin-status-select" aria-label={t('admin.assessmentBuilder.list.course')}
+        </select></div>
+        <div><select className="admin-status-select" aria-label={t('admin.assessmentBuilder.list.course')}
           value={list.course} onChange={(event) => list.set({ course: event.target.value })}>
           <option value="">{t('admin.assessmentBuilder.list.allCourses')}</option>
           <option value="standalone">{t('admin.assessmentBuilder.list.standalone')}</option>
           {data.courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
-        </select>
-        <select className="admin-status-select" aria-label={t('admin.checklists.col.folder')}
+        </select></div>
+        <div><select className="admin-status-select" aria-label={t('admin.checklists.col.folder')}
           value={list.folder} onChange={(event) => list.set({ folder: event.target.value })}>
           <option value="all">{t('admin.assessmentBuilder.list.allFolders')}</option>
           <option value="root">{t('admin.assessmentBuilder.list.root')}</option>
           {folderRows(library.data?.folders ?? []).map(({ folder, level }) => <option key={folder.id} value={folder.id}>
             {'– '.repeat(level - 1)}{folder.name}
           </option>)}
-        </select>
-        <select className="admin-status-select" aria-label={t('admin.assessmentBuilder.col.attempts')}
+        </select></div>
+        <div><select className="admin-status-select" aria-label={t('admin.assessmentBuilder.col.attempts')}
           value={list.attempts} onChange={(event) => list.set({ attempts: event.target.value })}>
           <option value="">{t('admin.assessmentBuilder.list.anyAttempts')}</option>
           <option value="with">{t('admin.assessmentBuilder.list.withAttempts')}</option>
           <option value="without">{t('admin.assessmentBuilder.list.withoutAttempts')}</option>
-        </select>
+        </select></div>
         <label className="admin-checkbox-field"><input type="checkbox" checked={list.mine}
           onChange={(event) => list.set({ mine: event.target.checked ? 'true' : '' })} />
           {t('admin.assessmentBuilder.list.mine')}</label>

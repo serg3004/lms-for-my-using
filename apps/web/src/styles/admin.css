@@ -1499,11 +1499,6 @@
   gap: 12px;
 }
 
-.assessment-list-toolbar .admin-toolbar__left { flex: 1 1 15rem; min-width: 0; }
-.assessment-list-toolbar .admin-toolbar__left > * { flex: 1; }
-.assessment-list-toolbar .admin-toolbar__right { flex: 2 1 28rem; align-items: center; }
-.assessment-list-toolbar select { inline-size: auto; max-inline-size: 100%; min-block-size: var(--control-size-md); }
-
 .admin-users-filter {
   display: grid;
   gap: var(--space-1);
