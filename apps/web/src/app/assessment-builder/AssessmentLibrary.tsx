@@ -1,28 +1,26 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 
 import { bulkAssessmentFolders, getAssessmentFolderImpact, saveAssessmentFolder, type AssessmentFolder, type FolderBulkKind, type FolderBulkOperation } from '../../shared/api/assessmentFolders.js';
 import { ApiClientError } from '../../shared/apiClient.js';
-import { Button, ConfirmDialog, DataTable, Menu, PageState, type Column } from '../../shared/ui.js';
+import { Button, ConfirmDialog, DataTable, Menu, PageState, Pagination, type Column } from '../../shared/ui.js';
 import { FolderDialog, MoveToFolderDialog, type FolderDialogTarget } from '../../shared/folders/FolderDialogs.js';
 import { FolderBulkDelete, FolderBulkMove } from '../../shared/folders/FolderBulkActions.js';
 import { FolderGlyph } from '../../shared/folders/FolderTree.js';
-import { canAddSubfolder, folderAndDescendantIds, folderPath, folderPathLabel, libraryContents } from '../../shared/folders/folderTree.js';
+import { canAddSubfolder, folderAndDescendantIds, folderPath, folderPathLabel, childrenByParent } from '../../shared/folders/folderTree.js';
 import { AssessmentFolderNavigation, assessmentFolderDrop, startAssessmentDrag } from './AssessmentFolderNavigation.js';
-import { filterAssessments, type Assessment, type AssessmentStatus } from './model.js';
+import type { AssessmentListRow, useAssessmentList } from './useAssessmentList.js';
 import type { useAssessmentFolders } from './useAssessmentFolders.js';
 
-type Row = { kind: 'assessment'; item: Assessment } | { kind: 'folder'; item: AssessmentFolder };
+type Row = { kind: 'assessment'; item: AssessmentListRow } | { kind: 'folder'; item: AssessmentFolder };
 const rowKey = (row: Row) => `${row.kind}:${row.item.id}`;
 const rowTitle = (row: Row) => row.kind === 'folder' ? row.item.name : row.item.title;
 
-export function AssessmentLibrary({ assessments, columns, library, reloadAssessments, search, status, t }: {
-  assessments: Assessment[];
-  columns: Column<Assessment>[];
+export function AssessmentLibrary({ list, columns, library, renderActions, t }: {
+  list: ReturnType<typeof useAssessmentList>;
+  columns: Column<AssessmentListRow>[];
+  renderActions: (assessment: AssessmentListRow, move?: () => void) => ReactNode;
   library: ReturnType<typeof useAssessmentFolders>;
-  reloadAssessments: () => Promise<void>;
-  search: string;
-  status: 'all' | AssessmentStatus;
   t: TFunction;
 }) {
   const [selection, setSelection] = useState<{ scope: string; keys: Set<string> } | null>(null);
@@ -35,14 +33,13 @@ export function AssessmentLibrary({ assessments, columns, library, reloadAssessm
 
   const folders = library.data?.folders ?? [];
   const active = folders.find((folder) => folder.id === library.id) ?? null;
-  const searching = Boolean(search.trim()) || status !== 'all';
-  const contents = libraryContents(folders, assessments, library.id);
-  const shownTests = filterAssessments(searching ? assessments : contents.sheets, search, status);
+  const assessments = list.page.items;
+  const showFolders = !list.filtering && list.folder !== 'all' && list.page.page === 1;
   const rows: Row[] = [
-    ...(searching ? [] : contents.folders.map((item): Row => ({ kind: 'folder', item }))),
-    ...shownTests.map((item): Row => ({ kind: 'assessment', item })),
+    ...(showFolders ? (childrenByParent(folders).get(library.id) ?? []).map((item): Row => ({ kind: 'folder', item })) : []),
+    ...assessments.map((item): Row => ({ kind: 'assessment', item })),
   ];
-  const scope = JSON.stringify([library.id, search, status]);
+  const scope = list.key;
   const selectedKeys = selection?.scope === scope ? selection.keys : new Set<string>();
   const moveFolders = move?.flatMap((row) => row.kind === 'folder' ? [row.item.id] : []) ?? [];
   const commonMoveParent = move?.map((row) => row.kind === 'folder' ? row.item.parentId : row.item.folderId ?? null) ?? [];
@@ -100,7 +97,8 @@ export function AssessmentLibrary({ assessments, columns, library, reloadAssessm
       setMove(null);
       setDeletion(null);
       try {
-        await Promise.all([library.reload(), ...(next.done || !next.skipped ? [reloadAssessments()] : [])]);
+        if (next.done || !next.skipped) list.reload();
+        await library.reload();
       }
       catch (failure) { setError(actionError(failure)); }
       setBusy(false);
@@ -142,12 +140,10 @@ export function AssessmentLibrary({ assessments, columns, library, reloadAssessm
         if (column.key === 'title') return <>
           {column.render(row.item)}
           {row.item.isLongreadExercise && <div>{t('admin.assessmentBuilder.folders.longread')}</div>}
-          {searching && row.item.folderId && <div>{folderPathLabel(folders, row.item.folderId)}</div>}
+          {list.folder === 'all' && row.item.folderId && <div>{folderPathLabel(folders, row.item.folderId)}</div>}
         </>;
-        if (column.key === 'actions' && library.data && !row.item.isLongreadExercise) return <>
-          <FolderBulkMove busy={busy} onClick={() => setMove([row])} t={t} />
-          {column.render(row.item)}
-        </>;
+        if (column.key === 'actions') return renderActions(row.item,
+          library.data && !busy && !row.item.isLongreadExercise ? () => setMove([row]) : undefined);
         return column.render(row.item);
       }
 
@@ -189,8 +185,15 @@ export function AssessmentLibrary({ assessments, columns, library, reloadAssessm
       <button type="button" className="admin-inline-banner__close" aria-label={t('admin.checklists.close', 'Close')} onClick={() => setReport(null)}>×</button>
     </div>}
 
+    {list.loading && <PageState variant="loading" message={t('admin.assessmentBuilder.loading')} />}
+    {list.error && <>
+      <PageState variant="error" message={t('admin.assessmentBuilder.loadError')} />
+      <Button type="button" variant="secondary" onClick={list.reload}>{t('admin.assessmentBuilder.folders.retry')}</Button>
+    </>}
     <DataTable label={t('admin.assessmentBuilder.title')} columns={tableColumns} rows={rows} keyExtractor={rowKey}
-      emptyMessage={searching ? t('admin.checklists.folders.notFound') : t('admin.assessmentBuilder.folders.empty')}
+      sort={list.tableSort}
+      onSortChange={({ key, direction }) => list.set({ sort: key, direction: direction === 'ascending' ? 'asc' : 'desc' })}
+      emptyMessage={list.loading || list.error ? '' : list.filtering ? t('admin.checklists.folders.notFound') : t('admin.assessmentBuilder.folders.empty')}
       responsiveDetails={{
         label: t('courses.details'),
         expandLabel: (row) => `${t('courses.details')}: ${rowTitle(row)}`,
@@ -214,6 +217,11 @@ export function AssessmentLibrary({ assessments, columns, library, reloadAssessm
         <FolderBulkDelete busy={busy} onClick={() => void previewDelete(selected)} t={t} />
       </>}
     />
+
+    <Pagination page={list.page.page} pageSize={list.page.pageSize} total={list.page.total}
+      onPage={(page) => list.set({ page: page === 1 ? '' : String(page) })}
+      label={t('admin.assessmentBuilder.list.pagination')}
+      prevLabel={t('admin.assessmentBuilder.list.previous')} nextLabel={t('admin.assessmentBuilder.list.next')} />
 
     <FolderDialog target={edit} onClose={() => setEdit(null)} colors rootLabel={library.rootLabel} t={t}
       onSubmit={async ({ name, color }) => {

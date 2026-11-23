@@ -2562,3 +2562,28 @@ including the check for an attempt in progress.
 The assessment folder response also includes `color`. Create and update accept
 `purple`, `green`, `blue`, `orange`, `pink` and `gray`. The default is
 `purple`. Omitting color on update keeps the existing value.
+
+### Assessment author library (PR 526)
+
+`GET /assessments/library` requires `assessment.author`. The response contains
+`items`, `total`, `page` and `pageSize`. It accepts `search` (case-insensitive
+title substring), `status`, `courseId` (UUID or `standalone`), `folderId`
+(UUID or `root`), `mine=true`, and `attempts=with|without`. Omit the folder
+filter to search all folders. The default page is 1 and the page size is 25
+(maximum 100). Set `sort` to `createdAt`, `title`, `course`, `status`,
+`questions`, `attempts`, `passRate` or `lastAttemptAt` and `direction` to
+`asc` or `desc`. The default order is newest first, with the assessment ID
+as a tiebreaker. The legacy `GET /assessments` response remains an array.
+
+Each row includes its course title, active question count, results-eligible
+attempt count (including attempts in progress), rounded pass rate among
+completed eligible attempts (null if none), and latest eligible attempt start.
+Instructor rows and attempts respect course scope. The same eligible attempt
+predicate selects the with/without attempts filter. Older tests without a
+recorded author are excluded by `mine=true`.
+
+`POST /assessments/:id/copy` requires `assessment.author` and source course
+access. It creates a draft owned by the caller with an independent slug, settings
+and active questions and options. It preserves the source folder and course
+and excludes attempts, assignment links, and placements. Copies of longread
+exercises are regular tests without a longread lesson binding.

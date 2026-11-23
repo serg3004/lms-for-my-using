@@ -509,6 +509,28 @@
       }
     },
     "assessmentBuilder": {
+      "list": {
+        "course": "课程",
+        "allCourses": "所有课程",
+        "standalone": "无课程",
+        "allFolders": "所有文件夹",
+        "root": "根文件夹",
+        "anyAttempts": "不限作答次数",
+        "withAttempts": "有作答记录",
+        "withoutAttempts": "无作答记录",
+        "mine": "仅我创建",
+        "pagination": "测验列表分页",
+        "previous": "上一页",
+        "next": "下一页",
+        "passRate": "通过率",
+        "lastAttempt": "最近作答",
+        "copyError": "无法复制测验。",
+        "resultsError": "无法加载测验结果。",
+        "score": "得分",
+        "inProgress": "进行中",
+        "passed": "已通过",
+        "failed": "未通过"
+      },
       "folders": {
         "root": "全部测验",
         "tree": "测验文件夹",

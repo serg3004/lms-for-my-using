@@ -533,6 +533,7 @@ model User {
   reportingLinesAsManager    ReportingLine[]            @relation("ReportingLineManager")
   notifications              Notification[]
   checklistsCreated          Checklist[]                @relation("ChecklistCreatedBy")
+  assessmentsCreated        Assessment[]
   assessmentFoldersCreated  AssessmentFolder[]
   checklistFoldersCreated    ChecklistFolder[]          @relation("ChecklistFolderCreatedBy")
   checklistInstances         ChecklistInstance[]        @relation("ChecklistInstanceUser")
@@ -1167,6 +1168,7 @@ model Assessment {
   organizationId                 String               @map("organization_id") @db.Uuid
   courseId                       String?              @map("course_id") @db.Uuid
   lessonId                       String?              @map("lesson_id") @db.Uuid
+  createdBy                      String?              @map("created_by") @db.Uuid
   folderId                       String?              @map("folder_id") @db.Uuid
   isLongreadExercise             Boolean              @default(false) @map("is_longread_exercise")
   title                          String
@@ -1187,6 +1189,7 @@ model Assessment {
   organization                   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   course                         Course?              @relation(fields: [courseId], references: [id], onDelete: SetNull)
   lesson                         Lesson?              @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  creator                        User?                @relation(fields: [createdBy], references: [id], onDelete: SetNull)
   folder                         AssessmentFolder?    @relation(fields: [organizationId, folderId], references: [organizationId, id], onDelete: Restrict)
   questions                      AssessmentQuestion[]
   attempts                       AssessmentAttempt[]
@@ -1202,6 +1205,7 @@ model Assessment {
   @@index([courseId, status])
   @@index([lessonId])
   @@index([organizationId, folderId])
+  @@index([organizationId, createdBy])
   @@map("assessments")
 }
 
