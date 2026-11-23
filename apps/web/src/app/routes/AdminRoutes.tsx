@@ -7,6 +7,7 @@ const ChecklistScalesPage = lazy(() => import('../ChecklistScalesPage.js').then(
 
 const LongreadEditorPage = lazy(() => import('../LongreadEditorPage.js').then((m) => ({ default: m.LongreadEditorPage })));
 
+const AssessmentEditorPage = lazy(() => import('../assessment-builder/AssessmentEditorPage.js').then((m) => ({ default: m.AssessmentEditorPage })));
 const AdminAssessmentBuilderPage = lazy(() => import('../AdminAssessmentBuilderPage.js').then((m) => ({ default: m.AdminAssessmentBuilderPage })));
 const AdminAssignmentCompletionPage = lazy(() => import('../AdminAssignmentCompletionPage.js').then((m) => ({ default: m.AdminAssignmentCompletionPage })));
 const AdminAuditLogPage = lazy(() => import('../AdminAuditLogPage.js').then((m) => ({ default: m.AdminAuditLogPage })));
@@ -66,6 +67,8 @@ export function AdminRoutes() {
     <Route path="/admin/lessons" element={<AdminLessonsPage />} />
     <Route path="/admin/materials" element={<AdminMaterialsPage />} />
     <Route path="/admin/assessments" element={<AdminAssessmentBuilderPage />} />
+    <Route path="/admin/assessments/new" element={<AssessmentEditorPage />} />
+    <Route path="/admin/assessments/:assessmentId/edit" element={<AssessmentEditorPage />} />
     <Route path="/admin/checklists" element={<AdminChecklistsPage />} />
     <Route path="/admin/checklists/analytics" element={<AdminChecklistAnalyticsPage />} />
     <Route path="/admin/checklists/sheet-analytics" element={<AdminSheetAnalyticsPage />} />
