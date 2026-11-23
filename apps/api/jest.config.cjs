@@ -19,6 +19,7 @@ module.exports = {
   testPathIgnorePatterns: [
     '/src/integration/longread-exercises\\.database\\.spec\\.ts$',
     '/src/integration/assessment-question-types\\.database\\.spec\\.ts$',
+    '/src/integration/assessment-folders\\.database\\.spec\\.ts$',
     '/src/integration/api\\.database-smoke\\.spec\\.ts$',
     '/src/integration/checklist-snapshot\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-domain\\.database\\.spec\\.ts$',

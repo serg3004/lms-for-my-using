@@ -422,6 +422,7 @@ model Organization {
   auditLogs                  AuditLog[]
   notifications              Notification[]
   checklists                 Checklist[]
+  assessmentFolders          AssessmentFolder[]
   checklistFolders           ChecklistFolder[]
   checklistPhotos            ChecklistPhoto[]
   checklistTemplates         ChecklistTemplate[]
@@ -532,6 +533,7 @@ model User {
   reportingLinesAsManager    ReportingLine[]            @relation("ReportingLineManager")
   notifications              Notification[]
   checklistsCreated          Checklist[]                @relation("ChecklistCreatedBy")
+  assessmentFoldersCreated  AssessmentFolder[]
   checklistFoldersCreated    ChecklistFolder[]          @relation("ChecklistFolderCreatedBy")
   checklistInstances         ChecklistInstance[]        @relation("ChecklistInstanceUser")
   checklistInstancesAssigned ChecklistInstance[]        @relation("ChecklistInstanceAssignedBy")
@@ -1165,6 +1167,8 @@ model Assessment {
   organizationId                 String               @map("organization_id") @db.Uuid
   courseId                       String?              @map("course_id") @db.Uuid
   lessonId                       String?              @map("lesson_id") @db.Uuid
+  folderId                       String?              @map("folder_id") @db.Uuid
+  isLongreadExercise             Boolean              @default(false) @map("is_longread_exercise")
   title                          String
   slug                           String
   description                    String?
@@ -1183,6 +1187,7 @@ model Assessment {
   organization                   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   course                         Course?              @relation(fields: [courseId], references: [id], onDelete: SetNull)
   lesson                         Lesson?              @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  folder                         AssessmentFolder?    @relation(fields: [organizationId, folderId], references: [organizationId, id], onDelete: Restrict)
   questions                      AssessmentQuestion[]
   attempts                       AssessmentAttempt[]
 
@@ -1196,7 +1201,28 @@ model Assessment {
   @@index([organizationId, createdAt, id])
   @@index([courseId, status])
   @@index([lessonId])
+  @@index([organizationId, folderId])
   @@map("assessments")
+}
+
+model AssessmentFolder {
+  id             String             @id @default(uuid()) @db.Uuid
+  organizationId String             @map("organization_id") @db.Uuid
+  parentId       String?            @map("parent_id") @db.Uuid
+  name           String
+  createdBy      String?            @map("created_by") @db.Uuid
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?          @map("deleted_at") @db.Timestamptz
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent         AssessmentFolder?  @relation("AssessmentFolderTree", fields: [organizationId, parentId], references: [organizationId, id], onDelete: Restrict)
+  children       AssessmentFolder[] @relation("AssessmentFolderTree")
+  creator        User?              @relation(fields: [createdBy], references: [id], onDelete: SetNull)
+  assessments    Assessment[]
+
+  @@unique([organizationId, id])
+  @@index([organizationId, parentId])
+  @@map("assessment_folders")
 }
 
 model AssessmentAssignment {

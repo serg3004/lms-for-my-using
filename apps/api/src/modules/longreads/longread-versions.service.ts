@@ -217,7 +217,7 @@ export class LongreadVersionsService {
               let assessmentId = restoredAssessments.get(frozen.assessment.id);
               if (!assessmentId) {
                 const assessment = await tx.assessment.create({ data: { organizationId, courseId: lesson.courseId, lessonId,
-                  title: frozen.assessment.title, slug: `longread-restored-${randomUUID()}`, passingScore: frozen.assessment.passingScore,
+                  title: frozen.assessment.title, isLongreadExercise: true, slug: `longread-restored-${randomUUID()}`, passingScore: frozen.assessment.passingScore,
                   maxAttempts: frozen.assessment.maxAttempts, availableAfterCourseCompletion: false, status: 'draft' } });
                 assessmentId = assessment.id; restoredAssessments.set(frozen.assessment.id, assessmentId);
               }
