@@ -19,6 +19,10 @@ export async function openTypedAssessment(page: Page, { role = 'learner', type =
     if (path.endsWith('/theme')) return route.fulfill({ json: { themeSettings: {} } });
     if (path === '/notifications/unread-count') return route.fulfill({ json: { count: 0 } });
     if (path === `/assessments/${typedAssessmentId}`) return route.fulfill({ json: assessment });
+    if (path === `/assessments/${typedAssessmentId}/editor`) return route.fulfill({ json: {
+      assessment: { ...assessment, updatedAt: assessment.createdAt },
+      questions: [{ ...question, imageUrl: null, scoringMode: 'all_or_nothing' }], draft: null, placements: [], assignments: [],
+    } });
     if (path === `/assessments/${typedAssessmentId}/quiz` || path === `/assessments/${typedAssessmentId}/questions`) return route.fulfill({ json: [question] });
     if (path === '/assessment-folders') return route.fulfill({ json: { folders: [], rootAssessmentCount: 1, assessmentCount: 1 } });
     if (path === '/assessments/library') return route.fulfill({ json: { items: [{ ...assessment, questionsCount: 1, attemptsCount: 0, courseTitle: 'Охрана труда' }], total: 1, page: 1, pageSize: 25 } });

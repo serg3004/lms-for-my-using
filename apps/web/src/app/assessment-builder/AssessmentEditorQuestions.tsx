@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormField } from '../../shared/adminPage.js';
 import { Button } from '../../shared/ui.js';
+import { supportsOptionQuestion } from '../assessment-taking/model.js';
 import { copyEditorQuestion, moveEditorItem, newEditorQuestion, type EditorQuestion } from './editorModel.js';
 
 function ReorderList<T extends { id: string }>({ items, onChange, children }: {
@@ -51,11 +52,12 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview }: {
   return <>
     <ReorderList items={questions} onChange={onChange}>
       {(question, index) => <div className="admin-form">
+        {!supportsOptionQuestion(question) && <p role="status">{t('assessments.typedQuestionUnavailable')}</p>}
         <FormField id={question.id} label={t('admin.assessmentBuilder.questionTitle')} required>
-          <input id={question.id} maxLength={200} value={question.title}
+          <input id={question.id} maxLength={200} value={question.title} disabled={!supportsOptionQuestion(question)}
             onChange={(event) => changeQuestion(question.id, { title: event.target.value })} />
         </FormField>
-        {!question.definition && <FormField id={`${question.id}-type`} label={t('admin.assessmentBuilder.questionType')}>
+        {supportsOptionQuestion(question) && <FormField id={`${question.id}-type`} label={t('admin.assessmentBuilder.questionType')}>
           <select id={`${question.id}-type`} value={question.type} onChange={(event) =>
             changeQuestion(question.id, { type: event.target.value as EditorQuestion['type'] })}>
             {(['single_choice', 'multiple_choice', 'true_false'] as const).map((type) =>
@@ -63,10 +65,10 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview }: {
           </select>
         </FormField>}
         <FormField id={`${question.id}-points`} label={t('admin.assessmentBuilder.points')}>
-          <input id={`${question.id}-points`} type="number" min={1} value={question.points || ''}
+          <input id={`${question.id}-points`} type="number" min={1} disabled={!supportsOptionQuestion(question)} value={question.points || ''}
             onChange={(event) => changeQuestion(question.id, { points: Number(event.target.value) })} />
         </FormField>
-        {!question.definition && <>
+        {supportsOptionQuestion(question) && <>
           <ReorderList items={question.options} onChange={(options) => changeQuestion(question.id, { options })}>
             {(option) => <div className="admin-form">
               <FormField id={option.id} label={t('admin.assessmentBuilder.optionText')}>
