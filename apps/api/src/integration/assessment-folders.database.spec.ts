@@ -5,6 +5,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 
 import { PrismaService } from '../database/prisma.service.js';
 import { AssessmentFoldersService } from '../modules/assessments/assessment-folders.service.js';
+import { assessmentLibrarySchema } from '../modules/assessments/assessments.schemas.js';
 import { AssessmentsService } from '../modules/assessments/assessments.service.js';
 import { assertSafeTestDatabase } from './database-test-safety.js';
 
@@ -99,6 +100,51 @@ describe('assessment folders (PostgreSQL)', () => {
     await expect(folders.bulk(organizationId, { action: 'delete', kind: 'assessment', ids: [test.id, randomUUID()] }))
       .resolves.toMatchObject({ done: 1, skipped: 1 });
     await expect(assessments.getAssessment(test.id, organizationId)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('filters, sorts and pages measured assessments, and copies author content as a draft', async () => {
+    const folder = await folders.create(organizationId, actorId, { name: 'Catalog test' });
+    const course = await prisma.course.create({ data: { organizationId, title: 'Catalog course', slug: randomUUID() } });
+    await prisma.courseInstructor.create({ data: { organizationId, courseId: course.id, instructorId: actorId } });
+    const row = await prisma.assessment.create({ data: {
+      organizationId, courseId: course.id, folderId: folder.id, title: 'Catalog Alpha', slug: randomUUID(), createdBy: actorId,
+    } });
+    await prisma.assessment.create({ data: {
+      organizationId, courseId: course.id, folderId: folder.id, title: 'Catalog Beta', slug: randomUUID(), createdBy: actorId,
+    } });
+    await prisma.assessment.create({ data: {
+      organizationId: foreignId, title: 'Catalog Alpha foreign', slug: randomUUID(),
+    } });
+    await prisma.assessmentQuestion.create({ data: {
+      organizationId, assessmentId: row.id, title: 'Which option?',
+      options: { create: { organizationId, text: 'Correct', isCorrect: true } },
+    } });
+    const date = new Date('2026-01-01T00:00:00Z');
+    await prisma.assessmentAttempt.createMany({ data: [
+      { organizationId, courseId: course.id, assessmentId: row.id, userId: actorId, passed: true, completedAt: date, startedAt: date },
+      { organizationId, courseId: course.id, assessmentId: row.id, userId: actorId, completedAt: date, startedAt: date },
+      { organizationId, courseId: course.id, assessmentId: row.id, userId: actorId, status: 'in_progress', startedAt: date },
+      { organizationId, courseId: course.id, assessmentId: row.id, userId: actorId, deletedAt: date, startedAt: date },
+      { organizationId, assessmentId: row.id, userId: actorId, passed: true, completedAt: date, startedAt: date },
+    ] });
+    const query = { search: 'Catalog', courseId: course.id, folderId: folder.id, status: 'draft', mine: 'true', pageSize: '1', sort: 'questions' };
+    const list = (options = {}) => assessments.listLibrary(organizationId, actorId, true, assessmentLibrarySchema.parse({ ...query, ...options }));
+    const first = await list();
+    expect(first).toMatchObject({ total: 2, items: [{ id: row.id, courseTitle: course.title, questionsCount: 1, attemptsCount: 3, passRate: 50 }] });
+    expect(new Date((first.items[0] as { lastAttemptAt: string }).lastAttemptAt)).toEqual(date);
+    await expect(list({ page: '2' })).resolves.toMatchObject({ total: 2, items: [{ title: 'Catalog Beta', passRate: null }] });
+    await expect(list({ page: '3' })).resolves.toMatchObject({ total: 2, items: [] });
+    await expect(list({ attempts: 'with', sort: 'title' })).resolves.toMatchObject({ total: 1, items: [{ id: row.id }] });
+    await expect(list({ attempts: 'without' })).resolves.toMatchObject({ total: 1, items: [{ title: 'Catalog Beta' }] });
+    const copy = await assessments.copyAssessment(row.id, organizationId, actorId);
+    expect(copy).toMatchObject({ status: 'draft', folderId: folder.id, courseId: course.id });
+    expect(copy.id).not.toBe(row.id);
+    await expect(list({ attempts: 'without', sort: 'questions' })).resolves.toMatchObject({
+      total: 2, items: [{ id: copy.id, questionsCount: 1, attemptsCount: 0 }],
+    });
+    await expect(prisma.assessmentAnswerOption.findFirst({
+      where: { question: { assessmentId: copy.id } }, select: { text: true, isCorrect: true },
+    })).resolves.toEqual({ text: 'Correct', isCorrect: true });
   });
 
   it('rejects foreign destinations and moves that would put a descendant beyond the limit', async () => {

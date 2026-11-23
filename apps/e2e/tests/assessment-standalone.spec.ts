@@ -46,7 +46,8 @@ test('assign a standalone test and take it by link after signing in', async ({ p
     try {
       await authorPage.goto('/admin/assessments');
       const row = authorPage.getByRole('row').filter({ hasText: 'Самостоятельная проверка' });
-      await row.getByRole('button', { name: 'Назначения и ссылка' }).click();
+      await row.getByRole('button', { name: /Действия/ }).click();
+      await authorPage.getByRole('menuitem', { name: 'Назначения и ссылка' }).click();
       const dialog = authorPage.getByRole('dialog');
       await dialog.getByLabel('Получатель').selectOption(employee.id);
       const deadline = new Date(Date.now() + 86_400_000).toISOString().slice(0, 16);

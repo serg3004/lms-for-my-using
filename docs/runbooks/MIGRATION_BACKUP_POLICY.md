@@ -907,3 +907,10 @@ before re-enabling folder operations.
 Migration `20261124120000_assessment_folder_color` adds a color key to assessment
 folders. Existing folders get the purple default. Apply before deploying the
 updated API. Application rollback can leave the column and its values in place.
+
+### Assessment library authors (PR 526)
+
+Migration `20261124130000_assessment_author` adds a nullable assessment author
+with a user foreign key and an organization/author index. Existing assessments
+retain a null author. Apply before deploying the matching API. An application
+rollback can leave the column and index in place.

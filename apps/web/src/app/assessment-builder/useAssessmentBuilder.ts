@@ -1,36 +1,50 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { TFunction } from 'i18next';
 import { apiRequest } from '../../shared/apiClient.js';
 import type { PaginatedResponse } from '../../shared/api/types.js';
 import { sortLessons } from '../../shared/sortLessons.js';
-import { getAssessmentBuilderLoadErrorKey, type Assessment, type Course, type Lesson } from './model.js';
+import { getAssessmentBuilderLoadErrorKey, type Course, type Lesson } from './model.js';
 
-type LoadState = { status: 'loading' } | { status: 'loaded'; courses: Course[]; lessons: Lesson[]; assessments: Assessment[] } | { status: 'error'; message: string };
+type LoadState = { status: 'loading' } | { status: 'loaded'; courses: Course[]; lessons: Lesson[] } | { status: 'error'; message: string };
 
 export function useAssessmentBuilder(t: TFunction) {
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
   const [selectedCourseId, setSelectedCourseId] = useState('');
   const [selectedLessonId, setSelectedLessonId] = useState('');
 
-  const load = useCallback(async (courseId?: string) => {
-    try {
-      const [{ items: courses }, assessments] = await Promise.all([apiRequest<PaginatedResponse<Course>>('/courses?pageSize=200'), apiRequest<Assessment[]>('/assessments')]);
-      const nextCourseId = courseId ?? (selectedCourseId || courses[0]?.id || '');
-      const lessons = nextCourseId ? await apiRequest<Lesson[]>(`/courses/${encodeURIComponent(nextCourseId)}/lessons`) : [];
-      setSelectedCourseId(nextCourseId);
-      setLoadState({ status: 'loaded', courses, lessons: sortLessons(lessons), assessments });
-    } catch (error) {
-      setLoadState({ status: 'error', message: t(getAssessmentBuilderLoadErrorKey(error)) });
-    }
-  }, [selectedCourseId, t]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void apiRequest<PaginatedResponse<Course>>('/courses?pageSize=200', { signal: controller.signal })
+      .then(({ items: courses }) => {
+        if (controller.signal.aborted) return;
+        setSelectedCourseId(courses[0]?.id ?? '');
+        setLoadState({ status: 'loaded', courses, lessons: [] });
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted) setLoadState({ status: 'error', message: t(getAssessmentBuilderLoadErrorKey(error)) });
+      });
+    return () => controller.abort();
+  }, [t]);
 
-  useEffect(() => { void load(); }, [load]);
-  const replaceAssessment = useCallback((updated: Assessment) => setLoadState((previous) => previous.status === 'loaded' ? { ...previous, assessments: previous.assessments.map((item) => item.id === updated.id ? updated : item) } : previous), []);
-  const removeAssessment = useCallback((id: string) => setLoadState((previous) => previous.status === 'loaded' ? { ...previous, assessments: previous.assessments.filter((item) => item.id !== id) } : previous), []);
-  const reloadAssessments = useCallback(async () => {
-    const assessments = await apiRequest<Assessment[]>('/assessments');
-    setLoadState((previous) => previous.status === 'loaded' ? { ...previous, assessments } : previous);
-  }, []);
-  const selectCourse = useCallback(async (courseId: string) => { setSelectedCourseId(courseId); setSelectedLessonId(''); await load(courseId); }, [load]);
-  return { loadState, selectedCourseId, selectedLessonId, setSelectedLessonId, selectCourse, load, replaceAssessment, removeAssessment, reloadAssessments };
+  useEffect(() => {
+    const controller = new AbortController();
+    if (selectedCourseId) {
+      void apiRequest<Lesson[]>(`/courses/${encodeURIComponent(selectedCourseId)}/lessons`, { signal: controller.signal })
+        .then((lessons) => {
+          if (controller.signal.aborted) return;
+          setLoadState((previous) => previous.status === 'loaded' ? { ...previous, lessons: sortLessons(lessons) } : previous);
+        })
+        .catch(() => { /* The course can still be selected without a lesson. */ });
+    }
+    return () => controller.abort();
+  }, [selectedCourseId]);
+
+  function selectCourse(courseId: string) {
+    if (courseId === selectedCourseId) return;
+    setSelectedCourseId(courseId);
+    setSelectedLessonId('');
+    setLoadState((previous) => previous.status === 'loaded' ? { ...previous, lessons: [] } : previous);
+  }
+
+  return { loadState, selectedCourseId, selectedLessonId, setSelectedLessonId, selectCourse };
 }

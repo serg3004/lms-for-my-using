@@ -21,6 +21,7 @@ export async function openTypedAssessment(page: Page, { role = 'learner', type =
     if (path === `/assessments/${typedAssessmentId}`) return route.fulfill({ json: assessment });
     if (path === `/assessments/${typedAssessmentId}/quiz` || path === `/assessments/${typedAssessmentId}/questions`) return route.fulfill({ json: [question] });
     if (path === '/assessment-folders') return route.fulfill({ json: { folders: [], rootAssessmentCount: 1, assessmentCount: 1 } });
+    if (path === '/assessments/library') return route.fulfill({ json: { items: [{ ...assessment, questionsCount: 1, attemptsCount: 0, courseTitle: 'Охрана труда' }], total: 1, page: 1, pageSize: 25 } });
     if (path === '/assessments') return route.fulfill({ json: [assessment] });
     if (path === '/courses') return route.fulfill({ json: { items: [{ id: assessment.courseId, title: 'Охрана труда', organizationId: assessment.organizationId, status: 'published' }], total: 1, page: 1, pageSize: 200 } });
     if (path.endsWith('/report')) return route.fulfill({ json: { attemptsCount: 0, passedCount: 0, failedCount: 0 } });
@@ -28,7 +29,7 @@ export async function openTypedAssessment(page: Page, { role = 'learner', type =
   });
   await page.goto(role === 'learner' ? `/learn/assessments/${typedAssessmentId}/take` : '/admin/assessments');
   if (role === 'learner') await expect(page.getByText(locale === 'ru' ? typedQuestionMessage : { en: 'This form does not support', kk: 'Бұл пішін', zh: '此表单暂不支持' }[locale], { exact: locale === 'ru' })).toBeVisible();
-  else await expect(page.getByRole('button', { name: 'Вопросы', exact: true })).toBeVisible();
+  else await expect(page.getByRole('row', { name: /Проверка знаний/ })).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   return { writes };
 }

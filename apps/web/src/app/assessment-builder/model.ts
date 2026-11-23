@@ -129,12 +129,3 @@ export function buildEditOptionInitialState(option: AnswerOption): EditOptionIni
 export function getAssessmentBuilderLoadErrorKey(error: unknown): string {
   return error instanceof ApiClientError && error.status === 401 ? 'admin.assessmentBuilder.sessionExpired' : 'admin.assessmentBuilder.loadError';
 }
-
-export function filterAssessments(assessments: Assessment[], search: string, statusFilter: 'all' | AssessmentStatus): Assessment[] {
-  const query = search.trim().toLowerCase();
-  return assessments.filter((assessment) => {
-    const matchesSearch = !query || assessment.title.toLowerCase().includes(query);
-    const matchesStatus = statusFilter === 'all' || assessment.status === statusFilter;
-    return matchesSearch && matchesStatus;
-  });
-}

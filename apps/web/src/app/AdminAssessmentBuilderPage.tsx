@@ -1,12 +1,12 @@
-import { type FormEvent, useEffect, useReducer, useRef, useState } from 'react';
+import { type FormEvent, useReducer, useRef, useState } from 'react';
 import { RichText, plainText } from '../shared/RichText.js';
 import { useTranslation } from 'react-i18next';
 import { ApiClientError, apiRequest, getCurrentUser } from '../shared/apiClient.js';
 import { clearFieldError, hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
-import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, FormField, type AdminNavItem } from '../shared/adminPage.js';
-import { Button, EmptyState, PageState, SearchInput, Toolbar, type Column } from '../shared/ui.js';
-import type { AssessmentAttemptSummary } from '../shared/api/types.js';
+import { Badge, Button, EmptyState, Menu, PageState, SearchInput, Toolbar, type Column } from '../shared/ui.js';
+import { formatDate } from '../shared/formatDate.js';
+import { folderRows } from '../shared/folders/folderTree.js';
 import { buildAssessmentAnswers, countAnsweredQuestions, getAnswerOutcome, getAssessmentOptionLabel, selectedIds, supportsOptionQuestion, type SelectedAnswers } from './assessment-taking/model.js';
 import { AssessmentSettingsForm } from './assessment-builder/AssessmentSettingsForm.js';
 import { QuestionsEditor } from './assessment-builder/QuestionsEditor.js';
@@ -16,12 +16,15 @@ import { AssessmentLibrary } from './assessment-builder/AssessmentLibrary.js';
 import { useAssessmentFolders } from './assessment-builder/useAssessmentFolders.js';
 import { useAssessmentBuilder } from './assessment-builder/useAssessmentBuilder.js';
 
+import { useAssessmentList, type AssessmentListRow } from './assessment-builder/useAssessmentList.js';
+import { AssessmentListResults } from './assessment-builder/AssessmentListResults.js';
+
 export function AdminAssessmentBuilderPage() {
   const { t } = useTranslation();
   const builder = useAssessmentBuilder(t);
   const library = useAssessmentFolders(t);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | AssessmentStatus>('all');
+  const list = useAssessmentList(library.stale);
+  const [resultsAssessment, setResultsAssessment] = useState<Assessment | null>(null);
   const [createStandalone, setCreateStandalone] = useState(false);
   const [managedAssessment, setManagedAssessment] = useState<Assessment | null>(null);
   const standaloneDialogRef = useRef<HTMLDialogElement>(null);
@@ -40,7 +43,6 @@ export function AdminAssessmentBuilderPage() {
   const [options, setOptions] = useState<Record<string, AnswerOption[]>>({});
   const [questionsLoading, setQuestionsLoading] = useState(false);
   const invalidMessage = t('admin.assessmentBuilder.invalidInput', 'Enter title, passing score 0–100, and optional attempts ≥ 1.');
-  const [rowStats, setRowStats] = useState<Record<string, { questionsCount: number; attemptsCount: number }>>({});
   const [statusError, setStatusError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Assessment | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -60,30 +62,6 @@ export function AdminAssessmentBuilderPage() {
     published: t('admin.assessmentBuilder.status.published', 'Published'),
     archived: t('admin.assessmentBuilder.status.archived', 'Archived'),
   };
-
-  useEffect(() => {
-    if (builder.loadState.status !== 'loaded') return;
-    let isMounted = true;
-    async function loadRowStats() {
-      if (builder.loadState.status !== 'loaded') return;
-      try {
-        const entries = await Promise.all(
-          builder.loadState.assessments.map(async (assessment) => {
-            const [assessmentQuestions, results] = await Promise.all([
-              apiRequest<Question[]>(`/assessments/${encodeURIComponent(assessment.id)}/questions`),
-              apiRequest<AssessmentAttemptSummary[]>(`/assessments/${encodeURIComponent(assessment.id)}/results`),
-            ]);
-            return [assessment.id, { questionsCount: assessmentQuestions.length, attemptsCount: results.length }] as const;
-          }),
-        );
-        if (isMounted) setRowStats(Object.fromEntries(entries));
-      } catch {
-        if (isMounted) setRowStats({});
-      }
-    }
-    void loadRowStats();
-    return () => { isMounted = false; };
-  }, [builder.loadState]);
 
   function openCreateDialog() {
     setCreateStandalone(builder.loadState.status === 'loaded' && !builder.loadState.courses.length);
@@ -116,7 +94,8 @@ export function AdminAssessmentBuilderPage() {
       builder.setSelectedLessonId('');
       setCreateState({ status: 'idle' });
       createDialogRef.current?.close();
-      await builder.load(selectedCourse?.id);
+      list.reload();
+      void library.reload();
     }
     catch (error) { setCreateState({ status: 'error', message: error instanceof ApiClientError && error.status === 409 ? t('admin.assessmentBuilder.assessmentExists', 'An assessment with this slug already exists.') : t('admin.assessmentBuilder.saveError', 'Unable to create assessment.') }); }
   }
@@ -125,14 +104,15 @@ export function AdminAssessmentBuilderPage() {
     const titleErrors = validateRequiredFields([{ name: 'title', value: editForm.title, message: t('admin.assessmentBuilder.titleRequired', 'Assessment title is required.') }]);
     if (hasValidationErrors(titleErrors)) { setEditTitleErrors(titleErrors); return; }
     setEditTitleErrors({});
-    const values = mapAssessmentForm(editForm); if (!values || !editAssessment) { setEditState({ status: 'error', message: invalidMessage }); return; } setEditState({ status: 'saving' }); try { const payload = { title: values.title, description: values.description, passingScore: values.passingScore, maxAttempts: values.maxAttempts, availableAfterCourseCompletion: values.availableAfterCourseCompletion, status: values.status }; const updated = await apiRequest<Assessment>(`/assessments/${encodeURIComponent(editAssessment.id)}`, { method: 'PATCH', body: JSON.stringify(payload) }); editDialogRef.current?.close(); builder.replaceAssessment(updated); } catch { setEditState({ status: 'error', message: t('admin.assessmentBuilder.editError', 'Unable to update assessment.') }); } }
+    const values = mapAssessmentForm(editForm); if (!values || !editAssessment) { setEditState({ status: 'error', message: invalidMessage }); return; } setEditState({ status: 'saving' }); try { const payload = { title: values.title, description: values.description, passingScore: values.passingScore, maxAttempts: values.maxAttempts, availableAfterCourseCompletion: values.availableAfterCourseCompletion, status: values.status }; await apiRequest<Assessment>(`/assessments/${encodeURIComponent(editAssessment.id)}`, { method: 'PATCH', body: JSON.stringify(payload) }); editDialogRef.current?.close(); list.reload(); } catch { setEditState({ status: 'error', message: t('admin.assessmentBuilder.editError', 'Unable to update assessment.') }); } }
   async function updateStatus(id: string, status: string) {
     setStatusError(null);
     try {
-      builder.replaceAssessment(await apiRequest<Assessment>(`/assessments/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }));
+      await apiRequest(`/assessments/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) });
+      list.reload();
     } catch (error) {
       setStatusError(error instanceof ApiClientError ? error.message : t('admin.assessmentBuilder.statusError', 'Unable to update status.'));
-      await builder.load(builder.selectedCourseId);
+      list.reload();
     }
   }
   async function openQuestions(assessment: Assessment) { setQuestionsAssessment(assessment); setQuestions([]); setOptions({}); setQuestionsLoading(true); questionsDialogRef.current?.showModal(); try { const loadedQuestions = await apiRequest<Question[]>(`/assessments/${encodeURIComponent(assessment.id)}/questions`); const loadedOptions = await Promise.all(loadedQuestions.map((question) => apiRequest<AnswerOption[]>(`/questions/${encodeURIComponent(question.id)}/options`))); setQuestions(loadedQuestions); setOptions(Object.fromEntries(loadedQuestions.map((question, index) => [question.id, loadedOptions[index] ?? []]))); } catch { setQuestions([]); } finally { setQuestionsLoading(false); } }
@@ -198,7 +178,8 @@ export function AdminAssessmentBuilderPage() {
     setDeleting(true);
     try {
       await apiRequest(`/assessments/${encodeURIComponent(deleteTarget.id)}`, { method: 'DELETE' });
-      builder.removeAssessment(deleteTarget.id);
+      list.reload();
+      void library.reload();
       setDeleteTarget(null);
     } catch (error) {
       setStatusError(error instanceof ApiClientError ? error.message : t('admin.assessmentBuilder.deleteError', 'Unable to delete assessment.'));
@@ -206,6 +187,42 @@ export function AdminAssessmentBuilderPage() {
     } finally {
       setDeleting(false);
     }
+  }
+
+  async function copyAssessment(assessment: Assessment) {
+    setStatusError(null);
+    try {
+      await apiRequest(`/assessments/${encodeURIComponent(assessment.id)}/copy`, { method: 'POST' });
+      list.reload();
+      void library.reload();
+    } catch {
+      setStatusError(t('admin.assessmentBuilder.list.copyError'));
+    }
+  }
+
+  function renderActions(assessment: AssessmentListRow, move?: () => void) {
+    return <div className="td-actions">
+      {assessment.status !== 'published' && <Button size="sm" variant="primary" type="button"
+        disabled={!assessment.questionsCount}
+        title={!assessment.questionsCount ? t('admin.assessmentBuilder.publishNoQuestions') : undefined}
+        onClick={() => void updateStatus(assessment.id, 'published')}>{t('admin.assessmentBuilder.publish')}</Button>}
+      {assessment.status !== 'archived' && <Button size="sm" variant="secondary" type="button"
+        onClick={() => void updateStatus(assessment.id, 'archived')}>{t('admin.checklists.action.archive')}</Button>}
+      <Menu align="end" buttonClassName="ds-button ds-button--secondary ds-button--sm"
+        label={<><span aria-hidden="true">⋮</span><span className="ui-visually-hidden">{t('admin.checklists.contextMenu.rowLabel', { name: assessment.title })}</span></>}>
+        <button type="button" role="menuitem" onClick={() => openEdit(assessment)}>{t('admin.assessmentBuilder.edit')}</button>
+        <button type="button" role="menuitem" onClick={() => void openQuestions(assessment)}>{t('admin.assessmentBuilder.questions')}</button>
+        <button type="button" role="menuitem" onClick={() => void copyAssessment(assessment)}>{t('admin.checklists.copy')}</button>
+        {move && <button type="button" role="menuitem" onClick={move}>{t('admin.checklists.folders.moveOpen')}</button>}
+        <button type="button" role="menuitem" onClick={() => void openPreview(assessment)}>{t('admin.assessmentBuilder.preview')}</button>
+        <button type="button" role="menuitem" onClick={() => setResultsAssessment(assessment)}>{t('admin.results.assessmentResultsTitle')}</button>
+        {assessment.courseId === null && assessment.status === 'published' && <button type="button" role="menuitem" onClick={() => {
+          setManagedAssessment(assessment);
+          standaloneDialogRef.current?.showModal();
+        }}>{t('assessments.standalone.manage')}</button>}
+        <button type="button" role="menuitem" onClick={() => setDeleteTarget(assessment)}>{t('admin.assessmentBuilder.delete')}</button>
+      </Menu>
+    </div>;
   }
 
   if (builder.loadState.status === 'loading') return <main className="admin-state"><PageState message={t('admin.assessmentBuilder.loading', 'Loading assessment builder...')} variant="loading"/></main>;
@@ -231,62 +248,59 @@ export function AdminAssessmentBuilderPage() {
       </div>
     )}
 
-    <Toolbar
-      left={
-        <SearchInput
-          value={search}
-          onChange={setSearch}
-          placeholder={t('admin.assessmentBuilder.searchPlaceholder', 'Find assessment')}
-        />
-      }
-      right={
-        <select
-          className="admin-status-select"
-          aria-label={t('admin.assessmentBuilder.allStatuses', 'All statuses')}
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as 'all' | AssessmentStatus)}
-        >
-          <option value="all">{t('admin.assessmentBuilder.allStatuses', 'All statuses')}</option>
-          {ASSESSMENT_STATUSES.map((status) => (
-            <option key={status} value={status}>{statusLabels[status]}</option>
-          ))}
+    <Toolbar className="assessment-list-toolbar"
+      left={<SearchInput value={list.search} onChange={(search) => list.set({ search }, true)}
+        placeholder={t('admin.assessmentBuilder.searchPlaceholder')} />}
+      right={<>
+        <select className="admin-status-select" aria-label={t('admin.assessmentBuilder.allStatuses')}
+          value={list.status} onChange={(event) => list.set({ status: event.target.value })}>
+          <option value="">{t('admin.assessmentBuilder.allStatuses')}</option>
+          {ASSESSMENT_STATUSES.map((status) => <option key={status} value={status}>{statusLabels[status]}</option>)}
         </select>
-      }
+        <select className="admin-status-select" aria-label={t('admin.assessmentBuilder.list.course')}
+          value={list.course} onChange={(event) => list.set({ course: event.target.value })}>
+          <option value="">{t('admin.assessmentBuilder.list.allCourses')}</option>
+          <option value="standalone">{t('admin.assessmentBuilder.list.standalone')}</option>
+          {data.courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
+        </select>
+        <select className="admin-status-select" aria-label={t('admin.checklists.col.folder')}
+          value={list.folder} onChange={(event) => list.set({ folder: event.target.value })}>
+          <option value="all">{t('admin.assessmentBuilder.list.allFolders')}</option>
+          <option value="root">{t('admin.assessmentBuilder.list.root')}</option>
+          {folderRows(library.data?.folders ?? []).map(({ folder, level }) => <option key={folder.id} value={folder.id}>
+            {'– '.repeat(level - 1)}{folder.name}
+          </option>)}
+        </select>
+        <select className="admin-status-select" aria-label={t('admin.assessmentBuilder.col.attempts')}
+          value={list.attempts} onChange={(event) => list.set({ attempts: event.target.value })}>
+          <option value="">{t('admin.assessmentBuilder.list.anyAttempts')}</option>
+          <option value="with">{t('admin.assessmentBuilder.list.withAttempts')}</option>
+          <option value="without">{t('admin.assessmentBuilder.list.withoutAttempts')}</option>
+        </select>
+        <label className="admin-checkbox-field"><input type="checkbox" checked={list.mine}
+          onChange={(event) => list.set({ mine: event.target.checked ? 'true' : '' })} />
+          {t('admin.assessmentBuilder.list.mine')}</label>
+      </>}
     />
 
-    <AssessmentLibrary assessments={builder.loadState.assessments} library={library} reloadAssessments={builder.reloadAssessments} search={search} status={statusFilter} t={t}
+    <AssessmentLibrary list={list} library={library} renderActions={renderActions} t={t}
       columns={[
-        { key: 'title', label: t('admin.assessmentBuilder.col.title', 'Title'), priority: 'primary', render: (a) => a.title },
-        { key: 'questions', label: t('admin.assessmentBuilder.col.questions', 'Questions'), priority: 'secondary', render: (a) => rowStats[a.id]?.questionsCount ?? '—' },
-        { key: 'status', label: t('admin.assessmentBuilder.col.status', 'Status'), priority: 'primary', render: (a) => (
-          <AdminStatusSelect value={a.status} statuses={ASSESSMENT_STATUSES} labels={statusLabels} onChange={(status) => void updateStatus(a.id, status)} />
-        )},
-        { key: 'attempts', label: t('admin.assessmentBuilder.col.attempts', 'Attempts'), priority: 'secondary', render: (a) => rowStats[a.id]?.attemptsCount ?? '—' },
-        { key: 'actions', label: '', priority: 'secondary', render: (a) => (
-          <div className="td-actions">
-            {a.status !== 'published' ? (
-              <button
-                className="admin-btn admin-btn--sm admin-btn--primary"
-                type="button"
-                disabled={(rowStats[a.id]?.questionsCount ?? 0) === 0}
-                title={(rowStats[a.id]?.questionsCount ?? 0) === 0 ? t('admin.assessmentBuilder.publishNoQuestions', 'Add at least one question with a correct answer before publishing.') : undefined}
-                onClick={() => void updateStatus(a.id, 'published')}
-              >
-                {t('admin.assessmentBuilder.publish', 'Publish')}
-              </button>
-            ) : null}
-            <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => openEdit(a)}>{t('admin.assessmentBuilder.edit', 'Edit')}</button>
-            <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void openQuestions(a)}>{t('admin.assessmentBuilder.questions', 'Questions')}</button>
-            <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => void openPreview(a)}>{t('admin.assessmentBuilder.preview', 'Preview')}</button>
-            {a.courseId === null && a.status === 'published' && <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => {
-              setManagedAssessment(a);
-              standaloneDialogRef.current?.showModal();
-            }}>{t('assessments.standalone.manage')}</button>}
-            <button className="admin-btn admin-btn--sm admin-btn--danger" type="button" onClick={() => setDeleteTarget(a)}>{t('admin.assessmentBuilder.delete', 'Delete')}</button>
-          </div>
-        )},
-      ] satisfies Column<Assessment>[]}
+        { key: 'title', label: t('admin.assessmentBuilder.col.title'), priority: 'primary', sortable: true, render: (a) => a.title },
+        { key: 'course', label: t('admin.assessmentBuilder.list.course'), priority: 'secondary', sortable: true, render: (a) => a.courseTitle ?? '—' },
+        { key: 'status', label: t('admin.assessmentBuilder.col.status'), priority: 'primary', sortable: true, render: (a) =>
+          <Badge variant={a.status === 'published' ? 'published' : a.status === 'draft' ? 'draft' : 'neutral'}>
+            {statusLabels[a.status as AssessmentStatus]}
+          </Badge> },
+        { key: 'questions', label: t('admin.assessmentBuilder.col.questions'), priority: 'secondary', sortable: true, render: (a) => a.questionsCount },
+        { key: 'attempts', label: t('admin.assessmentBuilder.col.attempts'), priority: 'secondary', sortable: true, render: (a) => a.attemptsCount },
+        { key: 'passRate', label: t('admin.assessmentBuilder.list.passRate'), priority: 'secondary', sortable: true, render: (a) => a.passRate == null ? '—' : `${a.passRate}%` },
+        { key: 'lastAttemptAt', label: t('admin.assessmentBuilder.list.lastAttempt'), priority: 'secondary', sortable: true, render: (a) => a.lastAttemptAt ? formatDate(a.lastAttemptAt) : '—' },
+        { key: 'actions', label: '', priority: 'secondary', render: () => null },
+      ] satisfies Column<AssessmentListRow>[]}
     />
+
+    {resultsAssessment && <AssessmentListResults key={resultsAssessment.id} assessment={resultsAssessment}
+      close={() => setResultsAssessment(null)} t={t} />}
 
     <dialog ref={standaloneDialogRef} className="admin-dialog" onClose={() => setManagedAssessment(null)}>
       {managedAssessment && <StandaloneAssessmentDialog assessment={managedAssessment} dialog={standaloneDialogRef} />}

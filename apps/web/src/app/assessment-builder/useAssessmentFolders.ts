@@ -25,7 +25,7 @@ export function useAssessmentFolders(t: TFunction) {
   const requested = params.get('folder');
   const data = state.status === 'loaded' ? state.data : null;
   const id = data ? resolveSelectedFolder(data.folders, requested) : null;
-  const stale = data !== null && requested !== null && id === null;
+  const stale = data !== null && requested !== null && requested !== 'root' && requested !== 'all' && id === null;
 
   const reload = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -44,8 +44,8 @@ export function useAssessmentFolders(t: TFunction) {
   function select(id: string | null, replace = false) {
     setParams((previous) => {
       const next = new URLSearchParams(previous);
-      if (id) next.set('folder', id);
-      else next.delete('folder');
+      next.set('folder', id ?? 'root');
+      next.delete('page');
       return next;
     }, { replace });
   }
