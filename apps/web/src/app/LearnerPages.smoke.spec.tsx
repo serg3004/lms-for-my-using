@@ -722,11 +722,9 @@ describe('learner page smoke rendering', () => {
       },
     };
 
-    // useState call order in LearnerAssessmentTakingPage: 1 selected, 2 submitState, 3 currentIndex,
-    // 4 secondsLeft, 5 timerError, then useAsyncData's internal loadState is call 6.
     useStateAtCalls({
-      4: 900, // secondsLeft — renders timer and covers formatTime
-      6: loadedAssessment,
+      8: 900, // secondsLeft
+      10: loadedAssessment, // useAsyncData loadState
     });
 
     const html = renderToStaticMarkup(<LearnerAssessmentTakingPage assessmentId="assessment-1" />);

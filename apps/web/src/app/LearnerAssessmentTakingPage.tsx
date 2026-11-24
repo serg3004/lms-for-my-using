@@ -55,6 +55,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
   const { t } = useTranslation();
   const [recorded, setRecorded] = useState<Record<string, RecordedAssessmentAnswer>>({});
   const [checking, setChecking] = useState(false);
+  const [attemptId, setAttemptId] = useState<string>();
   const [sessionReady, setSessionReady] = useState(false);
   const [selected, setSelected] = useState<SelectedAnswers>({});
   const [submitState, setSubmitState] = useState<SubmitState>({ status: 'idle' });
@@ -101,11 +102,13 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
     let cancelled = false;
     setTimerError(null);
     setSessionReady(false);
+    setAttemptId(undefined);
 
     void (async () => {
       try {
         const attempt = await startAssessmentAttempt(assessmentId, token);
         if (cancelled) return;
+        setAttemptId(attempt.id);
         setSecondsLeft(timeLimitMinutes ? computeSecondsLeft(attempt.startedAt, timeLimitMinutes) : null);
         if (attempt.lockedAnswers?.length) {
           const answers = attempt.lockedAnswers;
@@ -150,13 +153,13 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
   }
 
   async function checkAnswer(question: QuestionWithOptions) {
-    if (checking || recorded[question.id] || !sessionReady || !isQuestionAnswered(question, selected[question.id])) return;
+    if (checking || recorded[question.id] || !sessionReady || (!preview && !attemptId) || !isQuestionAnswered(question, selected[question.id])) return;
     setChecking(true);
     setSubmitState({ status: 'idle' });
     try {
       const result = preview
         ? await preview.recordAnswer(question, selected)
-        : await recordAssessmentAnswer(assessmentId, buildAssessmentAnswers([question], selected)[0], token);
+        : await recordAssessmentAnswer(assessmentId, attemptId!, buildAssessmentAnswers([question], selected)[0], token);
       setRecorded((previous) => ({ ...previous, [question.id]: result }));
       const answer = result.answer;
       setSelected((previous) => ({ ...previous, [question.id]: answer.response ?? answer.selectedOptionIds ?? answer.selectedOptionId ?? '' }));
@@ -188,7 +191,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
         setSubmitState({ status: 'done', result, certificateId: null });
         return;
       }
-      const attempt = await createAssessmentAttempt(assessmentId, buildAssessmentAnswers(loadState.data.questions, selected), token);
+      const attempt = await createAssessmentAttempt(assessmentId, buildAssessmentAnswers(loadState.data.questions, selected), token, loadState.data.assessment.policy ? attemptId : undefined);
       const result = await getAttemptResult(attempt.id);
 
       let certificateId: string | null = null;

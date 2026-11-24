@@ -2641,8 +2641,9 @@ the `review`, independently of the general answer visibility.
 
 `oneQuestion` controls the presentation. `preventBacktracking` and immediate reveal
 require sequentially locked answers. The learner starts or resumes with
-`POST /assessments/:id/attempts/start` and sends one standard assessment answer to
+`POST /assessments/:id/attempts/start` and sends `{ attemptId, answer }` to
 `POST /assessments/:id/attempts/answer` for the current question. Retries return the
-committed answer. Final submission uses the locked answers. The optional placement
+committed answer for that attempt. Final submission includes the attempt ID and uses
+the locked answers. The optional placement
 and standalone token query parameters follow the start endpoint. These settings apply
 to standard test attempts. Longread exercises continue to use their versioned policy.

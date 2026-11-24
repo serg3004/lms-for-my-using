@@ -182,12 +182,12 @@ export class AssessmentAttemptsService {
 
     const inProgress = assessment.timeLimitMinutes
       ? await this.prisma.assessmentAttempt.findFirst({
-          where: { assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
+          where: { ...(input.attemptId ? { id: input.attemptId } : {}), assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
           select: { id: true, startedAt: true },
         })
       : null;
 
-    if (assessment.timeLimitMinutes && !inProgress) {
+    if ((assessment.timeLimitMinutes || input.attemptId) && !inProgress) {
       throw new BadRequestException('Attempt was not started — call the start endpoint first');
     }
 
@@ -231,11 +231,12 @@ export class AssessmentAttemptsService {
       assertAssessmentWindow(policy);
       const scope = { assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null };
       const locked = requiresLockedAnswers(policy);
+      if (locked && !input.attemptId) throw new BadRequestException('A locked assessment submission requires the attempt ID');
       const active = assessment.timeLimitMinutes || locked
-        ? await tx.assessmentAttempt.findFirst({ where: { ...scope, status: 'in_progress', deletedAt: null },
+        ? await tx.assessmentAttempt.findFirst({ where: { ...scope, ...(input.attemptId ? { id: input.attemptId } : {}), status: 'in_progress', deletedAt: null },
           select: { id: true, startedAt: true, lockedAnswers: true } })
         : null;
-      if ((assessment.timeLimitMinutes || locked) && !active) throw new BadRequestException('Attempt was not started — call the start endpoint first');
+      if ((assessment.timeLimitMinutes || locked || input.attemptId) && !active) throw new BadRequestException('Attempt was not started — call the start endpoint first');
       if (!active) await this.ensureAttemptAllowed(tx, scope, assessment.maxAttempts, policy);
 
       const questions = await this.getQuestions(assessmentId, organizationId, tx);
@@ -259,7 +260,7 @@ export class AssessmentAttemptsService {
     return this.getAttempt(attemptId, { id: userId, organizationId, roles: ['learner'] });
   }
 
-  async recordAnswer(assessmentId: string, userId: string, organizationId: string, input: AssessmentAnswer, placementId?: string | null) {
+  async recordAnswer(assessmentId: string, userId: string, organizationId: string, attemptId: string, input: AssessmentAnswer, placementId?: string | null) {
     const assessment = await this.loadAssessmentForAttempt(assessmentId, organizationId);
     const location = await this.resolvePlacement(assessment, organizationId, placementId);
     await this.ensureAssessmentIsAvailable(location.courseId, userId, organizationId, assessment.availableAfterCourseCompletion);
@@ -270,7 +271,7 @@ export class AssessmentAttemptsService {
       assertAssessmentWindow(policy);
       if (!requiresLockedAnswers(policy)) throw new BadRequestException('Assessment does not use locked answers');
       const active = await tx.assessmentAttempt.findFirst({
-        where: { assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
+        where: { id: attemptId, assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
         select: { id: true, startedAt: true, lockedAnswers: true },
       });
       if (!active || (current.timeLimitMinutes && Date.now() - active.startedAt.getTime() > current.timeLimitMinutes * 60000)) {

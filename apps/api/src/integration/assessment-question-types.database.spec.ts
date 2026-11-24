@@ -130,7 +130,7 @@ describe('seven assessment question types and legacy grading — database', () =
     expect(resumed.id).toBe(active.id);
     const wrong = { questionId: first.question.id, selectedOptionId: first.options[1].id };
     const correct = { questionId: second.question.id, selectedOptionId: second.options[0].id };
-    const record = (answer: typeof wrong) => attempts.recordAnswer(assessmentId, learner.id, org, answer, null);
+    const record = (answer: typeof wrong, attemptId = active.id) => attempts.recordAnswer(assessmentId, learner.id, org, attemptId, answer, null);
     await expect(record(correct)).rejects.toThrow('current assessment question');
     await expect(record(wrong)).resolves.toMatchObject({
       answer: wrong, isCorrect: false, feedback: 'Review the first question.', correctOptions: [{ id: first.options[0].id }],
@@ -138,14 +138,15 @@ describe('seven assessment question types and legacy grading — database', () =
     await expect(record({ ...wrong, selectedOptionId: first.options[0].id })).resolves.toMatchObject({ answer: wrong });
     await expect(start()).resolves.toMatchObject({ lockedAnswers: [wrong] });
     await expect(record(correct)).resolves.not.toHaveProperty('correctOptions');
-    const submitted = await submit({ placementId: null, answers: [correct, { ...wrong, selectedOptionId: first.options[0].id }] });
+    const submitted = await submit({ placementId: null, attemptId: active.id, answers: [correct, { ...wrong, selectedOptionId: first.options[0].id }] });
     expect(submitted).toMatchObject({ percentage: 50, passed: false });
     const beforeLast = await results.getAttemptResult(submitted.id, learner);
     expect(beforeLast.answers[0]).not.toHaveProperty('correctOptions', expect.anything());
-    await start();
-    await record(wrong);
-    await record(correct);
-    await submit({ placementId: null, answers: [wrong, correct] });
+    const next = await start();
+    await expect(record(wrong)).rejects.toThrow('no active attempt');
+    await record(wrong, next.id);
+    await record(correct, next.id);
+    await submit({ placementId: null, attemptId: next.id, answers: [wrong, correct] });
     expect((await results.getAttemptResult(submitted.id, learner)).answers.find((answer) => answer.questionId === wrong.questionId))
       .toMatchObject({ feedback: 'Review the first question.', correctOptions: [{ id: first.options[0].id }] });
     await expect(start()).rejects.toThrow('attempts limit');

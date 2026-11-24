@@ -10,7 +10,7 @@ import { assessmentLinkToken, StandaloneAssessmentsService } from '../assessment
 import { AssessmentAttemptsService } from './assessment-attempts.service.js';
 import {
   createAssessmentAttemptSchema,
-  createAssessmentAttemptAnswerSchema,
+  recordAssessmentAnswerSchema,
   CreateAssessmentAttemptInput,
 } from './assessment-attempts.schemas.js';
 import { AssessmentResultsService } from './assessment-results.service.js';
@@ -101,7 +101,8 @@ export class AssessmentAttemptsController {
     const actor = request.currentUser!;
     if (placement !== undefined && isInstructorCourseScoped(actor)) throw new ForbiddenException();
     await this.standalone.assertAccess(assessmentId, actor.organizationId, actor.id, assessmentLinkToken.optional().parse(token), placement === null, typeof placement === 'string');
-    return this.assessmentAttemptsService.recordAnswer(assessmentId, actor.id, actor.organizationId, createAssessmentAttemptAnswerSchema.parse(body), placement);
+    const { attemptId, answer } = recordAssessmentAnswerSchema.parse(body);
+    return this.assessmentAttemptsService.recordAnswer(assessmentId, actor.id, actor.organizationId, attemptId, answer, placement);
   }
 
   @Post('assessments/:assessmentId/attempts')
