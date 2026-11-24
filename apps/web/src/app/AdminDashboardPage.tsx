@@ -5,7 +5,7 @@ import { CurrentUser, apiRequest } from '../shared/apiClient.js';
 import { getAdminDashboardSummary } from '../shared/api/reports.js';
 import { useSession } from '../shared/session.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
-import { SectionHeader, StatCard, StatsGrid, StatusBadge } from '../shared/ui.js';
+import { Button, SectionHeader, StatCard, StatsGrid, StatusBadge } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 
 type HealthResponse = {
@@ -149,14 +149,10 @@ export function AdminDashboardPage() {
         eyebrow={t('admin.eyebrow', 'Administrator')}
         title={t('admin.title', 'Admin dashboard')}
         subtitle={t('admin.subtitle', 'Welcome back, {{name}}.', { name: getUserDisplayName(user) })}
-        action={
-          <button
-            className="admin-btn admin-btn--primary"
-            onClick={() => downloadDashboardReport(stats, t)}
-            type="button"
-          >
+        primary={
+          <Button onClick={() => downloadDashboardReport(stats, t)} type="button" variant="secondary">
             {t('admin.dashboard.downloadReport', 'Download report')}
-          </button>
+          </Button>
         }
       />
 
