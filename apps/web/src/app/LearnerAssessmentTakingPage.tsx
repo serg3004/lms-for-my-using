@@ -1,3 +1,7 @@
+import { requiresLockedAnswers } from '@lms/shared/assessment-policy';
+import { recordAssessmentAnswer } from '../shared/api/assessments.js';
+import type { RecordedAssessmentAnswer } from '../shared/api/types.js';
+import { correctAnswerText } from '../features/longread-exercises/answer-text.js';
 import { assessmentTokenQuery } from '../shared/api/assessments.js';
 import { type FormEvent, useEffect, useState } from 'react';
 import { QuestionResponseFields } from '../features/longread-exercises/QuestionResponseFields.js';
@@ -34,9 +38,10 @@ import {
 
 type LearnerAssessmentTakingData = { assessment: AssessmentSummary; questions: QuestionWithOptions[] };
 
-type TakingResult = Pick<AssessmentAttemptResult, 'passed' | 'score' | 'maxScore' | 'percentage' | 'assessment' | 'answers'>;
+type TakingResult = Pick<AssessmentAttemptResult, 'passed' | 'score' | 'maxScore' | 'percentage' | 'assessment' | 'answers' | 'effectiveResult'>;
 type TakingPreview = LearnerAssessmentTakingData & {
   startIndex: number;
+  recordAnswer: (question: QuestionWithOptions, selected: SelectedAnswers) => Promise<RecordedAssessmentAnswer>;
   submit: (questions: QuestionWithOptions[], selected: SelectedAnswers) => Promise<TakingResult>;
 };
 
@@ -48,6 +53,9 @@ type SubmitState =
 
 export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { assessmentId: string; token?: string; preview?: TakingPreview }) {
   const { t } = useTranslation();
+  const [recorded, setRecorded] = useState<Record<string, RecordedAssessmentAnswer>>({});
+  const [checking, setChecking] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
   const [selected, setSelected] = useState<SelectedAnswers>({});
   const [submitState, setSubmitState] = useState<SubmitState>({ status: 'idle' });
   const [currentIndex, setCurrentIndex] = useState(preview?.startIndex ?? 0);
@@ -78,34 +86,44 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
    * useAsyncData's reload()/mutate() cover — it's a side channel that needs its own state.
    */
   useEffect(() => {
-    if (loadState.status !== 'loaded' || !loadState.data.assessment.timeLimitMinutes || loadState.data.questions.some((question) => !supportsTakingQuestion(question))) {
+    if (loadState.status !== 'loaded' || loadState.data.questions.some((question) => !supportsTakingQuestion(question))) {
       setSecondsLeft(null);
       return;
     }
 
     const timeLimitMinutes = loadState.data.assessment.timeLimitMinutes;
-    if (preview) {
-      setSecondsLeft(timeLimitMinutes * 60);
+    const locked = requiresLockedAnswers(loadState.data.assessment.policy);
+    if (preview || (!timeLimitMinutes && !locked)) {
+      setSecondsLeft(timeLimitMinutes ? timeLimitMinutes * 60 : null);
+      setSessionReady(true);
       return;
     }
     let cancelled = false;
     setTimerError(null);
+    setSessionReady(false);
 
     void (async () => {
       try {
         const attempt = await startAssessmentAttempt(assessmentId, token);
         if (cancelled) return;
-        setSecondsLeft(computeSecondsLeft(attempt.startedAt, timeLimitMinutes));
+        setSecondsLeft(timeLimitMinutes ? computeSecondsLeft(attempt.startedAt, timeLimitMinutes) : null);
+        if (attempt.lockedAnswers?.length) {
+          const answers = attempt.lockedAnswers;
+          setRecorded(Object.fromEntries(answers.map((answer) => [answer.questionId, { answer }])));
+          setSelected(Object.fromEntries(answers.map((answer) => [answer.questionId, answer.response ?? answer.selectedOptionIds ?? answer.selectedOptionId ?? ''])));
+          setCurrentIndex(Math.min(answers.length, loadState.data.questions.length - 1));
+        }
+        setSessionReady(true);
       } catch (error) {
         if (cancelled) return;
         if (error instanceof ApiClientError) {
-          setTimerError(error.message);
+          setTimerError(loadState.data.assessment.policy ? t(getAssessmentSubmitErrorKey(error)) : error.message);
         }
       }
     })();
 
     return () => { cancelled = true; };
-  }, [loadState, assessmentId, token, preview]);
+  }, [loadState, assessmentId, token, preview, t]);
 
   useEffect(() => {
     if (secondsLeft === null || secondsLeft <= 0) return;
@@ -131,6 +149,24 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
     });
   }
 
+  async function checkAnswer(question: QuestionWithOptions) {
+    if (checking || recorded[question.id] || !sessionReady || !isQuestionAnswered(question, selected[question.id])) return;
+    setChecking(true);
+    setSubmitState({ status: 'idle' });
+    try {
+      const result = preview
+        ? await preview.recordAnswer(question, selected)
+        : await recordAssessmentAnswer(assessmentId, buildAssessmentAnswers([question], selected)[0], token);
+      setRecorded((previous) => ({ ...previous, [question.id]: result }));
+      const answer = result.answer;
+      setSelected((previous) => ({ ...previous, [question.id]: answer.response ?? answer.selectedOptionIds ?? answer.selectedOptionId ?? '' }));
+    } catch (error) {
+      setSubmitState({ status: 'error', message: t(getAssessmentSubmitErrorKey(error)) });
+    } finally {
+      setChecking(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -138,7 +174,8 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
 
     const answeredQuestions = loadState.data.questions.slice(preview?.startIndex ?? 0);
     const answeredCount = countAnsweredQuestions(answeredQuestions, selected);
-    if (answeredCount < answeredQuestions.length) {
+    if (!sessionReady || (requiresLockedAnswers(loadState.data.assessment.policy)
+      && answeredQuestions.some((question) => !recorded[question.id])) || answeredCount < answeredQuestions.length) {
       setSubmitState({ status: 'error', message: t('assessments.errorAnswerAll') });
       return;
     }
@@ -156,7 +193,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
 
       let certificateId: string | null = null;
       const courseId = result.courseId === undefined ? loadState.data.assessment.courseId : result.courseId;
-      if (result.passed && courseId) {
+      if ((result.effectiveResult?.passed ?? result.passed) && courseId) {
         try {
           const cert = await issueCertificate({
             organizationId: result.organizationId,
@@ -212,6 +249,10 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
   }
 
   const { assessment, questions } = loadState.data;
+  const locked = requiresLockedAnswers(assessment.policy);
+  const noBack = assessment.policy?.preventBacktracking;
+  const allQuestions = assessment.policy?.oneQuestion === false && !locked;
+  const progress = questions.length ? Math.round((allQuestions ? countAnsweredQuestions(questions, selected) : currentIndex + 1) * 100 / questions.length) : 0;
   if (questions.some((question) => !supportsTakingQuestion(question))) {
     return <PageState title={assessment.title} message={t('assessments.typedQuestionUnavailable')} variant="error" action={<a href="/learn/assessments">{t('assessments.navLink')}</a>} />;
   }
@@ -235,6 +276,9 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
           <span className="learner-quiz__result-score">
             {t('assessments.resultScore', { score: result.score, maxScore: result.maxScore, percentage: result.percentage })}
           </span>
+          {result.effectiveResult && <span>
+            {t('assessments.policy.effective', { policy: t(`assessments.policy.${result.effectiveResult.policy}`), percentage: result.effectiveResult.percentage })}
+          </span>}
           <span className="learner-quiz__result-passing">
             {t('assessments.resultPassingScore', { score: result.assessment.passingScore })}
           </span>
@@ -260,6 +304,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                           <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultYourAnswer')}:</span>{' '}
                           {ownAnswerText(answer, t)}
                         </p>
+                        {answer.feedback && <RichText value={answer.feedback} />}
                         {outcome !== 'correct' && (answer.correctDefinition || answer.correctOptions?.length) ? (
                           <p className="learner-quiz__breakdown-answer learner-quiz__breakdown-answer--correct">
                             <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultCorrectAnswer')}:</span>{' '}
@@ -289,7 +334,8 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
             <button
               className="learner-btn learner-btn--secondary"
               type="button"
-              onClick={() => { setSelected({}); if (preview) setCurrentIndex(preview.startIndex); setSubmitState({ status: 'idle' }); }}
+              onClick={() => { if (locked && !preview) { window.location.reload(); return; }
+                setSelected({}); setRecorded({}); if (preview) setCurrentIndex(preview.startIndex); setSubmitState({ status: 'idle' }); }}
             >
               {t('assessments.retryBtn')}
             </button>
@@ -339,10 +385,10 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
       <section style={{ marginBottom: '20px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)', fontSize: '13px', marginBottom: '8px' }}>
           <span>{t('assessments.progressLabel')}</span>
-          <strong>{Math.round(((currentIndex + 1) / questions.length) * 100)}%</strong>
+          <strong>{progress}%</strong>
         </div>
         <div style={{ height: '8px', background: 'var(--color-surface-muted)', borderRadius: '999px', overflow: 'hidden' }}>
-          <div style={{ width: `${((currentIndex + 1) / questions.length) * 100}%`, height: '100%', background: 'linear-gradient(90deg,#4f46e5,#7c3aed)', borderRadius: '999px' }} />
+          <div style={{ width: `${progress}%`, height: '100%', background: 'linear-gradient(90deg,#4f46e5,#7c3aed)', borderRadius: '999px' }} />
         </div>
       </section>
 
@@ -351,23 +397,23 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
       ) : (
         <div className="edit-layout">
           <form className="learner-quiz__form" onSubmit={handleSubmit}>
-            {(() => {
-              const question = questions[currentIndex];
+            <ol className="learner-quiz__questions" start={allQuestions ? 1 : currentIndex + 1}>
+              {(allQuestions ? questions.map((_, index) => index) : [currentIndex]).map((index) => {
+              const question = questions[index];
+              const checkedAnswer = recorded[question.id];
               const value = selected[question.id];
               const isAnswered = isQuestionAnswered(question, value);
-              const isLastQuestion = currentIndex === questions.length - 1;
-
               return (
-                <ol className="learner-quiz__questions">
-                  <li className={`learner-quiz__question ${isAnswered ? 'learner-quiz__question--answered' : ''}`}>
+                  <li key={question.id} className={`learner-quiz__question ${isAnswered ? 'learner-quiz__question--answered' : ''}`}>
                     <div className="learner-quiz__question-header">
-                      <span className="learner-quiz__question-num">{currentIndex + 1}</span>
+                      <span className="learner-quiz__question-num">{index + 1}</span>
                       <h3 className="learner-quiz__question-title">{question.title}</h3>
                       <span className="learner-quiz__question-points">{question.points} pt</span>
                     </div>
                     {question.text ? <p className="learner-quiz__question-text"><RichText value={question.text} /></p> : null}
 
                     {question.imageUrl && <img src={question.imageUrl} alt={question.title} style={{ maxWidth: '100%', maxHeight: 360 }} />}
+                    <fieldset disabled={checking || !!checkedAnswer || (locked && !sessionReady)} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
                     {question.definition ? <QuestionResponseFields question={question}
                       answer={typeof value === 'object' && !Array.isArray(value) ? { questionId: question.id, response: value } : null}
                       onChange={({ response }) => { if (response) setSelected((previous) => ({ ...previous, [question.id]: response })); }} />
@@ -408,21 +454,37 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                         );
                       })}
                     </ul>}
+                    </fieldset>
+                    {checkedAnswer?.isCorrect !== undefined && <div role="status">
+                      <p>{t(checkedAnswer.isCorrect ? 'assessments.resultCorrect' : 'assessments.resultIncorrect')}</p>
+                      {checkedAnswer.feedback && <RichText value={checkedAnswer.feedback} />}
+                      {(checkedAnswer.correctDefinition || checkedAnswer.correctOptions?.length) && <p>
+                        {t('assessments.resultCorrectAnswer')} {correctAnswerText(question, {
+                          correctDefinition: checkedAnswer.correctDefinition,
+                          correctOptionIds: checkedAnswer.correctOptions?.map(({ id }) => id),
+                        }, t)}
+                      </p>}
+                    </div>}
                   </li>
-
-                  <li className="learner-quiz__submit-row" style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginTop: '20px' }}>
-                    <button
+              );
+            })}
+              <li className="learner-quiz__submit-row" style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginTop: '20px' }}>
+                    {!allQuestions && !noBack && <button
                       className="learner-btn learner-btn--secondary"
                       type="button"
-                      disabled={currentIndex === 0}
+                      disabled={currentIndex === 0 || checking}
                       onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
                     >
                       {t('assessments.previousQuestion')}
-                    </button>
-                    {isLastQuestion ? (
+                    </button>}
+                    {locked && !recorded[questions[currentIndex].id] ? (
+                      <button className="learner-btn learner-btn--primary" type="button"
+                        disabled={checking || !sessionReady || !isQuestionAnswered(questions[currentIndex], selected[questions[currentIndex].id])}
+                        onClick={() => void checkAnswer(questions[currentIndex])}>{t('assessments.policy.checkAnswer')}</button>
+                    ) : allQuestions || currentIndex === questions.length - 1 ? (
                       <button
                         className="learner-btn learner-btn--primary"
-                        disabled={submitState.status === 'submitting'}
+                        disabled={submitState.status === 'submitting' || !sessionReady}
                         type="submit"
                       >
                         {submitState.status === 'submitting' ? t('assessments.submitting') : t('assessments.submitBtn')}
@@ -437,9 +499,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                       </button>
                     )}
                   </li>
-                </ol>
-              );
-            })()}
+            </ol>
 
             {submitState.status === 'error' ? (
               <p className="learner-quiz__submit-error" role="alert">{submitState.message}</p>
@@ -458,6 +518,8 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                     <button
                       key={q.id}
                       type="button"
+                      disabled={checking || allQuestions || (noBack && i !== currentIndex)
+                        || (locked && i > currentIndex && (i !== currentIndex + 1 || !recorded[questions[currentIndex].id]))}
                       onClick={() => setCurrentIndex(i)}
                       style={{
                         border: `1px solid ${isCurrent ? 'var(--color-primary)' : isDone ? '#b7ead6' : 'var(--color-border)'}`,

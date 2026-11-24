@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { attemptPolicySchema } from '@lms/shared/assessment-policy';
 import { createRequire } from 'node:module';
 
 import PDFDocument from 'pdfkit';
@@ -6,6 +8,7 @@ type PdfCertificate = {
   id: string;
   status: string;
   issuedAt: Date;
+  assessmentResult?: unknown;
   organization?: { name: string };
   course?: { title: string };
   user?: { firstName: string; lastName: string; email: string };
@@ -50,6 +53,11 @@ export function renderCertificatePdf(certificate: PdfCertificate): Promise<Buffe
     document.font('NotoSansBold').fillColor('#172033').fontSize(28).text(learner, 70, 242, { width: width - 140, align: 'center' });
     document.font('NotoSans').fillColor('#64748b').fontSize(14).text('for successfully completing', 70, 301, { width: width - 140, align: 'center' });
     document.font('NotoSansBold').fillColor('#4f46e5').fontSize(23).text(course, 90, 337, { width: width - 180, align: 'center' });
+    const result = z.object({ policy: attemptPolicySchema, percentage: z.number() }).safeParse(certificate.assessmentResult);
+    if (result.success) {
+      document.font('NotoSans').fillColor('#475569').fontSize(12)
+        .text(`${{ best: 'Best attempt', latest: 'Latest attempt', average: 'Average of attempts' }[result.data.policy]} · ${result.data.percentage}%`, 70, 398, { width: width - 140, align: 'center' });
+    }
     document.font('NotoSans').fillColor('#475569').fontSize(11).text(`Issued ${issuedAt}`, 70, 442, { width: width - 140, align: 'center' });
     document.font('NotoSansBold').fontSize(10).text(certificateVerificationCode(certificate.id), 70, 469, { width: width - 140, align: 'center' });
 

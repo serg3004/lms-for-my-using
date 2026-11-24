@@ -1,3 +1,4 @@
+import type { AssessmentPolicy } from '@lms/shared/assessment-policy';
 import type { QuestionDefinition, QuestionScoringMode, QuestionType } from '@lms/shared/assessment-question-types';
 import type { AssessmentSummary } from '../../shared/api/types.js';
 import type { ValidAssessmentForm } from './model.js';
@@ -19,10 +20,13 @@ export type EditorQuestion = {
   definition: QuestionDefinition | null;
   scoringMode: QuestionScoringMode;
   options: EditorOption[];
+  correctFeedback?: string | null;
+  incorrectFeedback?: string | null;
 };
 
 export type EditorSettings = Omit<ValidAssessmentForm, 'slug' | 'status' | 'timeLimitMinutes'> & {
   timeLimitMinutes: number | null;
+  policy?: AssessmentPolicy;
 };
 
 export type EditorContent = { settings: EditorSettings; questions: EditorQuestion[] };

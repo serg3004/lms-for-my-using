@@ -1,3 +1,4 @@
+import { assessmentAttemptOrder, completedAssessmentAttempts, effectiveAssessmentResult, readAssessmentPolicy } from '../../common/assessment-policy.js';
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
@@ -16,6 +17,7 @@ const certificateSelect = {
   courseId: true,
   userId: true,
   assessmentAttemptId: true,
+  assessmentResult: true,
   status: true,
   issuedAt: true,
   revokedAt: true,
@@ -49,6 +51,7 @@ type CertificateRow = {
   courseId: string;
   userId: string;
   assessmentAttemptId: string | null;
+  assessmentResult?: unknown;
   status: string;
   issuedAt: Date;
   revokedAt: Date | null;
@@ -159,7 +162,8 @@ export class CertificatesService {
       return existingCertificate;
     }
 
-    const assessmentAttemptId = await this.findPassedAssessmentAttemptId(input);
+    const assessmentAttempt = await this.findPassedAssessmentAttempt(input);
+    const assessmentAttemptId = assessmentAttempt?.id ?? null;
     const isCourseCompleted = await this.isCourseCompleted(input.courseId, input.userId, input.organizationId);
 
     if (!isCourseCompleted && !assessmentAttemptId) {
@@ -172,6 +176,7 @@ export class CertificatesService {
         courseId: input.courseId,
         userId: input.userId,
         assessmentAttemptId,
+        ...(assessmentAttempt?.effectiveResult ? { assessmentResult: assessmentAttempt.effectiveResult } : {}),
       },
       select: certificateSelect,
     });
@@ -279,13 +284,13 @@ export class CertificatesService {
     return totalLessons > 0 && completedLessons >= totalLessons;
   }
 
-  private async findPassedAssessmentAttemptId(input: IssueCertificateInput) {
+  private async findPassedAssessmentAttempt(input: IssueCertificateInput) {
     const assessmentAttempt = await this.prisma.assessmentAttempt.findFirst({
       where: {
-        id: input.assessmentAttemptId,
+        ...(input.assessmentAttemptId ? { id: input.assessmentAttemptId } : { passed: true }),
+        status: 'completed',
         organizationId: input.organizationId,
         userId: input.userId,
-        passed: true,
         countsTowardResults: true,
         deletedAt: null,
         courseId: input.courseId,
@@ -294,9 +299,19 @@ export class CertificatesService {
         },
       },
       orderBy: { completedAt: 'desc' },
-      select: { id: true },
+      select: { id: true, passed: true, assessmentId: true, placementId: true, longreadRevisionId: true,
+        assessment: { select: { policy: true, passingScore: true } } },
     });
 
-    return assessmentAttempt?.id ?? null;
+    if (!assessmentAttempt) return null;
+    const policy = readAssessmentPolicy(assessmentAttempt.assessment?.policy).attemptPolicy;
+    if (!policy || assessmentAttempt.longreadRevisionId) return assessmentAttempt.passed ? { id: assessmentAttempt.id } : null;
+    const attempts = await this.prisma.assessmentAttempt.findMany({
+      where: completedAssessmentAttempts({ assessmentId: assessmentAttempt.assessmentId, userId: input.userId,
+        organizationId: input.organizationId, placementId: assessmentAttempt.placementId, longreadRevisionId: null }),
+      orderBy: assessmentAttemptOrder, select: { id: true, percentage: true, passed: true },
+    });
+    const effectiveResult = effectiveAssessmentResult(policy, attempts, assessmentAttempt.assessment.passingScore);
+    return effectiveResult?.passed ? { id: effectiveResult.attemptId, effectiveResult } : null;
   }
 }

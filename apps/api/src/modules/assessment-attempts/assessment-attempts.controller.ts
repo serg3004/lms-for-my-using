@@ -10,6 +10,7 @@ import { assessmentLinkToken, StandaloneAssessmentsService } from '../assessment
 import { AssessmentAttemptsService } from './assessment-attempts.service.js';
 import {
   createAssessmentAttemptSchema,
+  createAssessmentAttemptAnswerSchema,
   CreateAssessmentAttemptInput,
 } from './assessment-attempts.schemas.js';
 import { AssessmentResultsService } from './assessment-results.service.js';
@@ -89,6 +90,18 @@ export class AssessmentAttemptsController {
       request.currentUser!.organizationId,
       placement,
     );
+  }
+
+  @Post('assessments/:assessmentId/attempts/answer')
+  @Roles(...rolePolicies.assessmentAttemptsCreate)
+  @CourseScope('param', 'assessmentId', 'assessment')
+  async recordAnswer(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest,
+    @Body() body: unknown, @Query('placementId') placementId?: string, @Query('token') token?: string) {
+    const placement = placementQuery.parse(placementId);
+    const actor = request.currentUser!;
+    if (placement !== undefined && isInstructorCourseScoped(actor)) throw new ForbiddenException();
+    await this.standalone.assertAccess(assessmentId, actor.organizationId, actor.id, assessmentLinkToken.optional().parse(token), placement === null, typeof placement === 'string');
+    return this.assessmentAttemptsService.recordAnswer(assessmentId, actor.id, actor.organizationId, createAssessmentAttemptAnswerSchema.parse(body), placement);
   }
 
   @Post('assessments/:assessmentId/attempts')

@@ -6,6 +6,7 @@ import type {
   AssessmentQuestionSummary,
   AssessmentSummary,
   CreateAttemptAnswerInput,
+  RecordedAssessmentAnswer,
 } from './types.js';
 
 const assessmentsPath = '/assessments';
@@ -48,6 +49,12 @@ export function createAssessmentAttempt(assessmentId: string, answers: CreateAtt
 export function startAssessmentAttempt(assessmentId: string, token?: string) {
   return apiRequest<AssessmentAttemptSummary>(`/assessments/${encodeURIComponent(assessmentId)}/attempts/start${assessmentTokenQuery(token)}`, {
     method: 'POST',
+  });
+}
+
+export function recordAssessmentAnswer(assessmentId: string, answer: CreateAttemptAnswerInput, token?: string) {
+  return apiRequest<RecordedAssessmentAnswer>(`${getAssessmentPath(assessmentId)}/attempts/answer${assessmentTokenQuery(token)}`, {
+    method: 'POST', body: JSON.stringify(answer),
   });
 }
 

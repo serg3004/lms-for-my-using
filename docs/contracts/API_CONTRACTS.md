@@ -2617,3 +2617,32 @@ The standard taking screen sends `response` for defined questions and option IDs
 for legacy choices, including existing option-based true/false questions.
 Quiz and result views use the public definition to show response labels. Answer keys
 in the result still require a completed attempt and enabled correct-answer feedback.
+
+### Assessment settings (PR 529)
+
+`POST /assessments` accepts an optional `policy`. `PATCH /assessments/:id/editor`
+accepts the same object under `content.settings.policy`; publishing applies it together
+with the questions. Question objects can include `correctFeedback` and
+`incorrectFeedback`. New or changed limits are 1–10 attempts and 1–600 minutes.
+An omitted limit remains unlimited and existing larger limits can be retained.
+
+`policy` supports UTC ISO timestamps `opensAt` (inclusive) and `closesAt` (exclusive),
+`cooldownHours` after completion, and `attemptPolicy` of `best`, `latest` or
+`average`. Access and cooldown violations return HTTP 400. Each learner's result
+uses completed attempts in the same placement. Averages are rounded to the nearest
+percentage point. Result endpoints include `effectiveResult` alongside the individual
+attempt score. Assessment-issued certificates store the passing result used at issuance.
+
+`answerVisibility` is `never`, `submitted` or `last`. The last mode reveals keys
+once the learner completes the configured number of attempts. On an unlimited test
+the last mode keeps keys hidden. `showFeedback` independently controls feedback.
+`incorrectAnswer` can reveal the key for a wrong answer `immediate`ly or in
+the `review`, independently of the general answer visibility.
+
+`oneQuestion` controls the presentation. `preventBacktracking` and immediate reveal
+require sequentially locked answers. The learner starts or resumes with
+`POST /assessments/:id/attempts/start` and sends one standard assessment answer to
+`POST /assessments/:id/attempts/answer` for the current question. Retries return the
+committed answer. Final submission uses the locked answers. The optional placement
+and standalone token query parameters follow the start endpoint. These settings apply
+to standard test attempts. Longread exercises continue to use their versioned policy.

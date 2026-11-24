@@ -26,33 +26,49 @@ export function AssessmentEditorPreview({ assessment, content, startIndex }: {
       options: question.options.map((option, optionOrder) => ({ ...option, questionId: question.id, order: optionOrder })),
     }));
 
+    const policy = content.settings.policy;
+    const grade = (takingQuestions: QuestionWithOptions[], selected: SelectedAnswers) => apiRequest<Grade[]>(`/assessments/${assessment.id}/editor/preview`, {
+      method: 'POST',
+      body: JSON.stringify({ content, questionIds: takingQuestions.map((question) => question.id), answers: buildAssessmentAnswers(takingQuestions, selected) }),
+    });
+    function feedback(question: EditorContent['questions'][number], isCorrect: boolean) {
+      return policy?.showFeedback ? (isCorrect ? question.correctFeedback : question.incorrectFeedback) : undefined;
+    }
+    function key(question: EditorContent['questions'][number]) {
+      return question.definition ? { correctDefinition: question.definition } : { correctOptions: question.options.filter((option) => option.isCorrect) };
+    }
+
     return {
-      assessment: { ...assessment, ...content.settings, maxAttempts: content.settings.maxAttempts ?? assessment.maxAttempts },
+      assessment: { ...assessment, ...content.settings },
       questions,
       startIndex: Math.max(0, Math.min(startIndex, questions.length - 1)),
+      async recordAnswer(question: QuestionWithOptions, selected: SelectedAnswers) {
+        const answer = buildAssessmentAnswers([question], selected)[0];
+        if (policy?.incorrectAnswer !== 'immediate') return { answer };
+        const [result] = await grade([question], selected);
+        const source = content.questions.find(({ id }) => id === question.id)!;
+        return { answer, isCorrect: result.isCorrect, feedback: feedback(source, result.isCorrect),
+          ...(!result.isCorrect ? key(source) : {}) };
+      },
       async submit(takingQuestions: QuestionWithOptions[], selected: SelectedAnswers) {
-        const graded = await apiRequest<Grade[]>(`/assessments/${assessment.id}/editor/preview`, {
-          method: 'POST',
-          body: JSON.stringify({
-            content, questionIds: takingQuestions.map((question) => question.id),
-            answers: buildAssessmentAnswers(takingQuestions, selected),
-          }),
-        });
+        const graded = await grade(takingQuestions, selected);
         const maxScore = takingQuestions.reduce((sum, question) => sum + question.points, 0);
         const score = graded.reduce((sum, answer) => sum + answer.score, 0);
         const percentage = maxScore ? Math.round(score / maxScore * 100) : 0;
         const answers: AssessmentAttemptResult['answers'] = graded.flatMap((answer) => {
           const question = questions.find((item) => item.id === answer.questionId);
           if (!question) return [];
+          const source = content.questions[question.order];
+          const reveal = (policy?.answerVisibility ?? (content.settings.showCorrectAnswers ? 'submitted' : 'never')) === 'submitted'
+            || (policy?.answerVisibility === 'last' && content.settings.maxAttempts === 1)
+            || (!answer.isCorrect && policy?.incorrectAnswer === 'review');
           return [{
             ...answer, id: question.id,
             selectedOptionId: answer.selectedOptionId ?? null,
             selectedOptionIds: answer.selectedOptionIds ?? null,
             selectedOption: question.options.find((option) => option.id === answer.selectedOptionId) ?? null,
-            ...(content.settings.showCorrectAnswers ? { correctOptions: question.options.filter((option) => option.isCorrect) } : {}),
-            question,
-            ...(content.settings.showCorrectAnswers && content.questions[question.order].definition
-              ? { correctDefinition: content.questions[question.order].definition! } : {}),
+            question, feedback: feedback(source, answer.isCorrect),
+            ...(reveal ? key(source) : {}),
           }];
         });
         return {

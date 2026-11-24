@@ -39,6 +39,15 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
       await page.getByRole('checkbox', { name: /самостоятельный тест/i }).waitFor();
       await page.getByRole('textbox', { name: /^Название/ }).fill('Проверка знаний');
       await page.getByLabel('Лимит времени (минуты)').fill('12');
+      await page.setViewportSize({ width: 375, height: 900 });
+      await page.getByRole('button', { name: 'Настройки', exact: true }).click();
+      await page.getByLabel('Какая попытка считается').selectOption('best');
+      await page.getByLabel('Показывать обратную связь').check();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+      const settingsScan = await new AxeBuilder({ page }).include('main').withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+      expect(settingsScan.violations.map(({ id, nodes }) => ({ id, targets: nodes.map((node) => node.target) }))).toEqual([]);
+      await page.getByRole('button', { name: 'Основное', exact: true }).click();
+      await page.setViewportSize({ width: 1280, height: 900 });
       await page.locator('button[form="assessment-editor-create"]').click();
       await expect(page.getByRole('button', { name: '+ Один вариант', exact: true })).toBeVisible();
       const id = new URL(page.url()).pathname.split('/')[3];
@@ -75,7 +84,7 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
       const learnerHeaders = { Authorization: `Bearer ${learnerLogin.accessToken}` };
       const published = await json<{ title: string }[]>(request.get(`${endpoint}/quiz`, { headers: learnerHeaders }));
       expect(published.map((question) => question.title)).toEqual(['Второй вопрос', 'Первый вопрос']);
-      expect(await json(request.get(endpoint, { headers }))).toMatchObject({ status: 'published', timeLimitMinutes: 12 });
+      expect(await json(request.get(endpoint, { headers }))).toMatchObject({ status: 'published', timeLimitMinutes: 12, policy: { attemptPolicy: 'best', showFeedback: true } });
 
       await page.getByRole('button', { name: 'Вопросы', exact: true }).click();
       await questions.first().getByRole('button', { name: 'Редактировать' }).click();
