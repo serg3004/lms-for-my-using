@@ -46,8 +46,8 @@ export function createAssessmentAttempt(assessmentId: string, answers: CreateAtt
   });
 }
 
-export function startAssessmentAttempt(assessmentId: string, token?: string) {
-  return apiRequest<AssessmentAttemptSummary>(`/assessments/${encodeURIComponent(assessmentId)}/attempts/start${assessmentTokenQuery(token)}`, {
+export function startAssessmentAttempt<T = never>(assessmentId: string, token?: string) {
+  return apiRequest<AssessmentAttemptSummary & { questions?: T[] }>(`/assessments/${encodeURIComponent(assessmentId)}/attempts/start${assessmentTokenQuery(token)}`, {
     method: 'POST',
   });
 }

@@ -11,6 +11,7 @@ export type EditorOption = {
 };
 
 export type EditorQuestion = {
+  bankEntryId?: string | null;
   id: string;
   type: QuestionType;
   title: string;
@@ -56,7 +57,7 @@ export function newEditorQuestion(): EditorQuestion {
 
 export function copyEditorQuestion(question: EditorQuestion): EditorQuestion {
   return {
-    ...question, id: crypto.randomUUID(),
+    ...question, bankEntryId: undefined, id: crypto.randomUUID(),
     options: question.options.map((option) => ({ ...option, id: crypto.randomUUID() })),
   };
 }

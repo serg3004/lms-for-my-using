@@ -450,6 +450,8 @@ model Organization {
   customRolePermissions      CustomRolePermission[]
   userCustomRoleAssignments  UserCustomRoleAssignment[]
 
+  questionBankFolders QuestionBankFolder[]
+  questionBankEntries QuestionBankEntry[]
   assessmentPlacements AssessmentPlacement[]
 
   assessmentAssignments AssessmentAssignment[]
@@ -1182,6 +1184,9 @@ model Assessment {
   passMessage                    String?              @map("pass_message")
   failMessage                    String?              @map("fail_message")
   showCorrectAnswers             Boolean              @default(false) @map("show_correct_answers")
+  bankSampleSize Int? @map("bank_sample_size")
+  bankSampleFolderId String? @map("bank_sample_folder_id") @db.Uuid
+  bankSampleFolder QuestionBankFolder? @relation(fields: [bankSampleFolderId], references: [id], onDelete: Restrict)
   randomizeOrder                 Boolean              @default(false) @map("randomize_order")
   createdAt                      DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                      DateTime             @updatedAt @map("updated_at") @db.Timestamptz
@@ -1269,6 +1274,33 @@ model AssessmentPlacement {
   @@map("assessment_placements")
 }
 
+model QuestionBankFolder {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  name           String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  entries        QuestionBankEntry[]
+  sampleAssessments Assessment[]
+
+  @@unique([organizationId, name])
+  @@map("question_bank_folders")
+}
+
+model QuestionBankEntry {
+  id             String @id @default(uuid()) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  folderId       String @map("folder_id") @db.Uuid
+  title          String
+  content        Json
+  revision       Int @default(1)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  folder         QuestionBankFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  placements     AssessmentQuestion[]
+
+  @@index([organizationId, folderId])
+  @@map("question_bank_entries")
+}
+
 model AssessmentQuestion {
   id             String                        @id @default(uuid()) @db.Uuid
   organizationId String                        @map("organization_id") @db.Uuid
@@ -1288,10 +1320,14 @@ model AssessmentQuestion {
   incorrectFeedback String?                   @map("incorrect_feedback")
   organization   Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   assessment     Assessment                    @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  bankSampleCandidate Boolean @default(false) @map("bank_sample_candidate")
+  bankEntryId    String? @map("bank_entry_id") @db.Uuid
+  bankEntry      QuestionBankEntry? @relation(fields: [bankEntryId], references: [id], onDelete: Restrict)
   options        AssessmentAnswerOption[]
   attemptAnswers AssessmentAttemptAnswer[]
 
   @@index([organizationId, type])
+  @@index([bankEntryId])
   @@index([assessmentId, order])
   @@map("assessment_questions")
 }
@@ -1348,6 +1384,7 @@ model AssessmentAttempt {
   longreadRequestId   String?                   @map("longread_request_id") @db.Uuid
   longreadRequestHash String?                   @map("longread_request_hash")
   longreadResultKey   String?                   @map("longread_result_key")
+  bankQuestionSnapshot Json? @map("bank_question_snapshot")
   lockedAnswers       Json?                     @map("locked_answers")
   longreadMetadata    Json?                     @map("longread_metadata")
 

@@ -204,6 +204,7 @@ export type AssignmentSummary = {
 };
 
 export type AssessmentSummary = {
+  bankSampleSize?: number | null;
   policy?: AssessmentPolicy | null;
   id: string;
   organizationId: string;

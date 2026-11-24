@@ -2647,3 +2647,28 @@ committed answer for that attempt. Final submission includes the attempt ID and 
 the locked answers. The optional placement
 and standalone token query parameters follow the start endpoint. These settings apply
 to standard test attempts. Longread exercises continue to use their versioned policy.
+
+### Assessment question bank (PR 530)
+
+Authors can search their organization's question bank with
+`GET /question-bank?search=&folderId=`. Creating a folder, adding a question and
+importing rows use `POST /question-bank/folders`, `POST /question-bank` and
+`POST /question-bank/import`. The editor reads the workbook locally and submits
+`{ folderId, rows: [{ row, content }] }`. The API returns the imported count and
+the original worksheet row numbers whose question content failed validation.
+
+`GET /question-bank/:id/usage` returns the assessments, courses and longreads
+that use the question, plus a confirmation token. `PATCH /question-bank/:id`
+requires `{ content, confirmation }` and returns HTTP 409 if the question or
+its usage changed since confirmation. The shared edit updates the linked
+questions and creates new published longread revisions where needed.
+
+`POST /assessments/:assessmentId/question-bank/:id` attaches the question to
+the assessment. `POST /questions/:id/detach-bank` keeps the current content as
+a local question. Both routes apply the corresponding course resource scope.
+
+`POST /assessments/:assessmentId/question-bank-sample` configures a folder and
+sample size with `{ folderId, size }`. For a sampled assessment, the start
+endpoint returns the fixed questions for that attempt with the answer keys
+removed. The learner submits with the issued attempt ID. Grading and review
+use the persisted question snapshot, including after bank edits.
