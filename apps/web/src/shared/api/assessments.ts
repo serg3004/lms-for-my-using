@@ -33,6 +33,8 @@ export function listMyAssessments() {
     dueAt: string | null;
     questionCount: number;
     attemptsUsed: number;
+    inProgress?: boolean;
+    pendingReview?: boolean;
     lastCompletedAttemptId: string | null;
     bestPercentage: number | null;
     completed: boolean;
@@ -46,14 +48,23 @@ export function createAssessmentAttempt(assessmentId: string, answers: CreateAtt
   });
 }
 
-export function startAssessmentAttempt<T = never>(assessmentId: string, token?: string) {
-  return apiRequest<AssessmentAttemptSummary & { questions?: T[] }>(`/assessments/${encodeURIComponent(assessmentId)}/attempts/start${assessmentTokenQuery(token)}`, {
+export function startAssessmentAttempt<T = never>(assessmentId: string, token?: string, draft = false, resume?: string) {
+  const params = new URLSearchParams(assessmentTokenQuery(token));
+  if (draft) params.set('draft', 'true');
+  if (resume) params.set('resume', resume);
+  return apiRequest<AssessmentAttemptSummary & { questions?: T[]; serverNow?: string }>(`/assessments/${encodeURIComponent(assessmentId)}/attempts/start${params.size ? `?${params}` : ''}`, {
     method: 'POST',
   });
 }
 
 export function recordAssessmentAnswer(assessmentId: string, attemptId: string, answer: CreateAttemptAnswerInput, token?: string) {
   return apiRequest<RecordedAssessmentAnswer>(`${getAssessmentPath(assessmentId)}/attempts/answer${assessmentTokenQuery(token)}`, {
+    method: 'POST', body: JSON.stringify({ attemptId, answer }),
+  });
+}
+
+export function saveAssessmentDraftAnswer(assessmentId: string, attemptId: string, answer: CreateAttemptAnswerInput | { questionId: string; clear: true }, token?: string) {
+  return apiRequest(`${getAssessmentPath(assessmentId)}/attempts/answer${assessmentTokenQuery(token)}`, {
     method: 'POST', body: JSON.stringify({ attemptId, answer }),
   });
 }

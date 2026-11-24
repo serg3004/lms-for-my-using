@@ -94,17 +94,20 @@ export class AssessmentAttemptsController {
   @Post('assessments/:assessmentId/attempts/start')
   @Roles(...rolePolicies.assessmentAttemptsCreate)
   @CourseScope('param', 'assessmentId', 'assessment')
-  async startAttempt(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest, @Query('placementId') placementId?: string, @Query('token') token?: string) {
+  async startAttempt(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest, @Query('placementId') placementId?: string, @Query('token') token?: string, @Query('draft') draft?: string, @Query('resume') resume?: string) {
     const placement = placementQuery.parse(placementId);
     if (placement !== undefined && isInstructorCourseScoped(request.currentUser!)) throw new ForbiddenException();
     const actor = request.currentUser!;
     await this.standalone.assertAccess(assessmentId, actor.organizationId, actor.id, assessmentLinkToken.optional().parse(token), placement === null, typeof placement === 'string');
-    return this.assessmentAttemptsService.startAttempt(
+    const attempt = await this.assessmentAttemptsService.startAttempt(
       assessmentId,
       request.currentUser!.id,
       request.currentUser!.organizationId,
       placement,
+      draft === 'true',
+      z.guid().optional().parse(resume),
     );
+    return draft === 'true' ? { ...attempt, serverNow: new Date() } : attempt;
   }
 
   @Post('assessments/:assessmentId/attempts/answer')

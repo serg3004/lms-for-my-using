@@ -2699,6 +2699,13 @@
     "attemptsLeft": "Осталось попыток"
   },
   "assessments": {
+    "saveInterrupted": "Сохранение прервано. Ответы остались в этом браузере. Повторите сохранение после восстановления связи.",
+    "retrySave": "Повторить",
+    "timeEnded": "Время вышло. Попытка завершена, тест не засчитан.",
+    "answeredCount": "Отвечено {{count}} из {{total}}",
+    "questionNavItem": "Вопрос {{number}} · {{status}}",
+    "markForReturn": "Отметить, чтобы вернуться",
+    "resumeAttempt": "Продолжить тест",
     "policy": {
       "unlimited": "Без ограничения",
       "opensAt": "Открыт с",

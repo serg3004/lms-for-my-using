@@ -2699,6 +2699,13 @@
     "attemptsLeft": "剩余尝试次数"
   },
   "assessments": {
+    "saveInterrupted": "保存中断。答案仍保留在此浏览器中，请在恢复连接后重试。",
+    "retrySave": "重试",
+    "timeEnded": "时间已到。本次答题已结束，测验未通过。",
+    "answeredCount": "已回答 {{count}} / {{total}} 题",
+    "questionNavItem": "第 {{number}} 题 · {{status}}",
+    "markForReturn": "标记以便返回",
+    "resumeAttempt": "继续测验",
     "policy": {
       "unlimited": "不限次数",
       "opensAt": "开放时间",

@@ -2696,3 +2696,18 @@ submitted answer.
 - Review is due 48 hours after submission. The background jobs worker checks
   hourly and sends one in-app reminder per overdue attempt to the author or
   an eligible reviewer. The reminder requires the configured jobs backend.
+
+### Resuming learner assessments (PR 532)
+
+The learner client starts or resumes a server attempt with
+`POST /assessments/:id/attempts/start?draft=true`, including for untimed tests.
+The response carries saved responses in `lockedAnswers`. For editable tests,
+`POST /assessments/:id/attempts/answer` replaces the draft response for one
+question, accepts partial matching and ordering responses, and accepts
+`{ questionId, clear: true }` to clear a response. For tests that lock answers,
+the endpoint still commits in order and applies the configured feedback policy.
+
+The client submits using the attempt ID. Repeating a completed submission
+returns the same attempt. At the time limit the client looks up the same
+attempt with `draft=true&resume=<attemptId>`, which finalizes an expired
+attempt on the server. The lookup is scoped to the caller and placement.
