@@ -1568,7 +1568,7 @@ for (const width of [390, 1280]) for (const screen of ['courses', 'checklists'] 
     // PR 518: the user fields filter is hidden by default in checklist analytics; this saved set shows it.
     if (screen === 'checklists') await page.route('**/api/v1/checklists/analytics/filter-set', (route) => route.fulfill({ json: { user: ['period', 'sheets', 'userFields'], organization: null } }));
     await page.goto(screen === 'courses' ? '/admin/results/courses' : '/admin/checklists/sheet-analytics');
-    if (screen === 'checklists') await page.getByText('Ещё фильтры', { exact: true }).click();
+    if (screen === 'checklists') await page.locator('summary', { hasText: 'Ещё фильтры' }).click();
     const fields = page.getByRole('group', { name: 'Поля пользователя' });
     await fields.getByRole('combobox', { name: 'Поле', exact: true }).selectOption('work_schedule');
     await fields.getByRole('combobox', { name: 'Значение', exact: true }).selectOption('2-2');
