@@ -22,6 +22,7 @@ describe('analytics tab: roles and routes (PR 463)', () => {
     ['checklists/analytics/overview'],
     ['checklists/analytics/export'],
     ['checklists/analytics/sessions'],
+    ['checklists/analytics/places'],
     ['checklists/analytics/dashboard-layout'],
     ['checklists/:id/analytics/items'],
   ])('serves %s under the analytics read policy', (path) => {

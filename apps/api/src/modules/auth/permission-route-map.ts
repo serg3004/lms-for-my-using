@@ -120,6 +120,7 @@ export const permissionRouteMap: Readonly<Record<string, readonly PermissionActi
   'ChecklistsController.saveAnalyticsFilterSet': ['checklist.analytics.read'],
   'ChecklistsController.listAnalyticsEmployees': ['checklist.analytics.read'],
   'ChecklistsController.listAnalyticsSlice': ['checklist.analytics.read'],
+  'ChecklistsController.listAnalyticsPlaces': ['checklist.analytics.read'],
   'ChecklistsController.getAnalyticsDashboardLayout': ['checklist.analytics.read'],
   'ChecklistsController.saveAnalyticsDashboardLayout': ['checklist.analytics.read'],
   'ChecklistsController.getSheetPhotoFile': ['checklist.instance.read'],

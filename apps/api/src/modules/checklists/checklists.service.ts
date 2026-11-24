@@ -1813,6 +1813,11 @@ export class ChecklistsService {
     return this.sheetAnalytics.slice(organizationId, actor, userScope, query);
   }
 
+  /** PR 521: the finished checks that have a place, for the map card. */
+  getAnalyticsPlaces(organizationId: string, actor: { id: string; roles: readonly string[] }, userScope: Prisma.UserWhereInput, query: ChecklistSheetAnalyticsQuery) {
+    return this.sheetAnalytics.places(organizationId, actor, userScope, query);
+  }
+
   /** PR 520: the dashboard layout of the viewer and of the organization. */
   getAnalyticsDashboardLayout(organizationId: string, userId: string) {
     return this.analyticsDashboardLayouts.get(organizationId, userId);

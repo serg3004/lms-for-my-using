@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 
 import type { AnalyticsDashboardSet, AnalyticsWidget, AnalyticsWidgetId, AnalyticsWidgetSize } from '../shared/api/manager.js';
 import { Card } from '../shared/ui.js';
+import { MapBody } from './SheetAnalyticsMap.js';
 import { scaleTitle, WIDGET_TITLES, WidgetBody, type WidgetBodyProps } from './SheetAnalyticsDashboard.js';
 import {
   addDashboard, currentDashboard, MAX_DASHBOARDS, moveWidget, optionValue, optionValues, removeDashboard, renameDashboard, resizeWidget,
@@ -179,7 +180,9 @@ export function DashboardGrid({ set, onChange, editing, isAdmin, busy, failed, o
                 )}
               </div>
               {editing && <CardOptions data={body.data} onChange={change} t={t} widget={widget} widgets={widgets} />}
-              <WidgetBody {...body} t={t} widget={widget} />
+              {widget.id === 'map'
+                ? <MapBody detailsHref={body.detailsHref} query={body.placesQuery} sessionPath={body.sessionPath} t={t} widget={widget} />
+                : <WidgetBody {...body} t={t} widget={widget} />}
             </section>
           ))}
         </div>

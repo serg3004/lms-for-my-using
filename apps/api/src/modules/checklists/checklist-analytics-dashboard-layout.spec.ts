@@ -42,7 +42,8 @@ describe('analytics dashboards (PR 520)', () => {
     expect(() => checklistAnalyticsDashboardLayoutSchema.parse({ dashboards: [board('a')], current: 'b' })).toThrow();
     expect(() => checklistAnalyticsDashboardLayoutSchema.parse({ dashboards: [] })).toThrow();
     expect(() => checklistAnalyticsDashboardLayoutSchema.parse({ dashboards: Array.from({ length: 11 }, (_, index) => board(`d${index}`)) })).toThrow();
-    expect(() => checklistAnalyticsDashboardLayoutSchema.parse({ dashboards: [{ id: 'a', name: '', widgets: [{ id: 'map', size: 'S' }] }] })).toThrow();
+    expect(() => checklistAnalyticsDashboardLayoutSchema.parse({ dashboards: [{ id: 'a', name: '', widgets: [{ id: 'nonsense', size: 'S' }] }] })).toThrow();
+    expect(checklistAnalyticsDashboardLayoutSchema.parse({ dashboards: [{ id: 'a', name: '', widgets: [{ id: 'map', size: 'L', options: { view: 'density' } }] }] }).dashboards).toHaveLength(1);
   });
 
   it('needs a result band or a weekday with a block to open a slice', () => {

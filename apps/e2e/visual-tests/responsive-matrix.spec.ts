@@ -15,7 +15,7 @@ import { previewSessionImportPage } from '../fixtures/session-employee-import.js
 import { openManagementEdit, openManagementList, openManagementReport, openManagementWizard } from '../fixtures/session-management.js';
 import { openCriterionScalePage } from '../fixtures/criterion-scales.js';
 import { installManagerReportMocks, reportManagerA } from '../fixtures/checklist-manager-report.js';
-import { installSheetAnalyticsMocks, sheetA } from '../fixtures/checklist-sheet-analytics.js';
+import { installSheetAnalyticsMocks, placesMode, sheetA } from '../fixtures/checklist-sheet-analytics.js';
 import { installAnalyticsUserFieldMocks } from '../fixtures/analytics-user-fields.js';
 import { installCourseAnalyticsMocks, courseA, userA } from '../fixtures/course-analytics.js';
 import { GOOD_CODE, openPublicPage } from '../fixtures/checklist-public-page.js';
@@ -266,6 +266,22 @@ for (const width of [375, 1440]) test(`checklist analytics results behind a pie 
   await page.getByTestId('sheet-analytics-slice').getByRole('table').waitFor();
   await expectNoPageOverflow(page);
   await expectVisualMatch(page, `sheet-analytics-slice-${width}`, false, { maxDiffPixels: 3000 });
+});
+
+// PR 521: the check map card with an opened point (the tiles are flat, answered by the fixture).
+for (const width of [375, 1440]) test(`checklist analytics check map is responsive at ${width}px`, async ({ page }) => {
+  placesMode.value = 'data';
+  await page.setViewportSize({ width, height }); await installSheetAnalyticsMocks(page, 'admin');
+  await page.goto('/admin/checklists/sheet-analytics');
+  await page.getByTestId('sheet-analytics-widget-heat').waitFor();
+  await page.getByRole('button', { name: /Настроить дашборд/ }).click();
+  await page.getByRole('checkbox', { name: 'Карта проверок' }).check();
+  await page.getByRole('button', { name: /Готово/ }).click();
+  const map = page.getByTestId('sheet-analytics-widget-map');
+  await map.getByRole('button', { name: /Складская приёмка, Петров Пётр/ }).click();
+  await map.getByRole('status').waitFor();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `sheet-analytics-map-${width}`, false, { maxDiffPixels: 3000 });
 });
 
 for (const width of [375, 1440]) test(`one-sheet analytics by criteria is responsive at ${width}px`, async ({ page }) => {

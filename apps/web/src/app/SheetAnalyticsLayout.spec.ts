@@ -107,3 +107,17 @@ describe('analytics dashboards (PR 520)', () => {
     expect(parseSlice(null)).toBeNull();
   });
 });
+
+describe('the map card (PR 521)', () => {
+  it('is in the library but not in the built-in dashboard, and is added wide', () => {
+    expect(ids(DEFAULT_WIDGETS)).not.toContain('map');
+    expect(toggleWidget([...DEFAULT_WIDGETS], 'map').at(-1)).toEqual({ id: 'map', size: 'L' });
+  });
+
+  it('shows points by result until the person picks density', () => {
+    expect(optionValue({ id: 'map', size: 'L' }, 'view')).toBe('points');
+    const picked = setWidgetOption([{ id: 'map', size: 'L' }], 'map', 'view', 'density');
+    expect(optionValue(picked[0]!, 'view')).toBe('density');
+    expect(optionValue({ id: 'map', size: 'L', options: { view: 'nonsense' } }, 'view')).toBe('points');
+  });
+});

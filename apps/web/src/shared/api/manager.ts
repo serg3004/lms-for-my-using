@@ -213,7 +213,7 @@ export function saveAnalyticsFilterSet(filters: AnalyticsFilterKey[], scope: 'us
 
 // ---- PR 520: the widgets of the dashboard ----
 
-export type AnalyticsWidgetId = 'kpi' | 'levels' | 'donut' | 'trend' | 'depts' | 'weak' | 'heat' | 'people';
+export type AnalyticsWidgetId = 'kpi' | 'levels' | 'donut' | 'trend' | 'depts' | 'weak' | 'heat' | 'people' | 'map';
 export type AnalyticsWidgetSize = 'S' | 'M' | 'L';
 /** What the person picked for one card (the figures, the metric, the cut), by option key. */
 export type AnalyticsWidgetOptions = Record<string, string | string[]>;
@@ -236,6 +236,17 @@ export function saveAnalyticsDashboardLayout(set: AnalyticsDashboardSet | null, 
 export type SheetAnalyticsSliceQuery = Omit<SheetAnalyticsQuery, 'groupByField'> & { result?: 'good' | 'mid' | 'bad'; weekday?: number; block?: number };
 export type SheetAnalyticsSliceRow = { sessionId: string | null; checklistId: string; checklistTitle: string; employee: string; department: string | null; percentage: number | null; band: 'good' | 'mid' | 'bad' | null; at: string };
 export type SheetAnalyticsSlice = { total: number; items: SheetAnalyticsSliceRow[]; truncated: boolean; period: { from: string; to: string } };
+
+/** PR 521: the finished checks that have a place (start or end of the session); `withoutPlace` counts the ones in the same scope that have none. */
+export type SheetAnalyticsPlace = {
+  sessionId: string; checklistId: string; checklistTitle: string; employee: string; percentage: number | null; band: 'good' | 'mid' | 'bad' | null;
+  at: string; latitude: number; longitude: number; accuracyMeters: number | null; point: 'start' | 'end';
+};
+export type SheetAnalyticsPlaces = { total: number; withoutPlace: number; items: SheetAnalyticsPlace[]; truncated: boolean; period: { from: string; to: string } };
+
+export function getSheetAnalyticsPlaces({ checklistIds, ...query }: Omit<SheetAnalyticsQuery, 'groupByField'>) {
+  return apiRequest<SheetAnalyticsPlaces>(`/checklists/analytics/places${buildQueryString({ ...query, checklistIds: checklistIds?.join(',') })}`);
+}
 
 export function getSheetAnalyticsSlice({ checklistIds, ...query }: SheetAnalyticsSliceQuery) {
   return apiRequest<SheetAnalyticsSlice>(`/checklists/analytics/sessions${buildQueryString({ ...query, checklistIds: checklistIds?.join(',') })}`);
