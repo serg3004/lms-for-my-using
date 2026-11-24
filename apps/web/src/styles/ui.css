@@ -1582,8 +1582,8 @@
 }
 
 .learner-dashboard__primary-card {
-  border-color: var(--color-primary);
-  box-shadow: var(--shadow-card);
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--color-primary);
 }
 
 .learner-dashboard__continue-row {
@@ -1618,11 +1618,6 @@
 
 .learner-dashboard__stats {
   margin-top: 36px;
-}
-
-.learner-dashboard__stats .stat-card {
-  background: var(--color-surface-muted);
-  box-shadow: none;
 }
 
 .learner-dashboard__stats .stat-card__value {

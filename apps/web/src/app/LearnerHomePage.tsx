@@ -192,7 +192,6 @@ export function LearnerHomePage() {
                     className={`${item.isOverdue ? 'learner-dashboard__deadline--overdue ' : ''}${isPrimary ? 'learner-dashboard__primary-card' : ''}`.trim()}
                   >
                     <a
-                      className={isPrimary ? 'ds-button ds-button--primary ds-button--sm' : undefined}
                       href={`/learn/assignments/${encodeURIComponent(item.id)}`}
                     >
                       {item.title}
