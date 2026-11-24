@@ -154,7 +154,7 @@ Owner: `packages/shared/src/permission-catalog.ts`; the route table is `apps/api
 | `assessment.question.edit` | tests | `own`, `organization` | yes | `assessment.question.read` | `assessmentQuestionsCreate` | `admin`, `instructor` | 3 |
 | `assessment.option.read` | tests | `own`, `organization` | yes | - | `assessmentAnswerOptionsRead` | `admin`, `manager`, `instructor` | 1 |
 | `assessment.option.edit` | tests | `own`, `organization` | yes | `assessment.option.read` | `assessmentAnswerOptionsCreate` | `admin`, `instructor` | 3 |
-| `assessment.attempt.start` | tests | `own` | yes | - | `assessmentAttemptsCreate` | `admin`, `manager`, `instructor`, `learner` | 4 |
+| `assessment.attempt.start` | tests | `own` | yes | - | `assessmentAttemptsCreate` | `admin`, `manager`, `instructor`, `learner` | 5 |
 | `report.summary.read` | reports | `team`, `department`, `organization` | yes | - | `reportsRead` | `admin`, `manager` | 1 |
 | `report.team.read` | reports | `team`, `department` | yes | - | `managerTeamSummaryRead` | `admin`, `manager` | 2 |
 | `report.course.read` | reports | `team`, `department`, `organization` | yes | - | `courseAnalyticsRead` | `admin`, `manager`, `instructor` | 4 |

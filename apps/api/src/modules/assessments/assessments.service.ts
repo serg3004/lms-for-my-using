@@ -35,6 +35,7 @@ const assessmentSelect = {
   passingScore: true,
   maxAttempts: true,
   timeLimitMinutes: true,
+  policy: true,
   availableAfterCourseCompletion: true,
   passMessage: true,
   failMessage: true,
@@ -107,7 +108,7 @@ export class AssessmentsService {
           questions: {
             where: { organizationId, deletedAt: null },
             select: {
-              type: true, title: true, text: true, imageUrl: true, points: true, order: true, definition: true, scoringMode: true,
+              type: true, title: true, text: true, imageUrl: true, points: true, order: true, definition: true, scoringMode: true, correctFeedback: true, incorrectFeedback: true,
               options: { where: { organizationId, deletedAt: null }, select: { text: true, imageUrl: true, isCorrect: true, order: true } },
             },
           },
@@ -117,14 +118,15 @@ export class AssessmentsService {
       const { questions, isLongreadExercise, courseId, folderId, title, description, passingScore, maxAttempts,
         timeLimitMinutes, availableAfterCourseCompletion, passMessage, failMessage, showCorrectAnswers, randomizeOrder } = source;
       const draft = source.editorDraft == null ? null : assessmentEditorContentSchema.parse(source.editorDraft);
-      const copiedQuestions = draft?.questions.map(({ type, title, text, imageUrl, points, definition, scoringMode, options }, order) => ({
-        type, title, text, imageUrl, points, definition, scoringMode, order,
+      const copiedQuestions = draft?.questions.map(({ type, title, text, imageUrl, points, definition, scoringMode, options, correctFeedback, incorrectFeedback }, order) => ({
+        type, title, text, imageUrl, points, definition, scoringMode, order, correctFeedback, incorrectFeedback,
         options: options.map(({ text, imageUrl, isCorrect }, order) => ({ text, imageUrl, isCorrect, order })),
       })) ?? questions;
       return tx.assessment.create({
         data: {
           courseId, folderId, title, description, passingScore, maxAttempts, timeLimitMinutes,
           availableAfterCourseCompletion, passMessage, failMessage, showCorrectAnswers, randomizeOrder,
+          policy: source.policy ?? Prisma.DbNull,
           ...draft?.settings,
           organizationId, createdBy, slug: `copy-${randomUUID()}`, status: 'draft',
           // A copy is an independent assessment, even when the source came from a longread.
@@ -149,7 +151,7 @@ export class AssessmentsService {
           where: { organizationId, deletedAt: null },
           orderBy: [{ order: 'asc' }, { id: 'asc' }],
           select: {
-            id: true, type: true, title: true, text: true, imageUrl: true, points: true, definition: true, scoringMode: true,
+            id: true, type: true, title: true, text: true, imageUrl: true, points: true, definition: true, scoringMode: true, correctFeedback: true, incorrectFeedback: true,
             options: {
               where: { organizationId, deletedAt: null },
               orderBy: [{ order: 'asc' }, { id: 'asc' }],
@@ -188,11 +190,12 @@ export class AssessmentsService {
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM assessments WHERE id = ${id}::uuid AND organization_id = ${organizationId}::uuid FOR UPDATE`;
       const where = { id, organizationId, deletedAt: null };
-      const current = await tx.assessment.findFirst({ where, select: { updatedAt: true, status: true, timeLimitMinutes: true } });
+      const current = await tx.assessment.findFirst({ where, select: { updatedAt: true, status: true, timeLimitMinutes: true, maxAttempts: true } });
       if (!current) throw new NotFoundException('Assessment not found');
       if (current.updatedAt.toISOString() !== revision) throw new ConflictException('Assessment was changed by another editor');
       if (current.status === 'published' && !confirmPublished) throw new ConflictException('Confirm changes to the published assessment');
 
+      this.validateLimits(content.settings, current);
       const updatedAt = new Date(Math.max(Date.now(), current.updatedAt.getTime() + 1));
       if (current.status === 'published' && (action === 'save' || action === 'archive')) {
         return tx.assessment.update({
@@ -247,6 +250,15 @@ export class AssessmentsService {
         select: { updatedAt: true, status: true },
       });
     }, { timeout: 15000 });
+  }
+
+  private validateLimits(input: UpdateAssessmentInput, current: { maxAttempts: number | null; timeLimitMinutes: number | null }) {
+    if (input.maxAttempts != null && input.maxAttempts > 10 && input.maxAttempts !== current.maxAttempts) {
+      throw new BadRequestException('Attempt limit must be between 1 and 10');
+    }
+    if (input.timeLimitMinutes != null && input.timeLimitMinutes > 600 && input.timeLimitMinutes !== current.timeLimitMinutes) {
+      throw new BadRequestException('Time limit must be between 1 and 600 minutes');
+    }
   }
 
   async listPlacements(assessmentId: string, organizationId: string) {
@@ -336,13 +348,14 @@ export class AssessmentsService {
   async updateAssessment(assessmentId: string, organizationId: string, input: UpdateAssessmentInput) {
     const assessment = await this.prisma.assessment.findFirst({
       where: { id: assessmentId, organizationId, deletedAt: null },
-      select: { id: true },
+      select: { id: true, maxAttempts: true, timeLimitMinutes: true },
     });
 
     if (!assessment) {
       throw new NotFoundException('Assessment not found');
     }
 
+    this.validateLimits(input, assessment);
     if (input.status === 'published') await this.ensureQuestionsHaveCorrectOption(assessmentId, organizationId);
     return this.prisma.assessment.update({
       where: { id: assessmentId, organizationId },

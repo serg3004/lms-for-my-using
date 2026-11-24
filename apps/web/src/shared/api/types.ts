@@ -1,3 +1,4 @@
+import type { AssessmentPolicy, EffectiveAssessmentResult } from '@lms/shared/assessment-policy';
 import type { Appearance } from '@lms/shared/checklist-appearance';
 import type { FeedbackLayout, FeedbackConfig, FeedbackAnswers, FeedbackAnswersPatch, FeedbackAnswerOption } from '@lms/shared/checklist-feedback';
 import type { QuestionDefinition, QuestionResponse, PublicQuestionDefinition } from '@lms/shared/assessment-question-types';
@@ -203,6 +204,7 @@ export type AssignmentSummary = {
 };
 
 export type AssessmentSummary = {
+  policy?: AssessmentPolicy | null;
   id: string;
   organizationId: string;
   courseId: string | null;
@@ -212,7 +214,7 @@ export type AssessmentSummary = {
   description: string | null;
   status: string;
   passingScore: number;
-  maxAttempts: number;
+  maxAttempts: number | null;
   timeLimitMinutes: number | null;
   availableAfterCourseCompletion: boolean;
   passMessage: string | null;
@@ -223,6 +225,7 @@ export type AssessmentSummary = {
 };
 
 export type CertificateSummary = {
+  assessmentResult?: EffectiveAssessmentResult | null;
   id: string;
   organizationId: string;
   courseId: string;
@@ -268,7 +271,13 @@ export type CreateAttemptAnswerInput = {
   selectedOptionIds?: string[];
 };
 
+export type RecordedAssessmentAnswer = Pick<AttemptAnswerResult, 'correctDefinition' | 'correctOptions' | 'feedback'> & {
+  answer: CreateAttemptAnswerInput;
+  isCorrect?: boolean;
+};
+
 export type AttemptAnswerResult = {
+  feedback?: string | null;
   id: string;
   response?: QuestionResponse;
   correctDefinition?: QuestionDefinition;
@@ -297,6 +306,8 @@ export type AssessmentQuestionSummary = {
 };
 
 export type AssessmentAttemptSummary = {
+  effectiveResult?: EffectiveAssessmentResult;
+  lockedAnswers?: CreateAttemptAnswerInput[];
   id: string;
   organizationId: string;
   assessmentId: string;
@@ -315,6 +326,7 @@ export type AssessmentAttemptSummary = {
 };
 
 export type AssessmentAttemptResult = {
+  effectiveResult?: EffectiveAssessmentResult;
   longread?: { lessonId: string; version: number };
   id: string;
   organizationId: string;

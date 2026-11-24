@@ -62,6 +62,9 @@ export function LearnerAssessmentReviewPage({ attemptId }: { attemptId: string }
         <span className="learner-quiz__result-passing">
           {t('assessments.resultPassingScore', { score: result.assessment.passingScore })}
         </span>
+        {result.effectiveResult && <p>{t('assessments.policy.effective', {
+          policy: t(`assessments.policy.${result.effectiveResult.policy}`), percentage: result.effectiveResult.percentage,
+        })}</p>}
       </div>
 
       {result.answers.length > 0 ? (
@@ -80,6 +83,7 @@ export function LearnerAssessmentReviewPage({ attemptId }: { attemptId: string }
                       <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultYourAnswer')}:</span>{' '}
                       {ownAnswerText(answer, t)}
                     </p>
+                    {answer.feedback && <RichText value={answer.feedback} />}
                     {!answer.isCorrect && (answer.correctDefinition || answer.correctOptions?.length) ? (
                       <p className="learner-quiz__breakdown-answer learner-quiz__breakdown-answer--correct">
                         <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultCorrectAnswer')}:</span>{' '}

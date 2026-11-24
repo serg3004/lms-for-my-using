@@ -1,3 +1,5 @@
+import { assessmentPolicySchema, type AssessmentPolicy } from '@lms/shared/assessment-policy';
+import { AssessmentPolicyFields } from './AssessmentPolicyFields.js';
 import { questionDefinitionSchema } from '@lms/shared/assessment-question-types';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -63,7 +65,8 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
     ? assessmentToForm({ ...document.assessment, ...document.draft?.settings })
     : emptyAssessmentForm());
   const [questions, setQuestions] = useState(initial?.draft?.questions ?? initial?.questions ?? []);
-  const [baseline, setBaseline] = useState(() => JSON.stringify({ form, questions }));
+  const [policy, setPolicy] = useState<AssessmentPolicy>(initial?.draft?.settings.policy ?? initial?.assessment.policy ?? {});
+  const [baseline, setBaseline] = useState(() => JSON.stringify({ form, questions, policy }));
   const [revision, setRevision] = useState(initial?.assessment.updatedAt);
   const [status, setStatus] = useState(initial?.assessment.status ?? 'draft');
   const [unpublished, setUnpublished] = useState(Boolean(initial?.draft));
@@ -75,16 +78,21 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
   const [placementDirty, setPlacementDirty] = useState(false);
   const [copying, setCopying] = useState(false);
   const bypassGuard = useRef(false);
-  const snapshot = JSON.stringify({ form, questions });
+  const snapshot = JSON.stringify({ form, questions, policy });
   const dirty = snapshot !== baseline || placementDirty;
   const values = mapAssessmentForm(form, initial?.assessment.slug ?? 'assessment');
   let content: EditorContent | null = null;
-  if (values) {
+  const parsedPolicy = assessmentPolicySchema.safeParse(policy);
+  const previousLimits = initial?.draft?.settings ?? initial?.assessment;
+  if (values && parsedPolicy.success
+    && (values.maxAttempts == null || values.maxAttempts <= 10 || values.maxAttempts === previousLimits?.maxAttempts)
+    && (values.timeLimitMinutes == null || values.timeLimitMinutes <= 600 || values.timeLimitMinutes === previousLimits?.timeLimitMinutes)) {
     const { title, description, passingScore, maxAttempts, timeLimitMinutes, availableAfterCourseCompletion,
       passMessage, failMessage, showCorrectAnswers, randomizeOrder } = values;
     content = {
       settings: { title, description, passingScore, maxAttempts, timeLimitMinutes: timeLimitMinutes ?? null,
-        availableAfterCourseCompletion, passMessage, failMessage, showCorrectAnswers, randomizeOrder },
+        availableAfterCourseCompletion, passMessage, failMessage, showCorrectAnswers, randomizeOrder,
+        ...(Object.keys(parsedPolicy.data).length ? { policy: parsedPolicy.data } : {}) },
       questions,
     };
   }
@@ -143,7 +151,7 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
 
   async function requestSave(action: Action) {
     const errors: string[] = [];
-    if (!content) errors.push(label('invalidFields'));
+    if (!content) errors.push(t('assessments.policy.invalidSettings'));
     if (questions.some((question) => !question.title.trim() || !Number.isInteger(question.points) || question.points < 1
       || question.options.some((option) => !option.imageUrl && !option.text?.trim()))) errors.push(label('invalidQuestions'));
     for (const question of questions) {
@@ -229,7 +237,7 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
           onClick={() => setTab(item)}>{label(item)}</Button>)}
     </nav>
     <fieldset disabled={busy || copying || pending !== null} className={`admin-theme-settings__fieldset admin-form ${tab === 'questions' ? '' : 'assessment-editor-panel'}`}>
-      {!initial && <div hidden={tab !== 'main'}><CreationPlacement onChange={() => setPlacementDirty(true)} form={form} onCreated={(id) => {
+      {!initial && <div hidden={tab !== 'main'}><CreationPlacement onChange={() => setPlacementDirty(true)} form={form} policy={policy} onCreated={(id) => {
           const params = new URLSearchParams({ tab: 'questions' });
           if (listLink.includes('?')) params.set('list', listLink.split('?')[1]);
           navigate(`${listPath}/${id}/edit?${params}`, { replace: true });
@@ -239,20 +247,21 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
           <input id="assessment-editor-title" value={form.title} maxLength={200} onChange={(event) => change('title', event.target.value)} />
         </FormField>
         <FormField id="timeLimitMinutes" label={label('timeLimit')} hint={label('timeHint')}>
-          <input id="timeLimitMinutes" type="number" min={1} value={form.timeLimitMinutes}
+          <input id="timeLimitMinutes" type="number" min={1} max={Math.max(600, previousLimits?.timeLimitMinutes ?? 0)} value={form.timeLimitMinutes}
             onChange={(event) => change('timeLimitMinutes', event.target.value)} />
         </FormField>
         <RichTextField id="assessment-editor-description" label={t('admin.assessmentBuilder.description')}
           value={form.description} maxLength={2000} onChange={(value) => change('description', value)} />
       </>}
       {tab === 'settings' && <>
+        <AssessmentPolicyFields policy={policy} onChange={setPolicy} legacyReveal={form.showCorrectAnswers} />
         {([
           ['passingScore', t('admin.assessmentBuilder.passingScore'), 0, 100],
-          ['maxAttempts', t('admin.assessmentBuilder.maxAttempts'), 1, undefined],
+          ['maxAttempts', t('admin.assessmentBuilder.maxAttempts'), 1, Math.max(10, previousLimits?.maxAttempts ?? 0)],
         ] as const).map(([field, title, min, max]) => <FormField key={field} id={field} label={title}>
           <input id={field} type="number" min={min} max={max} value={form[field]} onChange={(event) => change(field, event.target.value)} />
         </FormField>)}
-        {(['availableAfterCourseCompletion', 'showCorrectAnswers', 'randomizeOrder'] as const).map((field) =>
+        {(['availableAfterCourseCompletion', 'randomizeOrder'] as const).map((field) =>
           <label key={field} className="admin-checkbox-field">
             <input type="checkbox" checked={form[field]} onChange={(event) => change(field, event.target.checked)} />
             {t(`admin.assessmentBuilder.${field === 'availableAfterCourseCompletion' ? 'availableAfterCompletion' : field}`)}
@@ -278,9 +287,10 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
   </>;
 }
 
-function CreationPlacement({ onChange, form, onCreated, onError }: {
+function CreationPlacement({ onChange, form, policy, onCreated, onError }: {
   onChange: () => void;
   form: ReturnType<typeof emptyAssessmentForm>;
+  policy: AssessmentPolicy;
   onCreated: (id: string) => void;
   onError: (errors: string[]) => void;
 }) {
@@ -295,8 +305,9 @@ function CreationPlacement({ onChange, form, onCreated, onError }: {
     event.preventDefault();
     if (saving || loadState.status !== 'loaded') return;
     const values = mapAssessmentForm(form, `assessment-${crypto.randomUUID()}`);
-    if (!values) {
-      onError([t('admin.assessmentBuilder.editor.invalidFields')]);
+    const parsed = assessmentPolicySchema.safeParse(policy);
+    if (!values || !parsed.success || (values.maxAttempts ?? 0) > 10 || (values.timeLimitMinutes ?? 0) > 600) {
+      onError([t('assessments.policy.invalidSettings')]);
       return;
     }
     setSaving(true);
@@ -306,7 +317,7 @@ function CreationPlacement({ onChange, form, onCreated, onError }: {
       const result = await apiRequest<{ id: string }>('/assessments', {
         method: 'POST',
         body: JSON.stringify({
-          ...values, organizationId, status: 'draft', description: values.description ?? undefined,
+          ...values, ...(Object.keys(parsed.data).length ? { policy: parsed.data } : {}), organizationId, status: 'draft', description: values.description ?? undefined,
           maxAttempts: values.maxAttempts ?? undefined, passMessage: values.passMessage ?? undefined, failMessage: values.failMessage ?? undefined,
           courseId: independent ? undefined : selectedCourseId, lessonId: independent ? undefined : selectedLessonId || undefined,
         }),

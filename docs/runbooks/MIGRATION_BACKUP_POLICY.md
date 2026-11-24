@@ -6,6 +6,16 @@
 >
 > **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
 
+## Assessment settings migration (PR 529)
+
+`20261124150000_assessment_policy` adds nullable policy, feedback, locked answers and
+certificate result columns. Deploy the migration before the new API. Existing assessments
+use their prior behavior when the policy is absent. No data backfill is required.
+
+Keep the columns during application rollback. The earlier API ignores the new policy fields
+and cannot continue an untimed attempt with locked answers.
+
+
 ## Assessment editor draft migration (PR 527)
 
 `20261124140000_assessment_editor_draft` adds a nullable JSONB column, `assessments.editor_draft`.

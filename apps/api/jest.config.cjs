@@ -8,6 +8,7 @@ module.exports = {
     '^@lms/shared/checklist-feedback$': '<rootDir>/../../packages/shared/src/checklist-feedback.ts',
     '^@lms/shared/longread-progress$': '<rootDir>/../../packages/shared/src/longread-progress.ts',
     '^@lms/shared/longread-exercises$': '<rootDir>/../../packages/shared/src/longread-exercises.ts',
+    '^@lms/shared/assessment-policy$': '<rootDir>/../../packages/shared/src/assessment-policy.ts',
     '^@lms/shared/assessment-question-types$': '<rootDir>/../../packages/shared/src/assessment-question-types.ts',
     '^@lms/shared/longread-media$': '<rootDir>/../../packages/shared/src/longread-media.ts',
     '^@lms/shared/permission-catalog$': '<rootDir>/../../packages/shared/src/permission-catalog.ts',

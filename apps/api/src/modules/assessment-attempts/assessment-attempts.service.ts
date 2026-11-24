@@ -1,3 +1,10 @@
+import type { Prisma } from '@prisma/client';
+import { assessmentAnswerSchema, type AssessmentAnswer } from '@lms/shared/assessment-question-types';
+import { requiresLockedAnswers, type AssessmentPolicy } from '@lms/shared/assessment-policy';
+import { z } from 'zod';
+import { assertAssessmentWindow, assessmentAttemptOrder, completedAssessmentAttempts, effectiveAssessmentResult, readAssessmentPolicy } from '../../common/assessment-policy.js';
+import { publicAnswerKey } from '../../common/assessment-answer-key.js';
+import { seededShuffle } from '../../common/seeded-shuffle.js';
 import { publicAttemptContext } from '../../common/assessment-frozen.js';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { gradeAssessmentAnswers, type QuestionWithOptions } from '../../common/assessment-grading.js';
@@ -14,6 +21,12 @@ import {
 
 export { buildAttemptResultNotification } from '../../common/assessment-recording.js';
 import { recordCompletedAssessment } from '../../common/assessment-recording.js';
+
+type GradableQuestion = QuestionWithOptions & {
+  correctFeedback: string | null;
+  incorrectFeedback: string | null;
+  options: { id: string; isCorrect: boolean; text: string | null; imageUrl: string | null }[];
+};
 
 const attemptSelect = {
   longreadMetadata: true,
@@ -105,7 +118,7 @@ export class AssessmentAttemptsService {
     const attemptFields = publicAttemptContext(stored);
 
     if (attemptFields.status === 'in_progress') {
-      const finalized = await this.finalizeExpiredAttempts(attemptFields.assessmentId, organizationId, assessment.timeLimitMinutes);
+      const finalized = await this.finalizeExpiredAttempts(attemptFields.assessmentId, organizationId, assessment.timeLimitMinutes, attemptFields.id);
       if (finalized) {
         return { ...attemptFields, status: 'completed' as const, passed: false, score: 0, maxScore: finalized.maxScore, percentage: 0, completedAt: finalized.completedAt };
       }
@@ -122,13 +135,13 @@ export class AssessmentAttemptsService {
    * path, which calls getAttempt). Score is 0 since an abandoned attempt never recorded answers —
    * matches the late-submission behavior in createAttempt, which also forces passed: false.
    */
-  private async finalizeExpiredAttempts(assessmentId: string, organizationId: string, timeLimitMinutes: number | null): Promise<{ maxScore: number; completedAt: Date } | null> {
+  private async finalizeExpiredAttempts(assessmentId: string, organizationId: string, timeLimitMinutes: number | null, attemptId?: string): Promise<{ maxScore: number; completedAt: Date } | null> {
     if (!timeLimitMinutes) {
       return null;
     }
 
     const cutoff = new Date(Date.now() - timeLimitMinutes * 60_000);
-    const where = { assessmentId, organizationId, longreadRevisionId: null, status: 'in_progress' as const, deletedAt: null, startedAt: { lt: cutoff } };
+    const where = { assessmentId, organizationId, ...(attemptId ? { id: attemptId } : {}), longreadRevisionId: null, status: 'in_progress' as const, deletedAt: null, startedAt: { lt: cutoff } };
     const expiredCount = await this.prisma.assessmentAttempt.count({ where });
 
     if (expiredCount === 0) {
@@ -163,14 +176,18 @@ export class AssessmentAttemptsService {
     await this.ensureUserExists(userId, organizationId);
     await this.ensureAssessmentIsAvailable(location.courseId, userId, organizationId, assessment.availableAfterCourseCompletion);
 
+    if (assessment.policy) {
+      return this.submitWithPolicy(assessmentId, userId, organizationId, location, input);
+    }
+
     const inProgress = assessment.timeLimitMinutes
       ? await this.prisma.assessmentAttempt.findFirst({
-          where: { assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
+          where: { ...(input.attemptId ? { id: input.attemptId } : {}), assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
           select: { id: true, startedAt: true },
         })
       : null;
 
-    if (assessment.timeLimitMinutes && !inProgress) {
+    if ((assessment.timeLimitMinutes || input.attemptId) && !inProgress) {
       throw new BadRequestException('Attempt was not started — call the start endpoint first');
     }
 
@@ -199,6 +216,103 @@ export class AssessmentAttemptsService {
     });
 
     return this.getAttempt(attemptId, { id: userId, organizationId, roles: ['learner'] });
+  }
+
+  private async submitWithPolicy(
+    assessmentId: string,
+    userId: string,
+    organizationId: string,
+    location: { placementId: string | null; courseId: string | null },
+    input: CreateAssessmentAttemptInput,
+  ) {
+    const attemptId = await this.prisma.$transaction(async (tx) => {
+      const assessment = await this.lockAssessment(tx, assessmentId, organizationId);
+      const policy = readAssessmentPolicy(assessment.policy);
+      assertAssessmentWindow(policy);
+      const scope = { assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null };
+      const locked = requiresLockedAnswers(policy);
+      if (locked && !input.attemptId) throw new BadRequestException('A locked assessment submission requires the attempt ID');
+      const active = assessment.timeLimitMinutes || locked
+        ? await tx.assessmentAttempt.findFirst({ where: { ...scope, ...(input.attemptId ? { id: input.attemptId } : {}), status: 'in_progress', deletedAt: null },
+          select: { id: true, startedAt: true, lockedAnswers: true } })
+        : null;
+      if ((assessment.timeLimitMinutes || locked || input.attemptId) && !active) throw new BadRequestException('Attempt was not started — call the start endpoint first');
+      if (!active) await this.ensureAttemptAllowed(tx, scope, assessment.maxAttempts, policy);
+
+      const questions = await this.getQuestions(assessmentId, organizationId, tx);
+      const answers = locked ? z.array(assessmentAnswerSchema).parse(active?.lockedAnswers ?? []) : input.answers;
+      const graded = gradeAssessmentAnswers(questions, answers);
+      const score = graded.reduce((sum, answer) => sum + answer.score, 0);
+      const maxScore = questions.reduce((sum, question) => sum + question.points, 0);
+      const completedAt = new Date();
+      const expired = Boolean(active && assessment.timeLimitMinutes && completedAt.getTime() - active.startedAt.getTime() > assessment.timeLimitMinutes * 60000);
+      const percentage = expired && policy.attemptPolicy ? 0 : maxScore ? Math.round(score * 100 / maxScore) : 0;
+      const passed = !expired && percentage >= assessment.passingScore;
+
+      return recordCompletedAssessment(tx,
+        { organizationId, assessmentId, userId, ...location, score, maxScore, percentage, passed, completedAt, status: 'completed' },
+        graded, location.courseId, assessment.title, active?.id,
+        policy.attemptPolicy ? async () => effectiveAssessmentResult(policy.attemptPolicy!,
+          await tx.assessmentAttempt.findMany({ where: completedAssessmentAttempts(scope), orderBy: assessmentAttemptOrder,
+            select: { id: true, percentage: true, passed: true } }), assessment.passingScore) : undefined);
+    });
+
+    return this.getAttempt(attemptId, { id: userId, organizationId, roles: ['learner'] });
+  }
+
+  async recordAnswer(assessmentId: string, userId: string, organizationId: string, attemptId: string, input: AssessmentAnswer, placementId?: string | null) {
+    const assessment = await this.loadAssessmentForAttempt(assessmentId, organizationId);
+    const location = await this.resolvePlacement(assessment, organizationId, placementId);
+    await this.ensureAssessmentIsAvailable(location.courseId, userId, organizationId, assessment.availableAfterCourseCompletion);
+
+    return this.prisma.$transaction(async (tx) => {
+      const current = await this.lockAssessment(tx, assessmentId, organizationId);
+      const policy = readAssessmentPolicy(current.policy);
+      assertAssessmentWindow(policy);
+      if (!requiresLockedAnswers(policy)) throw new BadRequestException('Assessment does not use locked answers');
+      const active = await tx.assessmentAttempt.findFirst({
+        where: { id: attemptId, assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
+        select: { id: true, startedAt: true, lockedAnswers: true },
+      });
+      if (!active || (current.timeLimitMinutes && Date.now() - active.startedAt.getTime() > current.timeLimitMinutes * 60000)) {
+        throw new BadRequestException('Assessment has no active attempt');
+      }
+
+      const questions = await this.getQuestions(assessmentId, organizationId, tx);
+      const ordered = current.randomizeOrder ? seededShuffle(questions, `${assessmentId}:${userId}`) : questions;
+      const saved = z.array(assessmentAnswerSchema).parse(active.lockedAnswers ?? []);
+      const previous = saved.find((answer) => answer.questionId === input.questionId);
+      const question = previous ? ordered.find(({ id }) => id === previous.questionId) : ordered[saved.length];
+      if (!question || question.id !== input.questionId) throw new BadRequestException('Answer the current assessment question first');
+
+      const answer = previous ?? input;
+      const [grade] = gradeAssessmentAnswers([question], [answer]);
+      if (!previous) await tx.assessmentAttempt.update({ where: { id: active.id }, data: { lockedAnswers: [...saved, input] } });
+      if (policy.incorrectAnswer !== 'immediate') return { answer };
+      return { answer, isCorrect: grade.isCorrect,
+        feedback: policy.showFeedback ? (grade.isCorrect ? question.correctFeedback : question.incorrectFeedback) : undefined,
+        ...(!grade.isCorrect ? publicAnswerKey(question) : {}) };
+    });
+  }
+
+  private async lockAssessment(tx: Prisma.TransactionClient, assessmentId: string, organizationId: string) {
+    await tx.$queryRaw`SELECT id FROM assessments WHERE id = ${assessmentId}::uuid AND organization_id = ${organizationId}::uuid AND deleted_at IS NULL FOR UPDATE`;
+    return this.loadAssessmentForAttempt(assessmentId, organizationId, tx);
+  }
+
+  private async ensureAttemptAllowed(db: Prisma.TransactionClient, scope: Prisma.AssessmentAttemptWhereInput,
+    maxAttempts: number | null, policy: AssessmentPolicy) {
+    const completed = completedAssessmentAttempts(scope);
+    if (maxAttempts && await db.assessmentAttempt.count({ where: completed }) >= maxAttempts) {
+      throw new BadRequestException('Assessment attempts limit reached');
+    }
+    if (policy.cooldownHours) {
+      const previous = await db.assessmentAttempt.findFirst({
+        where: { ...completed, completedAt: { gt: new Date(Date.now() - policy.cooldownHours * 3600000) } },
+        select: { id: true },
+      });
+      if (previous) throw new BadRequestException('Assessment retry cooldown is active');
+    }
   }
 
   /**
@@ -237,13 +351,35 @@ export class AssessmentAttemptsService {
   async startAttempt(assessmentId: string, userId: string, organizationId: string, placementId?: string | null) {
     const assessment = await this.loadAssessmentForAttempt(assessmentId, organizationId);
 
-    if (!assessment.timeLimitMinutes) {
+    if (!assessment.timeLimitMinutes && !requiresLockedAnswers(readAssessmentPolicy(assessment.policy))) {
       throw new BadRequestException('This assessment has no time limit — submit answers directly');
     }
 
     const location = await this.resolvePlacement(assessment, organizationId, placementId);
     await this.ensureUserExists(userId, organizationId);
     await this.ensureAssessmentIsAvailable(location.courseId, userId, organizationId, assessment.availableAfterCourseCompletion);
+
+    if (assessment.policy) {
+      await this.finalizeExpiredAttempts(assessmentId, organizationId, assessment.timeLimitMinutes);
+      const active = await this.prisma.$transaction(async (tx) => {
+        const current = await this.lockAssessment(tx, assessmentId, organizationId);
+        const policy = readAssessmentPolicy(current.policy);
+        assertAssessmentWindow(policy);
+        const scope = { assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null };
+        const existing = await tx.assessmentAttempt.findFirst({
+          where: { ...scope, status: 'in_progress', deletedAt: null },
+          select: { id: true, lockedAnswers: true },
+        });
+        if (existing) return existing;
+        await this.ensureAttemptAllowed(tx, scope, current.maxAttempts, policy);
+        return tx.assessmentAttempt.create({
+          data: { organizationId, assessmentId, userId, ...location, status: 'in_progress', startedAt: new Date() },
+          select: { id: true, lockedAnswers: true },
+        });
+      });
+      const attempt = await this.getAttempt(active.id, { id: userId, organizationId, roles: ['learner'] });
+      return { ...attempt, lockedAnswers: z.array(assessmentAnswerSchema).parse(active.lockedAnswers ?? []) };
+    }
 
     const existing = await this.prisma.assessmentAttempt.findFirst({
       where: { assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
@@ -297,8 +433,8 @@ export class AssessmentAttemptsService {
     return { placementId: placement.id, courseId: placement.courseId };
   }
 
-  private async loadAssessmentForAttempt(assessmentId: string, organizationId: string) {
-    const assessment = await this.prisma.assessment.findFirst({
+  private async loadAssessmentForAttempt(assessmentId: string, organizationId: string, db: Prisma.TransactionClient = this.prisma) {
+    const assessment = await db.assessment.findFirst({
       where: {
         id: assessmentId,
         organizationId,
@@ -312,6 +448,8 @@ export class AssessmentAttemptsService {
         passingScore: true,
         maxAttempts: true,
         timeLimitMinutes: true,
+        randomizeOrder: true,
+        policy: true,
         availableAfterCourseCompletion: true,
       },
     });
@@ -416,25 +554,29 @@ export class AssessmentAttemptsService {
     }
   }
 
-  private async getQuestions(assessmentId: string, organizationId: string): Promise<QuestionWithOptions[]> {
-    const questions = await this.prisma.assessmentQuestion.findMany({
+  private async getQuestions(assessmentId: string, organizationId: string, db: Prisma.TransactionClient = this.prisma): Promise<GradableQuestion[]> {
+    const questions = await db.assessmentQuestion.findMany({
       where: {
         assessmentId,
         organizationId,
         deletedAt: null,
       },
-      orderBy: { order: 'asc' },
+      orderBy: [{ order: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
       select: {
         id: true,
         type: true,
         points: true,
         scoringMode: true,
         definition: true,
+        correctFeedback: true,
+        incorrectFeedback: true,
         options: {
           where: { deletedAt: null },
           select: {
             id: true,
             isCorrect: true,
+            text: true,
+            imageUrl: true,
           },
         },
       },

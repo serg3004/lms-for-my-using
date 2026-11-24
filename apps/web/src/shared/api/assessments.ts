@@ -6,6 +6,7 @@ import type {
   AssessmentQuestionSummary,
   AssessmentSummary,
   CreateAttemptAnswerInput,
+  RecordedAssessmentAnswer,
 } from './types.js';
 
 const assessmentsPath = '/assessments';
@@ -38,16 +39,22 @@ export function listMyAssessments() {
   }>>('/assessments/standalone/mine');
 }
 
-export function createAssessmentAttempt(assessmentId: string, answers: CreateAttemptAnswerInput[], token?: string) {
+export function createAssessmentAttempt(assessmentId: string, answers: CreateAttemptAnswerInput[], token?: string, attemptId?: string) {
   return apiRequest<{ id: string }>(`/assessments/${encodeURIComponent(assessmentId)}/attempts${assessmentTokenQuery(token)}`, {
     method: 'POST',
-    body: JSON.stringify({ answers }),
+    body: JSON.stringify({ answers, ...(attemptId ? { attemptId } : {}) }),
   });
 }
 
 export function startAssessmentAttempt(assessmentId: string, token?: string) {
   return apiRequest<AssessmentAttemptSummary>(`/assessments/${encodeURIComponent(assessmentId)}/attempts/start${assessmentTokenQuery(token)}`, {
     method: 'POST',
+  });
+}
+
+export function recordAssessmentAnswer(assessmentId: string, attemptId: string, answer: CreateAttemptAnswerInput, token?: string) {
+  return apiRequest<RecordedAssessmentAnswer>(`${getAssessmentPath(assessmentId)}/attempts/answer${assessmentTokenQuery(token)}`, {
+    method: 'POST', body: JSON.stringify({ attemptId, answer }),
   });
 }
 

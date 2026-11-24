@@ -1,4 +1,5 @@
-import type { Prisma } from '@prisma/client';
+import type { EffectiveAssessmentResult } from '@lms/shared/assessment-policy';
+import { Prisma } from '@prisma/client';
 
 export function buildAttemptResultNotification(assessmentTitle: string, assessmentId: string, passed: boolean, percentage: number) {
   return { type: passed ? 'assessment_passed' : 'assessment_failed', data: { assessmentTitle, percentage }, link: `/learn/assessments/${assessmentId}` };
@@ -6,18 +7,22 @@ export function buildAttemptResultNotification(assessmentTitle: string, assessme
 
 /** The same persisted attempt/certificate/notification contract for standalone and longread tests. */
 export async function recordCompletedAssessment(tx: Prisma.TransactionClient, data: Prisma.AssessmentAttemptUncheckedCreateInput,
-  answers: Omit<Prisma.AssessmentAttemptAnswerCreateManyInput, 'attemptId' | 'organizationId'>[], courseId: string | null, title: string, existingId?: string) {
+  answers: Omit<Prisma.AssessmentAttemptAnswerCreateManyInput, 'attemptId' | 'organizationId'>[], courseId: string | null, title: string, existingId?: string,
+  effective?: () => Promise<EffectiveAssessmentResult | undefined>) {
   const attempt = existingId
     ? await tx.assessmentAttempt.update({ where: { id: existingId, organizationId: data.organizationId }, data: { score: data.score, maxScore: data.maxScore, percentage: data.percentage, passed: data.passed, completedAt: data.completedAt, status: 'completed' }, select: { id: true } })
     : await tx.assessmentAttempt.create({ data: { ...data, courseId }, select: { id: true } });
   await tx.assessmentAttemptAnswer.createMany({ data: answers.map((answer) => ({ ...answer, organizationId: data.organizationId, attemptId: attempt.id })) });
   if (data.countsTowardResults !== false) {
-    if (data.passed && courseId) await tx.certificate.upsert({
+    const result = await effective?.();
+    const passed = result?.passed ?? !!data.passed;
+    const assessmentAttemptId = result?.attemptId ?? attempt.id;
+    if (passed && courseId) await tx.certificate.upsert({
       where: { organizationId_courseId_userId: { organizationId: data.organizationId, courseId, userId: data.userId } },
-      update: { assessmentAttemptId: attempt.id, status: 'issued', revokedAt: null },
-      create: { organizationId: data.organizationId, courseId, userId: data.userId, assessmentAttemptId: attempt.id },
+      update: { assessmentAttemptId, assessmentResult: result ?? Prisma.DbNull, status: 'issued', revokedAt: null },
+      create: { organizationId: data.organizationId, courseId, userId: data.userId, assessmentAttemptId, ...(result ? { assessmentResult: result } : {}) },
     });
-    const notification = buildAttemptResultNotification(title, data.assessmentId, !!data.passed, data.percentage ?? 0);
+    const notification = buildAttemptResultNotification(title, data.assessmentId, passed, result?.percentage ?? data.percentage ?? 0);
     if (data.longreadRevisionId) notification.link = `/learn/attempts/${attempt.id}`;
     await tx.notification.create({ data: { organizationId: data.organizationId, userId: data.userId, ...notification } });
   }

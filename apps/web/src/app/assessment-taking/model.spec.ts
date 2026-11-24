@@ -94,6 +94,9 @@ describe('assessment taking model', () => {
 
   it.each([
     [new ApiClientError('Unauthorized', 401), 'assessments.sessionExpired'],
+    [new ApiClientError('Assessment retry cooldown is active', 400), 'assessments.policy.cooldownActive'],
+    [new ApiClientError('Assessment is not open yet', 400), 'assessments.policy.notOpen'],
+    [new ApiClientError('Assessment availability has ended', 400), 'assessments.policy.closed'],
     [new ApiClientError('Attempts limit reached', 400), 'assessments.errorAttemptsLimit'],
     [new ApiClientError('Course must be completed', 400), 'assessments.errorCourseNotComplete'],
     [new ApiClientError('Assessment must be published', 400), 'assessments.errorNotPublished'],
