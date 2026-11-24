@@ -11,7 +11,7 @@ export async function openTypedAssessment(page: Page, { role = 'learner', type =
     : type === 'fill_blank' ? { type: 'fill_blank', blanks: [{ id: 'city' }], caseSensitive: true, whitespace: 'exact' }
     : type === 'short_answer' ? { type: 'short_answer', caseSensitive: true, whitespace: 'trim' }
     : { type: 'ordering', items: displayItems, ...(role === 'admin' ? { correctOrder: ['b', 'a'] } : {}) };
-  const question = { id: '38800000-0000-4000-8000-000000000002', organizationId: assessment.organizationId, assessmentId: typedAssessmentId, title: 'Порядок действий', type, text: null, points: 8, order: 0, options: [], definition };
+  const question = { id: '38800000-0000-4000-8000-000000000002', organizationId: assessment.organizationId, assessmentId: typedAssessmentId, title: 'Порядок действий', type, text: null, points: 8, order: 0, options: [], definition: role === 'admin' ? definition : { ...definition, unsupported: true } };
   await page.route('**/api/v1/**', (route) => {
     const path = new URL(route.request().url()).pathname.replace('/api/v1', '');
     if (route.request().method() !== 'GET') { writes.push(path); return route.fulfill({ status: 400, json: { message: 'Must not submit unsupported questions' } }); }

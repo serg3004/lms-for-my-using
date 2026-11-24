@@ -1,3 +1,4 @@
+import { questionDefinitionSchema } from '@lms/shared/assessment-question-types';
 import { frozenAnswerQuestionSchema, longreadResultMetadataSchema } from '../../common/assessment-frozen.js';
 import { publicQuestionDefinition } from '../../common/assessment-question-definition.js';
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
@@ -323,13 +324,14 @@ export class AssessmentResultsService {
           const question = frozen.success ? frozen.data.question : answer.question;
           const reveal = attempt.status === 'completed' && (context.success ? frozen.success && frozen.data.revealAnswers : attempt.assessment.showCorrectAnswers);
           const correctOptions = frozen.success ? frozen.data.question.options.filter((option) => option.isCorrect).map(({ id, text, imageUrl }) => ({ id, text, imageUrl })) : answer.question.options;
+          const definition = questionDefinitionSchema.safeParse(question.definition);
           const selected = frozen.success ? frozen.data.question.options.find((option) => option.id === answer.selectedOptionId) : null;
           return {
             id: answer.id, questionId: answer.questionId, selectedOptionId: answer.selectedOptionId, selectedOptionIds: answer.selectedOptionIds,
             ...(answer.response ? { response: answer.response } : {}), isCorrect: answer.isCorrect, score: answer.score, createdAt: answer.createdAt, updatedAt: answer.updatedAt,
             question: { id: question.id, title: question.title, type: question.type, points: question.points, order: question.order,
-              ...(frozen.success ? { options: frozen.data.question.options.map(({ id, text, imageUrl }) => ({ id, text, imageUrl })),
-                ...(frozen.data.question.definition ? { definition: publicQuestionDefinition(frozen.data.question.definition, `result:${answer.id}`) } : {}) } : {}) },
+              ...(frozen.success ? { options: frozen.data.question.options.map(({ id, text, imageUrl }) => ({ id, text, imageUrl })) } : {}),
+              ...(definition.success && definition.data.type === question.type ? { definition: publicQuestionDefinition(definition.data, `result:${answer.id}`) } : {}) },
             selectedOption: frozen.success ? selected ? { id: selected.id, text: selected.text, imageUrl: selected.imageUrl } : null : answer.selectedOption,
             ...(reveal && question.definition ? { correctDefinition: question.definition } : {}),
             correctOptions: reveal ? correctOptions : undefined,

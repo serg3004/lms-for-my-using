@@ -4,18 +4,11 @@ import { useTranslation } from 'react-i18next';
 import { questionTypeSchema, questionDefinitionSchema, type QuestionType } from '@lms/shared/assessment-question-types';
 import { exerciseContentSchema, writeLongreadQuestionSchema, type ExerciseContent, type WriteLongreadQuestion } from '@lms/shared/longread-exercises';
 import { getLongreadQuestionBank, writeLongreadQuestion, type LongreadQuestionBank } from '../../shared/api/longreads.js';
+import { emptyQuestionDefinition } from './question-author-model.js';
 import { QuestionAuthorFields } from './QuestionAuthorFields.js';
 import { exerciseError } from './ExerciseRuntime.js';
 function emptyQuestion(type: QuestionType): WriteLongreadQuestion {
-  const a = crypto.randomUUID(), b = crypto.randomUUID(), c = crypto.randomUUID(), d = crypto.randomUUID();
-  const definitions = {
-    true_false: { type, correctAnswer: true },
-    matching: { type, left: [{ id: a, text: '' }, { id: b, text: '' }], right: [{ id: c, text: '' }, { id: d, text: '' }], correctPairs: [{ leftId: a, rightId: c }, { leftId: b, rightId: d }] },
-    ordering: { type, items: [{ id: a, text: '' }, { id: b, text: '' }], correctOrder: [a, b] },
-    fill_blank: { type, blanks: [{ id: 'blank-1', acceptedAnswers: [''] }], caseSensitive: false, whitespace: 'trim' },
-    short_answer: { type, acceptedAnswers: [''], caseSensitive: false, whitespace: 'trim' },
-  };
-  return { type, title: '', text: '', scoringMode: 'all_or_nothing', definition: (definitions[type as keyof typeof definitions] ?? null) as WriteLongreadQuestion['definition'],
+  return { type, title: '', text: '', scoringMode: 'all_or_nothing', definition: emptyQuestionDefinition(type),
     options: ['single_choice', 'multiple_choice'].includes(type) ? [{ text: '', isCorrect: true }, { text: '', isCorrect: false }] : [], assessmentPassingScore: 70, assessmentMaxAttempts: null };
 }
 export function ExerciseEditor({ lessonId, content, onChange, ready, revision, adoptRevision, onBusy }: {

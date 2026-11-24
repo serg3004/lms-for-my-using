@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { questionDefinitionSchema, questionResponseSchema, normalizeQuestionText, type QuestionDefinition, type QuestionType, type QuestionScoringMode, type PublicQuestionDefinition } from '@lms/shared/assessment-question-types';
+import { projectQuestionDefinition, questionDefinitionSchema, questionResponseSchema, normalizeQuestionText, type QuestionDefinition, type QuestionType, type QuestionScoringMode, type PublicQuestionDefinition } from '@lms/shared/assessment-question-types';
 import { seededShuffle } from './seeded-shuffle.js';
 
 export function validateQuestionDefinition(type: QuestionType, raw: unknown): QuestionDefinition | null {
@@ -12,15 +12,8 @@ export function validateQuestionDefinition(type: QuestionType, raw: unknown): Qu
   return parsed.data;
 }
 
-/** Explicit allowlist: no answer key can enter the learner's quiz projection. */
 export function publicQuestionDefinition(definition: QuestionDefinition, seed: string): PublicQuestionDefinition {
-  switch (definition.type) {
-    case 'true_false': return { type: definition.type };
-    case 'matching': return { type: definition.type, left: seededShuffle(definition.left, `${seed}:left`), right: seededShuffle(definition.right, `${seed}:right`) };
-    case 'ordering': return { type: definition.type, items: seededShuffle(definition.items, `${seed}:items`) };
-    case 'fill_blank': return { type: definition.type, blanks: definition.blanks.map(({ id }) => ({ id })), caseSensitive: definition.caseSensitive, whitespace: definition.whitespace };
-    case 'short_answer': return { type: definition.type, caseSensitive: definition.caseSensitive, whitespace: definition.whitespace };
-  }
+  return projectQuestionDefinition(definition, (items, group) => seededShuffle(items, `${seed}:${group}`));
 }
 
 export function gradeDefinedQuestion(type: QuestionType, rawDefinition: unknown, rawResponse: unknown, points: number, mode: QuestionScoringMode) {

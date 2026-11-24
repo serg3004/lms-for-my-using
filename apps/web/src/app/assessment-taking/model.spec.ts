@@ -10,6 +10,8 @@ import {
   getAssessmentSubmitErrorKey,
   selectedIds,
   supportsOptionQuestion,
+  supportsTakingQuestion,
+  type SelectedAnswers,
   type QuestionWithOptions,
 } from './model.js';
 
@@ -38,6 +40,38 @@ describe('assessment taking model', () => {
     expect(supportsOptionQuestion({ type: 'true_false', definition: { type: 'true_false' } })).toBe(false);
     expect(supportsOptionQuestion(questions[2]!)).toBe(true);
   });
+  it('accepts valid typed questions and rejects wrong or missing public definitions', () => {
+    const question: QuestionWithOptions = { ...questions[2]!, definition: { type: 'true_false' }, options: [] };
+    expect(supportsTakingQuestion(question)).toBe(true);
+    expect(supportsTakingQuestion(questions[0]!)).toBe(true);
+    expect(supportsTakingQuestion({ ...question, type: 'short_answer' })).toBe(false);
+    expect(supportsTakingQuestion({ ...question, type: 'ordering', definition: null })).toBe(false);
+  });
+
+  it('sends a complete typed response without legacy option IDs', () => {
+    const question: QuestionWithOptions = { ...questions[2]!, definition: { type: 'true_false' }, options: [] };
+    const answer: SelectedAnswers = { [question.id]: { type: 'true_false', value: false } };
+    expect(countAnsweredQuestions([question], answer)).toBe(1);
+    expect(buildAssessmentAnswers([question], answer)).toEqual([{ questionId: question.id, response: { type: 'true_false', value: false } }]);
+    expect(countAnsweredQuestions([question], { [question.id]: ['option-id'] })).toBe(0);
+    expect(countAnsweredQuestions([question], { [question.id]: 'option-id' })).toBe(0);
+    expect(() => buildAssessmentAnswers([question], {})).toThrow('typed response');
+  });
+
+  it('requires all positions in an ordering response before submission', () => {
+    const question: QuestionWithOptions = {
+      ...questions[0]!, type: 'ordering', options: [],
+      definition: { type: 'ordering', items: [{ id: 'first', text: 'First' }, { id: 'second', text: 'Second' }] },
+    };
+    const partial: SelectedAnswers = { [question.id]: { type: 'ordering', itemIds: ['first', ''] } };
+    expect(countAnsweredQuestions([question], partial)).toBe(0);
+    expect(() => buildAssessmentAnswers([question], partial)).toThrow('typed response');
+
+    const complete: SelectedAnswers = { [question.id]: { type: 'ordering', itemIds: ['second', 'first'] } };
+    expect(countAnsweredQuestions([question], complete)).toBe(1);
+    expect(buildAssessmentAnswers([question], complete)).toEqual([{ questionId: question.id, response: { type: 'ordering', itemIds: ['second', 'first'] } }]);
+  });
+
   it('normalizes only arrays as multiple-choice selections', () => {
     expect(selectedIds(['one', 'two'])).toEqual(['one', 'two']);
     expect(selectedIds('one')).toEqual([]);

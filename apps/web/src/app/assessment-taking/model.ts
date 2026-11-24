@@ -1,4 +1,5 @@
-import type { QuestionType, PublicQuestionDefinition } from '@lms/shared/assessment-question-types';
+import { publicQuestionDefinitionSchema, type QuestionType, type PublicQuestionDefinition, type QuestionResponse } from '@lms/shared/assessment-question-types';
+import { exerciseAnswerComplete } from '../../features/longread-exercises/QuestionResponseFields.js';
 import { ApiClientError } from '../../shared/apiClient.js';
 
 export type AssessmentQuestion = {
@@ -7,6 +8,7 @@ export type AssessmentQuestion = {
   definition?: PublicQuestionDefinition | null;
   title: string;
   text: string | null;
+  imageUrl?: string | null;
   points: number;
   order: number;
 };
@@ -20,9 +22,10 @@ export type AssessmentOption = {
 };
 
 export type QuestionWithOptions = AssessmentQuestion & { options: AssessmentOption[] };
-export type SelectedAnswers = Record<string, string | string[]>;
+export type SelectedAnswer = string | string[] | QuestionResponse;
+export type SelectedAnswers = Record<string, SelectedAnswer>;
 
-export function selectedIds(value: string | string[] | undefined): string[] {
+export function selectedIds(value: SelectedAnswer | undefined): string[] {
   return Array.isArray(value) ? value : [];
 }
 
@@ -30,10 +33,29 @@ export function supportsOptionQuestion(question: { type: string; definition?: un
   return ['single_choice', 'multiple_choice', 'true_false'].includes(question.type) && !question.definition;
 }
 
+export function supportsTakingQuestion(question: QuestionWithOptions): boolean {
+  if (supportsOptionQuestion(question)) return true;
+  const parsed = publicQuestionDefinitionSchema.safeParse(question.definition);
+  return parsed.success && parsed.data.type === question.type;
+}
+
+export function isQuestionAnswered(question: QuestionWithOptions, value: SelectedAnswer | undefined): boolean {
+  if (question.definition) {
+    return typeof value === 'object' && !Array.isArray(value)
+      && exerciseAnswerComplete(question, { questionId: question.id, response: value });
+  }
+  return question.type === 'multiple_choice' ? selectedIds(value).length > 0 : typeof value === 'string';
+}
+
 export function buildAssessmentAnswers(questions: QuestionWithOptions[], selected: SelectedAnswers) {
   return questions.map((question) => {
-    if (!supportsOptionQuestion(question)) throw new Error('This question requires a typed response');
     const value = selected[question.id];
+    if (!supportsOptionQuestion(question)) {
+      if (!question.definition || typeof value !== 'object' || Array.isArray(value) || !isQuestionAnswered(question, value)) {
+        throw new Error('This question requires a typed response');
+      }
+      return { questionId: question.id, response: value };
+    }
     if (question.type === 'multiple_choice') {
       return { questionId: question.id, selectedOptionIds: selectedIds(value) };
     }
@@ -42,10 +64,7 @@ export function buildAssessmentAnswers(questions: QuestionWithOptions[], selecte
 }
 
 export function countAnsweredQuestions(questions: QuestionWithOptions[], selected: SelectedAnswers): number {
-  return questions.filter((question) => {
-    const value = selected[question.id];
-    return question.type === 'multiple_choice' ? selectedIds(value).length > 0 : typeof value === 'string';
-  }).length;
+  return questions.filter((question) => isQuestionAnswered(question, selected[question.id])).length;
 }
 
 export function getAssessmentSubmitErrorKey(error: unknown): string {
