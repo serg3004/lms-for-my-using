@@ -129,8 +129,8 @@ function FeedbackCard({ field, t }: { field: ItemAnalyticsFeedbackField; t: T })
   );
 }
 
-export function SheetItemAnalytics({ sheetId, title, from, to, departmentId, managerId, fieldFilters, sessionPath }: {
-  sheetId: string; title: string; from: string; to: string; departmentId?: string; managerId?: string; fieldFilters?: string;
+export function SheetItemAnalytics({ sheetId, title, from, to, departmentId, departmentIds, employeeIds, managerId, fieldFilters, sessionPath }: {
+  sheetId: string; title: string; from: string; to: string; departmentId?: string; departmentIds?: string; employeeIds?: string; managerId?: string; fieldFilters?: string;
   /** Link to the session report of the role; omitted where the role has no report page. */
   sessionPath?: (sessionId: string) => string;
 }) {
@@ -152,16 +152,16 @@ export function SheetItemAnalytics({ sheetId, title, from, to, departmentId, man
   }
 
   const loadError = t('sheetAnalytics.loadError', 'Unable to load analytics.');
-  const query = { from, to, departmentId, managerId, fieldFilters };
+  const query = { from, to, departmentId, departmentIds, employeeIds, managerId, fieldFilters };
   const { state } = useAsyncData(
     () => Promise.all([getItemAnalytics(sheetId, { ...query, by: 'criteria' }), getItemAnalytics(sheetId, { ...query, by: 'groups' }), getItemAnalytics(sheetId, { ...query, by: 'feedback' })]),
-    [sheetId, from, to, departmentId, managerId, fieldFilters],
+    [sheetId, from, to, departmentId, departmentIds, employeeIds, managerId, fieldFilters],
     { unauthenticated: loadError, error: loadError, notFound: t('sheetAnalytics.sheetGone', 'This checklist was deleted or is not available to you.') },
   );
   const cut: Cut = requestedCut ?? 'criteria';
   const { state: notesState } = useAsyncData<ItemAnalytics | null>(
     () => (cut === 'notes' ? getItemAnalytics(sheetId, { ...query, by: 'notes', page: notesPage, itemId: noteItem || undefined }) : Promise.resolve(null)),
-    [sheetId, from, to, departmentId, managerId, fieldFilters, cut, notesPage, noteItem],
+    [sheetId, from, to, departmentId, departmentIds, employeeIds, managerId, fieldFilters, cut, notesPage, noteItem],
     { unauthenticated: loadError, error: loadError },
   );
 
@@ -234,7 +234,7 @@ export function SheetItemAnalytics({ sheetId, title, from, to, departmentId, man
 
       <SheetAnalyticsExport
         query={{
-          view: activeCut, from, to, checklistId: sheetId, departmentId, managerId, fieldFilters,
+          view: activeCut, from, to, checklistId: sheetId, departmentId, departmentIds, employeeIds, managerId, fieldFilters,
           ...(activeCut === 'criteria' || activeCut === 'groups' ? { pick: livePicked, q: search.trim() || undefined, sort: sort === 'order' ? undefined : sort } : {}),
           ...(activeCut === 'notes' && noteItem ? { itemId: noteItem } : {}),
         }}

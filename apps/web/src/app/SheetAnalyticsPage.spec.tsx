@@ -7,7 +7,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { SheetAnalyticsScale, SheetAnalyticsSheet } from '../shared/api/manager.js';
 import { ManagerViewSwitch } from './ManagerViewSwitch.js';
-import { filterSheets, parseSelectedSheets, ScaleLevelBars, toggleSheet } from './SheetAnalyticsPage.js';
+import { moveFilter, orderedWithHidden, resolveFilterKeys } from './SheetAnalyticsFilters.js';
+import { filterSheets, parseSelectedSheets, ScaleLevelBars, selectFound, toggleSheet } from './SheetAnalyticsPage.js';
 
 const t = ((key: string, fallback?: string) => fallback ?? key) as unknown as TFunction;
 const tt = t as unknown as (key: string, fallback: string) => string;
@@ -71,5 +72,26 @@ describe('ManagerViewSwitch (PR 461)', () => {
     expect(html).toContain('href="/manager/checklists/sheets"');
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
     expect(html.indexOf('aria-current="page"')).toBeGreaterThan(html.indexOf('href="/manager/checklists/sheets"') - 80);
+  });
+});
+
+describe('selectFound', () => {
+  it('keeps the found sheets and stores everything as all', () => {
+    expect(selectFound(['a'], ['a', 'b'])).toEqual(['a']);
+    expect(selectFound(['a', 'b'], ['a', 'b'])).toEqual([]);
+  });
+});
+
+describe('analytics filter set helpers (PR 518)', () => {
+  it('prefers the viewer set, then the organization default, then the built-in order without the field filters', () => {
+    expect(resolveFilterKeys(null)).toEqual(['period', 'sheets', 'department', 'employee', 'manager']);
+    expect(resolveFilterKeys({ user: null, organization: ['sheets'] })).toEqual(['sheets']);
+    expect(resolveFilterKeys({ user: ['employee', 'period'], organization: ['sheets'] })).toEqual(['employee', 'period']);
+  });
+
+  it('lists the hidden filters after the enabled ones and moves an entry by one step', () => {
+    expect(orderedWithHidden(['sheets', 'period']).map((entry) => `${entry.key}:${entry.on}`)).toEqual(['sheets:true', 'period:true', 'department:false', 'employee:false', 'manager:false', 'userFields:false']);
+    expect(moveFilter(['a', 'b', 'c'], 0, 1)).toEqual(['b', 'a', 'c']);
+    expect(moveFilter(['a', 'b'], 0, -1)).toEqual(['a', 'b']);
   });
 });

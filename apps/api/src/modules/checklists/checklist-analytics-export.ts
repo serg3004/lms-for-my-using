@@ -231,7 +231,7 @@ export class ChecklistAnalyticsExport {
 
   async export(organizationId: string, actor: FolderActor & { id: string; locale?: string | null }, userScope: Prisma.UserWhereInput, query: ChecklistAnalyticsExportQuery) {
     const locale = exportLocale(actor.locale);
-    const filters = { from: query.from, to: query.to, departmentId: query.departmentId, managerId: query.managerId };
+    const filters = { from: query.from, to: query.to, departmentId: query.departmentId, departmentIds: query.departmentIds, employeeIds: query.employeeIds, managerId: query.managerId };
     let table: ReportCell[][];
     // Data rows only: the total row and the level block under the table are not counted.
     let rowCount: number;

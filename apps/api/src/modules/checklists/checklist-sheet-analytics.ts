@@ -152,10 +152,12 @@ export function buildSheetAnalytics(
 }
 
 /** The employee scope of an analytics read: the viewer's own scope plus the optional department and manager filters. */
-export function analyticsEmployeeFilter(organizationId: string, userScope: Prisma.UserWhereInput, query: { departmentId?: string; managerId?: string }): Prisma.UserWhereInput {
+export function analyticsEmployeeFilter(organizationId: string, userScope: Prisma.UserWhereInput, query: { departmentId?: string; departmentIds?: string[]; employeeIds?: string[]; managerId?: string }): Prisma.UserWhereInput {
   return {
     AND: [
       userScope,
+      ...(query.employeeIds?.length ? [{ id: { in: query.employeeIds } }] : []),
+      ...(query.departmentIds?.length ? [{ departmentMemberships: { some: { organizationId, isPrimary: true, effectiveTo: null, departmentId: { in: query.departmentIds } } } }] : []),
       ...(query.departmentId ? [{ departmentMemberships: { some: { organizationId, isPrimary: true, effectiveTo: null, departmentId: query.departmentId } } }] : []),
       ...(query.managerId && query.managerId !== 'unassigned' ? [{ departmentMemberships: { some: { organizationId, isPrimary: true, effectiveTo: null, department: { managers: { some: { organizationId, userId: query.managerId, type: { in: ['DIRECT', 'FUNCTIONAL'] as ('DIRECT' | 'FUNCTIONAL')[] }, isPrimary: true, effectiveTo: null } } } } } }] : []),
       ...(query.managerId === 'unassigned' ? [{ departmentMemberships: { none: { organizationId, isPrimary: true, effectiveTo: null, department: { managers: { some: { organizationId, isPrimary: true, effectiveTo: null } } } } } }] : []),

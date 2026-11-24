@@ -1,14 +1,17 @@
 import { AnalyticsFieldFilter } from '../features/user-fields/AnalyticsFieldFilter.js';
 import { plainText } from '@lms/shared/rich-text';
-import { useMemo, type ComponentType, type CSSProperties, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 
 import { AdminPageLayout, ChecklistsTabs } from '../shared/adminPage.js';
 import {
+  getAnalyticsFilterSet,
   getManagerChecklistAnalytics,
   getSheetAnalytics,
   listSheetAnalyticsSheets,
+  type AnalyticsFilterKey,
+  type AnalyticsFilterSet,
   type SheetAnalytics,
   type SheetAnalyticsMetrics,
   type SheetAnalyticsSheet,
@@ -20,6 +23,7 @@ import { Card, DataTable, PageState, StatCard, StatsGrid, type Column } from '..
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { percent, ScaleLevelBars } from './SheetAnalyticsParts.js';
 import { SheetAnalyticsExport } from './SheetAnalyticsExport.js';
+import { DepartmentFilter, EmployeeFilter, FilterSetEditor, ids, resolveFilterKeys } from './SheetAnalyticsFilters.js';
 import { SheetItemAnalytics } from './SheetItemAnalytics.js';
 import { resolvePeriodRange } from './ManagerChecklistsPage.js';
 import { ManagerViewSwitch } from './ManagerViewSwitch.js';
@@ -46,6 +50,11 @@ export function toggleSheet(selected: readonly string[], id: string, all: readon
 export function filterSheets(sheets: readonly SheetAnalyticsSheet[], query: string): SheetAnalyticsSheet[] {
   const needle = query.trim().toLowerCase();
   return needle ? sheets.filter((sheet) => plainText(sheet.title).toLowerCase().includes(needle)) : [...sheets];
+}
+
+/** Exported for tests: "select found" keeps only the listed sheets; every sheet picked is stored as "all" (empty). */
+export function selectFound(found: readonly string[], all: readonly string[]): string[] {
+  return found.length === all.length && all.every((id) => found.includes(id)) ? [] : [...found];
 }
 
 export { ScaleLevelBars };
@@ -89,6 +98,10 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
   const customFrom = searchParams.get('from') ?? '';
   const customTo = searchParams.get('to') ?? '';
   const departmentId = searchParams.get('departmentId') ?? '';
+  const selectedDepartments = ids(searchParams.get('departments') ?? departmentId);
+  const selectedEmployees = ids(searchParams.get('employees') ?? '');
+  const departmentIds = selectedDepartments.join(',') || undefined;
+  const employeeIds = selectedEmployees.join(',') || undefined;
   const managerId = searchParams.get('managerId') ?? '';
   const fieldFilters = searchParams.get('fieldFilters') || undefined;
   const groupByField = searchParams.get('groupByField') || undefined;
@@ -99,16 +112,27 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
   function update(key: string, value: string) {
     const next = new URLSearchParams(searchParams);
     if (value) next.set(key, value); else next.delete(key);
+    if (key === 'departments') next.delete('departmentId');
     setSearchParams(next, { replace: true });
   }
+
+  const { currentUser } = useSession();
+  const isAdmin = currentUser?.roles.includes('admin') ?? false;
+  const [filterSet, setFilterSet] = useState<AnalyticsFilterSet | null>(null);
+  useEffect(() => {
+    let active = true;
+    void getAnalyticsFilterSet().then((set) => { if (active) setFilterSet(set); }, () => {});
+    return () => { active = false; };
+  }, []);
+  const enabledFilters = useMemo(() => resolveFilterKeys(filterSet), [filterSet]);
 
   const loadError = t('sheetAnalytics.loadError', 'Unable to load analytics.');
   const { state: sheetsState } = useAsyncData<SheetAnalyticsSheet[]>(() => listSheetAnalyticsSheets({ from, to }), [from, to], { unauthenticated: loadError, error: loadError });
   const { state: optionsState } = useAsyncData(() => getManagerChecklistAnalytics({ from, to }).then((data) => ({ departments: data.departmentOptions, managers: data.managerOptions ?? [] })), [from, to], { unauthenticated: '', error: '' });
   const key = selected.join(',');
   const { state } = useAsyncData<SheetAnalytics>(
-    () => getSheetAnalytics({ from, to, checklistIds: selected.length ? selected : undefined, departmentId: departmentId || undefined, managerId: managerId || undefined, fieldFilters, groupByField }),
-    [from, to, key, departmentId, managerId, fieldFilters, groupByField],
+    () => getSheetAnalytics({ from, to, checklistIds: selected.length ? selected : undefined, departmentIds, employeeIds, managerId: managerId || undefined, fieldFilters, groupByField }),
+    [from, to, key, departmentIds, employeeIds, managerId, fieldFilters, groupByField],
     { unauthenticated: loadError, error: loadError },
   );
 
@@ -119,16 +143,9 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
   const managers = optionsState.status === 'loaded' ? optionsState.data.managers : [];
   const field: CSSProperties = { display: 'grid', gap: 6, fontWeight: 600 };
 
-  return (
-    <Layout currentPath={currentPath}>
-      <header style={{ marginBottom: 20 }}>
-        <div style={{ color: 'var(--color-primary)', fontSize: 12, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 8 }}>{t('manager.checklists.eyebrow', 'Workplace training')}</div>
-        <h1 style={{ margin: 0, fontSize: 'clamp(28px,4vw,36px)' }}>{t('sheetAnalytics.title', 'Checklist analytics')}</h1>
-        <p style={{ margin: '8px 0 0', color: 'var(--color-text-muted)' }}>{t('sheetAnalytics.subtitle', 'Completion, scores and answers across all your checklists or the ones you pick.')}</p>
-      </header>
-
-      <Card style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,200px),1fr))', gap: 16, marginBottom: 20 }}>
-        <AnalyticsFieldFilter value={fieldFilters} onChange={(value) => update('fieldFilters', value)} groupBy={groupByField} onGroupBy={(value) => update('groupByField', value)} />
+  const filterNodes: Record<AnalyticsFilterKey, ReactNode> = {
+    period: (
+      <>
         <label style={field}>
           {t('manager.checklists.periodFilter', 'Period')}
           <select className="ds-input" value={period} onChange={(event) => update('period', event.target.value)}>
@@ -144,50 +161,89 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
             <label style={field}>{t('manager.checklists.to', 'To')}<input className="ds-input" type="date" value={customTo} onChange={(event) => update('to', event.target.value)} /></label>
           </>
         )}
-        {departments.length > 0 && (
-          <label style={field}>
-            {t('manager.checklists.departmentFilter', 'Department')}
-            <select className="ds-input" value={departmentId} onChange={(event) => update('departmentId', event.target.value)}>
-              <option value="">{t('manager.checklists.allDepartments', 'All departments')}</option>
-              {departments.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-            </select>
-          </label>
-        )}
-        {managers.length > 0 && (
-          <label style={field}>
-            {t('manager.checklists.managerFilter', 'Manager')}
-            <select className="ds-input" value={managerId} onChange={(event) => update('managerId', event.target.value)}>
-              <option value="">{t('manager.checklists.allManagers', 'All managers')}</option>
-              <option value="unassigned">{t('manager.checklists.noManager', 'No manager')}</option>
-              {managers.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
-            </select>
-          </label>
-        )}
+      </>
+    ),
+    sheets: (
         <details open={selected.length > 0 || undefined} style={{ gridColumn: '1 / -1', minWidth: 0 }}>
           <summary style={{ fontWeight: 600, minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
             {t('sheetAnalytics.sheetsFilter', 'Checklists')}: {selected.length === 0 ? `${t('sheetAnalytics.allSheets', 'All available')}${allIds.length > 0 ? ` (${allIds.length})` : ''}` : `${selected.length}`}
           </summary>
           <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
-          <input aria-label={t('sheetAnalytics.sheetSearch', 'Search checklists')} className="ds-input" type="search" value={search} onChange={(event) => update('q', event.target.value)} placeholder={t('sheetAnalytics.sheetSearch', 'Search checklists')} />
-          <label style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44, fontWeight: 600 }}>
-            <input checked={selected.length === 0} onChange={() => update('sheets', '')} style={{ width: 20, height: 20, flex: 'none' }} type="checkbox" />
-            {t('sheetAnalytics.allSheets', 'All available')}{allIds.length > 0 ? ` (${allIds.length})` : ''}
-          </label>
-          <div style={{ maxHeight: 220, overflowY: 'auto', display: 'grid', gap: 2 }} data-testid="sheet-analytics-picker">
-            {sheetsState.status === 'loading' && <span>{t('sheetAnalytics.loading', 'Loading...')}</span>}
-            {visible.map((sheet) => {
-              const checked = selected.length === 0 || selected.includes(sheet.id);
-              return (
-                <label key={sheet.id} style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44 }}>
-                  <input checked={checked} onChange={() => update('sheets', toggleSheet(selected, sheet.id, allIds).join(','))} style={{ width: 20, height: 20, flex: 'none' }} type="checkbox" />
-                  <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{plainText(sheet.title)} <span style={{ color: 'var(--color-text-muted)' }}>({sheet.sessionsInPeriod})</span></span>
-                </label>
-              );
-            })}
-            {sheetsState.status === 'loaded' && visible.length === 0 && <span style={{ color: 'var(--color-text-muted)' }}>{sheets.length === 0 ? t('sheetAnalytics.noSheets', 'No checklists available.') : t('sheetAnalytics.noMatch', 'No checklists match the search.')}</span>}
-          </div>
+            <input aria-label={t('sheetAnalytics.sheetSearch', 'Search checklists')} className="ds-input" type="search" value={search} onChange={(event) => update('q', event.target.value)} placeholder={t('sheetAnalytics.sheetSearch', 'Search checklists')} />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44, fontWeight: 600 }}>
+                <input checked={selected.length === 0} onChange={() => update('sheets', '')} style={{ width: 20, height: 20, flex: 'none' }} type="checkbox" />
+                {t('sheetAnalytics.allSheets', 'All available')}{allIds.length > 0 ? ` (${allIds.length})` : ''}
+              </label>
+              {search.trim() !== '' && visible.length > 0 && (
+                <button className="ds-button ds-button--secondary ds-button--sm" onClick={() => update('sheets', selectFound(visible.map((sheet) => sheet.id), allIds).join(','))} type="button">
+                  {t('sheetAnalytics.selectFound', 'Select found')} ({visible.length})
+                </button>
+              )}
+              <span aria-live="polite" style={{ color: 'var(--color-text-muted)', marginLeft: 'auto' }}>
+                {t('sheetAnalytics.selectedCount', 'Selected {{selected}} of {{total}}', { selected: selected.length === 0 ? allIds.length : selected.length, total: allIds.length })}
+              </span>
+            </div>
+            {selected.length > 0 && (
+              <ul aria-label={t('sheetAnalytics.selectedList', 'Selected checklists')} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, listStyle: 'none', margin: 0, padding: 0 }}>
+                {selected.map((id) => {
+                  const title = plainText(sheets.find((sheet) => sheet.id === id)?.title ?? '') || t('sheetAnalytics.unknownSheet', 'Checklist');
+                  return (
+                    <li className="ui-status-badge" key={id} style={{ alignItems: 'center', display: 'inline-flex', gap: 4 }}>
+                      {title}
+                      <button aria-label={`${t('sheetAnalytics.removeSheet', 'Remove')}: ${title}`} className="ds-button ds-button--text ds-button--icon" onClick={() => update('sheets', toggleSheet(selected, id, allIds).join(','))} type="button">×</button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <div style={{ maxHeight: 260, overflowY: 'auto', display: 'grid', gap: 2 }} data-testid="sheet-analytics-picker">
+              {sheetsState.status === 'loading' && <span>{t('sheetAnalytics.loading', 'Loading...')}</span>}
+              {visible.map((sheet) => {
+                const checked = selected.length === 0 || selected.includes(sheet.id);
+                return (
+                  <label key={sheet.id} style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44 }}>
+                    <input checked={checked} onChange={() => update('sheets', toggleSheet(selected, sheet.id, allIds).join(','))} style={{ width: 20, height: 20, flex: 'none' }} type="checkbox" />
+                    <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{plainText(sheet.title)} <span style={{ color: 'var(--color-text-muted)' }}>({sheet.sessionsInPeriod})</span></span>
+                  </label>
+                );
+              })}
+              {sheetsState.status === 'loaded' && visible.length === 0 && <span style={{ color: 'var(--color-text-muted)' }}>{sheets.length === 0 ? t('sheetAnalytics.noSheets', 'No checklists available.') : t('sheetAnalytics.noMatch', 'No checklists match the search.')}</span>}
+            </div>
           </div>
         </details>
+    ),
+    department: departments.length > 0 ? <DepartmentFilter options={departments} selected={selectedDepartments} onChange={(value) => update('departments', value.join(','))} /> : null,
+    employee: <EmployeeFilter selected={selectedEmployees} onChange={(value) => update('employees', value.join(','))} />,
+    manager: managers.length > 0 ? (
+      <label style={field}>
+        {t('manager.checklists.managerFilter', 'Manager')}
+        <select className="ds-input" value={managerId} onChange={(event) => update('managerId', event.target.value)}>
+          <option value="">{t('manager.checklists.allManagers', 'All managers')}</option>
+          <option value="unassigned">{t('manager.checklists.noManager', 'No manager')}</option>
+          {managers.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+        </select>
+      </label>
+    ) : null,
+    userFields: (
+        <details open={Boolean(fieldFilters || groupByField) || undefined} style={{ gridColumn: '1 / -1', minWidth: 0 }}>
+          <summary style={{ fontWeight: 600, minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer' }}>{t('sheetAnalytics.moreFilters', 'More filters')}</summary>
+          <AnalyticsFieldFilter value={fieldFilters} onChange={(value) => update('fieldFilters', value)} groupBy={groupByField} onGroupBy={(value) => update('groupByField', value)} />
+        </details>
+    ),
+  };
+
+  return (
+    <Layout currentPath={currentPath}>
+      <header style={{ marginBottom: 20 }}>
+        <div style={{ color: 'var(--color-primary)', fontSize: 12, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 8 }}>{t('manager.checklists.eyebrow', 'Workplace training')}</div>
+        <h1 style={{ margin: 0, fontSize: 'clamp(28px,4vw,36px)' }}>{t('sheetAnalytics.title', 'Checklist analytics')}</h1>
+        <p style={{ margin: '8px 0 0', color: 'var(--color-text-muted)' }}>{t('sheetAnalytics.subtitle', 'Completion, scores and answers across all your checklists or the ones you pick.')}</p>
+      </header>
+
+      <Card style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,200px),1fr))', gap: 16, marginBottom: 20 }}>
+        {enabledFilters.map((key) => <Fragment key={key}>{filterNodes[key]}</Fragment>)}
+        <FilterSetEditor enabled={enabledFilters} isAdmin={isAdmin} onSaved={setFilterSet} />
       </Card>
 
       {state.status === 'loading' && <PageState message={t('sheetAnalytics.loading', 'Loading...')} variant="loading" />}
@@ -210,7 +266,7 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
           )}
           <section aria-labelledby="sheet-analytics-table" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 8 }}>
             <h2 id="sheet-analytics-table" style={{ fontSize: 20, margin: 0 }}>{t('sheetAnalytics.tableLabel', 'Metrics by checklist')}</h2>
-            <SheetAnalyticsExport query={{ view: 'sheets', from, to, checklistIds: selected.length ? selected : undefined, departmentId: departmentId || undefined, managerId: managerId || undefined, fieldFilters, groupByField }} sheetName={t('sheetAnalytics.tableLabel', 'Metrics by checklist')} />
+            <SheetAnalyticsExport query={{ view: 'sheets', from, to, checklistIds: selected.length ? selected : undefined, departmentIds, employeeIds, managerId: managerId || undefined, fieldFilters, groupByField }} sheetName={t('sheetAnalytics.tableLabel', 'Metrics by checklist')} />
             <SheetsTable rows={state.data.sheets} fieldColumn={state.data.fieldColumn} t={t} />
           </section>
         </div>
@@ -218,7 +274,8 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
       {selected.length === 1 && sheetsState.status !== 'loading' && (
         <div style={{ marginTop: 24 }}>
           <SheetItemAnalytics
-            departmentId={departmentId || undefined}
+            departmentIds={departmentIds}
+            employeeIds={employeeIds}
             from={from}
             managerId={managerId || undefined}
             fieldFilters={fieldFilters}

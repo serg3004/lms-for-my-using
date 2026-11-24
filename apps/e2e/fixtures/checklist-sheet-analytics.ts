@@ -3,6 +3,10 @@ import type { ItemAnalytics, ItemAnalyticsMetrics, SheetAnalytics, SheetAnalytic
 
 export const sheetA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 export const sheetB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+export const employeeAnna = '11111111-1111-4111-8111-111111111111';
+export const employeePetr = '22222222-2222-4222-8222-222222222222';
+/** PR 518: the bodies of the filter-set saves the page sent. */
+export const filterSetSaves: Array<{ filters: string[]; scope: 'user' | 'organization' }> = [];
 export const sheetList: SheetAnalyticsSheet[] = [
   { id: sheetA, title: 'Охрана труда', status: 'published', folderId: null, sessionsInPeriod: 4 },
   { id: sheetB, title: 'Складская приёмка', status: 'published', folderId: null, sessionsInPeriod: 2 },
@@ -35,6 +39,18 @@ export async function installSheetAnalyticsMocks(page: Page, role: 'admin' | 'ma
     if (path.endsWith('/theme')) return route.fulfill({ json: { themeSettings: {} } });
     if (path === '/notifications/unread-count') return route.fulfill({ json: { count: 0 } });
     if (path === '/checklists/analytics/sheets') return route.fulfill({ json: sheetList });
+    if (path === '/checklists/analytics/employees') {
+      const search = (url.searchParams.get('search') ?? '').toLowerCase();
+      return route.fulfill({ json: [{ id: employeeAnna, name: 'Иванова Анна' }, { id: employeePetr, name: 'Петров Пётр' }].filter((employee) => employee.name.toLowerCase().includes(search)) });
+    }
+    if (path === '/checklists/analytics/filter-set') {
+      if (route.request().method() === 'PUT') {
+        const body = route.request().postDataJSON() as { filters: string[]; scope: 'user' | 'organization' };
+        filterSetSaves.push(body);
+        return route.fulfill({ json: { user: body.scope === 'user' && body.filters.length ? body.filters : null, organization: body.scope === 'organization' ? body.filters : null } });
+      }
+      return route.fulfill({ json: { user: null, organization: null } });
+    }
     if (path === '/checklists/analytics/overview') {
       requests.push(url);
       return route.fulfill({ json: sheetAnalyticsFixture((url.searchParams.get('checklistIds') ?? '').split(',').filter(Boolean)) });

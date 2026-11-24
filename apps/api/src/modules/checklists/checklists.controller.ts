@@ -66,6 +66,8 @@ import {
   checklistManagerAnalyticsExportQuerySchema,
   checklistManagerAnalyticsQuerySchema,
   checklistSheetAnalyticsQuerySchema,
+  checklistAnalyticsFilterSetSchema,
+  checklistAnalyticsEmployeesQuerySchema,
   checklistItemAnalyticsQuerySchema,
   checklistAnalyticsExportQuerySchema,
   checklistQueueQuerySchema,
@@ -167,6 +169,30 @@ export class ChecklistsController {
   async getSheetAnalytics(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     return this.checklistsService.getSheetAnalytics(user.organizationId, user, await this.reviewAccess.participantLearnerScope(user), checklistSheetAnalyticsQuerySchema.parse(rawQuery));
+  }
+
+  /** PR 518: the filters of the Analytics tab (the viewer's own set and the organization default). */
+  @Get('checklists/analytics/filter-set')
+  @Roles(...rolePolicies.checklistManagerAnalyticsRead)
+  async getAnalyticsFilterSet(@Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.getAnalyticsFilterSet(user.organizationId, user.id);
+  }
+
+  @Put('checklists/analytics/filter-set')
+  @Roles(...rolePolicies.checklistManagerAnalyticsRead)
+  async saveAnalyticsFilterSet(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.saveAnalyticsFilterSet(user.organizationId, user, checklistAnalyticsFilterSetSchema.parse(body));
+  }
+
+  /** PR 518: employees of the viewer's scope for the employee filter. */
+  @Get('checklists/analytics/employees')
+  @Roles(...rolePolicies.checklistManagerAnalyticsRead)
+  async listAnalyticsEmployees(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    const query = checklistAnalyticsEmployeesQuerySchema.parse(rawQuery);
+    return this.checklistsService.listAnalyticsEmployees(user.organizationId, await this.reviewAccess.participantLearnerScope(user), query.search);
   }
 
   /** PR 463: the current view of the Analytics tab as CSV/XLSX (declared before `checklists/:id/...` so `analytics` is never read as an id). */

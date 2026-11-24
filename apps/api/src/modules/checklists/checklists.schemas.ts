@@ -365,6 +365,12 @@ export const checklistManagerAnalyticsQuerySchema = z.object({
 export type ChecklistManagerAnalyticsQuery = z.infer<typeof checklistManagerAnalyticsQuerySchema>;
 
 // PR 459: analytics over several sheets (the "Analytics" tab); `checklistIds` is a comma-separated list, empty = every accessible sheet.
+// PR 518: several departments or employees at once, sent as a comma separated list.
+const analyticsIdList = z.preprocess(
+  (value) => (typeof value === 'string' ? value.split(',').map((part) => part.trim().toLowerCase()).filter(Boolean) : value),
+  z.array(z.guid()).max(100).optional(),
+);
+
 export const checklistSheetAnalyticsQuerySchema = z.object({
   groupByField: fieldKeySchema.optional(),
   fieldFilters: analyticsFieldFiltersSchema,
@@ -375,6 +381,8 @@ export const checklistSheetAnalyticsQuerySchema = z.object({
     z.array(z.guid()).max(100).optional(),
   ),
   departmentId: z.guid().optional(),
+  departmentIds: analyticsIdList,
+  employeeIds: analyticsIdList,
   managerId: z.union([z.guid().toLowerCase(), z.literal('unassigned')]).optional(),
 });
 export type ChecklistSheetAnalyticsQuery = z.infer<typeof checklistSheetAnalyticsQuerySchema>;
@@ -386,6 +394,8 @@ export const checklistItemAnalyticsQuerySchema = z.object({
   from: z.string().datetime(),
   to: z.string().datetime(),
   departmentId: z.guid().optional(),
+  departmentIds: analyticsIdList,
+  employeeIds: analyticsIdList,
   managerId: z.union([z.guid().toLowerCase(), z.literal('unassigned')]).optional(),
   observerId: z.guid().toLowerCase().optional(),
   page: z.coerce.number().int().min(1).max(1000).default(1),
@@ -428,6 +438,8 @@ export const checklistAnalyticsExportQuerySchema = z.object({
   checklistIds: checklistSheetAnalyticsQuerySchema.shape.checklistIds,
   checklistId: z.guid().toLowerCase().optional(),
   departmentId: z.guid().optional(),
+  departmentIds: analyticsIdList,
+  employeeIds: analyticsIdList,
   managerId: z.union([z.guid().toLowerCase(), z.literal('unassigned')]).optional(),
   // Picked criteria or groups of the screen (empty = all), the text search and the sorting of the table.
   pick: z.preprocess(
@@ -797,3 +809,12 @@ export const updateChecklistAnswerSetSchema = z
   .strict();
 export type UpdateChecklistAnswerSetInput = z.infer<typeof updateChecklistAnswerSetSchema>;
 export const copyChecklistAnswerSetSchema = z.object({ name: z.string().trim().min(1).max(255).optional() }).strict();
+
+// PR 518: the filters the analytics shows and their order; the same list is kept per user and as the organization default.
+export const ANALYTICS_FILTER_KEYS = ['period', 'sheets', 'department', 'employee', 'manager', 'userFields'] as const;
+export const checklistAnalyticsFilterSetSchema = z.object({
+  filters: z.array(z.enum(ANALYTICS_FILTER_KEYS)).max(ANALYTICS_FILTER_KEYS.length).refine((list) => new Set(list).size === list.length, { message: 'Duplicate filter' }),
+  scope: z.enum(['user', 'organization']).default('user'),
+});
+export type ChecklistAnalyticsFilterSetInput = z.infer<typeof checklistAnalyticsFilterSetSchema>;
+export const checklistAnalyticsEmployeesQuerySchema = z.object({ search: z.string().trim().max(120).optional() });

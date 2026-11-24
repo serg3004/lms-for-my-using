@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { installSheetAnalyticsMocks, sheetA, sheetB } from '../fixtures/checklist-sheet-analytics.js';
+import { employeeAnna, filterSetSaves, installSheetAnalyticsMocks, sheetA, sheetB } from '../fixtures/checklist-sheet-analytics.js';
 
 for (const width of [390, 1440]) {
   test(`admin opens the Analytics tab next to Sessions and Evaluation scales and picks sheets at ${width}px`, async ({ page }) => {
@@ -60,4 +60,37 @@ test('a period without sessions says so instead of showing empty cards', async (
   await page.route('**/api/v1/checklists/analytics/overview**', (route) => route.fulfill({ json: { total: { plan: { planned: 0, completed: 0, inProgress: 0, notStarted: 0, overdue: 0, remaining: 0 }, completionPercentage: null, selfCompleted: 0, averagePercentage: null, criteria: { total: 0, answered: 0, skipped: 0, remaining: 0, zeroPoints: 0 }, scales: [], queue: { notStarted: 0, oldestDays: null }, guests: { completed: 0, averagePercentage: null } }, sheets: [{ checklistId: sheetA, title: 'Охрана труда', plan: { planned: 0, completed: 0, inProgress: 0, notStarted: 0, overdue: 0, remaining: 0 }, completionPercentage: null, selfCompleted: 0, averagePercentage: null, criteria: { total: 0, answered: 0, skipped: 0, remaining: 0, zeroPoints: 0 }, scales: [], queue: { notStarted: 0, oldestDays: null }, guests: { completed: 0, averagePercentage: null } }], period: { from: '2026-10-01T00:00:00.000Z', to: '2026-11-01T00:00:00.000Z' }, truncated: false } }));
   await page.goto('/admin/checklists/sheet-analytics');
   await expect(page.getByText('За этот период ещё нет сессий', { exact: false })).toBeVisible();
+});
+
+test('analytics filters: select found sheets, pick employees by name and save the set of filters (PR 518)', async ({ page }) => {
+  const requests = await installSheetAnalyticsMocks(page, 'admin');
+  filterSetSaves.length = 0;
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/admin/checklists/sheet-analytics');
+  await expect(page.getByRole('table', { name: 'Показатели по чек-листам' })).toBeVisible();
+
+  // Sheets: search, "select found" keeps the match, the counter and the chip follow.
+  await page.getByText(/^Чек-листы: Все доступные/).click();
+  await page.getByLabel('Поиск чек-листов').fill('склад');
+  await page.getByRole('button', { name: /Выбрать найденные/ }).click();
+  await expect(page).toHaveURL(new RegExp(`sheets=${sheetB}`));
+  await expect(page.getByText('Выбрано 1 из 2')).toBeVisible();
+  await expect(page.getByRole('list', { name: 'Выбранные чек-листы' }).getByText('Складская приёмка')).toBeVisible();
+
+  // Employees: found by name, sent to the server as employeeIds, kept in the address bar.
+  await page.getByText(/^Сотрудник: Все сотрудники/).click();
+  await page.getByLabel('Поиск сотрудников').fill('иванова');
+  await page.getByRole('checkbox', { name: 'Иванова Анна' }).click();
+  await expect(page).toHaveURL(new RegExp(`employees=${employeeAnna}`));
+  await expect.poll(() => requests.at(-1)?.searchParams.get('employeeIds')).toBe(employeeAnna);
+
+  // The set of filters: switch the employee filter off and save it for the viewer.
+  await page.getByText('Выбрать фильтры').click();
+  await page.getByRole('checkbox', { name: 'Сотрудник' }).uncheck();
+  await page.getByRole('button', { name: 'Сохранить для меня' }).click();
+  await expect.poll(() => filterSetSaves.at(-1)).toEqual({ filters: ['period', 'sheets', 'department', 'manager'], scope: 'user' });
+  await expect(page.getByText(/^Сотрудник: /)).toHaveCount(0);
+  // An administrator may also make it the default of the organization.
+  await page.getByRole('button', { name: 'Сделать по умолчанию для всех' }).click();
+  await expect.poll(() => filterSetSaves.at(-1)?.scope).toBe('organization');
 });

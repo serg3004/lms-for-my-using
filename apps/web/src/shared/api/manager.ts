@@ -144,7 +144,7 @@ export function exportManagerChecklistManagers(query: ManagerChecklistAnalyticsQ
 
 // ---- PR 461: analytics over several sheets (the "Analytics" tab) ----
 
-export type SheetAnalyticsQuery = { groupByField?: string; from: string; to: string; checklistIds?: string[]; departmentId?: string; managerId?: string; fieldFilters?: string };
+export type SheetAnalyticsQuery = { groupByField?: string; from: string; to: string; checklistIds?: string[]; departmentId?: string; /** PR 518: comma separated ids. */ departmentIds?: string; employeeIds?: string; managerId?: string; fieldFilters?: string };
 
 export type SheetAnalyticsSheet = { id: string; title: string; status: string; folderId: string | null; sessionsInPeriod: number };
 
@@ -177,6 +177,25 @@ export function getSheetAnalytics({ checklistIds, ...query }: SheetAnalyticsQuer
   return apiRequest<SheetAnalytics>(`/checklists/analytics/overview${buildQueryString({ ...query, checklistIds: checklistIds?.join(',') })}`);
 }
 
+// ---- PR 518: the filter set of the Analytics tab and the employee filter ----
+
+export type AnalyticsFilterKey = 'period' | 'sheets' | 'department' | 'employee' | 'manager' | 'userFields';
+export type AnalyticsFilterSet = { user: AnalyticsFilterKey[] | null; organization: AnalyticsFilterKey[] | null };
+export type AnalyticsEmployee = { id: string; name: string };
+
+export function listAnalyticsEmployees(search: string) {
+  return apiRequest<AnalyticsEmployee[]>(`/checklists/analytics/employees${buildQueryString({ search: search || undefined })}`);
+}
+
+export function getAnalyticsFilterSet() {
+  return apiRequest<AnalyticsFilterSet>('/checklists/analytics/filter-set');
+}
+
+/** An empty list resets the set; `organization` is the administrator's default for everyone. */
+export function saveAnalyticsFilterSet(filters: AnalyticsFilterKey[], scope: 'user' | 'organization') {
+  return apiRequest<AnalyticsFilterSet>('/checklists/analytics/filter-set', { method: 'PUT', body: JSON.stringify({ filters, scope }) });
+}
+
 // ---- PR 462: one sheet cut by criteria, groups, feedback fields and notes ----
 
 export type ItemAnalyticsMetrics = {
@@ -200,7 +219,7 @@ export type ItemAnalytics = {
   truncated: boolean;
 };
 
-export function getItemAnalytics(checklistId: string, query: { by: ItemAnalytics['by']; from: string; to: string; departmentId?: string; managerId?: string; fieldFilters?: string; page?: number; itemId?: string }) {
+export function getItemAnalytics(checklistId: string, query: { by: ItemAnalytics['by']; from: string; to: string; departmentId?: string; departmentIds?: string; employeeIds?: string; managerId?: string; fieldFilters?: string; page?: number; itemId?: string }) {
   return apiRequest<ItemAnalytics>(`/checklists/${encodeURIComponent(checklistId)}/analytics/items${buildQueryString(query)}`);
 }
 
@@ -210,7 +229,7 @@ export type SheetAnalyticsExportQuery = {
   groupByField?: string;
   view: 'sheets' | 'criteria' | 'groups' | 'feedback' | 'notes';
   from: string; to: string;
-  checklistIds?: string[]; checklistId?: string; departmentId?: string; managerId?: string; fieldFilters?: string;
+  checklistIds?: string[]; checklistId?: string; departmentId?: string; departmentIds?: string; employeeIds?: string; managerId?: string; fieldFilters?: string;
   pick?: string[]; q?: string; sort?: 'order' | 'completion' | 'average'; itemId?: string;
   format: 'csv' | 'xlsx';
 };
