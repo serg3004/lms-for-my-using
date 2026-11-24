@@ -1,16 +1,16 @@
+import { useAssessmentDraft } from './assessment-taking/draft.js';
 import { requiresLockedAnswers } from '@lms/shared/assessment-policy';
 import { recordAssessmentAnswer } from '../shared/api/assessments.js';
 import type { RecordedAssessmentAnswer } from '../shared/api/types.js';
 import { correctAnswerText } from '../features/longread-exercises/answer-text.js';
 import { assessmentTokenQuery } from '../shared/api/assessments.js';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { QuestionResponseFields } from '../features/longread-exercises/QuestionResponseFields.js';
 import { ownAnswerText, reviewedCorrectText } from '../features/longread-exercises/answer-text.js';
 import { RichText, plainText } from '../shared/RichText.js';
 import { useTranslation } from 'react-i18next';
 
 import {
-  ApiClientError,
   AssessmentAttemptResult,
   AssessmentSummary,
   createAssessmentAttempt,
@@ -38,6 +38,8 @@ import {
 
 type LearnerAssessmentTakingData = { assessment: AssessmentSummary; questions: QuestionWithOptions[]; sampledAttempt?: Awaited<ReturnType<typeof startAssessmentAttempt<QuestionWithOptions>>> };
 
+const EMPTY_QUESTIONS: QuestionWithOptions[] = [];
+
 type TakingResult = Partial<Pick<AssessmentAttemptResult, 'status' | 'id'>> & Pick<AssessmentAttemptResult, 'passed' | 'score' | 'maxScore' | 'percentage' | 'assessment' | 'answers' | 'effectiveResult'>;
 type TakingPreview = LearnerAssessmentTakingData & {
   startIndex: number;
@@ -61,6 +63,11 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
   const [submitState, setSubmitState] = useState<SubmitState>({ status: 'idle' });
   const [currentIndex, setCurrentIndex] = useState(preview?.startIndex ?? 0);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [marked, setMarked] = useState<string[]>([]);
+  const [deadline, setDeadline] = useState<number | null>(null);
+  const [expired, setExpired] = useState(false);
+  const [startRetry, setStartRetry] = useState(0);
+  const [expiryRetry, setExpiryRetry] = useState(0);
   const [timerError, setTimerError] = useState<string | null>(null);
 
   const { state: loadState } = useAsyncData<LearnerAssessmentTakingData>(
@@ -68,7 +75,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
       if (preview) return { assessment: preview.assessment, questions: preview.questions };
       const assessment = await getAssessment(assessmentId);
       if (assessment.bankSampleSize) {
-        const sampledAttempt = await startAssessmentAttempt<QuestionWithOptions>(assessmentId, token);
+        const sampledAttempt = await startAssessmentAttempt<QuestionWithOptions>(assessmentId, token, true);
         if (!sampledAttempt.questions) throw new Error('Missing attempt questions');
         return { assessment, questions: sampledAttempt.questions, sampledAttempt };
       }
@@ -81,63 +88,85 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
     { unauthenticated: t('assessments.sessionExpired'), error: t('assessments.loadError') },
   );
 
-  /**
-   * Untimed assessments (timeLimitMinutes null, the default): no timer shown at all. Timed ones:
-   * calling the start endpoint (idempotent — resumes an existing in_progress attempt rather than
-   * restarting the clock) gets the server-trusted startedAt, so the countdown can't be reset by
-   * refreshing the page or be fooled by the browser's clock.
-   *
-   * Deliberately keeps a local timerError instead of writing into loadState: this effect runs
-   * outside the normal load cycle (it doesn't (re)fetch the assessment), so it isn't a case
-   * useAsyncData's reload()/mutate() cover — it's a side channel that needs its own state.
-   */
+  const draftQuestions = loadState.status === 'loaded' ? loadState.data.questions : undefined;
+  const timeLimit = loadState.status === 'loaded' ? loadState.data.assessment.timeLimitMinutes : null;
+  const draftLocked = loadState.status === 'loaded' && requiresLockedAnswers(loadState.data.assessment.policy);
+  const draft = useAssessmentDraft(assessmentId, attemptId, token, draftQuestions ?? EMPTY_QUESTIONS, draftLocked,
+    !!preview || secondsLeft === 0 || submitState.status === 'submitting' || submitState.status === 'done');
+  const restoreDraft = useRef(draft.restore);
   useEffect(() => {
-    if (loadState.status !== 'loaded' || loadState.data.questions.some((question) => !supportsTakingQuestion(question))) {
-      setSecondsLeft(null);
-      return;
-    }
-
-    const timeLimitMinutes = loadState.data.assessment.timeLimitMinutes;
-    const locked = requiresLockedAnswers(loadState.data.assessment.policy);
-    if (preview || (!timeLimitMinutes && !locked && !loadState.data.sampledAttempt)) {
-      setSecondsLeft(timeLimitMinutes ? timeLimitMinutes * 60 : null);
+    if (!draftQuestions?.length || draftQuestions.some((question) => !supportsTakingQuestion(question)) || loadState.status !== 'loaded') return;
+    const { assessment, sampledAttempt } = loadState.data;
+    const limit = assessment.timeLimitMinutes;
+    if (preview) {
+      setSecondsLeft(limit ? limit * 60 : null);
       setSessionReady(true);
       return;
     }
     let cancelled = false;
-    setTimerError(null);
     setSessionReady(false);
-    setAttemptId(undefined);
 
     void (async () => {
       try {
-        const attempt = loadState.data.sampledAttempt ?? await startAssessmentAttempt(assessmentId, token);
+        const attempt = sampledAttempt ?? await startAssessmentAttempt(assessmentId, token, true);
         if (cancelled) return;
         setAttemptId(attempt.id);
-        setSecondsLeft(timeLimitMinutes ? computeSecondsLeft(attempt.startedAt, timeLimitMinutes) : null);
-        if (attempt.lockedAnswers?.length) {
-          const answers = attempt.lockedAnswers;
-          setRecorded(Object.fromEntries(answers.map((answer) => [answer.questionId, { answer }])));
-          setSelected(Object.fromEntries(answers.map((answer) => [answer.questionId, answer.response ?? answer.selectedOptionIds ?? answer.selectedOptionId ?? ''])));
-          setCurrentIndex(Math.min(answers.length, loadState.data.questions.length - 1));
+        const serverNow = attempt.serverNow ? Date.parse(attempt.serverNow) : Date.now();
+        setDeadline(limit ? Date.now() + Date.parse(attempt.startedAt) + limit * 60_000 - serverNow : null);
+        setSecondsLeft(limit ? computeSecondsLeft(attempt.startedAt, limit, serverNow) : null);
+        if (attempt.status === 'completed' && limit) {
+          setExpired(true);
+          return;
         }
+        try {
+          setMarked(JSON.parse(localStorage.getItem(`assessment-marked:${attempt.id}`) ?? '[]') as string[]);
+        } catch {
+          setMarked([]);
+        }
+        const answers = attempt.lockedAnswers ?? [];
+        const restored = Object.fromEntries(answers.map((answer) => [answer.questionId, answer.response ?? answer.selectedOptionIds ?? answer.selectedOptionId ?? '']));
+        const local = restoreDraft.current(attempt.id);
+        setSelected(draftLocked ? { ...local, ...restored } : { ...restored, ...local });
+        if (draftLocked) {
+          setRecorded(Object.fromEntries(answers.map((answer) => [answer.questionId, { answer }])));
+          setCurrentIndex(Math.min(answers.length, draftQuestions.length - 1));
+        } else {
+          const first = draftQuestions.findIndex((question) => !isQuestionAnswered(question, (local[question.id] ?? restored[question.id])));
+          setCurrentIndex(first < 0 ? draftQuestions.length - 1 : first);
+        }
+        setTimerError(null);
         setSessionReady(true);
       } catch (error) {
-        if (cancelled) return;
-        if (error instanceof ApiClientError) {
-          setTimerError(loadState.data.assessment.policy ? t(getAssessmentSubmitErrorKey(error)) : error.message);
-        }
+        if (!cancelled) setTimerError(t(getAssessmentSubmitErrorKey(error)));
       }
     })();
 
     return () => { cancelled = true; };
-  }, [loadState, assessmentId, token, preview, t]);
+  }, [loadState, draftQuestions, draftLocked, assessmentId, token, preview, t, startRetry]);
 
   useEffect(() => {
-    if (secondsLeft === null || secondsLeft <= 0) return;
-    const id = setInterval(() => setSecondsLeft((s) => (s !== null && s > 0 ? s - 1 : 0)), 1000);
-    return () => clearInterval(id);
-  }, [secondsLeft]);
+    if (!deadline) return;
+    const update = () => setSecondsLeft(Math.max(0, Math.ceil((deadline - Date.now()) / 1000)));
+    const id = window.setInterval(update, 1000);
+    return () => window.clearInterval(id);
+  }, [deadline]);
+
+  useEffect(() => {
+    if (preview || !attemptId || secondsLeft !== 0 || expired || submitState.status === 'done' || submitState.status === 'submitting') return;
+    let cancelled = false;
+    void startAssessmentAttempt(assessmentId, token, true, attemptId).then((attempt) => {
+      if (cancelled) return;
+      if (attempt.status === 'pending_review' || (attempt.status === 'completed' && timeLimit && attempt.completedAt
+        && Date.parse(attempt.completedAt) - Date.parse(attempt.startedAt) < timeLimit * 60_000)) {
+        window.location.assign(`/learn/attempts/${attempt.id}`);
+      } else if (attempt.status === 'completed') {
+        setExpired(true);
+      }
+    }).catch(() => {
+      if (!cancelled) setTimerError(t('assessments.saveInterrupted'));
+    });
+    return () => { cancelled = true; };
+  }, [assessmentId, attemptId, expiryRetry, expired, preview, secondsLeft, submitState.status, t, timeLimit, token]);
 
   function formatTime(seconds: number): string {
     const m = Math.floor(seconds / 60);
@@ -145,16 +174,30 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   }
 
+  function changeAnswer(questionId: string, value: SelectedAnswers[string]) {
+    setSelected((previous) => ({ ...previous, [questionId]: value }));
+    if (!preview) draft.change(questionId, value);
+  }
+
+  function toggleMarked(questionId: string) {
+    const next = marked.includes(questionId) ? marked.filter((id) => id !== questionId) : [...marked, questionId];
+    setMarked(next);
+    if (!attemptId) return;
+    try {
+      if (next.length) localStorage.setItem(`assessment-marked:${attemptId}`, JSON.stringify(next));
+      else localStorage.removeItem(`assessment-marked:${attemptId}`);
+    } catch {
+      // Markers are still available until the page is closed.
+    }
+  }
+
   function selectSingle(questionId: string, optionId: string) {
-    setSelected((prev) => ({ ...prev, [questionId]: optionId }));
+    changeAnswer(questionId, optionId);
   }
 
   function selectMultiple(questionId: string, optionId: string, checked: boolean) {
-    setSelected((prev) => {
-      const current = selectedIds(prev[questionId]);
-      const next = checked ? [...current, optionId] : current.filter((id) => id !== optionId);
-      return { ...prev, [questionId]: next };
-    });
+    const current = selectedIds(selected[questionId]);
+    changeAnswer(questionId, checked ? [...current, optionId] : current.filter((id) => id !== optionId));
   }
 
   async function checkAnswer(question: QuestionWithOptions) {
@@ -166,10 +209,12 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
         ? await preview.recordAnswer(question, selected)
         : await recordAssessmentAnswer(assessmentId, attemptId!, buildAssessmentAnswers([question], selected)[0], token);
       setRecorded((previous) => ({ ...previous, [question.id]: result }));
+      draft.acknowledge(question.id);
       const answer = result.answer;
       setSelected((previous) => ({ ...previous, [question.id]: answer.response ?? answer.selectedOptionIds ?? answer.selectedOptionId ?? '' }));
     } catch (error) {
-      setSubmitState({ status: 'error', message: t(getAssessmentSubmitErrorKey(error)) });
+      setSubmitState({ status: 'error', message: t(!preview && error instanceof TypeError
+        ? 'assessments.saveInterrupted' : getAssessmentSubmitErrorKey(error)) });
     } finally {
       setChecking(false);
     }
@@ -182,7 +227,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
 
     const answeredQuestions = loadState.data.questions.slice(preview?.startIndex ?? 0);
     const answeredCount = countAnsweredQuestions(answeredQuestions, selected);
-    if (!sessionReady || (requiresLockedAnswers(loadState.data.assessment.policy)
+    if (secondsLeft === 0 || !sessionReady || (requiresLockedAnswers(loadState.data.assessment.policy)
       && answeredQuestions.some((question) => !recorded[question.id])) || answeredCount < answeredQuestions.length) {
       setSubmitState({ status: 'error', message: t('assessments.errorAnswerAll') });
       return;
@@ -196,8 +241,15 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
         setSubmitState({ status: 'done', result, certificateId: null });
         return;
       }
-      const attempt = await createAssessmentAttempt(assessmentId, buildAssessmentAnswers(loadState.data.questions, selected), token, loadState.data.assessment.policy || loadState.data.sampledAttempt ? attemptId : undefined);
+      const attempt = await createAssessmentAttempt(assessmentId, buildAssessmentAnswers(loadState.data.questions, selected), token, attemptId);
       const result = await getAttemptResult(attempt.id);
+      const limit = loadState.data.assessment.timeLimitMinutes;
+      if (limit && result.status === 'completed' && !result.passed && result.completedAt
+        && Date.parse(result.completedAt) - Date.parse(result.startedAt) >= limit * 60_000) {
+        draft.clear();
+        setExpired(true);
+        return;
+      }
 
       let certificateId: string | null = null;
       const courseId = result.courseId === undefined ? loadState.data.assessment.courseId : result.courseId;
@@ -215,6 +267,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
         }
       }
 
+      draft.clear();
       setSubmitState({ status: 'done', result, certificateId });
     } catch (error) {
       setSubmitState({ status: 'error', message: t(getAssessmentSubmitErrorKey(error)) });
@@ -248,19 +301,23 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
     );
   }
 
+  if (expired) return <PageState title={t('assessments.timerExpired')} message={t('assessments.timeEnded')}
+    action={<a href={`/learn/attempts/${attemptId}`}>{t('assessments.attemptsHistoryReview')}</a>} />;
+
   if (timerError) {
-    return (
-      <>
-        <PageState title={t('assessments.takeTitle')} message={timerError} variant="error" action={<a href="/learn/assessments">{t('assessments.navLink')}</a>} />
-      </>
-    );
+    return <PageState title={t('assessments.takeTitle')} message={timerError} variant="error"
+      action={<button type="button" className="learner-btn learner-btn--secondary" onClick={() => {
+        setTimerError(null);
+        if (secondsLeft === 0) setExpiryRetry((value) => value + 1);
+        else setStartRetry((value) => value + 1);
+      }}>{t('assessments.retrySave')}</button>} />;
   }
 
   const { assessment, questions } = loadState.data;
   const locked = requiresLockedAnswers(assessment.policy);
   const noBack = assessment.policy?.preventBacktracking;
   const allQuestions = assessment.policy?.oneQuestion === false && !locked;
-  const progress = questions.length ? Math.round((allQuestions ? countAnsweredQuestions(questions, selected) : currentIndex + 1) * 100 / questions.length) : 0;
+  const progress = questions.length ? Math.round(countAnsweredQuestions(questions, selected) * 100 / questions.length) : 0;
   if (questions.some((question) => !supportsTakingQuestion(question))) {
     return <PageState title={assessment.title} message={t('assessments.typedQuestionUnavailable')} variant="error" action={<a href="/learn/assessments">{t('assessments.navLink')}</a>} />;
   }
@@ -346,8 +403,8 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
             <button
               className="learner-btn learner-btn--secondary"
               type="button"
-              onClick={() => { if (locked && !preview) { window.location.reload(); return; }
-                setSelected({}); setRecorded({}); if (preview) setCurrentIndex(preview.startIndex); setSubmitState({ status: 'idle' }); }}
+              onClick={() => { if (!preview) { window.location.assign(backLink + '/take' + assessmentTokenQuery(token)); return; }
+                setSelected({}); setRecorded({}); setCurrentIndex(preview.startIndex); setSubmitState({ status: 'idle' }); }}
             >
               {t('assessments.retryBtn')}
             </button>
@@ -357,7 +414,6 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
     );
   }
 
-  const timerWarning = secondsLeft !== null && secondsLeft < 120;
 
   return (
     <div className="learner-quiz">
@@ -379,22 +435,18 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
             {t('assessments.subtitleTaking', { current: currentIndex + 1, total: questions.length, score: assessment.passingScore })}
           </p>
         </div>
-        {secondsLeft !== null && (
-          <div
-            aria-live="polite"
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '14px 20px', background: timerWarning ? '#fef2f2' : 'var(--color-surface-muted)', border: `1px solid ${timerWarning ? '#fca5a5' : 'var(--color-border)'}`, borderRadius: '16px', minWidth: '120px' }}
-          >
-            <span style={{ color: timerWarning ? '#dc2626' : 'var(--color-text-muted)', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-              {t('assessments.timerLabel')}
-            </span>
-            <strong style={{ color: timerWarning ? '#dc2626' : 'var(--color-text)', fontSize: '26px', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1, marginTop: '4px' }}>
-              {secondsLeft > 0 ? formatTime(secondsLeft) : t('assessments.timerExpired')}
-            </strong>
-          </div>
-        )}
       </section>
 
-      <section style={{ marginBottom: '20px' }}>
+      <section className="learner-quiz__status">
+        <div className="learner-quiz__status-line">
+          <span>{t('assessments.answeredCount', { count: countAnsweredQuestions(questions, selected), total: questions.length })}</span>
+          {secondsLeft !== null && <span role="timer">{t('assessments.timerLabel')} {formatTime(secondsLeft)}</span>}
+          <a href="#assessment-question-navigator" className="learner-quiz__navigator-link">{t('assessments.questionNavTitle')}</a>
+        </div>
+        {draft.failed && <div role="status">
+          {t('assessments.saveInterrupted')}{' '}
+          <button className="learner-btn learner-btn--secondary" type="button" onClick={draft.retry}>{t('assessments.retrySave')}</button>
+        </div>}
         <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)', fontSize: '13px', marginBottom: '8px' }}>
           <span>{t('assessments.progressLabel')}</span>
           <strong>{progress}%</strong>
@@ -407,7 +459,61 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
       {questions.length === 0 ? (
         <p className="learner-quiz__empty">{t('assessments.noQuestions')}</p>
       ) : (
-        <div className="edit-layout">
+        <div className="learner-quiz__layout">
+          <aside className="learner-quiz__navigator" id="assessment-question-navigator" aria-labelledby="assessment-question-navigator-title">
+            <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '20px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
+              <h3 id="assessment-question-navigator-title" style={{ margin: '0 0 16px', fontSize: '18px', color: 'var(--color-text)' }}>{t('assessments.questionNavTitle')}</h3>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(44px, 1fr))', gap: '8px' }}>
+                {questions.map((q, i) => {
+                  const isDone = isQuestionAnswered(q, selected[q.id]);
+                  const isCurrent = i === currentIndex;
+                  return (
+                    <button
+                      key={q.id}
+                      type="button"
+                      aria-current={isCurrent ? 'step' : undefined}
+                      aria-label={t('assessments.questionNavItem', { number: i + 1, status: t(isDone ? 'assessments.legendAnswered' : 'assessments.legendNoAnswer') }) + (marked.includes(q.id) ? ` · ${t('assessments.markForReturn')}` : '')}
+                      disabled={checking || (noBack && i !== currentIndex)
+                        || (locked && i > currentIndex && (i !== currentIndex + 1 || !recorded[questions[currentIndex].id]))}
+                      onClick={() => {
+                        setCurrentIndex(i);
+                        if (allQuestions) document.getElementById(`assessment-question-${q.id}`)?.scrollIntoView({ block: 'center' });
+                      }}
+                      style={{
+                        border: `1px solid ${isCurrent ? 'var(--color-primary)' : isDone ? '#b7ead6' : 'var(--color-border)'}`,
+                        background: isCurrent ? 'var(--color-primary)' : isDone ? 'var(--color-success-bg)' : 'var(--color-surface)',
+                        color: isCurrent ? 'var(--color-on-primary)' : isDone ? 'var(--color-success)' : 'var(--color-text)',
+                        borderRadius: '10px',
+                        minHeight: '44px',
+                        fontWeight: 700,
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {i + 1}{marked.includes(q.id) ? ' ⚑' : ''}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div style={{ display: 'grid', gap: '10px', marginTop: '18px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--color-success-bg)', border: '1px solid #b7ead6', flexShrink: 0, display: 'inline-block' }} />
+                  {t('assessments.legendAnswered')}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--color-primary)', border: '1px solid var(--color-primary)', flexShrink: 0, display: 'inline-block' }} />
+                  {t('assessments.legendCurrent')}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', flexShrink: 0, display: 'inline-block' }} />
+                  {t('assessments.legendNoAnswer')}
+                </div>
+              </div>
+
+            </div>
+          </aside>
           <form className="learner-quiz__form" onSubmit={handleSubmit}>
             <ol className="learner-quiz__questions" start={allQuestions ? 1 : currentIndex + 1}>
               {(allQuestions ? questions.map((_, index) => index) : [currentIndex]).map((index) => {
@@ -416,7 +522,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
               const value = selected[question.id];
               const isAnswered = isQuestionAnswered(question, value);
               return (
-                  <li key={question.id} className={`learner-quiz__question ${isAnswered ? 'learner-quiz__question--answered' : ''}`}>
+                  <li key={question.id} id={`assessment-question-${question.id}`} className={`learner-quiz__question ${isAnswered ? 'learner-quiz__question--answered' : ''}`}>
                     <div className="learner-quiz__question-header">
                       <span className="learner-quiz__question-num">{index + 1}</span>
                       <h3 className="learner-quiz__question-title">{question.title}</h3>
@@ -424,11 +530,13 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                     </div>
                     {question.text ? <p className="learner-quiz__question-text"><RichText value={question.text} /></p> : null}
 
+                    {!noBack && <button className="learner-btn learner-btn--secondary" type="button"
+                      aria-pressed={marked.includes(question.id)} onClick={() => toggleMarked(question.id)}>{t('assessments.markForReturn')}</button>}
                     {question.imageUrl && <img src={question.imageUrl} alt={question.title} style={{ maxWidth: '100%', maxHeight: 360 }} />}
-                    <fieldset disabled={checking || !!checkedAnswer || (locked && !sessionReady)} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+                    <fieldset disabled={checking || !!checkedAnswer || !sessionReady || secondsLeft === 0} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
                     {question.definition ? <QuestionResponseFields question={question}
                       answer={typeof value === 'object' && !Array.isArray(value) ? { questionId: question.id, response: value } : null}
-                      onChange={({ response }) => { if (response) setSelected((previous) => ({ ...previous, [question.id]: response })); }} />
+                      onChange={({ response }) => { if (response) changeAnswer(question.id, response); }} />
                     : <ul className="learner-quiz__options">
                       {question.options.map((option, index) => {
                         const label = option.imageUrl
@@ -491,12 +599,12 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                     </button>}
                     {locked && !recorded[questions[currentIndex].id] ? (
                       <button className="learner-btn learner-btn--primary" type="button"
-                        disabled={checking || !sessionReady || !isQuestionAnswered(questions[currentIndex], selected[questions[currentIndex].id])}
+                        disabled={checking || !sessionReady || secondsLeft === 0 || !isQuestionAnswered(questions[currentIndex], selected[questions[currentIndex].id])}
                         onClick={() => void checkAnswer(questions[currentIndex])}>{t('assessments.policy.checkAnswer')}</button>
                     ) : allQuestions || currentIndex === questions.length - 1 ? (
                       <button
                         className="learner-btn learner-btn--primary"
-                        disabled={submitState.status === 'submitting' || !sessionReady}
+                        disabled={submitState.status === 'submitting' || !sessionReady || secondsLeft === 0}
                         type="submit"
                       >
                         {submitState.status === 'submitting' ? t('assessments.submitting') : t('assessments.submitBtn')}
@@ -518,58 +626,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
             ) : null}
           </form>
 
-          <aside style={{ position: 'sticky', top: '98px' }}>
-            <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '20px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
-              <h3 style={{ margin: '0 0 16px', fontSize: '18px', color: 'var(--color-text)' }}>{t('assessments.questionNavTitle')}</h3>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
-                {questions.map((q, i) => {
-                  const isDone = isQuestionAnswered(q, selected[q.id]);
-                  const isCurrent = i === currentIndex;
-                  return (
-                    <button
-                      key={q.id}
-                      type="button"
-                      disabled={checking || allQuestions || (noBack && i !== currentIndex)
-                        || (locked && i > currentIndex && (i !== currentIndex + 1 || !recorded[questions[currentIndex].id]))}
-                      onClick={() => setCurrentIndex(i)}
-                      style={{
-                        border: `1px solid ${isCurrent ? 'var(--color-primary)' : isDone ? '#b7ead6' : 'var(--color-border)'}`,
-                        background: isCurrent ? 'var(--color-primary)' : isDone ? 'var(--color-success-bg)' : 'var(--color-surface)',
-                        color: isCurrent ? 'var(--color-on-primary)' : isDone ? 'var(--color-success)' : 'var(--color-text)',
-                        borderRadius: '10px',
-                        height: '40px',
-                        fontWeight: 700,
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {i + 1}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div style={{ display: 'grid', gap: '10px', marginTop: '18px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--color-success-bg)', border: '1px solid #b7ead6', flexShrink: 0, display: 'inline-block' }} />
-                  {t('assessments.legendAnswered')}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--color-primary)', border: '1px solid var(--color-primary)', flexShrink: 0, display: 'inline-block' }} />
-                  {t('assessments.legendCurrent')}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', flexShrink: 0, display: 'inline-block' }} />
-                  {t('assessments.legendNoAnswer')}
-                </div>
-              </div>
-
-              <div style={{ marginTop: '16px', padding: '14px', background: 'var(--color-warning-bg)', color: 'var(--color-warning-text)', borderRadius: '12px', fontSize: '13px', lineHeight: 1.5 }}>
-                {t('assessments.autoSaveNotice')}
-              </div>
-            </div>
-          </aside>
         </div>
       )}
     </div>

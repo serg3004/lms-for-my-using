@@ -2699,6 +2699,13 @@
     "attemptsLeft": "Қалған әрекеттер"
   },
   "assessments": {
+    "saveInterrupted": "Сақтау үзілді. Жауаптарыңыз осы браузерде қалды. Байланыс қалпына келгенде қайталаңыз.",
+    "retrySave": "Қайталау",
+    "timeEnded": "Уақыт аяқталды. Тест әрекеті аяқталды, тест есептелмеді.",
+    "answeredCount": "{{total}} сұрақтың {{count}}-іне жауап берілді",
+    "questionNavItem": "{{number}}-сұрақ · {{status}}",
+    "markForReturn": "Сұраққа оралу үшін белгілеу",
+    "resumeAttempt": "Тестті жалғастыру",
     "policy": {
       "unlimited": "Шектеусіз",
       "opensAt": "Ашылу уақыты",

@@ -37,8 +37,8 @@ async function fillQuiz(page: Page, checkAccessibility = false) {
   await expect(page.locator('.learner-quiz__result-score')).toContainText('100%');
 }
 
-test('grades all seven assessment question types and reviews a manual short answer', async ({ request, browser, baseURL }) => {
-  test.setTimeout(90_000);
+test('resumes saved answers, grades all seven question types and finalizes timed attempts', async ({ request, browser, baseURL }) => {
+  test.setTimeout(120_000);
   const database = new URL(process.env.DATABASE_URL ?? '');
   if (process.env.NODE_ENV !== 'test' || !/(?:^|[_-])test(?:$|[_-])/.test(database.pathname.slice(1))
     || !['localhost', '127.0.0.1', ...(process.env.CI ? ['postgres'] : [])].includes(database.hostname)) {
@@ -115,8 +115,22 @@ test('grades all seven assessment question types and reviews a manual short answ
         await json(request.post(`${endpoint}/standalone/assignments`, {
           headers: author.headers, data: { target: 'user', targetId: learner.actor.id, dueAt: new Date(Date.now() + 86_400_000).toISOString() },
         }));
-        const takingPage = await learner.context.newPage();
+        let takingPage = await learner.context.newPage();
+        await takingPage.setViewportSize({ width: 360, height: 900 });
         await takingPage.goto(`/learn/assessments/${id}/take`);
+        const savePattern = '**/attempts/answer';
+        await takingPage.route(savePattern, (route) => route.abort('internetdisconnected'), { times: 1 });
+        await takingPage.getByRole('radio', { name: 'Ответ 1' }).check();
+        await expect(takingPage.getByText(/Сохранение прервано/)).toBeVisible();
+        const saved = takingPage.waitForResponse((response) => response.url().endsWith('/attempts/answer') && response.ok());
+        await takingPage.getByRole('button', { name: 'Повторить', exact: true }).click();
+        await saved;
+        expect(await takingPage.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
+        await takingPage.close();
+        takingPage = await learner.context.newPage();
+        await takingPage.goto(`/learn/assessments/${id}/take`);
+        await takingPage.getByRole('button', { name: /^Вопрос 1 ·/ }).click();
+        await expect(takingPage.getByRole('radio', { name: 'Ответ 1' })).toBeChecked();
         await fillQuiz(takingPage, true);
         const recorded = await db.assessmentAttempt.findFirstOrThrow({
           where: { assessmentId: id, userId: learner.actor.id }, include: { answers: true },
@@ -167,6 +181,21 @@ test('grades all seven assessment question types and reviews a manual short answ
         await expect(takingPage.locator('.learner-quiz__result-score')).toContainText('75%');
         await expect(takingPage.getByText('Хорошее объяснение', { exact: true })).toBeVisible();
         expect(await db.notification.count({ where: { userId: learner.actor.id, link: `/learn/attempts/${pending.id}` } })).toBe(1);
+        const timed = await db.assessment.create({ data: {
+          organizationId, title: 'Тест с таймером', slug: 'timed-532', status: 'published', timeLimitMinutes: 1,
+          questions: { create: { organizationId, type: 'short_answer', title: 'Введите ответ',
+            definition: { type: 'short_answer', acceptedAnswers: ['ответ'], whitespace: 'trim', caseSensitive: false } } },
+          standaloneAssignments: { create: { organizationId, userId: learner.actor.id, dueAt: new Date(Date.now() + 86_400_000) } },
+        } });
+        await takingPage.goto(`/learn/assessments/${timed.id}/take`);
+        await expect(takingPage.getByRole('timer')).toBeVisible();
+        const active = await db.assessmentAttempt.findFirstOrThrow({ where: { assessmentId: timed.id, userId: learner.actor.id } });
+        await db.assessmentAttempt.update({ where: { id: active.id }, data: { startedAt: new Date(Date.now() - 55_000) } });
+        await takingPage.reload();
+        await expect(takingPage.getByText(/Время вышло\. Попытка завершена/)).toBeVisible({ timeout: 10_000 });
+        expect(await db.assessmentAttempt.count({ where: { assessmentId: timed.id, userId: learner.actor.id } })).toBe(1);
+        expect(await db.assessmentAttempt.findUnique({ where: { id: active.id } })).toMatchObject({ status: 'completed', passed: false });
+
       } finally {
         await learner.context.close();
       }

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { publicQuestionDefinition } from '../../common/assessment-question-definition.js';
 import type { Prisma } from '@prisma/client';
-import { assessmentAnswerSchema, type AssessmentAnswer } from '@lms/shared/assessment-question-types';
+import { assessmentAnswerSchema, draftAssessmentAnswerSchema, questionDefinitionSchema, type AssessmentAnswer } from '@lms/shared/assessment-question-types';
 import { requiresLockedAnswers, type AssessmentPolicy } from '@lms/shared/assessment-policy';
 import { z } from 'zod';
 import { assertAssessmentWindow, assessmentAttemptOrder, completedAssessmentAttempts, effectiveAssessmentResult, readAssessmentPolicy } from '../../common/assessment-policy.js';
@@ -171,7 +171,7 @@ export class AssessmentAttemptsService {
     }
 
     const cutoff = new Date(Date.now() - timeLimitMinutes * 60_000);
-    const where = { assessmentId, organizationId, ...(attemptId ? { id: attemptId } : {}), longreadRevisionId: null, status: 'in_progress' as const, deletedAt: null, startedAt: { lt: cutoff } };
+    const where = { assessmentId, organizationId, ...(attemptId ? { id: attemptId } : {}), longreadRevisionId: null, status: 'in_progress' as const, deletedAt: null, startedAt: { lte: cutoff } };
     const expiredCount = await this.prisma.assessmentAttempt.count({ where });
 
     if (expiredCount === 0) {
@@ -206,7 +206,7 @@ export class AssessmentAttemptsService {
     await this.ensureUserExists(userId, organizationId);
     await this.ensureAssessmentIsAvailable(location.courseId, userId, organizationId, assessment.availableAfterCourseCompletion);
 
-    if (assessment.policy || assessment.bankSampleSize || input.attemptId && !assessment.timeLimitMinutes) {
+    if (assessment.policy || assessment.bankSampleSize || input.attemptId) {
       return this.submitWithPolicy(assessmentId, userId, organizationId, location, input);
     }
 
@@ -257,8 +257,14 @@ export class AssessmentAttemptsService {
     const attemptId = await this.prisma.$transaction(async (tx) => {
       const assessment = await this.lockAssessment(tx, assessmentId, organizationId);
       const policy = readAssessmentPolicy(assessment.policy);
-      assertAssessmentWindow(policy);
       const scope = { assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null };
+      if (input.attemptId) {
+        const submitted = await tx.assessmentAttempt.findFirst({ where: {
+          ...scope, id: input.attemptId, deletedAt: null, status: { in: ['completed', 'pending_review'] },
+        }, select: { id: true } });
+        if (submitted) return submitted.id;
+      }
+      assertAssessmentWindow(policy);
       const locked = requiresLockedAnswers(policy);
       if (locked && !input.attemptId) throw new BadRequestException('A locked assessment submission requires the attempt ID');
       const active = assessment.timeLimitMinutes || locked || assessment.bankSampleSize || input.attemptId
@@ -271,6 +277,15 @@ export class AssessmentAttemptsService {
       const questions = active?.bankQuestionSnapshot
         ? bankSnapshotSchema.parse(active.bankQuestionSnapshot)
         : await this.getQuestions(assessmentId, organizationId, tx);
+      const now = new Date();
+      if (active && input.attemptId && assessment.timeLimitMinutes
+        && now.getTime() - active.startedAt.getTime() >= assessment.timeLimitMinutes * 60_000) {
+        await tx.assessmentAttempt.updateMany({
+          where: { id: active.id, status: 'in_progress' },
+          data: { status: 'completed', maxScore: questions.reduce((sum, question) => sum + question.points, 0), completedAt: now },
+        });
+        return active.id;
+      }
       const answers = locked ? z.array(assessmentAnswerSchema).parse(active?.lockedAnswers ?? []) : input.answers;
       const graded = gradeAssessmentAnswers(questions, answers);
       const score = graded.reduce((sum, answer) => sum + answer.score, 0);
@@ -291,7 +306,7 @@ export class AssessmentAttemptsService {
     return this.getAttempt(attemptId, { id: userId, organizationId, roles: ['learner'] });
   }
 
-  async recordAnswer(assessmentId: string, userId: string, organizationId: string, attemptId: string, input: AssessmentAnswer, placementId?: string | null) {
+  async recordAnswer(assessmentId: string, userId: string, organizationId: string, attemptId: string, input: AssessmentAnswer | { questionId: string; clear: true }, placementId?: string | null) {
     const assessment = await this.loadAssessmentForAttempt(assessmentId, organizationId);
     const location = await this.resolvePlacement(assessment, organizationId, placementId);
     await this.ensureAssessmentIsAvailable(location.courseId, userId, organizationId, assessment.availableAfterCourseCompletion);
@@ -300,12 +315,12 @@ export class AssessmentAttemptsService {
       const current = await this.lockAssessment(tx, assessmentId, organizationId);
       const policy = readAssessmentPolicy(current.policy);
       assertAssessmentWindow(policy);
-      if (!requiresLockedAnswers(policy)) throw new BadRequestException('Assessment does not use locked answers');
+      const locked = requiresLockedAnswers(policy);
       const active = await tx.assessmentAttempt.findFirst({
         where: { id: attemptId, assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
         select: { id: true, startedAt: true, lockedAnswers: true, bankQuestionSnapshot: true },
       });
-      if (!active || (current.timeLimitMinutes && Date.now() - active.startedAt.getTime() > current.timeLimitMinutes * 60000)) {
+      if (!active || (current.timeLimitMinutes && Date.now() - active.startedAt.getTime() >= current.timeLimitMinutes * 60000)) {
         throw new BadRequestException('Assessment has no active attempt');
       }
 
@@ -313,7 +328,39 @@ export class AssessmentAttemptsService {
         ? bankSnapshotSchema.parse(active.bankQuestionSnapshot)
         : await this.getQuestions(assessmentId, organizationId, tx);
       const ordered = current.randomizeOrder && !active.bankQuestionSnapshot ? seededShuffle([...questions], `${assessmentId}:${userId}`) : questions;
-      const saved = z.array(assessmentAnswerSchema).parse(active.lockedAnswers ?? []);
+      const saved: AssessmentAnswer[] = z.array(draftAssessmentAnswerSchema).parse(active.lockedAnswers ?? []);
+      if (!locked) {
+        const question = questions.find(({ id }) => id === input.questionId);
+        if (!question) throw new BadRequestException('Answer question does not belong to assessment');
+        const next = saved.filter(({ questionId }) => questionId !== question.id);
+        if (!('clear' in input)) {
+          const definition = questionDefinitionSchema.safeParse(question.definition).data;
+          const response = input.response;
+          if (response?.type === 'matching' && definition?.type === 'matching') {
+            const left = new Set(response.pairs.map((pair) => pair.leftId));
+            const right = new Set(response.pairs.map((pair) => pair.rightId));
+            if (left.size !== response.pairs.length || right.size !== response.pairs.length
+              || [...left].some((id) => !definition.left.some((item) => item.id === id))
+              || [...right].some((id) => !definition.right.some((item) => item.id === id))) {
+              throw new BadRequestException('Invalid matching draft');
+            }
+          } else if (response?.type === 'ordering' && definition?.type === 'ordering') {
+            const picked = response.itemIds.filter(Boolean);
+            if (response.itemIds.length > definition.items.length || new Set(picked).size !== picked.length
+              || picked.some((id) => !definition.items.some((item) => item.id === id))) {
+              throw new BadRequestException('Invalid ordering draft');
+            }
+          } else {
+            gradeAssessmentAnswers([question], [input]);
+          }
+          next.push(input);
+        }
+        await tx.assessmentAttempt.updateMany({
+          where: { id: active.id, status: 'in_progress' }, data: { lockedAnswers: next },
+        });
+        return { answer: input };
+      }
+      if ('clear' in input) throw new BadRequestException('Locked answers cannot be cleared');
       const previous = saved.find((answer) => answer.questionId === input.questionId);
       const question = previous ? ordered.find(({ id }) => id === previous.questionId) : ordered[saved.length];
       if (!question || question.id !== input.questionId) throw new BadRequestException('Answer the current assessment question first');
@@ -381,10 +428,10 @@ export class AssessmentAttemptsService {
    * returns the existing in_progress attempt rather than restarting the clock. Untimed assessments
    * (the default) don't use this at all; submit directly via createAttempt.
    */
-  async startAttempt(assessmentId: string, userId: string, organizationId: string, placementId?: string | null) {
+  async startAttempt(assessmentId: string, userId: string, organizationId: string, placementId?: string | null, draft = false, resumeId?: string) {
     const assessment = await this.loadAssessmentForAttempt(assessmentId, organizationId);
 
-    if (!assessment.bankSampleSize && !assessment.timeLimitMinutes && !requiresLockedAnswers(readAssessmentPolicy(assessment.policy))) {
+    if (!draft && !assessment.bankSampleSize && !assessment.timeLimitMinutes && !requiresLockedAnswers(readAssessmentPolicy(assessment.policy))) {
       throw new BadRequestException('This assessment has no time limit — submit answers directly');
     }
 
@@ -392,8 +439,17 @@ export class AssessmentAttemptsService {
     await this.ensureUserExists(userId, organizationId);
     await this.ensureAssessmentIsAvailable(location.courseId, userId, organizationId, assessment.availableAfterCourseCompletion);
 
-    if (assessment.policy || assessment.bankSampleSize) {
-      await this.finalizeExpiredAttempts(assessmentId, organizationId, assessment.timeLimitMinutes, undefined, assessment.bankSampleSize);
+    if (resumeId) {
+      const existing = await this.prisma.assessmentAttempt.findFirst({ where: {
+        id: resumeId, assessmentId, userId, organizationId, placementId: location.placementId,
+        longreadRevisionId: null, deletedAt: null,
+      }, select: { id: true } });
+      if (!existing) throw new NotFoundException('Assessment attempt not found');
+      return this.getAttempt(existing.id, { id: userId, organizationId, roles: ['learner'] });
+    }
+
+    if (draft || assessment.policy || assessment.bankSampleSize) {
+      if (!draft) await this.finalizeExpiredAttempts(assessmentId, organizationId, assessment.timeLimitMinutes, undefined, assessment.bankSampleSize);
       const active = await this.prisma.$transaction(async (tx) => {
         const current = await this.lockAssessment(tx, assessmentId, organizationId);
         const policy = readAssessmentPolicy(current.policy);
@@ -419,7 +475,7 @@ export class AssessmentAttemptsService {
       const attempt = await this.getAttempt(active.id, { id: userId, organizationId, roles: ['learner'] });
       return {
         ...attempt,
-        lockedAnswers: z.array(assessmentAnswerSchema).parse(active.lockedAnswers ?? []),
+        lockedAnswers: z.array(draftAssessmentAnswerSchema).parse(active.lockedAnswers ?? []),
         ...(active.bankQuestionSnapshot ? { questions: publicSample(active.bankQuestionSnapshot, assessmentId, organizationId, userId, assessment.randomizeOrder) } : {}),
       };
     }

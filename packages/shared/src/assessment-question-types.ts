@@ -71,6 +71,17 @@ export const assessmentAnswerSchema = z.object({
 }).strict().refine((value) => [value.selectedOptionId, value.selectedOptionIds, value.response].filter((field) => field !== undefined).length === 1, { message: 'Answer requires exactly one format' });
 export type AssessmentAnswer = z.infer<typeof assessmentAnswerSchema>;
 
+export const draftAssessmentAnswerSchema = z.union([
+  assessmentAnswerSchema,
+  z.object({
+    questionId: z.guid(),
+    response: z.discriminatedUnion('type', [
+      z.object({ type: z.literal('matching'), pairs: z.array(pair).max(50) }).strict(),
+      z.object({ type: z.literal('ordering'), itemIds: z.array(z.union([id, z.literal('')])).max(50) }).strict(),
+    ]),
+  }).strict(),
+]);
+
 export const publicQuestionDefinitionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('true_false') }).strict(),
   z.object({ type: z.literal('matching'), left: z.array(item), right: z.array(item) }).strict(),

@@ -250,7 +250,7 @@ export class AssessmentResultsService {
       where: {
         assessmentId,
         organizationId,
-        status: { not: 'pending_review' },
+        status: 'completed',
         countsTowardResults: true,
         ...attemptScope(this.teamScope, actor),
         deletedAt: null,

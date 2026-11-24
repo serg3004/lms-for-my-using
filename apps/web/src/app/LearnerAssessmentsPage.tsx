@@ -13,6 +13,8 @@ type AssessmentRow = {
   courseTitle: string;
   questionCount: number;
   attemptsUsed: number;
+  inProgress?: boolean;
+  pendingReview?: boolean;
   lastCompletedAttemptId?: string | null;
   bestPercentage: number | null;
   completed: boolean;
@@ -38,7 +40,7 @@ function getAssessmentHref(assessmentId: string) {
   return `/learn/assessments/${encodeURIComponent(assessmentId)}`;
 }
 
-type StatusFilter = 'all' | 'available' | 'completed';
+type StatusFilter = 'all' | 'available' | 'completed' | 'inProgress' | 'pendingReview';
 
 export function LearnerAssessmentsPage() {
   const { t, i18n } = useTranslation();
@@ -76,7 +78,9 @@ export function LearnerAssessmentsPage() {
     return loadState.data.rows.filter((row) => {
       const matchesQuery = !q || row.assessment.title.toLowerCase().includes(q);
       const matchesStatus =
-        statusFilter === 'all' || (statusFilter === 'completed' ? row.completed : !row.completed);
+        statusFilter === 'all' || (statusFilter === 'completed' && row.completed)
+        || (statusFilter === 'inProgress' && row.inProgress) || (statusFilter === 'pendingReview' && row.pendingReview)
+        || (statusFilter === 'available' && !row.completed && !row.inProgress && !row.pendingReview);
       const matchesCourse = courseFilter === 'all' || (courseFilter === 'standalone' ? row.assessment.courseId === null : row.assessment.courseId === courseFilter);
       return matchesQuery && matchesStatus && matchesCourse;
     });
@@ -156,6 +160,8 @@ export function LearnerAssessmentsPage() {
         >
           <option value="all">{t('assessments.filterAll')}</option>
           <option value="available">{t('assessments.filterAvailable')}</option>
+          <option value="inProgress">{t('assessments.attemptsHistoryInProgress')}</option>
+          <option value="pendingReview">{t('assessmentReview.pending')}</option>
           <option value="completed">{t('assessments.filterCompleted')}</option>
         </select>
         <select
@@ -186,7 +192,9 @@ export function LearnerAssessmentsPage() {
             const { assessment } = row;
             const badgeBg = row.completed ? COLORS.successSoft : COLORS.primarySoft;
             const badgeColor = row.completed ? COLORS.success : COLORS.primary;
-            const badgeLabel = row.completed ? t('assessments.statusCompleted') : t('assessments.statusAvailable');
+            const badgeLabel = row.completed ? t('assessments.statusCompleted')
+              : row.inProgress ? t('assessments.attemptsHistoryInProgress')
+                : row.pendingReview ? t('assessmentReview.pending') : t('assessments.statusAvailable');
             const attemptsRemaining = assessment.maxAttempts == null ? null : Math.max(assessment.maxAttempts - row.attemptsUsed, 0);
 
             return (
@@ -276,10 +284,10 @@ export function LearnerAssessmentsPage() {
                   </a>}
                   {!row.completed && (
                     <a
-                      href={getAssessmentHref(assessment.id) + (assessment.courseId === null ? '/take' : '')}
+                      href={getAssessmentHref(assessment.id) + (assessment.courseId === null || row.inProgress ? '/take' : '')}
                       style={{ flex: 1, border: `1px solid ${COLORS.primary}`, background: COLORS.primary, borderRadius: '12px', padding: '11px 14px', fontWeight: 800, fontSize: '14px', textAlign: 'center', textDecoration: 'none', color: '#fff' }}
                     >
-                      {t('assessments.actionStart')}
+                      {t(row.inProgress ? 'assessments.resumeAttempt' : 'assessments.actionStart')}
                     </a>
                   )}
                 </div>

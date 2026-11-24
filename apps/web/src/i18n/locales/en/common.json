@@ -2699,6 +2699,13 @@
     "attemptsLeft": "Attempts remaining"
   },
   "assessments": {
+    "saveInterrupted": "Saving was interrupted. Your answers are still in this browser. Retry when you are back online.",
+    "retrySave": "Retry",
+    "timeEnded": "Time is up. The attempt ended without a passing result.",
+    "answeredCount": "{{count}} of {{total}} answered",
+    "questionNavItem": "Question {{number}} · {{status}}",
+    "markForReturn": "Mark for review",
+    "resumeAttempt": "Resume test",
     "policy": {
       "unlimited": "Unlimited",
       "opensAt": "Open from",

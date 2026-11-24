@@ -71,7 +71,9 @@ export class StandaloneAssessmentsService implements OnModuleInit {
         assessment: { id, title, courseId, maxAttempts, passingScore },
         dueAt: standaloneAssignments[0]?.dueAt ?? null,
         questionCount: _count.questions,
-        attemptsUsed: attempts.length,
+        attemptsUsed: attempts.filter((attempt) => attempt.status !== 'in_progress').length,
+        ...(attempts.some((attempt) => attempt.status === 'in_progress') ? { inProgress: true } : {}),
+        ...(attempts.some((attempt) => attempt.status === 'pending_review') ? { pendingReview: true } : {}),
         lastCompletedAttemptId: attempts.find((attempt) => attempt.status === 'completed')?.id ?? null,
         bestPercentage: attempts.reduce<number | null>((best, attempt) =>
           attempt.status === 'completed' ? Math.max(best ?? 0, attempt.percentage) : best, null),
