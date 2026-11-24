@@ -39,6 +39,7 @@ import {
 type LearnerAssessmentTakingData = { assessment: AssessmentSummary; questions: QuestionWithOptions[]; sampledAttempt?: Awaited<ReturnType<typeof startAssessmentAttempt<QuestionWithOptions>>> };
 
 const EMPTY_QUESTIONS: QuestionWithOptions[] = [];
+const touchTarget = { minHeight: 44 };
 
 type TakingResult = Partial<Pick<AssessmentAttemptResult, 'status' | 'id'>> & Pick<AssessmentAttemptResult, 'passed' | 'score' | 'maxScore' | 'percentage' | 'assessment' | 'answers' | 'effectiveResult'>;
 type TakingPreview = LearnerAssessmentTakingData & {
@@ -437,15 +438,16 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
         </div>
       </section>
 
-      <section className="learner-quiz__status">
-        <div className="learner-quiz__status-line">
+      <section style={{ position: 'sticky', top: 64, zIndex: 2, marginBottom: 16, padding: 10,
+        borderRadius: 10, background: 'var(--color-surface)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
           <span>{t('assessments.answeredCount', { count: countAnsweredQuestions(questions, selected), total: questions.length })}</span>
           {secondsLeft !== null && <span role="timer">{t('assessments.timerLabel')} {formatTime(secondsLeft)}</span>}
-          <a href="#assessment-question-navigator" className="learner-quiz__navigator-link">{t('assessments.questionNavTitle')}</a>
+          <a href="#assessment-question-navigator" style={{ ...touchTarget, display: 'inline-flex', alignItems: 'center' }}>{t('assessments.questionNavTitle')}</a>
         </div>
         {draft.failed && <div role="status">
           {t('assessments.saveInterrupted')}{' '}
-          <button className="learner-btn learner-btn--secondary" type="button" onClick={draft.retry}>{t('assessments.retrySave')}</button>
+          <button className="learner-btn learner-btn--secondary" style={touchTarget} type="button" onClick={draft.retry}>{t('assessments.retrySave')}</button>
         </div>}
         <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)', fontSize: '13px', marginBottom: '8px' }}>
           <span>{t('assessments.progressLabel')}</span>
@@ -459,62 +461,8 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
       {questions.length === 0 ? (
         <p className="learner-quiz__empty">{t('assessments.noQuestions')}</p>
       ) : (
-        <div className="learner-quiz__layout">
-          <aside className="learner-quiz__navigator" id="assessment-question-navigator" aria-labelledby="assessment-question-navigator-title">
-            <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '20px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
-              <h3 id="assessment-question-navigator-title" style={{ margin: '0 0 16px', fontSize: '18px', color: 'var(--color-text)' }}>{t('assessments.questionNavTitle')}</h3>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(44px, 1fr))', gap: '8px' }}>
-                {questions.map((q, i) => {
-                  const isDone = isQuestionAnswered(q, selected[q.id]);
-                  const isCurrent = i === currentIndex;
-                  return (
-                    <button
-                      key={q.id}
-                      type="button"
-                      aria-current={isCurrent ? 'step' : undefined}
-                      aria-label={t('assessments.questionNavItem', { number: i + 1, status: t(isDone ? 'assessments.legendAnswered' : 'assessments.legendNoAnswer') }) + (marked.includes(q.id) ? ` · ${t('assessments.markForReturn')}` : '')}
-                      disabled={checking || (noBack && i !== currentIndex)
-                        || (locked && i > currentIndex && (i !== currentIndex + 1 || !recorded[questions[currentIndex].id]))}
-                      onClick={() => {
-                        setCurrentIndex(i);
-                        if (allQuestions) document.getElementById(`assessment-question-${q.id}`)?.scrollIntoView({ block: 'center' });
-                      }}
-                      style={{
-                        border: `1px solid ${isCurrent ? 'var(--color-primary)' : isDone ? '#b7ead6' : 'var(--color-border)'}`,
-                        background: isCurrent ? 'var(--color-primary)' : isDone ? 'var(--color-success-bg)' : 'var(--color-surface)',
-                        color: isCurrent ? 'var(--color-on-primary)' : isDone ? 'var(--color-success)' : 'var(--color-text)',
-                        borderRadius: '10px',
-                        minHeight: '44px',
-                        fontWeight: 700,
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {i + 1}{marked.includes(q.id) ? ' ⚑' : ''}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div style={{ display: 'grid', gap: '10px', marginTop: '18px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--color-success-bg)', border: '1px solid #b7ead6', flexShrink: 0, display: 'inline-block' }} />
-                  {t('assessments.legendAnswered')}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--color-primary)', border: '1px solid var(--color-primary)', flexShrink: 0, display: 'inline-block' }} />
-                  {t('assessments.legendCurrent')}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', flexShrink: 0, display: 'inline-block' }} />
-                  {t('assessments.legendNoAnswer')}
-                </div>
-              </div>
-
-            </div>
-          </aside>
-          <form className="learner-quiz__form" onSubmit={handleSubmit}>
+        <div className="edit-layout">
+          <form className="learner-quiz__form" style={{ minWidth: 0, overflowWrap: 'anywhere' }} onSubmit={handleSubmit}>
             <ol className="learner-quiz__questions" start={allQuestions ? 1 : currentIndex + 1}>
               {(allQuestions ? questions.map((_, index) => index) : [currentIndex]).map((index) => {
               const question = questions[index];
@@ -522,7 +470,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
               const value = selected[question.id];
               const isAnswered = isQuestionAnswered(question, value);
               return (
-                  <li key={question.id} id={`assessment-question-${question.id}`} className={`learner-quiz__question ${isAnswered ? 'learner-quiz__question--answered' : ''}`}>
+                  <li key={question.id} id={`assessment-question-${question.id}`} style={{ scrollMarginTop: 160 }} className={`learner-quiz__question ${isAnswered ? 'learner-quiz__question--answered' : ''}`}>
                     <div className="learner-quiz__question-header">
                       <span className="learner-quiz__question-num">{index + 1}</span>
                       <h3 className="learner-quiz__question-title">{question.title}</h3>
@@ -530,7 +478,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                     </div>
                     {question.text ? <p className="learner-quiz__question-text"><RichText value={question.text} /></p> : null}
 
-                    {!noBack && <button className="learner-btn learner-btn--secondary" type="button"
+                    {!noBack && <button className="learner-btn learner-btn--secondary" style={touchTarget} type="button"
                       aria-pressed={marked.includes(question.id)} onClick={() => toggleMarked(question.id)}>{t('assessments.markForReturn')}</button>}
                     {question.imageUrl && <img src={question.imageUrl} alt={question.title} style={{ maxWidth: '100%', maxHeight: 360 }} />}
                     <fieldset disabled={checking || !!checkedAnswer || !sessionReady || secondsLeft === 0} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
@@ -547,7 +495,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                           const checked = selectedIds(selected[question.id]).includes(option.id);
                           return (
                             <li key={option.id} className={`learner-quiz__option ${checked ? 'learner-quiz__option--selected' : ''}`}>
-                              <label className="learner-quiz__option-label">
+                              <label className="learner-quiz__option-label" style={touchTarget}>
                                 <input
                                   type="checkbox"
                                   checked={checked}
@@ -561,7 +509,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                         const checked = selected[question.id] === option.id;
                         return (
                           <li key={option.id} className={`learner-quiz__option ${checked ? 'learner-quiz__option--selected' : ''}`}>
-                            <label className="learner-quiz__option-label">
+                            <label className="learner-quiz__option-label" style={touchTarget}>
                               <input
                                 type="radio"
                                 name={question.id}
@@ -598,12 +546,13 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                       {t('assessments.previousQuestion')}
                     </button>}
                     {locked && !recorded[questions[currentIndex].id] ? (
-                      <button className="learner-btn learner-btn--primary" type="button"
+                      <button className="learner-btn learner-btn--primary" style={touchTarget} type="button"
                         disabled={checking || !sessionReady || secondsLeft === 0 || !isQuestionAnswered(questions[currentIndex], selected[questions[currentIndex].id])}
                         onClick={() => void checkAnswer(questions[currentIndex])}>{t('assessments.policy.checkAnswer')}</button>
                     ) : allQuestions || currentIndex === questions.length - 1 ? (
                       <button
                         className="learner-btn learner-btn--primary"
+                        style={touchTarget}
                         disabled={submitState.status === 'submitting' || !sessionReady || secondsLeft === 0}
                         type="submit"
                       >
@@ -612,6 +561,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                     ) : (
                       <button
                         className="learner-btn learner-btn--primary"
+                        style={touchTarget}
                         type="button"
                         onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
                       >
@@ -625,6 +575,60 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
               <p className="learner-quiz__submit-error" role="alert">{submitState.message}</p>
             ) : null}
           </form>
+          <aside style={{ position: 'sticky', top: 160, maxHeight: 'calc(100dvh - 160px)', overflow: 'auto', scrollMarginTop: 160 }} id="assessment-question-navigator" aria-labelledby="assessment-question-navigator-title">
+            <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: '20px', boxShadow: '0 8px 24px rgba(23,32,51,.05)', padding: '24px' }}>
+              <h3 id="assessment-question-navigator-title" style={{ margin: '0 0 16px', fontSize: '18px', color: 'var(--color-text)' }}>{t('assessments.questionNavTitle')}</h3>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(44px, 1fr))', gap: '8px' }}>
+                {questions.map((q, i) => {
+                  const isDone = isQuestionAnswered(q, selected[q.id]);
+                  const isCurrent = i === currentIndex;
+                  return (
+                    <button
+                      key={q.id}
+                      type="button"
+                      aria-current={isCurrent ? 'step' : undefined}
+                      aria-label={t('assessments.questionNavItem', { number: i + 1, status: t(isDone ? 'assessments.legendAnswered' : 'assessments.legendNoAnswer') }) + (marked.includes(q.id) ? ` · ${t('assessments.markForReturn')}` : '')}
+                      disabled={checking || (noBack && i !== currentIndex)
+                        || (locked && i > currentIndex && (i !== currentIndex + 1 || !recorded[questions[currentIndex].id]))}
+                      onClick={() => {
+                        setCurrentIndex(i);
+                        requestAnimationFrame(() => document.getElementById(`assessment-question-${q.id}`)?.scrollIntoView({ block: 'start' }));
+                      }}
+                      style={{
+                        border: `1px solid ${isCurrent ? 'var(--color-primary)' : isDone ? '#b7ead6' : 'var(--color-border)'}`,
+                        background: isCurrent ? 'var(--color-primary)' : isDone ? 'var(--color-success-bg)' : 'var(--color-surface)',
+                        color: isCurrent ? 'var(--color-on-primary)' : isDone ? 'var(--color-success)' : 'var(--color-text)',
+                        borderRadius: '10px',
+                        minHeight: '44px',
+                        fontWeight: 700,
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {i + 1}{marked.includes(q.id) ? ' ⚑' : ''}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div style={{ display: 'grid', gap: '10px', marginTop: '18px', color: 'var(--color-text-muted)', fontSize: '13px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--color-success-bg)', border: '1px solid #b7ead6', flexShrink: 0, display: 'inline-block' }} />
+                  {t('assessments.legendAnswered')}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--color-primary)', border: '1px solid var(--color-primary)', flexShrink: 0, display: 'inline-block' }} />
+                  {t('assessments.legendCurrent')}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '9px' }}>
+                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', flexShrink: 0, display: 'inline-block' }} />
+                  {t('assessments.legendNoAnswer')}
+                </div>
+              </div>
+
+            </div>
+          </aside>
 
 
         </div>
