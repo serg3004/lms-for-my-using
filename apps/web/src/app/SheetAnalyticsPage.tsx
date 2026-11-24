@@ -48,6 +48,11 @@ export function filterSheets(sheets: readonly SheetAnalyticsSheet[], query: stri
   return needle ? sheets.filter((sheet) => plainText(sheet.title).toLowerCase().includes(needle)) : [...sheets];
 }
 
+/** Exported for tests: "select found" keeps only the listed sheets; every sheet picked is stored as "all" (empty). */
+export function selectFound(found: readonly string[], all: readonly string[]): string[] {
+  return found.length === all.length && all.every((id) => found.includes(id)) ? [] : [...found];
+}
+
 export { ScaleLevelBars };
 
 function SummaryCards({ metrics, t }: { metrics: SheetAnalyticsMetrics; t: (key: string, fallback: string) => string }) {
@@ -128,7 +133,6 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
       </header>
 
       <Card style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,200px),1fr))', gap: 16, marginBottom: 20 }}>
-        <AnalyticsFieldFilter value={fieldFilters} onChange={(value) => update('fieldFilters', value)} groupBy={groupByField} onGroupBy={(value) => update('groupByField', value)} />
         <label style={field}>
           {t('manager.checklists.periodFilter', 'Period')}
           <select className="ds-input" value={period} onChange={(event) => update('period', event.target.value)}>
@@ -168,25 +172,52 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
             {t('sheetAnalytics.sheetsFilter', 'Checklists')}: {selected.length === 0 ? `${t('sheetAnalytics.allSheets', 'All available')}${allIds.length > 0 ? ` (${allIds.length})` : ''}` : `${selected.length}`}
           </summary>
           <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
-          <input aria-label={t('sheetAnalytics.sheetSearch', 'Search checklists')} className="ds-input" type="search" value={search} onChange={(event) => update('q', event.target.value)} placeholder={t('sheetAnalytics.sheetSearch', 'Search checklists')} />
-          <label style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44, fontWeight: 600 }}>
-            <input checked={selected.length === 0} onChange={() => update('sheets', '')} style={{ width: 20, height: 20, flex: 'none' }} type="checkbox" />
-            {t('sheetAnalytics.allSheets', 'All available')}{allIds.length > 0 ? ` (${allIds.length})` : ''}
-          </label>
-          <div style={{ maxHeight: 220, overflowY: 'auto', display: 'grid', gap: 2 }} data-testid="sheet-analytics-picker">
-            {sheetsState.status === 'loading' && <span>{t('sheetAnalytics.loading', 'Loading...')}</span>}
-            {visible.map((sheet) => {
-              const checked = selected.length === 0 || selected.includes(sheet.id);
-              return (
-                <label key={sheet.id} style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44 }}>
-                  <input checked={checked} onChange={() => update('sheets', toggleSheet(selected, sheet.id, allIds).join(','))} style={{ width: 20, height: 20, flex: 'none' }} type="checkbox" />
-                  <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{plainText(sheet.title)} <span style={{ color: 'var(--color-text-muted)' }}>({sheet.sessionsInPeriod})</span></span>
-                </label>
-              );
-            })}
-            {sheetsState.status === 'loaded' && visible.length === 0 && <span style={{ color: 'var(--color-text-muted)' }}>{sheets.length === 0 ? t('sheetAnalytics.noSheets', 'No checklists available.') : t('sheetAnalytics.noMatch', 'No checklists match the search.')}</span>}
+            <input aria-label={t('sheetAnalytics.sheetSearch', 'Search checklists')} className="ds-input" type="search" value={search} onChange={(event) => update('q', event.target.value)} placeholder={t('sheetAnalytics.sheetSearch', 'Search checklists')} />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+              <label style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44, fontWeight: 600 }}>
+                <input checked={selected.length === 0} onChange={() => update('sheets', '')} style={{ width: 20, height: 20, flex: 'none' }} type="checkbox" />
+                {t('sheetAnalytics.allSheets', 'All available')}{allIds.length > 0 ? ` (${allIds.length})` : ''}
+              </label>
+              {search.trim() !== '' && visible.length > 0 && (
+                <button className="ds-button ds-button--secondary ds-button--sm" onClick={() => update('sheets', selectFound(visible.map((sheet) => sheet.id), allIds).join(','))} type="button">
+                  {t('sheetAnalytics.selectFound', 'Select found')} ({visible.length})
+                </button>
+              )}
+              <span aria-live="polite" style={{ color: 'var(--color-text-muted)', marginLeft: 'auto' }}>
+                {t('sheetAnalytics.selectedCount', 'Selected {{selected}} of {{total}}', { selected: selected.length === 0 ? allIds.length : selected.length, total: allIds.length })}
+              </span>
+            </div>
+            {selected.length > 0 && (
+              <ul aria-label={t('sheetAnalytics.selectedList', 'Selected checklists')} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, listStyle: 'none', margin: 0, padding: 0 }}>
+                {selected.map((id) => {
+                  const title = plainText(sheets.find((sheet) => sheet.id === id)?.title ?? '') || t('sheetAnalytics.unknownSheet', 'Checklist');
+                  return (
+                    <li className="ui-status-badge" key={id} style={{ alignItems: 'center', display: 'inline-flex', gap: 4 }}>
+                      {title}
+                      <button aria-label={`${t('sheetAnalytics.removeSheet', 'Remove')}: ${title}`} className="ds-button ds-button--text ds-button--icon" onClick={() => update('sheets', toggleSheet(selected, id, allIds).join(','))} type="button">×</button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <div style={{ maxHeight: 260, overflowY: 'auto', display: 'grid', gap: 2 }} data-testid="sheet-analytics-picker">
+              {sheetsState.status === 'loading' && <span>{t('sheetAnalytics.loading', 'Loading...')}</span>}
+              {visible.map((sheet) => {
+                const checked = selected.length === 0 || selected.includes(sheet.id);
+                return (
+                  <label key={sheet.id} style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44 }}>
+                    <input checked={checked} onChange={() => update('sheets', toggleSheet(selected, sheet.id, allIds).join(','))} style={{ width: 20, height: 20, flex: 'none' }} type="checkbox" />
+                    <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{plainText(sheet.title)} <span style={{ color: 'var(--color-text-muted)' }}>({sheet.sessionsInPeriod})</span></span>
+                  </label>
+                );
+              })}
+              {sheetsState.status === 'loaded' && visible.length === 0 && <span style={{ color: 'var(--color-text-muted)' }}>{sheets.length === 0 ? t('sheetAnalytics.noSheets', 'No checklists available.') : t('sheetAnalytics.noMatch', 'No checklists match the search.')}</span>}
+            </div>
           </div>
-          </div>
+        </details>
+        <details open={Boolean(fieldFilters || groupByField) || undefined} style={{ gridColumn: '1 / -1', minWidth: 0 }}>
+          <summary style={{ fontWeight: 600, minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer' }}>{t('sheetAnalytics.moreFilters', 'More filters')}</summary>
+          <AnalyticsFieldFilter value={fieldFilters} onChange={(value) => update('fieldFilters', value)} groupBy={groupByField} onGroupBy={(value) => update('groupByField', value)} />
         </details>
       </Card>
 

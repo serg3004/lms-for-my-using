@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { SheetAnalyticsScale, SheetAnalyticsSheet } from '../shared/api/manager.js';
 import { ManagerViewSwitch } from './ManagerViewSwitch.js';
-import { filterSheets, parseSelectedSheets, ScaleLevelBars, toggleSheet } from './SheetAnalyticsPage.js';
+import { filterSheets, parseSelectedSheets, ScaleLevelBars, selectFound, toggleSheet } from './SheetAnalyticsPage.js';
 
 const t = ((key: string, fallback?: string) => fallback ?? key) as unknown as TFunction;
 const tt = t as unknown as (key: string, fallback: string) => string;
@@ -71,5 +71,12 @@ describe('ManagerViewSwitch (PR 461)', () => {
     expect(html).toContain('href="/manager/checklists/sheets"');
     expect(html.match(/aria-current="page"/g)).toHaveLength(1);
     expect(html.indexOf('aria-current="page"')).toBeGreaterThan(html.indexOf('href="/manager/checklists/sheets"') - 80);
+  });
+});
+
+describe('selectFound', () => {
+  it('keeps the found sheets and stores everything as all', () => {
+    expect(selectFound(['a'], ['a', 'b'])).toEqual(['a']);
+    expect(selectFound(['a', 'b'], ['a', 'b'])).toEqual([]);
   });
 });
