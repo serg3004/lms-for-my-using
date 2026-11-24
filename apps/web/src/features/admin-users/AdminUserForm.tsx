@@ -26,11 +26,13 @@ export function AdminUserForm({ fields = [], departments = [], departmentsLoadin
     onErrorsChange(clearFieldError(errors, name));
   };
   return <form className="admin-form" onSubmit={onSubmit}>
+    <fieldset className="admin-form__group"><legend>{t('admin.users.groupMain', 'Main')}</legend>
     <div className="admin-form__row">
       <FormField id="user-lastName" label={t('admin.users.fieldLastName', 'Last name')} required error={errors.lastName}><input autoFocus id="user-lastName" aria-describedby={errors.lastName ? 'user-lastName-error' : undefined} aria-invalid={Boolean(errors.lastName)} value={form.lastName} onChange={(e) => field('lastName', e.target.value)} /></FormField>
       <FormField id="user-firstName" label={t('admin.users.fieldFirstName', 'First name')} required error={errors.firstName}><input id="user-firstName" aria-describedby={errors.firstName ? 'user-firstName-error' : undefined} aria-invalid={Boolean(errors.firstName)} value={form.firstName} onChange={(e) => field('firstName', e.target.value)} /></FormField>
       <FormField id="user-middleName" label={t('admin.users.fieldMiddleName', 'Middle name')}><input id="user-middleName" value={form.middleName} onChange={(e) => onChange({ ...form, middleName: e.target.value })} /></FormField>
-    </div>
+    </div></fieldset>
+    <fieldset className="admin-form__group"><legend>{t('admin.users.groupAccess', 'Sign-in and access')}</legend>
     {mode === 'create' && <label><input checked={Boolean(form.noEmail)} onChange={(e) => onChange({ ...form, noEmail: e.target.checked, noEmailAccess: form.noEmailAccess ?? 'identity', password: '', temporaryPassword: false })} type="checkbox" /> {t('identity.admin.noEmail')}</label>}
     {mode === 'create' && form.noEmail && <FormField id="user-no-email-access" label={t('identity.admin.access')} hint={t('identity.admin.noEmailHint')}>
       <select id="user-no-email-access" value={form.noEmailAccess ?? 'identity'} onChange={(e) => onChange({ ...form, noEmailAccess: e.target.value as 'identity' | 'temporary' })}>
@@ -44,6 +46,8 @@ export function AdminUserForm({ fields = [], departments = [], departmentsLoadin
     {mode === 'create' && <FormField id="user-password" label={t('admin.users.fieldPasswordOptional', 'Password (optional)')} hint={t('admin.users.passwordInviteHint', 'Leave empty: the user will get an email invitation and set their own password.')} error={errors.password}><PasswordInput id="user-password" disabled={Boolean(form.temporaryPassword)} autoComplete="new-password" aria-describedby={errors.password ? 'user-password-error' : undefined} aria-invalid={Boolean(errors.password)} value={form.password} onChange={(e) => field('password', e.target.value)} /></FormField>}
     {mode === 'create' && <label><input checked={Boolean(form.temporaryPassword)} onChange={(e) => onChange({ ...form, password: e.target.checked ? '' : form.password, temporaryPassword: e.target.checked })} type="checkbox" /> {t('security.accessTemporary')}</label>}
     </>)}
+    </fieldset>
+    <fieldset className="admin-form__group"><legend>{t('admin.users.groupWork', 'Work')}</legend>
     {mode === 'edit' && <><div className="admin-form__row">
       <FormField id="user-position" label={t('admin.users.fieldPosition', 'Position')}><input id="user-position" value={form.position} onChange={(e) => onChange({ ...form, position: e.target.value })} /></FormField>
       <FormField id="user-shift" label={t('admin.users.fieldShift', 'Shift')}><input id="user-shift" value={form.shift} onChange={(e) => onChange({ ...form, shift: e.target.value })} /></FormField>
@@ -62,7 +66,8 @@ export function AdminUserForm({ fields = [], departments = [], departmentsLoadin
       {departmentsLoading && <p role="status">{t('admin.users.departmentsLoading', 'Loading departments…')}</p>}
       {departmentsError && <p role="alert">{departmentsError}</p>}
     </FormField>}
-    {fields.length > 0 && <fieldset style={{ border: 0, padding: 0, margin: 0, display: 'grid', gap: '0.75rem' }}>
+    </fieldset>
+    {fields.length > 0 && <fieldset className="admin-form__group">
       <legend>{t('userFields.formSection')}</legend>
       <CustomFieldInputs fields={fields} values={form.customFields ?? {}} idPrefix="user-field" onChange={(key, value) => onChange({ ...form, customFields: { ...form.customFields, [key]: value } })} />
     </fieldset>}
