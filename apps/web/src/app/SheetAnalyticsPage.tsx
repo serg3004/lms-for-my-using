@@ -163,8 +163,11 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
             </select>
           </label>
         )}
-        <fieldset style={{ gridColumn: '1 / -1', margin: 0, padding: 0, border: 0, display: 'grid', gap: 8, minWidth: 0 }}>
-          <legend style={{ fontWeight: 600, marginBottom: 6 }}>{t('sheetAnalytics.sheetsFilter', 'Checklists')}</legend>
+        <details open={selected.length > 0 || undefined} style={{ gridColumn: '1 / -1', minWidth: 0 }}>
+          <summary style={{ fontWeight: 600, minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+            {t('sheetAnalytics.sheetsFilter', 'Checklists')}: {selected.length === 0 ? `${t('sheetAnalytics.allSheets', 'All available')}${allIds.length > 0 ? ` (${allIds.length})` : ''}` : `${selected.length}`}
+          </summary>
+          <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
           <input aria-label={t('sheetAnalytics.sheetSearch', 'Search checklists')} className="ds-input" type="search" value={search} onChange={(event) => update('q', event.target.value)} placeholder={t('sheetAnalytics.sheetSearch', 'Search checklists')} />
           <label style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44, fontWeight: 600 }}>
             <input checked={selected.length === 0} onChange={() => update('sheets', '')} style={{ width: 20, height: 20, flex: 'none' }} type="checkbox" />
@@ -183,7 +186,8 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
             })}
             {sheetsState.status === 'loaded' && visible.length === 0 && <span style={{ color: 'var(--color-text-muted)' }}>{sheets.length === 0 ? t('sheetAnalytics.noSheets', 'No checklists available.') : t('sheetAnalytics.noMatch', 'No checklists match the search.')}</span>}
           </div>
-        </fieldset>
+          </div>
+        </details>
       </Card>
 
       {state.status === 'loading' && <PageState message={t('sheetAnalytics.loading', 'Loading...')} variant="loading" />}
