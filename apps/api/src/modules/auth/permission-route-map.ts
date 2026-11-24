@@ -13,6 +13,8 @@ export const permissionRouteMap: Readonly<Record<string, readonly PermissionActi
   'AssessmentAttemptsController.listAssessmentResults': ['assessment.attempt.read'],
   'AssessmentAttemptsController.listAttempts': ['assessment.attempt.read'],
   'AssessmentAttemptsController.previewAttempt': ['assessment.author'],
+  'AssessmentAttemptsController.reviewQueue': ['assessment.answer.review'],
+  'AssessmentAttemptsController.reviewAnswer': ['assessment.answer.review'],
   'AssessmentAttemptsController.recordAnswer': ['assessment.attempt.start'],
   'AssessmentAttemptsController.startAttempt': ['assessment.attempt.start'],
   'AssessmentQuestionsController.sampleBankQuestions': ['assessment.question.edit'],

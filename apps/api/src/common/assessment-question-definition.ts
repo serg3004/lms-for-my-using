@@ -21,6 +21,9 @@ export function gradeDefinedQuestion(type: QuestionType, rawDefinition: unknown,
   const parsed = questionResponseSchema.safeParse(rawResponse);
   if (!definition || !parsed.success || parsed.data.type !== type) throw new BadRequestException('Response does not match question type');
   const response = parsed.data;
+  if (definition.type === 'short_answer' && definition.manualReview) {
+    return { response, isCorrect: false, score: 0, reviewPending: true };
+  }
   const fullSet = (actual: string[], expected: string[]) => actual.length === expected.length && new Set(actual).size === actual.length && actual.every((id) => expected.includes(id));
   const invalid = () => { throw new BadRequestException('Response must contain every question item exactly once'); };
   let correct: number; let total = 1;

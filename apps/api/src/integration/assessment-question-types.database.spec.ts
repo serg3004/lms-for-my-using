@@ -10,10 +10,12 @@ import { AssessmentQuestionsService } from '../modules/assessment-questions/asse
 import { AssessmentQuestionsController } from '../modules/assessment-questions/assessment-questions.controller.js';
 import { createAssessmentQuestionSchema } from '../modules/assessment-questions/assessment-questions.schemas.js';
 import { AssessmentAttemptsService } from '../modules/assessment-attempts/assessment-attempts.service.js';
+import { AssessmentManualReviewService } from '../modules/assessment-attempts/assessment-manual-review.service.js';
+import { ManagerTeamScope } from '../modules/manager-team-scope/public.js';
 import { AssessmentResultsService } from '../modules/assessment-attempts/assessment-results.service.js';
 import { createAssessmentAttemptSchema, type CreateAssessmentAttemptInput } from '../modules/assessment-attempts/assessment-attempts.schemas.js';
 import { AssessmentsService } from '../modules/assessments/assessments.service.js';
-import { RolesGuard, type CurrentUser, type AuthenticatedRequest } from '../modules/auth/public.js';
+import { EffectivePermissionsLookup, RolesGuard, type CurrentUser, type AuthenticatedRequest } from '../modules/auth/public.js';
 import { CourseAccessGuard, CourseAccessPolicy } from '../modules/course-access/public.js';
 import { assertSafeTestDatabase } from './database-test-safety.js';
 
@@ -40,7 +42,7 @@ describe('seven assessment question types and legacy grading — database', () =
   const prisma = new PrismaService(), questions = new AssessmentQuestionsService(prisma), attempts = new AssessmentAttemptsService(prisma), results = new AssessmentResultsService(prisma), papers = new AssessmentsService(prisma);
   let databaseReady = false;
   let org: string, foreignOrg: string, courseId: string, assessmentId: string, learner: CurrentUser, instructor: CurrentUser, unassigned: CurrentUser;
-  async function person(role: 'learner' | 'instructor', organizationId = org): Promise<CurrentUser> {
+  async function person(role: 'learner' | 'instructor' | 'manager', organizationId = org): Promise<CurrentUser> {
     const user = await prisma.user.create({ data: { organizationId, email: `${randomUUID()}@example.test`, firstName: 'Question', lastName: 'Test', passwordHash: 'unused' } });
     await prisma.membership.create({ data: { organizationId, userId: user.id, role } });
     return { ...user, roles: [role] };
@@ -90,6 +92,51 @@ describe('seven assessment question types and legacy grading — database', () =
     await prisma.membership.deleteMany({ where: { organizationId: { in: [org, foreignOrg].filter(Boolean) } } });
     await prisma.user.deleteMany({ where: { organizationId: { in: [org, foreignOrg].filter(Boolean) } } });
     await prisma.organization.deleteMany({ where: { id: { in: [org, foreignOrg].filter(Boolean) } } });
+  });
+
+  it('defers course results, scopes the manual review queue and reminds the reviewer once', async () => {
+    const reviews = new AssessmentManualReviewService(prisma, new EffectivePermissionsLookup(prisma), new ManagerTeamScope(), {} as BackgroundJobsService);
+    const manager = await person('manager');
+    const definition = { type: 'short_answer', manualReview: true, whitespace: 'trim', caseSensitive: false } as const;
+    const first = await createDefined({ ...definition, acceptedAnswers: [] });
+    const second = await createDefined({ ...definition, acceptedAnswers: ['reference'] });
+    await prisma.assessment.update({ where: { id: assessmentId }, data: { status: 'published', createdBy: instructor.id, maxAttempts: 1 } });
+    const input = { answers: [first, second].map(({ id }) => ({
+      questionId: id, response: { type: 'short_answer' as const, text: 'reference' },
+    })) };
+    const attempt = await submit(input);
+    expect(attempt).toMatchObject({ status: 'pending_review', passed: false, percentage: 0 });
+    await expect(submit(input)).rejects.toThrow('Assessment attempts limit reached');
+    expect(await prisma.certificate.count({ where: { assessmentAttemptId: attempt.id } })).toBe(0);
+
+    const [answer, other] = (await reviews.queue(instructor, { assessment: 'seven' })).answers;
+    expect(answer).toMatchObject({ canReview: true, maxScore: 8 });
+    expect(await reviews.queue(manager, {})).toMatchObject({ answers: [] });
+    await prisma.group.create({ data: {
+      organizationId: org, name: 'Team', slug: 'team',
+      managers: { create: { organizationId: org, managerId: manager.id } },
+      members: { create: { organizationId: org, userId: learner.id } },
+    } });
+    expect((await reviews.queue(manager, { answerId: answer!.id })).answers).toMatchObject([{ canReview: false }]);
+    await expect(reviews.review(manager, answer!.id, { score: 8, comment: '' })).rejects.toThrow(NotFoundException);
+
+    await prisma.organization.update({ where: { id: org }, data: { customRolesEnabled: true } });
+    await prisma.customRole.create({ data: {
+      organizationId: org, name: 'Review answers',
+      permissions: { create: { action: 'assessment.answer.review', scope: 'organization' } },
+      assignments: { create: { userId: unassigned.id } },
+    } });
+    const reviewer = { ...unassigned };
+    expect((await reviews.queue(reviewer, { answerId: other!.id })).answers).toMatchObject([{ canReview: true }]);
+    await prisma.assessmentAttempt.update({ where: { id: attempt.id }, data: { completedAt: new Date(Date.now() - 49 * 60 * 60 * 1000) } });
+    await reviews.remind();
+    await reviews.remind();
+    expect(await prisma.notification.count({ where: { userId: instructor.id, type: 'assessment_review_due' } })).toBe(1);
+    await expect(reviews.review(reviewer, other!.id, { score: 8, comment: 'Reviewed' })).resolves.toEqual({ status: 'pending_review' });
+    await expect(reviews.review(instructor, answer!.id, { score: 4, comment: 'Partial' })).resolves.toEqual({ status: 'completed' });
+    const final = await results.getAttemptResult(attempt.id, learner);
+    expect(final).toMatchObject({ status: 'completed', percentage: 75, passed: true });
+    expect(await prisma.certificate.count({ where: { assessmentAttemptId: attempt.id } })).toBe(1);
   });
 
   it('confirms shared edits and keeps the sampled attempt and its review frozen', async () => {

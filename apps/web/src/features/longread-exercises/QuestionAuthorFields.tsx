@@ -63,6 +63,10 @@ export function QuestionDefinitionFields({ definition: d, onChange: patch }: { d
       </div>)}
       <button type="button" className="admin-btn admin-btn--secondary" disabled={d.blanks.length >= 50} onClick={() => patch({ ...d, blanks: [...d.blanks, { id: `blank-${crypto.randomUUID()}`, acceptedAnswers: [''] }] })}>{t('longreadExercises.addBlank')}</button>
     </>}
+    {d.type === 'short_answer' && <label><input type="checkbox" checked={!!d.manualReview} onChange={(event) => patch({
+      ...d, manualReview: event.target.checked,
+      acceptedAnswers: d.acceptedAnswers.filter((answer) => answer.length > 0),
+    })} /> {t('assessmentReview.manual')}</label>}
     {d.type === 'short_answer' && text('acceptedAnswers', d.acceptedAnswers.join('\n'), (value) => patch({ ...d, acceptedAnswers: variants(value) }), true)}
     {(d.type === 'short_answer' || d.type === 'fill_blank') && <>
       <p>{t('longreadExercises.variantsHelp')}</p>

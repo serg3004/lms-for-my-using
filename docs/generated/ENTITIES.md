@@ -93,7 +93,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 
 | Enum | Values |
 |---|---|
-| `AssessmentAttemptStatus` | `in_progress`, `completed` |
+| `AssessmentAttemptStatus` | `in_progress`, `completed`, `pending_review` |
 | `AssessmentQuestionScoringMode` | `all_or_nothing`, `proportional`, `proportional_with_penalty`, `per_option` |
 | `AssessmentQuestionType` | `single_choice`, `multiple_choice`, `true_false`, `matching`, `ordering`, `fill_blank`, `short_answer` |
 | `AssessmentStatus` | `draft`, `published`, `archived` |

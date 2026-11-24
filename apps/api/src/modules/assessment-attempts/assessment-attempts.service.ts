@@ -83,6 +83,8 @@ const attemptAnswerSelect = {
   selectedOptionId: true,
   selectedOptionIds: true,
   response: true,
+  reviewPending: true,
+  reviewComment: true,
   isCorrect: true,
   score: true,
   createdAt: true,
@@ -236,7 +238,7 @@ export class AssessmentAttemptsService {
 
     const attemptId = await this.prisma.$transaction(async (tx) => {
       return recordCompletedAssessment(tx,
-        { organizationId, assessmentId, userId, ...location, score, maxScore, percentage, passed, completedAt, status: 'completed' },
+        { organizationId, assessmentId, userId, ...location, score, maxScore, percentage, passed, completedAt, status: 'completed', ...(gradedAnswers.some((answer) => answer.reviewPending) ? { reviewPassingScore: expired ? 101 : assessment.passingScore } : {}) },
         freezeGradedAnswers(questions, gradedAnswers, assessment),
         location.courseId, assessment.title, inProgress?.id);
 
@@ -279,7 +281,7 @@ export class AssessmentAttemptsService {
       const passed = !expired && percentage >= assessment.passingScore;
 
       return recordCompletedAssessment(tx,
-        { organizationId, assessmentId, userId, ...location, score, maxScore, percentage, passed, completedAt, status: 'completed' },
+        { organizationId, assessmentId, userId, ...location, score, maxScore, percentage, passed, completedAt, status: 'completed', ...(graded.some((answer) => answer.reviewPending) ? { reviewPassingScore: expired ? 101 : assessment.passingScore } : {}) },
         freezeGradedAnswers(questions, graded, assessment), location.courseId, assessment.title, active?.id,
         policy.attemptPolicy ? async () => effectiveAssessmentResult(policy.attemptPolicy!,
           await tx.assessmentAttempt.findMany({ where: completedAssessmentAttempts(scope), orderBy: assessmentAttemptOrder,
@@ -319,7 +321,7 @@ export class AssessmentAttemptsService {
       const answer = previous ?? input;
       const [grade] = gradeAssessmentAnswers([question], [answer]);
       if (!previous) await tx.assessmentAttempt.update({ where: { id: active.id }, data: { lockedAnswers: [...saved, input] } });
-      if (policy.incorrectAnswer !== 'immediate') return { answer };
+      if (grade.reviewPending || policy.incorrectAnswer !== 'immediate') return { answer };
       return { answer, isCorrect: grade.isCorrect,
         feedback: policy.showFeedback ? (grade.isCorrect ? question.correctFeedback : question.incorrectFeedback) : undefined,
         ...(!grade.isCorrect ? publicAnswerKey(question) : {}) };
@@ -333,7 +335,7 @@ export class AssessmentAttemptsService {
 
   private async ensureAttemptAllowed(db: Prisma.TransactionClient, scope: Prisma.AssessmentAttemptWhereInput,
     maxAttempts: number | null, policy: AssessmentPolicy) {
-    const completed = completedAssessmentAttempts(scope);
+    const completed = { ...completedAssessmentAttempts(scope), status: { in: ['completed', 'pending_review'] as ('completed' | 'pending_review')[] } };
     if (maxAttempts && await db.assessmentAttempt.count({ where: completed }) >= maxAttempts) {
       throw new BadRequestException('Assessment attempts limit reached');
     }

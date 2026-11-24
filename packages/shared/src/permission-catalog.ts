@@ -88,6 +88,7 @@ export const PERMISSION_ACTIONS = [
   action('assessment.question.edit', 'tests', OWN_ORG, l('Создавать и редактировать вопросы', 'Create and edit questions', 'Сұрақтарды жасау және өңдеу', '创建和编辑题目'), ['assessment.question.read']),
   action('assessment.option.read', 'tests', OWN_ORG, l('Видеть варианты ответов', 'See answer options', 'Жауап нұсқаларын көру', '查看答案选项')),
   action('assessment.option.edit', 'tests', OWN_ORG, l('Создавать и редактировать варианты ответов', 'Create and edit answer options', 'Жауап нұсқаларын жасау және өңдеу', '创建和编辑答案选项'), ['assessment.option.read']),
+  action('assessment.answer.review', 'tests', ['organization'], l('Проверять ответы', 'Review answers', 'Жауаптарды тексеру', '审核答案')),
   action('assessment.attempt.start', 'tests', ['own'], l('Проходить тесты', 'Take tests', 'Тесттерден өту', '参加测试')),
   // Reports
   action('report.summary.read', 'reports', TEAM_UP, l('Видеть сводный отчёт', 'See the summary report', 'Жиынтық есепті көру', '查看汇总报告')),

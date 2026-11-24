@@ -236,10 +236,12 @@ export class ProgressService {
           userId,
           deletedAt: null,
           completedAt: { not: null },
+          status: { in: ['completed', 'pending_review'] },
         },
         select: {
           id: true,
           percentage: true,
+          status: true,
           completedAt: true,
           courseId: true,
         },
@@ -255,6 +257,8 @@ export class ProgressService {
       }),
     ]);
 
+    const pendingCourses = new Set(attemptRows.filter((attempt) => attempt.status === 'pending_review').map((attempt) => attempt.courseId));
+    const completedAttemptRows = attemptRows.filter((attempt) => attempt.status !== 'pending_review');
     const completedProgressRows = progressRows.filter((row) => row.status === 'completed' && row.completedAt);
     const startedCourseIds = [...new Set(progressRows.map((row) => row.courseId))];
 
@@ -280,7 +284,7 @@ export class ProgressService {
     }
 
     const latestScoreByCourseId = new Map<string, number>();
-    for (const attempt of attemptRows) {
+    for (const attempt of completedAttemptRows) {
       const courseId = attempt.courseId;
       if (courseId && !latestScoreByCourseId.has(courseId)) {
         latestScoreByCourseId.set(courseId, attempt.percentage);
@@ -301,7 +305,7 @@ export class ProgressService {
           completedLessons,
           totalLessons,
           percentage,
-          status: totalLessons > 0 && completedLessons >= totalLessons ? ('completed' as const) : ('in_progress' as const),
+          status: !pendingCourses.has(courseId) && totalLessons > 0 && completedLessons >= totalLessons ? ('completed' as const) : ('in_progress' as const),
           latestAssessmentScore: latestScoreByCourseId.get(courseId) ?? null,
         };
       })
@@ -312,7 +316,7 @@ export class ProgressService {
     const overallProgressPercent = totalLessonsSum > 0 ? Math.round((totalCompletedSum / totalLessonsSum) * 100) : 0;
 
     const lessonsInPeriod = completedProgressRows.filter((row) => row.completedAt! >= periodStart);
-    const attemptsInPeriod = attemptRows.filter((attempt) => attempt.completedAt! >= periodStart);
+    const attemptsInPeriod = completedAttemptRows.filter((attempt) => attempt.completedAt! >= periodStart);
     const certificatesInPeriod = certificateRows.filter((certificate) => certificate.issuedAt >= periodStart);
 
     const lessonsCompletedCount = lessonsInPeriod.length;
@@ -337,7 +341,7 @@ export class ProgressService {
     for (const row of completedProgressRows) {
       if (row.completedAt! >= weekStart) activeDaysThisWeek.add(dateKeyUtc(row.completedAt!));
     }
-    for (const attempt of attemptRows) {
+    for (const attempt of completedAttemptRows) {
       if (attempt.completedAt! >= weekStart) activeDaysThisWeek.add(dateKeyUtc(attempt.completedAt!));
     }
     const streak = Array.from({ length: 7 }, (_, dayOfWeek) => {

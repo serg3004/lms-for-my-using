@@ -34,8 +34,8 @@ export function ExerciseBlock({ block }: { block: ReaderBlock }) {
     if (storageKey) try { sessionStorage.removeItem(storageKey); } catch { /* Optional retry cache. */ }
   }, [last, storageKey]);
   if (!runtime || !content.success || !parsed.success || !block.id) return <p role="note">{t('longreadReader.unsupported')}</p>;
-  const question = parsed.data, config = content.data, result = localResult ?? last;
-  const blocked = !runtime.preview && (!state || !state.remaining || state.testExhausted);
+  const question = parsed.data, config = content.data, result = last && localResult?.attemptId === last.attemptId ? last : localResult ?? last;
+  const blocked = !runtime.preview && (!state || !state.remaining || state.testExhausted || last?.pendingReview);
   async function submit() {
     if (inFlight.current || !answer || !exerciseAnswerComplete(question, answer) || !runtime || !block.id) return;
     inFlight.current = true; setBusy(true); setError('');
@@ -60,13 +60,16 @@ export function ExerciseBlock({ block }: { block: ReaderBlock }) {
     {config.hint && <details><summary style={{ minHeight: 44 }}>{t('longreadExercises.hint')}</summary><p><RichText value={config.hint} /></p></details>}
     <QuestionResponseFields question={question} answer={answer} onChange={(value) => { if (!pending.current) setAnswer(value); }} disabled={busy || !editing || blocked || !!pending.current} />
     {result && !editing && <div role="status">
+      {result.pendingReview ? <p>{t('assessmentReview.pending')}</p> : <>
       <p>{t(result.isCorrect ? 'longreadExercises.correct' : result.score > 0 ? 'longreadExercises.partial' : 'longreadExercises.incorrect')} · <bdi dir="ltr">{result.score} / {result.maxScore}</bdi></p>
       <p>{t(result.passed ? 'longreadExercises.thresholdPassed' : 'longreadExercises.thresholdFailed')}</p>
+      {result.reviewComment && <p style={{ whiteSpace: 'pre-wrap' }}>{result.reviewComment}</p>}
       {(result.correctDefinition || result.correctOptionIds?.length) && <p style={{ whiteSpace: 'pre-wrap' }}>{t('longreadExercises.correctAnswer')}: {correctAnswerText(question, result, t)}</p>}
+      </>}
     </div>}
     {!runtime.preview && state && <p>{t('longreadExercises.attempts', { count: state.attemptsUsed, max: config.maxAttempts })}</p>}
     {runtime.preview && <p role="note">{t('longreadExercises.preview')}</p>}
-    {blocked && state && <p>{t(state.testExhausted ? 'longreadExercises.testExhausted' : 'longreadExercises.exhausted')}</p>}
+    {blocked && state && !last?.pendingReview && <p>{t(state.testExhausted ? 'longreadExercises.testExhausted' : 'longreadExercises.exhausted')}</p>}
     {editing && <button type="button" className="admin-btn admin-btn--primary" style={{ minHeight: 44 }} disabled={busy || blocked || !exerciseAnswerComplete(question, answer)} onClick={() => void submit()}>{t(busy ? 'longreadExercises.sending' : pending.current ? 'longread.retry' : 'longreadExercises.check')}</button>}
     {!editing && !blocked && <button type="button" className="admin-btn admin-btn--secondary" style={{ minHeight: 44 }} onClick={() => { setEditing(true); setLocalResult(null); pending.current = null; setError(''); }}>{t('longreadExercises.tryAgain')}</button>}
     {error && <div role="alert"><p>{t(error)}</p><button type="button" className="admin-btn admin-btn--secondary" style={{ minHeight: 44 }} onClick={() => void runtime.reload()}>{t('longreadExercises.refresh')}</button></div>}

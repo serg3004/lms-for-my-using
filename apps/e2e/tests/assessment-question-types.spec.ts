@@ -37,8 +37,8 @@ async function fillQuiz(page: Page, checkAccessibility = false) {
   await expect(page.locator('.learner-quiz__result-score')).toContainText('100%');
 }
 
-test('authors, previews and grades all seven assessment question types', async ({ request, browser, baseURL }) => {
-  test.setTimeout(60_000);
+test('grades all seven assessment question types and reviews a manual short answer', async ({ request, browser, baseURL }) => {
+  test.setTimeout(90_000);
   const database = new URL(process.env.DATABASE_URL ?? '');
   if (process.env.NODE_ENV !== 'test' || !/(?:^|[_-])test(?:$|[_-])/.test(database.pathname.slice(1))
     || !['localhost', '127.0.0.1', ...(process.env.CI ? ['postgres'] : [])].includes(database.hostname)) {
@@ -124,6 +124,49 @@ test('authors, previews and grades all seven assessment question types', async (
         expect(recorded.answers).toHaveLength(7);
         expect(recorded.answers.every((answer) => answer.isCorrect)).toBe(true);
         expect(recorded.answers.filter((answer) => answer.response !== null)).toHaveLength(5);
+        const manual = await json<{ id: string }>(request.post('/api/v1/assessments', {
+          headers: author.headers, data: { organizationId, title: 'Ручная проверка', slug: 'manual-review', passingScore: 50 },
+        }));
+        await page.goto(`/admin/assessments/${manual.id}/edit`);
+        await editor.getByRole('button', { name: '+ Короткий ответ', exact: true }).click();
+        const manualQuestion = questions.first();
+        await manualQuestion.getByLabel(/^Название вопроса/).fill('Объясните решение');
+        await manualQuestion.getByLabel('Баллы', { exact: true }).fill('4');
+        await manualQuestion.getByRole('checkbox', { name: 'Проверяет человек' }).check();
+        await page.getByRole('button', { name: 'Опубликовать', exact: true }).click();
+        await expect(page.getByText('Опубликован', { exact: true })).toBeVisible();
+        await json(request.post(`/api/v1/assessments/${manual.id}/standalone/assignments`, {
+          headers: author.headers, data: { target: 'user', targetId: learner.actor.id, dueAt: new Date(Date.now() + 86_400_000).toISOString() },
+        }));
+        await takingPage.goto(`/learn/assessments/${manual.id}/take`);
+        await takingPage.getByRole('textbox', { name: 'Короткий ответ' }).fill('Моё объяснение');
+        await takingPage.getByRole('button', { name: 'Отправить ответы', exact: true }).click();
+        await expect(takingPage.getByText('Ожидает проверки', { exact: true })).toBeVisible();
+        await takingPage.getByRole('link', { name: 'Разбор ответов' }).click();
+        const pending = await db.assessmentAttempt.findFirstOrThrow({ where: { assessmentId: manual.id }, include: { answers: true } });
+        expect(pending).toMatchObject({ status: 'pending_review', passed: false });
+        expect((await request.post(`/api/v1/assessment-reviews/${pending.answers[0]!.id}`, {
+          headers: learner.headers, data: { score: 4, comment: '' },
+        })).status()).toBe(404);
+
+        await page.goto('/learn/assessment-reviews');
+        await page.getByRole('link', { name: /Ручная проверка.*Объясните решение/ }).click();
+        await expect(page.getByText('Моё объяснение', { exact: true })).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+        await page.setViewportSize({ width: 1440, height: 900 });
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1440);
+        await page.setViewportSize({ width: 375, height: 900 });
+        const reviewScan = await new AxeBuilder({ page }).include('main')
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
+        expect(reviewScan.violations.map(({ id }) => id)).toEqual([]);
+        await page.getByRole('spinbutton', { name: /Балл/ }).fill('3');
+        await page.getByRole('textbox', { name: 'Комментарий' }).fill('Хорошее объяснение');
+        await page.getByRole('button', { name: 'Сохранить оценку' }).click();
+        await expect(page.getByText('Оценка сохранена.', { exact: true })).toBeVisible();
+        await takingPage.reload();
+        await expect(takingPage.locator('.learner-quiz__result-score')).toContainText('75%');
+        await expect(takingPage.getByText('Хорошее объяснение', { exact: true })).toBeVisible();
+        expect(await db.notification.count({ where: { userId: learner.actor.id, link: `/learn/attempts/${pending.id}` } })).toBe(1);
       } finally {
         await learner.context.close();
       }
@@ -133,6 +176,7 @@ test('authors, previews and grades all seven assessment question types', async (
   } finally {
     await db.assessmentAttemptAnswer.deleteMany({ where: { organizationId } });
     await db.assessmentAttempt.deleteMany({ where: { organizationId } });
+    await db.notification.deleteMany({ where: { organizationId } });
     await db.user.deleteMany({ where: { organizationId } });
     await db.organization.delete({ where: { id: organizationId } });
     await db.$disconnect();

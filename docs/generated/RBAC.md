@@ -21,6 +21,7 @@ Permissions owner: `apps/api/src/modules/auth/roles.ts` (`rolePolicies`). Role e
 | `adminDashboardRead` | `admin` |
 | `assessmentAnswerOptionsCreate` | `admin`, `instructor` |
 | `assessmentAnswerOptionsRead` | `admin`, `manager`, `instructor` |
+| `assessmentAnswerReview` | `admin`, `instructor`, `manager`, `mentor`, `learner` |
 | `assessmentAttemptResultsRead` | `admin`, `manager`, `instructor`, `learner` |
 | `assessmentAttemptsCreate` | `admin`, `manager`, `instructor`, `learner` |
 | `assessmentAttemptsRead` | `admin`, `manager`, `instructor` |
@@ -154,6 +155,7 @@ Owner: `packages/shared/src/permission-catalog.ts`; the route table is `apps/api
 | `assessment.question.edit` | tests | `own`, `organization` | yes | `assessment.question.read` | `assessmentQuestionsCreate` | `admin`, `instructor` | 13 |
 | `assessment.option.read` | tests | `own`, `organization` | yes | - | `assessmentAnswerOptionsRead` | `admin`, `manager`, `instructor` | 1 |
 | `assessment.option.edit` | tests | `own`, `organization` | yes | `assessment.option.read` | `assessmentAnswerOptionsCreate` | `admin`, `instructor` | 3 |
+| `assessment.answer.review` | tests | `organization` | yes | - | `assessmentAnswerReview` | `admin`, `instructor`, `manager`, `mentor`, `learner` | 2 |
 | `assessment.attempt.start` | tests | `own` | yes | - | `assessmentAttemptsCreate` | `admin`, `manager`, `instructor`, `learner` | 5 |
 | `report.summary.read` | reports | `team`, `department`, `organization` | yes | - | `reportsRead` | `admin`, `manager` | 1 |
 | `report.team.read` | reports | `team`, `department` | yes | - | `managerTeamSummaryRead` | `admin`, `manager` | 2 |

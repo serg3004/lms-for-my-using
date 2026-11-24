@@ -15,6 +15,8 @@ import {
 } from './assessment-attempts.schemas.js';
 import { AssessmentResultsService } from './assessment-results.service.js';
 
+import { AssessmentManualReviewService, reviewQueueQuery, reviewAnswerInput } from './assessment-manual-review.service.js';
+
 const placementQuery = z.union([z.guid(), z.literal('standalone').transform(() => null)]).optional();
 
 @Controller()
@@ -24,7 +26,20 @@ export class AssessmentAttemptsController {
     private readonly assessmentAttemptsService: AssessmentAttemptsService,
     private readonly assessmentResultsService: AssessmentResultsService,
     private readonly standalone: StandaloneAssessmentsService,
+    private readonly manualReview: AssessmentManualReviewService,
   ) {}
+
+  @Get('assessment-reviews')
+  @Roles(...rolePolicies.assessmentAnswerReview)
+  reviewQueue(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
+    return this.manualReview.queue(request.currentUser!, reviewQueueQuery.parse(query));
+  }
+
+  @Post('assessment-reviews/:id')
+  @Roles(...rolePolicies.assessmentAnswerReview)
+  reviewAnswer(@Req() request: AuthenticatedRequest, @Param('id') id: string, @Body() body: unknown) {
+    return this.manualReview.review(request.currentUser!, z.guid().parse(id), reviewAnswerInput.parse(body));
+  }
 
   @Get('assessments/:assessmentId/attempts')
   @Roles(...rolePolicies.assessmentAttemptsRead)

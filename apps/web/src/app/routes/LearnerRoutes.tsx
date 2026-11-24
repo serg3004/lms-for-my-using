@@ -4,6 +4,7 @@ import { Navigate, Outlet, Route, useParams, useSearchParams } from 'react-route
 import { NotFoundPage } from '../NotFoundPage.js';
 import { LearnerPageLayout } from '../../shared/learnerLayout.js';
 
+const AssessmentReviewQueuePage = lazy(() => import('../AssessmentReviewQueuePage.js').then((m) => ({ default: m.AssessmentReviewQueuePage })));
 const LearnerAssessmentDetailPage = lazy(() => import('../LearnerAssessmentDetailPage.js').then((m) => ({ default: m.LearnerAssessmentDetailPage })));
 const LearnerAssessmentReviewPage = lazy(() => import('../LearnerAssessmentReviewPage.js').then((m) => ({ default: m.LearnerAssessmentReviewPage })));
 const LearnerAssessmentTakingPage = lazy(() => import('../LearnerAssessmentTakingPage.js').then((m) => ({ default: m.LearnerAssessmentTakingPage })));
@@ -53,6 +54,7 @@ export function LearnerRoutes() {
       <Route path="/learn/progress" element={<LearnerProgressPage />} />
       <Route path="/learn/assignments" element={<LearnerAssignmentsPage />} />
       <Route path="/learn/assessments" element={<LearnerAssessmentsPage />} />
+      <Route path="/learn/assessment-reviews" element={<AssessmentReviewQueuePage />} />
       <Route path="/learn/checklists" element={<LearnerChecklistsRoute />} />
       <Route path="/learn/certificates" element={<LearnerCertificatesPage />} />
       <Route path="/learn/notifications" element={<LearnerNotificationsPage />} />

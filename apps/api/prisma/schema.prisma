@@ -169,6 +169,7 @@ enum AssessmentQuestionScoringMode {
 enum AssessmentAttemptStatus {
   in_progress
   completed
+  pending_review
 }
 
 enum CertificateStatus {
@@ -1385,6 +1386,8 @@ model AssessmentAttempt {
   longreadRequestHash String?                   @map("longread_request_hash")
   longreadResultKey   String?                   @map("longread_result_key")
   bankQuestionSnapshot Json? @map("bank_question_snapshot")
+  reviewPassingScore  Int?                      @map("review_passing_score")
+  reviewRemindedAt    DateTime?                 @map("review_reminded_at") @db.Timestamptz
   lockedAnswers       Json?                     @map("locked_answers")
   longreadMetadata    Json?                     @map("longread_metadata")
 
@@ -1412,6 +1415,9 @@ model AssessmentAttemptAnswer {
   /// Exactly one response format is enforced by the selection CHECK in migration SQL.
   response          Json?
   selectedOptionIds Json?                   @map("selected_option_ids")
+  reviewPending     Boolean                 @default(false) @map("review_pending")
+  reviewComment     String?                 @map("review_comment")
+  reviewedBy        String?                 @map("reviewed_by") @db.Uuid
   isCorrect         Boolean                 @default(false) @map("is_correct")
   score             Int                     @default(0)
   createdAt         DateTime                @default(now()) @map("created_at") @db.Timestamptz

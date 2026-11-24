@@ -278,6 +278,7 @@ export type RecordedAssessmentAnswer = Pick<AttemptAnswerResult, 'correctDefinit
 };
 
 export type AttemptAnswerResult = {
+  reviewComment?: string;
   feedback?: string | null;
   id: string;
   response?: QuestionResponse;

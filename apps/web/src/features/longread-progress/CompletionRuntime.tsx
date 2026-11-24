@@ -10,7 +10,7 @@ export const useCompletion = () => useContext(Context);
 export function CompletionReasons({ reasons }: { reasons: CompletionReason[] }) {
   const { t } = useTranslation();
   const unique = [...new Map(reasons.map((r) => [r.code, r])).values()];
-  return <ul>{unique.map((reason) => <li key={reason.code}>{t(`longreadProgress.reasons.${reason.code}`, { count: reason.remainingSeconds ?? 0 })}</li>)}</ul>;
+  return <ul>{unique.map((reason) => <li key={reason.code}>{t(reason.code === 'pending_review' ? 'assessmentReview.pending' : `longreadProgress.reasons.${reason.code}`, { count: reason.remainingSeconds ?? 0 })}</li>)}</ul>;
 }
 export function CompletionRuntime({ data, onUpdate, children }: { data: LongreadReaderDocument; onUpdate?: (value: LongreadReaderDocument) => void; children: ReactNode }) {
   const [busy, setBusy] = useState(false), [error, setError] = useState(''); const inFlight = useRef(false), active = useRef(true), latest = useRef(data), reads = useRef(0); latest.current = data;

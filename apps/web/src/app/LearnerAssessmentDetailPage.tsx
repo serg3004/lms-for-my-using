@@ -250,7 +250,7 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
                     </td>
                     <td style={{ padding: '12px' }}>
                       {attempt.status !== 'completed' ? (
-                        <span style={{ color: COLORS.muted }}>{t('assessments.attemptsHistoryInProgress')}</span>
+                        <span style={{ color: COLORS.muted }}>{t(attempt.status === 'pending_review' ? 'assessmentReview.pending' : 'assessments.attemptsHistoryInProgress')}</span>
                       ) : (
                         <span style={{ color: attempt.passed ? '#0f9f6e' : '#dc2626', fontWeight: 700 }}>
                           {attempt.passed ? t('assessments.resultPassed') : t('assessments.resultFailed')}
@@ -258,7 +258,7 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
                       )}
                     </td>
                     <td style={{ padding: '12px' }}>
-                      {attempt.status === 'completed' && !attempt.passed ? (
+                      {attempt.status === 'pending_review' || attempt.status === 'completed' ? (
                         <a href={`/learn/attempts/${encodeURIComponent(attempt.id)}`} style={{ color: COLORS.primary, fontWeight: 600 }}>
                           {t('assessments.attemptsHistoryReview')}
                         </a>

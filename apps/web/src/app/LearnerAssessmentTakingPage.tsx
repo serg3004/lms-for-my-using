@@ -38,7 +38,7 @@ import {
 
 type LearnerAssessmentTakingData = { assessment: AssessmentSummary; questions: QuestionWithOptions[]; sampledAttempt?: Awaited<ReturnType<typeof startAssessmentAttempt<QuestionWithOptions>>> };
 
-type TakingResult = Pick<AssessmentAttemptResult, 'passed' | 'score' | 'maxScore' | 'percentage' | 'assessment' | 'answers' | 'effectiveResult'>;
+type TakingResult = Partial<Pick<AssessmentAttemptResult, 'status' | 'id'>> & Pick<AssessmentAttemptResult, 'passed' | 'score' | 'maxScore' | 'percentage' | 'assessment' | 'answers' | 'effectiveResult'>;
 type TakingPreview = LearnerAssessmentTakingData & {
   startIndex: number;
   recordAnswer: (question: QuestionWithOptions, selected: SelectedAnswers) => Promise<RecordedAssessmentAnswer>;
@@ -267,6 +267,10 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
 
   if (submitState.status === 'done') {
     const { result, certificateId } = submitState;
+    if (result.status === 'pending_review') return <div className="learner-quiz">
+      <p role="status">{t('assessmentReview.pending')}</p>
+      {result.id && <a href={`/learn/attempts/${result.id}`}>{t('assessments.attemptsHistoryReview')}</a>}
+    </div>;
     return (
       <div className="learner-quiz">
         {!preview && <nav className="learner-breadcrumb">

@@ -50,6 +50,7 @@ export function LearnerAssessmentReviewPage({ attemptId }: { attemptId: string }
         <a href={assessmentHref}>{result.assessment.title}</a>
       </nav>
 
+      {result.status === 'pending_review' ? <p role="status">{t('assessmentReview.pending')}</p> : <>
       <div className={`learner-quiz__result-banner ${result.passed ? 'learner-quiz__result-banner--passed' : 'learner-quiz__result-banner--failed'}`}>
         <span className="learner-quiz__result-label">
           {result.passed
@@ -83,6 +84,7 @@ export function LearnerAssessmentReviewPage({ attemptId }: { attemptId: string }
                       <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultYourAnswer')}:</span>{' '}
                       {ownAnswerText(answer, t)}
                     </p>
+                    {answer.reviewComment && <p style={{ whiteSpace: 'pre-wrap' }}>{answer.reviewComment}</p>}
                     {answer.feedback && <RichText value={answer.feedback} />}
                     {!answer.isCorrect && (answer.correctDefinition || answer.correctOptions?.length) ? (
                       <p className="learner-quiz__breakdown-answer learner-quiz__breakdown-answer--correct">
@@ -91,7 +93,7 @@ export function LearnerAssessmentReviewPage({ attemptId }: { attemptId: string }
                       </p>
                     ) : null}
                     <p className="learner-quiz__breakdown-points">
-                      {answer.score} / {answer.question.points} {answer.isCorrect ? t('assessments.resultCorrect') : t('assessments.resultIncorrect')}
+                      {answer.score} / {answer.question.points} {t(answer.isCorrect ? 'assessments.resultCorrect' : answer.score > 0 ? 'assessments.resultPartial' : 'assessments.resultIncorrect')}
                     </p>
                   </div>
                 </li>
@@ -100,6 +102,7 @@ export function LearnerAssessmentReviewPage({ attemptId }: { attemptId: string }
         </section>
       ) : null}
 
+      </>}
       {result.longread && <p>{t('longreadExercises.resultVersion', { version: result.longread.version })}</p>}
       <div className="learner-quiz__result-actions">
         <a className="learner-btn learner-btn--primary" href={assessmentHref}>{t('assessments.backToAssessment')}</a>

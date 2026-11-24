@@ -122,6 +122,7 @@ export function LearnerAssessmentsPage() {
         <h1 style={{ margin: 0, fontSize: '38px', fontWeight: 800, color: COLORS.text, lineHeight: 1.2 }}>
           {t('assessments.title')}
         </h1>
+        <a href="/learn/assessment-reviews">{t('assessmentReview.title')}</a>
         <p style={{ margin: '10px 0 0', color: COLORS.muted, fontSize: '15px', maxWidth: '760px', lineHeight: 1.6 }}>
           {t('assessments.subtitle')}
         </p>

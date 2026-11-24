@@ -68,6 +68,8 @@ const attemptResultDetailSelect = {
       selectedOptionIds: true,
       frozenQuestion: true,
       response: true,
+      reviewPending: true,
+      reviewComment: true,
       isCorrect: true,
       score: true,
       createdAt: true,
@@ -141,6 +143,8 @@ type AttemptResultInput = {
     selectedOptionIds: unknown;
     response?: unknown;
     frozenQuestion?: unknown;
+    reviewPending?: boolean;
+    reviewComment?: string | null;
     isCorrect: boolean;
     score: number;
     createdAt: Date;
@@ -246,6 +250,7 @@ export class AssessmentResultsService {
       where: {
         assessmentId,
         organizationId,
+        status: { not: 'pending_review' },
         countsTowardResults: true,
         ...attemptScope(this.teamScope, actor),
         deletedAt: null,
@@ -370,13 +375,14 @@ export class AssessmentResultsService {
           const feedback = question[feedbackKey] === undefined ? answer.question[feedbackKey] : question[feedbackKey];
           return {
             id: answer.id, questionId: answer.questionId, selectedOptionId: answer.selectedOptionId, selectedOptionIds: answer.selectedOptionIds,
-            ...(answer.response ? { response: answer.response } : {}), isCorrect: answer.isCorrect, score: answer.score, createdAt: answer.createdAt, updatedAt: answer.updatedAt,
+            ...(answer.response ? { response: answer.response } : {}), isCorrect: answer.isCorrect, score: answer.score,
+            ...(answer.reviewPending ? { reviewPending: true } : {}), ...(answer.reviewComment ? { reviewComment: answer.reviewComment } : {}), createdAt: answer.createdAt, updatedAt: answer.updatedAt,
             question: { id: question.id, title: question.title, type: question.type, points: question.points, order: question.order,
               ...(frozen ? { options: frozen.question.options.map(({ id, text, imageUrl }) => ({ id, text, imageUrl })) } : {}),
               ...(definition.success && definition.data.type === question.type ? { definition: publicQuestionDefinition(definition.data, `result:${answer.id}`) } : {}) },
             ...(attempt.status === 'completed' && policy.showFeedback ? { feedback } : {}),
             selectedOption: frozen ? selected ? { id: selected.id, text: selected.text, imageUrl: selected.imageUrl } : null : answer.selectedOption,
-            ...(reveal && question.definition ? { correctDefinition: question.definition } : {}),
+            ...(reveal && question.definition && !(definition.success && definition.data.type === 'short_answer' && definition.data.manualReview) ? { correctDefinition: question.definition } : {}),
             correctOptions: reveal ? correctOptions : undefined,
           };
         }) ?? [],

@@ -152,6 +152,7 @@ describe('rolePolicies', () => {
     assessmentAnswerOptionsRead: ['admin', 'manager', 'instructor'],
     assessmentAnswerOptionsCreate: ['admin', 'instructor'],
     assessmentAttemptsRead: ['admin', 'manager', 'instructor'],
+  assessmentAnswerReview: ['admin', 'instructor', 'manager', 'mentor', 'learner'],
     assessmentAttemptResultsRead: ['admin', 'manager', 'instructor', 'learner'],
     assessmentAttemptsCreate: ['admin', 'manager', 'instructor', 'learner'],
     certificatesRead: ['admin', 'manager', 'instructor', 'learner'],
