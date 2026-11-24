@@ -3,8 +3,10 @@ import { useTranslation } from 'react-i18next';
 import type { AssessmentAnswer, QuestionResponse } from '@lms/shared/assessment-question-types';
 import type { PublicExerciseQuestion } from '@lms/shared/longread-exercises';
 
+type ResponseQuestion = Pick<PublicExerciseQuestion, 'id' | 'type' | 'options'> & { definition?: PublicExerciseQuestion['definition'] | null };
+
 const control = { minHeight: 44, width: '100%', maxWidth: '100%' };
-export function exerciseAnswerComplete(question: PublicExerciseQuestion, answer: AssessmentAnswer | null): boolean {
+export function exerciseAnswerComplete(question: ResponseQuestion, answer: AssessmentAnswer | null): boolean {
   if (!answer || answer.questionId !== question.id) return false;
   if (!question.definition) return question.type === 'multiple_choice' ? !!answer.selectedOptionIds?.length : !!answer.selectedOptionId;
   const response = answer.response, definition = question.definition;
@@ -14,7 +16,7 @@ export function exerciseAnswerComplete(question: PublicExerciseQuestion, answer:
   if (response.type === 'ordering' && definition.type === 'ordering') return response.itemIds.length === definition.items.length && response.itemIds.every(Boolean) && new Set(response.itemIds).size === response.itemIds.length;
   return response.type === 'fill_blank' && definition.type === 'fill_blank' && response.blanks.length === definition.blanks.length;
 }
-export function QuestionResponseFields({ question, answer, onChange, disabled = false }: { question: PublicExerciseQuestion; answer: AssessmentAnswer | null; onChange: (answer: AssessmentAnswer) => void; disabled?: boolean }) {
+export function QuestionResponseFields({ question, answer, onChange, disabled = false }: { question: ResponseQuestion; answer: AssessmentAnswer | null; onChange: (answer: AssessmentAnswer) => void; disabled?: boolean }) {
   const { t } = useTranslation(), id = useId();
   const response = answer?.response, definition = question.definition;
   const set = (value: QuestionResponse) => onChange({ questionId: question.id, response: value });

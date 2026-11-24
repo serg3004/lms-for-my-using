@@ -3,27 +3,46 @@ import { useTranslation } from 'react-i18next';
 import type { QuestionDefinition } from '@lms/shared/assessment-question-types';
 import type { WriteLongreadQuestion } from '@lms/shared/longread-exercises';
 const variants = (text: string) => text.split('\n');
+
+function QuestionTextField({ name, value, onChange, multiline = false }: {
+  name: string; value: string; onChange: (text: string) => void; multiline?: boolean;
+}) {
+  const { t } = useTranslation();
+  return <label style={{ display: 'block', marginBlock: 12 }}>
+    {t(`longreadExercises.${name}`)}
+    {multiline
+      ? <textarea style={{ width: '100%', minHeight: 88 }} maxLength={20_000} value={value} onChange={(e) => onChange(e.target.value)} />
+      : <input style={{ width: '100%', minHeight: 44 }} maxLength={2000} value={value} onChange={(e) => onChange(e.target.value)} />}
+  </label>;
+}
 export function QuestionAuthorFields({ value, onChange }: { value: WriteLongreadQuestion; onChange: (value: WriteLongreadQuestion) => void }) {
-  const { t } = useTranslation(), id = useId(), d = value.definition;
-  const patch = (definition: QuestionDefinition) => onChange({ ...value, definition });
-  const text = (name: string, val: string, change: (text: string) => void, multiline = false) => <label style={{ display: 'block', marginBlock: 12 }}>{t(`longreadExercises.${name}`)}{multiline ? <textarea style={{ width: '100%', minHeight: 88 }} maxLength={20_000} value={val} onChange={(e) => change(e.target.value)} /> : <input style={{ width: '100%', minHeight: 44 }} maxLength={2000} value={val} onChange={(e) => change(e.target.value)} />}</label>;
-  if (!d) return <>
+  const { t } = useTranslation(), id = useId();
+  if (value.definition) return <QuestionDefinitionFields definition={value.definition} onChange={(definition) => onChange({ ...value, definition })} />;
+  return <>
     {value.options.map((option, index) => <div key={option.id ?? index} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
-      {text('option', option.text, (label) => onChange({ ...value, options: value.options.map((o, i) => i === index ? { ...o, text: label } : o) }))}
+      <QuestionTextField name="option" value={option.text} onChange={(label) => onChange({ ...value, options: value.options.map((o, i) => i === index ? { ...o, text: label } : o) })} />
       <label><input type={value.type === 'multiple_choice' ? 'checkbox' : 'radio'} name={`${id}-correct`} checked={option.isCorrect} onChange={(e) => onChange({ ...value, options: value.options.map((o, i) => ({ ...o, isCorrect: i === index ? e.target.checked : value.type === 'multiple_choice' && o.isCorrect })) })} /> {t('longreadExercises.correctOption')}</label>
       <button type="button" className="admin-btn admin-btn--secondary" disabled={value.options.length <= 2} onClick={() => onChange({ ...value, options: value.options.filter((_, i) => i !== index) })}>{t('longread.delete')}</button>
     </div>)}
     <button type="button" className="admin-btn admin-btn--secondary" disabled={value.options.length >= 50} onClick={() => onChange({ ...value, options: [...value.options, { text: '', isCorrect: false }] })}>{t('longreadExercises.addOption')}</button>
   </>;
+}
+
+export function QuestionDefinitionFields({ definition: d, onChange: patch }: { definition: QuestionDefinition; onChange: (definition: QuestionDefinition) => void }) {
+  const { t } = useTranslation();
+  const text = (name: string, val: string, change: (text: string) => void, multiline = false) =>
+    <QuestionTextField name={name} value={val} onChange={change} multiline={multiline} />;
   return <>
     {d.type === 'true_false' && <label>{t('longreadExercises.correctAnswer')}<select value={String(d.correctAnswer)} onChange={(e) => patch({ ...d, correctAnswer: e.target.value === 'true' })}><option value="true">{t('longreadExercises.true')}</option><option value="false">{t('longreadExercises.false')}</option></select></label>}
     {d.type === 'matching' && <>
       <p>{t('longreadExercises.matchingHelp')}</p>
-      {d.left.map((left, i) => <div key={left.id} style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+      {d.left.map((left, i) => {
+        const right = d.right.find((item) => item.id === d.correctPairs.find((pair) => pair.leftId === left.id)?.rightId)!;
+        return <div key={left.id} style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         {text('leftItem', left.text, (value) => patch({ ...d, left: d.left.map((v, n) => n === i ? { ...v, text: value } : v) }))}
-        {text('rightItem', d.right[i]!.text, (value) => patch({ ...d, right: d.right.map((v, n) => n === i ? { ...v, text: value } : v) }))}
-        <button type="button" className="admin-btn admin-btn--secondary" disabled={d.left.length <= 2} onClick={() => patch({ ...d, left: d.left.filter((_, n) => n !== i), right: d.right.filter((_, n) => n !== i), correctPairs: d.correctPairs.filter((p) => p.leftId !== left.id) })}>{t('longread.delete')}</button>
-      </div>)}
+        {text('rightItem', right.text, (value) => patch({ ...d, right: d.right.map((v) => v.id === right.id ? { ...v, text: value } : v) }))}
+        <button type="button" className="admin-btn admin-btn--secondary" disabled={d.left.length <= 2} onClick={() => patch({ ...d, left: d.left.filter((_, n) => n !== i), right: d.right.filter((item) => item.id !== right.id), correctPairs: d.correctPairs.filter((p) => p.leftId !== left.id) })}>{t('longread.delete')}</button>
+      </div>; })}
       <button type="button" className="admin-btn admin-btn--secondary" disabled={d.left.length >= 50} onClick={() => { const leftId = crypto.randomUUID(), rightId = crypto.randomUUID(); patch({ ...d, left: [...d.left, { id: leftId, text: '' }], right: [...d.right, { id: rightId, text: '' }], correctPairs: [...d.correctPairs, { leftId, rightId }] }); }}>{t('longreadExercises.addPair')}</button>
     </>}
     {d.type === 'ordering' && <>

@@ -1,3 +1,4 @@
+import { questionDefinitionSchema } from '@lms/shared/assessment-question-types';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -145,6 +146,11 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
     if (!content) errors.push(label('invalidFields'));
     if (questions.some((question) => !question.title.trim() || !Number.isInteger(question.points) || question.points < 1
       || question.options.some((option) => !option.imageUrl && !option.text?.trim()))) errors.push(label('invalidQuestions'));
+    for (const question of questions) {
+      if (question.definition && !questionDefinitionSchema.safeParse(question.definition).success) {
+        errors.push(t('admin.assessmentBuilder.editor.invalidDefinition', { title: question.title }));
+      }
+    }
     if (action === 'publish') {
       if (!questions.length) errors.push(t('admin.assessmentBuilder.publishNoQuestions'));
       for (const question of questions) {

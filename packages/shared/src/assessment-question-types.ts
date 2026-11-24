@@ -76,3 +76,17 @@ export const publicQuestionDefinitionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('fill_blank'), blanks: z.array(z.object({ id }).strict()), ...textPolicy }).strict(),
   z.object({ type: z.literal('short_answer'), ...textPolicy }).strict(),
 ]);
+
+/** Explicit allowlist: no answer key can enter the learner's quiz projection. */
+export function projectQuestionDefinition(
+  definition: QuestionDefinition,
+  arrange: <T>(items: T[], group: 'left' | 'right' | 'items') => T[] = (items) => items,
+): PublicQuestionDefinition {
+  switch (definition.type) {
+    case 'true_false': return { type: definition.type };
+    case 'matching': return { type: definition.type, left: arrange(definition.left, 'left'), right: arrange(definition.right, 'right') };
+    case 'ordering': return { type: definition.type, items: arrange(definition.items, 'items') };
+    case 'fill_blank': return { type: definition.type, blanks: definition.blanks.map(({ id }) => ({ id })), caseSensitive: definition.caseSensitive, whitespace: definition.whitespace };
+    case 'short_answer': return { type: definition.type, caseSensitive: definition.caseSensitive, whitespace: definition.whitespace };
+  }
+}

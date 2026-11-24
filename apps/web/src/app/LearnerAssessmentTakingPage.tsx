@@ -1,5 +1,7 @@
 import { assessmentTokenQuery } from '../shared/api/assessments.js';
 import { type FormEvent, useEffect, useState } from 'react';
+import { QuestionResponseFields } from '../features/longread-exercises/QuestionResponseFields.js';
+import { ownAnswerText, reviewedCorrectText } from '../features/longread-exercises/answer-text.js';
 import { RichText, plainText } from '../shared/RichText.js';
 import { useTranslation } from 'react-i18next';
 
@@ -24,7 +26,8 @@ import {
   getAssessmentOptionLabel,
   getAssessmentSubmitErrorKey,
   selectedIds,
-  supportsOptionQuestion,
+  supportsTakingQuestion,
+  isQuestionAnswered,
   type QuestionWithOptions,
   type SelectedAnswers,
 } from './assessment-taking/model.js';
@@ -75,7 +78,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
    * useAsyncData's reload()/mutate() cover — it's a side channel that needs its own state.
    */
   useEffect(() => {
-    if (loadState.status !== 'loaded' || !loadState.data.assessment.timeLimitMinutes || loadState.data.questions.some((question) => !supportsOptionQuestion(question))) {
+    if (loadState.status !== 'loaded' || !loadState.data.assessment.timeLimitMinutes || loadState.data.questions.some((question) => !supportsTakingQuestion(question))) {
       setSecondsLeft(null);
       return;
     }
@@ -131,7 +134,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (loadState.status !== 'loaded' || loadState.data.questions.some((question) => !supportsOptionQuestion(question))) return;
+    if (loadState.status !== 'loaded' || loadState.data.questions.some((question) => !supportsTakingQuestion(question))) return;
 
     const answeredQuestions = loadState.data.questions.slice(preview?.startIndex ?? 0);
     const answeredCount = countAnsweredQuestions(answeredQuestions, selected);
@@ -209,7 +212,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
   }
 
   const { assessment, questions } = loadState.data;
-  if (questions.some((question) => !supportsOptionQuestion(question))) {
+  if (questions.some((question) => !supportsTakingQuestion(question))) {
     return <PageState title={assessment.title} message={t('assessments.typedQuestionUnavailable')} variant="error" action={<a href="/learn/assessments">{t('assessments.navLink')}</a>} />;
   }
 
@@ -255,12 +258,12 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                         <p className="learner-quiz__breakdown-question">{answer.question.title}</p>
                         <p className="learner-quiz__breakdown-answer">
                           <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultYourAnswer')}:</span>{' '}
-                          {answer.selectedOption ? getAssessmentOptionLabel(answer.selectedOption) : '—'}
+                          {ownAnswerText(answer, t)}
                         </p>
-                        {outcome !== 'correct' && answer.correctOptions && answer.correctOptions.length > 0 ? (
+                        {outcome !== 'correct' && (answer.correctDefinition || answer.correctOptions?.length) ? (
                           <p className="learner-quiz__breakdown-answer learner-quiz__breakdown-answer--correct">
                             <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultCorrectAnswer')}:</span>{' '}
-                            {answer.correctOptions.map((option) => getAssessmentOptionLabel(option)).join(', ')}
+                            {reviewedCorrectText(answer, t)}
                           </p>
                         ) : null}
                         <p className="learner-quiz__breakdown-points">
@@ -346,14 +349,12 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
       {questions.length === 0 ? (
         <p className="learner-quiz__empty">{t('assessments.noQuestions')}</p>
       ) : (
-        <div className={preview ? "edit-layout" : undefined} style={preview ? undefined : { display: 'grid', gridTemplateColumns: 'minmax(0,1.35fr) minmax(220px,.65fr)', gap: '22px', alignItems: 'start' }}>
+        <div className="edit-layout">
           <form className="learner-quiz__form" onSubmit={handleSubmit}>
             {(() => {
               const question = questions[currentIndex];
-              const isAnswered =
-                question.type === 'multiple_choice'
-                  ? selectedIds(selected[question.id]).length > 0
-                  : typeof selected[question.id] === 'string';
+              const value = selected[question.id];
+              const isAnswered = isQuestionAnswered(question, value);
               const isLastQuestion = currentIndex === questions.length - 1;
 
               return (
@@ -366,9 +367,16 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                     </div>
                     {question.text ? <p className="learner-quiz__question-text"><RichText value={question.text} /></p> : null}
 
-                    <ul className="learner-quiz__options">
-                      {question.options.map((option) => {
-                        const label = getAssessmentOptionLabel(option);
+                    {question.imageUrl && <img src={question.imageUrl} alt={question.title} style={{ maxWidth: '100%', maxHeight: 360 }} />}
+                    {question.definition ? <QuestionResponseFields question={question}
+                      answer={typeof value === 'object' && !Array.isArray(value) ? { questionId: question.id, response: value } : null}
+                      onChange={({ response }) => { if (response) setSelected((previous) => ({ ...previous, [question.id]: response })); }} />
+                    : <ul className="learner-quiz__options">
+                      {question.options.map((option, index) => {
+                        const label = option.imageUrl
+                          ? <><img src={option.imageUrl} alt={option.text ? '' : t('longreadExercises.option', { number: index + 1 })}
+                            style={{ maxWidth: '100%', maxHeight: 240 }} />{option.text}</>
+                          : getAssessmentOptionLabel(option);
                         if (question.type === 'multiple_choice') {
                           const checked = selectedIds(selected[question.id]).includes(option.id);
                           return (
@@ -399,7 +407,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                           </li>
                         );
                       })}
-                    </ul>
+                    </ul>}
                   </li>
 
                   <li className="learner-quiz__submit-row" style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', marginTop: '20px' }}>
@@ -444,10 +452,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
                 {questions.map((q, i) => {
-                  const isDone =
-                    q.type === 'multiple_choice'
-                      ? selectedIds(selected[q.id]).length > 0
-                      : typeof selected[q.id] === 'string';
+                  const isDone = isQuestionAnswered(q, selected[q.id]);
                   const isCurrent = i === currentIndex;
                   return (
                     <button
@@ -456,8 +461,8 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                       onClick={() => setCurrentIndex(i)}
                       style={{
                         border: `1px solid ${isCurrent ? 'var(--color-primary)' : isDone ? '#b7ead6' : 'var(--color-border)'}`,
-                        background: isCurrent ? 'var(--color-primary)' : isDone ? '#e9f8f2' : '#fff',
-                        color: isCurrent ? '#fff' : isDone ? '#0f9f6e' : 'var(--color-text)',
+                        background: isCurrent ? 'var(--color-primary)' : isDone ? 'var(--color-success-bg)' : 'var(--color-surface)',
+                        color: isCurrent ? 'var(--color-on-primary)' : isDone ? 'var(--color-success)' : 'var(--color-text)',
                         borderRadius: '10px',
                         height: '40px',
                         fontWeight: 700,
@@ -486,7 +491,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                 </div>
               </div>
 
-              <div style={{ marginTop: '16px', padding: '14px', background: 'var(--color-warning-bg)', color: 'var(--color-warning)', borderRadius: '12px', fontSize: '13px', lineHeight: 1.5 }}>
+              <div style={{ marginTop: '16px', padding: '14px', background: 'var(--color-warning-bg)', color: 'var(--color-warning-text)', borderRadius: '12px', fontSize: '13px', lineHeight: 1.5 }}>
                 {t('assessments.autoSaveNotice')}
               </div>
             </div>

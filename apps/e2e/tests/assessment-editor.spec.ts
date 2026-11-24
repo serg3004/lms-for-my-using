@@ -52,7 +52,7 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
         const question = questions.nth(index);
         await question.getByRole('textbox').first().fill(title);
         await question.getByRole('button', { name: 'Добавить вариант', exact: true }).click();
-        await question.getByRole('textbox').nth(1).fill(`Ответ ${index + 1}`);
+        await question.getByLabel('Текст варианта', { exact: true }).fill(`Ответ ${index + 1}`);
         await question.getByRole('radio', { name: 'Верный' }).check();
       }
       await questions.nth(1).getByRole('button', { name: 'Переместить элемент 2 вверх' }).click();
