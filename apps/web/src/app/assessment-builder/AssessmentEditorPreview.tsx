@@ -1,3 +1,4 @@
+import { projectQuestionDefinition, questionDefinitionSchema, type QuestionResponse } from '@lms/shared/assessment-question-types';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiRequest } from '../../shared/apiClient.js';
@@ -7,7 +8,7 @@ import { LearnerAssessmentTakingPage } from '../LearnerAssessmentTakingPage.js';
 import { buildAssessmentAnswers, type QuestionWithOptions, type SelectedAnswers } from '../assessment-taking/model.js';
 import type { EditorContent, EditorDocument } from './editorModel.js';
 
-type Grade = { questionId: string; selectedOptionId?: string; selectedOptionIds?: string[]; isCorrect: boolean; score: number };
+type Grade = { questionId: string; selectedOptionId?: string; selectedOptionIds?: string[]; response?: QuestionResponse; isCorrect: boolean; score: number };
 
 export function AssessmentEditorPreview({ assessment, content, startIndex }: {
   assessment: EditorDocument['assessment'];
@@ -16,16 +17,18 @@ export function AssessmentEditorPreview({ assessment, content, startIndex }: {
 }) {
   const { t } = useTranslation();
   const preview = useMemo(() => {
-    if (!content) return null;
+    if (!content || content.questions.some((question) => question.definition && !questionDefinitionSchema.safeParse(question.definition).success)) return null;
     const questions = content.questions.map((question, order) => ({
       ...question,
       order,
+      definition: question.definition ? projectQuestionDefinition(question.definition, (items) => items
+        .map((item) => ({ item, sort: Math.random() })).sort((a, b) => a.sort - b.sort).map(({ item }) => item)) : undefined,
       options: question.options.map((option, optionOrder) => ({ ...option, questionId: question.id, order: optionOrder })),
     }));
 
     return {
       assessment: { ...assessment, ...content.settings, maxAttempts: content.settings.maxAttempts ?? assessment.maxAttempts },
-      questions: questions as QuestionWithOptions[],
+      questions,
       startIndex: Math.max(0, Math.min(startIndex, questions.length - 1)),
       async submit(takingQuestions: QuestionWithOptions[], selected: SelectedAnswers) {
         const graded = await apiRequest<Grade[]>(`/assessments/${assessment.id}/editor/preview`, {
@@ -47,7 +50,9 @@ export function AssessmentEditorPreview({ assessment, content, startIndex }: {
             selectedOptionIds: answer.selectedOptionIds ?? null,
             selectedOption: question.options.find((option) => option.id === answer.selectedOptionId) ?? null,
             ...(content.settings.showCorrectAnswers ? { correctOptions: question.options.filter((option) => option.isCorrect) } : {}),
-            question: { ...question, definition: undefined },
+            question,
+            ...(content.settings.showCorrectAnswers && content.questions[question.order].definition
+              ? { correctDefinition: content.questions[question.order].definition! } : {}),
           }];
         });
         return {

@@ -2608,3 +2608,12 @@ returns the test to draft status. A stale revision returns HTTP 409.
 answers and returns grades without recording an attempt. It requires author and
 source course access. The author library exposes `hasUnpublishedChanges`.
 Copying a test with a saved author draft uses that draft's content.
+
+### Typed questions in the assessment editor (PR 528)
+
+The editor writes the selected question type, its definition or choice options,
+its scoring mode, and optional image references in the existing editor payload.
+The standard taking screen sends `response` for defined questions and option IDs
+for legacy choices, including existing option-based true/false questions.
+Quiz and result views use the public definition to show response labels. Answer keys
+in the result still require a completed attempt and enabled correct-answer feedback.

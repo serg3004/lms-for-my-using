@@ -1,12 +1,20 @@
+import { questionTypeSchema, scoringModeSchema, type QuestionType } from '@lms/shared/assessment-question-types';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormField } from '../../shared/adminPage.js';
 import { Badge, Button } from '../../shared/ui.js';
-import { supportsOptionQuestion } from '../assessment-taking/model.js';
+import { QuestionDefinitionFields } from '../../features/longread-exercises/QuestionAuthorFields.js';
+import { emptyQuestionDefinition } from '../../features/longread-exercises/question-author-model.js';
+import { RichTextField } from '../../shared/RichTextField.js';
 import { copyEditorQuestion, moveEditorItem, newEditorQuestion, type EditorQuestion } from './editorModel.js';
 
-const optionTypes = { single_choice: 'singleChoice', multiple_choice: 'multipleChoice', true_false: 'trueFalse' } as const;
-type OptionType = keyof typeof optionTypes;
+const optionLabels = { single_choice: 'singleChoice', multiple_choice: 'multipleChoice', true_false: 'trueFalse' } as const;
+const scoringLabels = {
+  all_or_nothing: 'allOrNothing',
+  proportional: 'partialScoring',
+  proportional_with_penalty: 'penaltyScoring',
+  per_option: 'perOptionScoring',
+} as const;
 
 function ReorderList<T extends { id: string }>({ items, onChange, children }: {
   items: T[];
@@ -52,8 +60,8 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview }: {
   function changeQuestion(id: string, patch: Partial<EditorQuestion>) {
     onChange(questions.map((question) => question.id === id ? { ...question, ...patch } : question));
   }
-  function addQuestion(type: OptionType) {
-    const question = { ...newEditorQuestion(), type };
+  function addQuestion(type: QuestionType) {
+    const question = { ...newEditorQuestion(), type, definition: emptyQuestionDefinition(type) };
     onChange([...questions, question]);
     setExpanded(question.id);
   }
@@ -69,10 +77,10 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview }: {
             </div>
           </div>
           <div className="admin-header-actions">
-            {supportsOptionQuestion(question) && <Button type="button" variant="secondary" size="sm"
+            <Button type="button" variant="secondary" size="sm"
               aria-expanded={expanded === question.id} onClick={() => setExpanded(expanded === question.id ? null : question.id)}>
               {t('admin.assessmentBuilder.edit')}
-            </Button>}
+            </Button>
             <Button type="button" variant="secondary" size="sm" aria-label={t('admin.assessmentBuilder.editor.copyQuestion')}
               onClick={() => onChange([...questions.slice(0, index + 1), copyEditorQuestion(question), ...questions.slice(index + 1)])}>
               {t('admin.checklists.copy')}
@@ -84,24 +92,39 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview }: {
             </Button>
           </div>
         </div>
-        {!supportsOptionQuestion(question) && <p role="status">{t('assessments.typedQuestionUnavailable')}</p>}
         {expanded === question.id && <>
-        <FormField id={question.id} label={t('admin.assessmentBuilder.questionTitle')} required>
-          <input id={question.id} maxLength={200} value={question.title} disabled={!supportsOptionQuestion(question)}
+        <FormField id={question.id} label={t('longreadExercises.title')} required>
+          <input id={question.id} maxLength={200} value={question.title}
             onChange={(event) => changeQuestion(question.id, { title: event.target.value })} />
         </FormField>
-        {supportsOptionQuestion(question) && <FormField id={`${question.id}-type`} label={t('admin.assessmentBuilder.questionType')}>
-          <select id={`${question.id}-type`} value={question.type} onChange={(event) =>
-            changeQuestion(question.id, { type: event.target.value as EditorQuestion['type'] })}>
-            {(Object.entries(optionTypes)).map(([type, key]) =>
-              <option key={type} value={type}>{t(`admin.assessmentBuilder.${key}`)}</option>)}
+        <FormField id={`${question.id}-type`} label={t('admin.assessmentBuilder.questionType')}>
+          <select id={`${question.id}-type`} value={question.type} onChange={(event) => {
+            const type = questionTypeSchema.parse(event.target.value);
+            const definition = emptyQuestionDefinition(type);
+            changeQuestion(question.id, { type, definition, options: definition ? [] : question.options });
+          }}>
+            {questionTypeSchema.options.map((type) =>
+              <option key={type} value={type}>{t(`longreadExercises.types.${type}`)}</option>)}
           </select>
-        </FormField>}
+        </FormField>
+        <RichTextField id={`${question.id}-text`} label={t('longreadExercises.text')} value={question.text ?? ''}
+          maxLength={4000} onChange={(text) => changeQuestion(question.id, { text: text || null })} />
+        <FormField id={`${question.id}-image`} label={t('admin.assessmentBuilder.editor.questionImage')}>
+          <input id={`${question.id}-image`} maxLength={2000} value={question.imageUrl ?? ''}
+            onChange={(event) => changeQuestion(question.id, { imageUrl: event.target.value || null })} />
+        </FormField>
+        <FormField id={`${question.id}-scoring`} label={t('longreadExercises.scoringMode')}>
+          <select id={`${question.id}-scoring`} value={question.scoringMode} onChange={(event) =>
+            changeQuestion(question.id, { scoringMode: scoringModeSchema.parse(event.target.value) })}>
+            {scoringModeSchema.options.map((mode) => <option key={mode} value={mode}>{t(`longreadExercises.${scoringLabels[mode]}`)}</option>)}
+          </select>
+        </FormField>
         <FormField id={`${question.id}-points`} label={t('admin.assessmentBuilder.points')}>
-          <input id={`${question.id}-points`} type="number" min={1} disabled={!supportsOptionQuestion(question)} value={question.points || ''}
+          <input id={`${question.id}-points`} type="number" min={1} value={question.points || ''}
             onChange={(event) => changeQuestion(question.id, { points: Number(event.target.value) })} />
         </FormField>
-        {supportsOptionQuestion(question) && <>
+        {question.definition ? <QuestionDefinitionFields definition={question.definition}
+          onChange={(definition) => changeQuestion(question.id, { definition })} /> : <>
           <ReorderList items={question.options} onChange={(options) => changeQuestion(question.id, { options })}>
             {(option, optionIndex, reorderOption) => <div className="admin-form">
               <div className="admin-header-actions">{reorderOption}<Badge variant="neutral">{optionIndex + 1}</Badge></div>
@@ -109,6 +132,11 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview }: {
                 <input id={option.id} maxLength={2000} value={option.text ?? ''} onChange={(event) =>
                   changeQuestion(question.id, { options: question.options.map((item) =>
                     item.id === option.id ? { ...item, text: event.target.value || null } : item) })} />
+              </FormField>
+              <FormField id={`${option.id}-image`} label={t('admin.assessmentBuilder.editor.optionImage')}>
+                <input id={`${option.id}-image`} maxLength={2000} value={option.imageUrl ?? ''} onChange={(event) =>
+                  changeQuestion(question.id, { options: question.options.map((item) =>
+                    item.id === option.id ? { ...item, imageUrl: event.target.value || null } : item) })} />
               </FormField>
               {option.imageUrl && <img className="admin-preview__option-image" src={option.imageUrl} alt={option.text ?? ''} />}
               <label className="admin-checkbox-field">
@@ -134,9 +162,9 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview }: {
     </ReorderList>
     <section className="admin-card admin-form">
       <h2>{t('admin.assessmentBuilder.addQuestionBtn')}</h2>
-      {(Object.entries(optionTypes) as [OptionType, string][]).map(([type, key]) =>
+      {questionTypeSchema.options.map((type) =>
         <Button key={type} type="button" variant="secondary" onClick={() => addQuestion(type)}>
-          + {t(`admin.assessmentBuilder.${key}`)}
+          + {t(type in optionLabels ? `admin.assessmentBuilder.${optionLabels[type as keyof typeof optionLabels]}` : `longreadExercises.types.${type}`)}
         </Button>)}
     </section>
   </div>;
