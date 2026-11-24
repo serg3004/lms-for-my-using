@@ -2,7 +2,7 @@ import { AnalyticsFieldFilter } from '../features/user-fields/AnalyticsFieldFilt
 import { plainText } from '@lms/shared/rich-text';
 import { Fragment, useEffect, useMemo, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 
 import { AdminPageLayout, ChecklistsTabs } from '../shared/adminPage.js';
 import {
@@ -23,7 +23,8 @@ import { Card, DataTable, PageState, StatCard, StatsGrid, type Column } from '..
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { percent, ScaleLevelBars } from './SheetAnalyticsParts.js';
 import { SheetAnalyticsExport } from './SheetAnalyticsExport.js';
-import { DepartmentFilter, EmployeeFilter, FilterSetEditor, ids, resolveFilterKeys } from './SheetAnalyticsFilters.js';
+import { DepartmentsCard, TrendCard, WeakCard } from './SheetAnalyticsDashboard.js';
+import { DepartmentFilter, EmployeeFilter, FilterDropdown, FilterSetEditor, ids, resolveFilterKeys } from './SheetAnalyticsFilters.js';
 import { SheetItemAnalytics } from './SheetItemAnalytics.js';
 import { resolvePeriodRange } from './ManagerChecklistsPage.js';
 import { ManagerViewSwitch } from './ManagerViewSwitch.js';
@@ -75,9 +76,9 @@ function SummaryCards({ metrics, t }: { metrics: SheetAnalyticsMetrics; t: (key:
 
 type Row = SheetAnalytics['sheets'][number];
 
-function SheetsTable({ rows, fieldColumn, t }: { rows: Row[]; fieldColumn?: string; t: (key: string, fallback: string) => string }) {
+function SheetsTable({ rows, fieldColumn, t, detailsHref }: { rows: Row[]; fieldColumn?: string; t: (key: string, fallback: string) => string; detailsHref: (id: string) => string }) {
   const columns: Column<Row>[] = [
-    { key: 'title', label: t('sheetAnalytics.colSheet', 'Checklist'), priority: 'primary', render: (row) => plainText(row.title) },
+    { key: 'title', label: t('sheetAnalytics.colSheet', 'Checklist'), priority: 'primary', render: (row) => <Link to={detailsHref(row.checklistId)}>{plainText(row.title)}</Link> },
     ...(fieldColumn ? [{ key: 'userField', label: fieldColumn, priority: 'primary' as const, render: (row: Row) => row.fieldLabel || '—' }] : []),
     { key: 'plan', label: t('sheetAnalytics.colPlan', 'Plan'), priority: 'secondary', align: 'end', render: (row) => row.plan.planned },
     { key: 'fact', label: t('sheetAnalytics.colFact', 'Done'), priority: 'secondary', align: 'end', render: (row) => row.plan.completed },
@@ -106,7 +107,13 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
   const fieldFilters = searchParams.get('fieldFilters') || undefined;
   const groupByField = searchParams.get('groupByField') || undefined;
   const search = searchParams.get('q') ?? '';
-  const selected = parseSelectedSheets(searchParams.get('sheets'));
+  // PR 519: the dashboard lives at the base address; one checklist opens on its own page (base/:checklistId) with the same filters.
+  const { checklistId } = useParams();
+  const { pathname } = useLocation();
+  const base = checklistId ? pathname.slice(0, pathname.lastIndexOf('/')) : pathname.replace(/\/$/, '');
+  const selected = checklistId ? [checklistId] : parseSelectedSheets(searchParams.get('sheets'));
+  const carry = (() => { const next = new URLSearchParams(searchParams); next.delete('sheets'); next.delete('q'); const text = next.toString(); return text ? `?${text}` : ''; })();
+  const detailsHref = (id: string) => `${base}/${id}${carry}`;
   const { from, to } = useMemo(() => resolvePeriodRange(period, new Date(), customFrom, customTo), [period, customFrom, customTo]);
 
   function update(key: string, value: string) {
@@ -124,7 +131,7 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
     void getAnalyticsFilterSet().then((set) => { if (active) setFilterSet(set); }, () => {});
     return () => { active = false; };
   }, []);
-  const enabledFilters = useMemo(() => resolveFilterKeys(filterSet), [filterSet]);
+  const enabledFilters = useMemo(() => resolveFilterKeys(filterSet).filter((key) => !(checklistId && key === 'sheets')), [filterSet, checklistId]);
 
   const loadError = t('sheetAnalytics.loadError', 'Unable to load analytics.');
   const { state: sheetsState } = useAsyncData<SheetAnalyticsSheet[]>(() => listSheetAnalyticsSheets({ from, to }), [from, to], { unauthenticated: loadError, error: loadError });
@@ -164,10 +171,7 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
       </>
     ),
     sheets: (
-        <details open={selected.length > 0 || undefined} style={{ gridColumn: '1 / -1', minWidth: 0 }}>
-          <summary style={{ fontWeight: 600, minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-            {t('sheetAnalytics.sheetsFilter', 'Checklists')}: {selected.length === 0 ? `${t('sheetAnalytics.allSheets', 'All available')}${allIds.length > 0 ? ` (${allIds.length})` : ''}` : `${selected.length}`}
-          </summary>
+        <FilterDropdown label={t('sheetAnalytics.sheetsFilter', 'Checklists')} value={selected.length === 0 ? `${t('sheetAnalytics.allSheets', 'All available')}${allIds.length > 0 ? ` (${allIds.length})` : ''}` : selected.length === 1 ? (plainText(sheets.find((sheet) => sheet.id === selected[0])?.title ?? '') || '1') : `${selected.length}`} wide>
           <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
             <input aria-label={t('sheetAnalytics.sheetSearch', 'Search checklists')} className="ds-input" type="search" value={search} onChange={(event) => update('q', event.target.value)} placeholder={t('sheetAnalytics.sheetSearch', 'Search checklists')} />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
@@ -211,7 +215,7 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
               {sheetsState.status === 'loaded' && visible.length === 0 && <span style={{ color: 'var(--color-text-muted)' }}>{sheets.length === 0 ? t('sheetAnalytics.noSheets', 'No checklists available.') : t('sheetAnalytics.noMatch', 'No checklists match the search.')}</span>}
             </div>
           </div>
-        </details>
+        </FilterDropdown>
     ),
     department: departments.length > 0 ? <DepartmentFilter options={departments} selected={selectedDepartments} onChange={(value) => update('departments', value.join(','))} /> : null,
     employee: <EmployeeFilter selected={selectedEmployees} onChange={(value) => update('employees', value.join(','))} />,
@@ -226,10 +230,9 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
       </label>
     ) : null,
     userFields: (
-        <details open={Boolean(fieldFilters || groupByField) || undefined} style={{ gridColumn: '1 / -1', minWidth: 0 }}>
-          <summary style={{ fontWeight: 600, minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer' }}>{t('sheetAnalytics.moreFilters', 'More filters')}</summary>
+        <FilterDropdown label={t('sheetAnalytics.moreFilters', 'More filters')} value={fieldFilters || groupByField ? t('sheetAnalytics.filterOn', 'On') : t('sheetAnalytics.filterAny', 'Any')} wide>
           <AnalyticsFieldFilter value={fieldFilters} onChange={(value) => update('fieldFilters', value)} groupBy={groupByField} onGroupBy={(value) => update('groupByField', value)} />
-        </details>
+        </FilterDropdown>
     ),
   };
 
@@ -241,11 +244,30 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
         <p style={{ margin: '8px 0 0', color: 'var(--color-text-muted)' }}>{t('sheetAnalytics.subtitle', 'Completion, scores and answers across all your checklists or the ones you pick.')}</p>
       </header>
 
-      <Card style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,200px),1fr))', gap: 16, marginBottom: 20 }}>
+      <Card style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,200px),1fr))', gap: 16, marginBottom: 20, alignItems: 'end' }}>
         {enabledFilters.map((key) => <Fragment key={key}>{filterNodes[key]}</Fragment>)}
         <FilterSetEditor enabled={enabledFilters} isAdmin={isAdmin} onSaved={setFilterSet} />
       </Card>
 
+      {checklistId ? (
+        sheetsState.status !== 'loading' && (
+          <>
+            <Link className="ds-button ds-button--text" style={{ justifySelf: 'start', marginBottom: 12 }} to={`${base}${carry}`}>← {t('sheetAnalytics.backToSummary', 'Back to summary')}</Link>
+            <SheetItemAnalytics
+              departmentIds={departmentIds}
+              employeeIds={employeeIds}
+              from={from}
+              managerId={managerId || undefined}
+              fieldFilters={fieldFilters}
+              sessionPath={sessionPath}
+              sheetId={checklistId}
+              title={plainText(sheets.find((sheet) => sheet.id === checklistId)?.title ?? '') || t('sheetAnalytics.unknownSheet', 'Checklist')}
+              to={to}
+            />
+          </>
+        )
+      ) : (
+        <>
       {state.status === 'loading' && <PageState message={t('sheetAnalytics.loading', 'Loading...')} variant="loading" />}
       {(state.status === 'unauthenticated' || state.status === 'notFound' || state.status === 'error') && <PageState title={t('sheetAnalytics.title', 'Checklist analytics')} message={state.message} variant="error" />}
       {state.status === 'loaded' && (state.data.sheets.length === 0 ? (
@@ -256,6 +278,13 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
         <div style={{ display: 'grid', gap: 20 }}>
           {state.data.truncated && <div role="status">{t('sheetAnalytics.truncated', 'The period holds more results than can be shown at once; the figures cover the newest ones. Narrow the period or the checklists.')}</div>}
           <SummaryCards metrics={state.data.total} t={t} />
+          {state.data.summary && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,420px),1fr))', gap: 20 }}>
+              <TrendCard trend={state.data.summary.trend} />
+              <DepartmentsCard departments={state.data.summary.departments} onPick={(id) => update('departments', id)} />
+              <WeakCard detailsHref={detailsHref} sheetTitles={new Map(sheets.map((sheet) => [sheet.id, sheet.title]))} weak={state.data.summary.weak} />
+            </div>
+          )}
           {state.data.total.scales.length > 0 && (
             <Card style={{ display: 'grid', gap: 20 }}>
               <h2 style={{ margin: 0, fontSize: 20 }}>{t('sheetAnalytics.levelsTitle', 'Answers by scale level')}</h2>
@@ -267,24 +296,11 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
           <section aria-labelledby="sheet-analytics-table" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 8 }}>
             <h2 id="sheet-analytics-table" style={{ fontSize: 20, margin: 0 }}>{t('sheetAnalytics.tableLabel', 'Metrics by checklist')}</h2>
             <SheetAnalyticsExport query={{ view: 'sheets', from, to, checklistIds: selected.length ? selected : undefined, departmentIds, employeeIds, managerId: managerId || undefined, fieldFilters, groupByField }} sheetName={t('sheetAnalytics.tableLabel', 'Metrics by checklist')} />
-            <SheetsTable rows={state.data.sheets} fieldColumn={state.data.fieldColumn} t={t} />
+            <SheetsTable detailsHref={detailsHref} rows={state.data.sheets} fieldColumn={state.data.fieldColumn} t={t} />
           </section>
         </div>
       ))}
-      {selected.length === 1 && sheetsState.status !== 'loading' && (
-        <div style={{ marginTop: 24 }}>
-          <SheetItemAnalytics
-            departmentIds={departmentIds}
-            employeeIds={employeeIds}
-            from={from}
-            managerId={managerId || undefined}
-            fieldFilters={fieldFilters}
-            sessionPath={sessionPath}
-            sheetId={selected[0]!}
-            title={plainText(sheets.find((sheet) => sheet.id === selected[0])?.title ?? '') || t('sheetAnalytics.unknownSheet', 'Checklist')}
-            to={to}
-          />
-        </div>
+        </>
       )}
     </Layout>
   );

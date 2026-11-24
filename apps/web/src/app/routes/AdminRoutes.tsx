@@ -72,6 +72,7 @@ export function AdminRoutes() {
     <Route path="/admin/checklists" element={<AdminChecklistsPage />} />
     <Route path="/admin/checklists/analytics" element={<AdminChecklistAnalyticsPage />} />
     <Route path="/admin/checklists/sheet-analytics" element={<AdminSheetAnalyticsPage />} />
+    <Route path="/admin/checklists/sheet-analytics/:checklistId" element={<AdminSheetAnalyticsPage />} />
     <Route path="/admin/checklists/sessions" element={<AdminChecklistSessionsPage />} />
     <Route path="/admin/checklists/sessions/:id" element={<AdminChecklistSessionReportPage />} />
     <Route path="/admin/assignments" element={<AdminAssignmentCompletionPage />} />

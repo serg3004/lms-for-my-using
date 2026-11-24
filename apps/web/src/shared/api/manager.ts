@@ -161,8 +161,15 @@ export type SheetAnalyticsMetrics = {
   scales: SheetAnalyticsScale[];
   queue: { notStarted: number; oldestDays: number | null };
 };
+/** PR 519: the extra blocks of the dashboard. */
+export type SheetAnalyticsSummary = {
+  trend: Array<{ weekStart: string; planned: number; completed: number; averagePercentage: number | null }>;
+  departments: Array<{ id: string | null; name: string | null; planned: number; completed: number; completionPercentage: number | null; averagePercentage: number | null }>;
+  weak: Array<{ id: string; checklistId: string; text: string; answered: number; percentage: number }>;
+};
 export type SheetAnalytics = {
   total: SheetAnalyticsMetrics;
+  summary?: SheetAnalyticsSummary;
   fieldColumn?: string;
   sheets: Array<SheetAnalyticsMetrics & { checklistId: string; title: string; fieldLabel?: string; groupKey?: string | null }>;
   period: { from: string; to: string };

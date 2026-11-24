@@ -16,7 +16,7 @@ test('a checklist ticked in the library opens its analytics from the bulk bar', 
   await page.goto('/admin/checklists');
   await page.getByRole('checkbox', { name: 'Выбрать чек-лист: Охрана труда' }).check();
   await page.getByRole('region', { name: 'Выбрано: 1' }).getByRole('button', { name: 'Аналитика' }).click();
-  await expect(page).toHaveURL(new RegExp(`/admin/checklists/sheet-analytics\\?sheets=${sheetA}$`));
+  await expect(page).toHaveURL(new RegExp(`/admin/checklists/sheet-analytics/${sheetA}$`));
   await expect(page.getByTestId('item-analytics')).toBeVisible();
   await expect(page.getByRole('table', { name: 'Критерии' }).getByText('Каски надеты')).toBeVisible();
 });
@@ -26,7 +26,7 @@ for (const width of [390, 1440]) {
     const requests: URL[] = [];
     await installSheetAnalyticsMocks(page, 'admin', requests);
     await page.setViewportSize({ width, height: 900 });
-    await page.goto(`/admin/checklists/sheet-analytics?sheets=${sheetA}`);
+    await page.goto(`/admin/checklists/sheet-analytics/${sheetA}`);
     const detail = page.getByTestId('item-analytics');
     await expect(detail.getByRole('heading', { name: /Охрана труда/ })).toBeVisible();
     // Criteria: the total over all three is 9 of 12 answered, average 7 of 9 points.
@@ -70,7 +70,7 @@ for (const width of [390, 1440]) {
 
 test('a sheet without groups and feedback hides those cuts', async ({ page }) => {
   await installSheetAnalyticsMocks(page, 'admin');
-  await page.goto(`/admin/checklists/sheet-analytics?sheets=${sheetB}`);
+  await page.goto(`/admin/checklists/sheet-analytics/${sheetB}`);
   const detail = page.getByTestId('item-analytics');
   await expect(detail.getByRole('button', { name: 'Критерии', exact: true })).toBeVisible();
   await expect(detail.getByRole('button', { name: 'Примечания', exact: true })).toBeVisible();
@@ -80,14 +80,14 @@ test('a sheet without groups and feedback hides those cuts', async ({ page }) =>
 
 test('a deleted or unavailable sheet says so', async ({ page }) => {
   await installSheetAnalyticsMocks(page, 'admin');
-  await page.goto(`/admin/checklists/sheet-analytics?sheets=${goneSheet}`);
+  await page.goto(`/admin/checklists/sheet-analytics/${goneSheet}`);
   await expect(page.getByText('Этот чек-лист удалён или недоступен вам.')).toBeVisible();
 });
 
 test('a sheet without sessions in the period says so', async ({ page }) => {
   await installSheetAnalyticsMocks(page, 'admin');
   await page.route(/\/api\/v1\/checklists\/[^/]+\/analytics\/items/, (route) => route.fulfill({ json: { by: 'criteria', instances: 0, criteria: [], groups: [], feedback: [], period: { from: '2026-10-01T00:00:00.000Z', to: '2026-11-01T00:00:00.000Z' }, truncated: false } }));
-  await page.goto(`/admin/checklists/sheet-analytics?sheets=${sheetA}`);
+  await page.goto(`/admin/checklists/sheet-analytics/${sheetA}`);
   await expect(page.getByText('По этому чек-листу за период ещё нет сессий.')).toBeVisible();
 });
 
@@ -102,7 +102,7 @@ test.describe('export of the current view (PR 463)', () => {
     expect(exportRequests.at(-1)?.searchParams.get('checklistIds')).toBeNull();
     expect(exportRequests.at(-1)?.searchParams.get('format')).toBe('csv');
 
-    await page.goto(`/admin/checklists/sheet-analytics?sheets=${sheetA}`);
+    await page.goto(`/admin/checklists/sheet-analytics/${sheetA}`);
     const detail = page.getByTestId('item-analytics');
     // Wait for the loaded screen and for each pick to land before the next click: a click during a re-render was lost (flake on main, 2026-11-18).
     await expect(detail.getByText('Итого по всем')).toBeVisible();

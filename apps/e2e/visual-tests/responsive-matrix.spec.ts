@@ -250,7 +250,7 @@ for (const width of [375, 1440]) test(`checklist analytics tab is responsive at 
 
 for (const width of [375, 1440]) test(`one-sheet analytics by criteria is responsive at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height }); await installSheetAnalyticsMocks(page, 'admin');
-  await page.goto(`/admin/checklists/sheet-analytics?sheets=${sheetA}`);
+  await page.goto(`/admin/checklists/sheet-analytics/${sheetA}`);
   await page.getByTestId('item-analytics').getByRole('table').waitFor();
   await expectNoPageOverflow(page);
   await expectVisualMatch(page, `sheet-item-analytics-${width}`, false, { maxDiffPixels: 3000 });
@@ -1568,7 +1568,7 @@ for (const width of [390, 1280]) for (const screen of ['courses', 'checklists'] 
     // PR 518: the user fields filter is hidden by default in checklist analytics; this saved set shows it.
     if (screen === 'checklists') await page.route('**/api/v1/checklists/analytics/filter-set', (route) => route.fulfill({ json: { user: ['period', 'sheets', 'userFields'], organization: null } }));
     await page.goto(screen === 'courses' ? '/admin/results/courses' : '/admin/checklists/sheet-analytics');
-    if (screen === 'checklists') await page.locator('summary', { hasText: 'Ещё фильтры' }).click();
+    if (screen === 'checklists') await page.getByRole('button', { name: /^Ещё фильтры/ }).click();
     const fields = page.getByRole('group', { name: 'Поля пользователя' });
     await fields.getByRole('combobox', { name: 'Поле', exact: true }).selectOption('work_schedule');
     await fields.getByRole('combobox', { name: 'Значение', exact: true }).selectOption('2-2');
