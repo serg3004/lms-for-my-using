@@ -19,6 +19,8 @@ CREATE INDEX question_bank_entries_organization_id_folder_id_idx ON question_ban
 ALTER TABLE assessment_questions ADD COLUMN bank_entry_id UUID REFERENCES question_bank_entries(id) ON DELETE RESTRICT;
 CREATE INDEX assessment_questions_bank_entry_id_idx ON assessment_questions(bank_entry_id);
 
-ALTER TABLE assessments ADD COLUMN bank_sample_size INTEGER CHECK (bank_sample_size > 0);
+ALTER TABLE assessments
+  ADD COLUMN bank_sample_size INTEGER CHECK (bank_sample_size > 0),
+  ADD COLUMN bank_sample_folder_id UUID REFERENCES question_bank_folders(id) ON DELETE RESTRICT;
 ALTER TABLE assessment_questions ADD COLUMN bank_sample_candidate BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE assessment_attempts ADD COLUMN bank_question_snapshot JSONB;

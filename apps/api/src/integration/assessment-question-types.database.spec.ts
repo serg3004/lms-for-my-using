@@ -125,6 +125,10 @@ describe('seven assessment question types and legacy grading — database', () =
     const selected = 'questions' in running ? running.questions : undefined;
     expect(selected).toHaveLength(2);
     expect(JSON.stringify(selected)).not.toContain('correctAnswer');
+    const added = await bank.create(org, folder.id, { ...content, title: 'Added after configuration' });
+    await expect(prisma.assessmentQuestion.count({
+      where: { assessmentId, bankEntryId: added.id, bankSampleCandidate: true, deletedAt: null },
+    })).resolves.toBe(1);
     const usage = await bank.usage(org, entry.id);
     expect(usage.assessments.map(({ id }) => id)).toEqual([assessmentId]);
     expect(usage.longreads).toEqual([{ id: lesson.id, title: 'Safety guide' }]);

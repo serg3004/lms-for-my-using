@@ -178,7 +178,7 @@ export class AssessmentsService {
       const linked = new Map(questions.filter((question) => question.bankEntryId).map((question) => [question.id, question]));
       draft.questions = draft.questions.map((question) => {
         const source = linked.get(question.id);
-        return source ? { ...source, points: question.points } : question;
+        return source ? { ...source, points: question.points, definition: validateQuestionDefinition(source.type, source.definition) } : question;
       });
     }
     return { assessment, draft, questions, placements, assignments: standaloneAssignments };

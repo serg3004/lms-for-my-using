@@ -1185,6 +1185,8 @@ model Assessment {
   failMessage                    String?              @map("fail_message")
   showCorrectAnswers             Boolean              @default(false) @map("show_correct_answers")
   bankSampleSize Int? @map("bank_sample_size")
+  bankSampleFolderId String? @map("bank_sample_folder_id") @db.Uuid
+  bankSampleFolder QuestionBankFolder? @relation(fields: [bankSampleFolderId], references: [id], onDelete: Restrict)
   randomizeOrder                 Boolean              @default(false) @map("randomize_order")
   createdAt                      DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt                      DateTime             @updatedAt @map("updated_at") @db.Timestamptz
@@ -1278,6 +1280,7 @@ model QuestionBankFolder {
   name           String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   entries        QuestionBankEntry[]
+  sampleAssessments Assessment[]
 
   @@unique([organizationId, name])
   @@map("question_bank_folders")

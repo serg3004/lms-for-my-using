@@ -24,7 +24,7 @@ function validateContent(input: unknown) {
   const content = bankContentSchema.parse(input);
   const definition = validateQuestionDefinition(content.type, content.definition);
   const correct = content.options.filter((option) => option.isCorrect).length;
-  if (definition ? content.options.length : content.options.length < 2 || correct === 0 || (content.type === 'single_choice' && correct !== 1)) {
+  if (definition ? content.options.length : content.options.length < 2 || correct === 0 || (content.type !== 'multiple_choice' && correct !== 1)) {
     throw new BadRequestException('Invalid question options');
   }
   return content;
@@ -64,9 +64,12 @@ export class QuestionBankService {
 
   async create(organizationId: string, folderId: string, input: unknown) {
     const content = validateContent(input);
-    const folder = await this.prisma.questionBankFolder.findFirst({ where: { id: folderId, organizationId } });
-    if (!folder) throw new NotFoundException('Question bank folder not found');
-    return this.prisma.questionBankEntry.create({ data: { organizationId, folderId, title: content.title, content } });
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockFolder(tx, organizationId, folderId);
+      const entry = await tx.questionBankEntry.create({ data: { organizationId, folderId, title: content.title, content } });
+      await this.appendToSamples(tx, organizationId, folderId, [entry]);
+      return entry;
+    });
   }
 
   get(organizationId: string, id: string) {
@@ -74,8 +77,6 @@ export class QuestionBankService {
   }
 
   async import(organizationId: string, folderId: string, rows: { row: number; content: unknown }[]) {
-    const folder = await this.prisma.questionBankFolder.findFirst({ where: { id: folderId, organizationId } });
-    if (!folder) throw new NotFoundException('Question bank folder not found');
     const errors: number[] = [];
     const data = rows.flatMap(({ row, content }) => {
       try {
@@ -87,8 +88,13 @@ export class QuestionBankService {
         return [];
       }
     });
-    const { count } = await this.prisma.questionBankEntry.createMany({ data });
-    return { count, errors };
+    return this.prisma.$transaction(async (tx) => {
+      await this.lockFolder(tx, organizationId, folderId);
+      if (!data.length) return { count: 0, errors };
+      const entries = await tx.questionBankEntry.createManyAndReturn({ data, select: { id: true, content: true } });
+      await this.appendToSamples(tx, organizationId, folderId, entries);
+      return { count: entries.length, errors };
+    });
   }
 
   private async entry(db: Prisma.TransactionClient, organizationId: string, id: string) {
@@ -226,6 +232,7 @@ export class QuestionBankService {
 
   async configureSample(organizationId: string, assessmentId: string, folderId: string, size: number) {
     return this.prisma.$transaction(async (tx) => {
+      await this.lockFolder(tx, organizationId, folderId);
       const entries = await tx.questionBankEntry.findMany({
         where: { organizationId, folderId }, orderBy: { id: 'asc' }, take: 501,
       });
@@ -240,24 +247,46 @@ export class QuestionBankService {
         where: { assessmentId, organizationId, bankSampleCandidate: true, deletedAt: null },
         data: { deletedAt: new Date() },
       });
-      const fixedOrder = await tx.assessmentQuestion.aggregate({
-        where: { organizationId, assessmentId, deletedAt: null }, _max: { order: true },
-      });
-      const candidates = await tx.questionBankEntry.findMany({ where: { organizationId, id: { in: entries.map(({ id }) => id) } }, orderBy: { id: 'asc' } });
-      const options: Prisma.AssessmentAnswerOptionCreateManyInput[] = [];
-      const questions = candidates.map((entry, index) => {
-        const id = randomUUID();
-        const content = bankContentSchema.parse(entry.content);
-        options.push(...placementOptions(content, organizationId).map((option) => ({ ...option, questionId: id })));
-        return {
-          ...placementData(content), id, organizationId, assessmentId, bankEntryId: entry.id, bankSampleCandidate: true,
-          points: content.points, order: (fixedOrder._max.order ?? -1) + index + 1,
-        };
-      });
-      await tx.assessmentQuestion.createMany({ data: questions });
-      if (options.length) await tx.assessmentAnswerOption.createMany({ data: options });
-      return tx.assessment.update({ where: { id: assessmentId }, data: { bankSampleSize: size } });
+      const candidates = await tx.questionBankEntry.findMany({ where: { organizationId, folderId }, orderBy: { id: 'asc' } });
+      await this.createCandidates(tx, organizationId, assessmentId, candidates);
+      return tx.assessment.update({ where: { id: assessmentId }, data: { bankSampleSize: size, bankSampleFolderId: folderId } });
     });
+  }
+
+  private async appendToSamples(tx: Prisma.TransactionClient, organizationId: string, folderId: string,
+    entries: { id: string; content: unknown }[]) {
+    const assessments = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM assessments WHERE organization_id = ${organizationId}::uuid
+        AND bank_sample_folder_id = ${folderId}::uuid AND deleted_at IS NULL
+      ORDER BY id FOR UPDATE
+    `;
+    for (const { id } of assessments) await this.createCandidates(tx, organizationId, id, entries);
+  }
+
+  private async createCandidates(tx: Prisma.TransactionClient, organizationId: string, assessmentId: string,
+    entries: { id: string; content: unknown }[]) {
+    const fixedOrder = await tx.assessmentQuestion.aggregate({
+      where: { organizationId, assessmentId, deletedAt: null }, _max: { order: true },
+    });
+    const options: Prisma.AssessmentAnswerOptionCreateManyInput[] = [];
+    const questions = entries.map((entry, index) => {
+      const id = randomUUID();
+      const content = bankContentSchema.parse(entry.content);
+      options.push(...placementOptions(content, organizationId).map((option) => ({ ...option, questionId: id })));
+      return {
+        ...placementData(content), id, organizationId, assessmentId, bankEntryId: entry.id, bankSampleCandidate: true,
+        points: content.points, order: (fixedOrder._max.order ?? -1) + index + 1,
+      };
+    });
+    await tx.assessmentQuestion.createMany({ data: questions });
+    if (options.length) await tx.assessmentAnswerOption.createMany({ data: options });
+  }
+
+  private async lockFolder(tx: Prisma.TransactionClient, organizationId: string, folderId: string) {
+    const rows = await tx.$queryRaw<{ id: string }[]>`
+      SELECT id FROM question_bank_folders WHERE id = ${folderId}::uuid AND organization_id = ${organizationId}::uuid FOR UPDATE
+    `;
+    if (!rows.length) throw new NotFoundException('Question bank folder not found');
   }
 
   private async createPlacement(tx: Prisma.TransactionClient, organizationId: string, assessmentId: string,
