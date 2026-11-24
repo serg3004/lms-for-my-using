@@ -15,6 +15,7 @@ import { parseFeedbackLayout, pickAnswerSets, type FeedbackAnswerSetSnapshot, ty
 import { performanceBand, type ManagerPerformanceBand } from './checklist-performance-band.js';
 import { managerExportRows, employeeExportRows, exportLocale, MAX_EXPORT_ROWS, serializeReportCsv, viewEmployees } from './checklist-report-csv.js';
 import { ChecklistOrgTemplates } from './checklist-org-templates.js';
+import { ChecklistAnalyticsFilters } from './checklist-analytics-filter-set.js';
 import { ChecklistSheetAnalytics } from './checklist-sheet-analytics.js';
 import { ChecklistAnalyticsExport } from './checklist-analytics-export.js';
 import { ChecklistItemAnalytics } from './checklist-item-analytics.js';
@@ -37,6 +38,7 @@ import {
   ChecklistManagerAnalyticsExportQuery,
   ChecklistManagerAnalyticsQuery,
   ChecklistSheetAnalyticsQuery,
+  ChecklistAnalyticsFilterSetInput,
   ChecklistItemAnalyticsQuery,
   ChecklistAnalyticsExportQuery,
   ChecklistModuleSettingsInput,
@@ -377,6 +379,7 @@ export class ChecklistsService {
       history: (instanceId, organizationId) => this.instanceTransfer.history(instanceId, organizationId),
       readPhotoBytes: (key, max) => this.readPhotoBytes(key, max),
     });
+    this.analyticsFilters = new ChecklistAnalyticsFilters(prisma);
     this.sheetAnalytics = new ChecklistSheetAnalytics(prisma);
     this.itemAnalytics = new ChecklistItemAnalytics(prisma, this.sheetAnalytics);
     this.analyticsExport = new ChecklistAnalyticsExport(this.sheetAnalytics, this.itemAnalytics, auditLog);
@@ -393,6 +396,7 @@ export class ChecklistsService {
   private readonly instanceReport: ChecklistInstanceReport;
   private readonly orgTemplates: ChecklistOrgTemplates;
   private readonly sheetPhotos: ChecklistSheetPhotos;
+  private readonly analyticsFilters: ChecklistAnalyticsFilters;
   private readonly sheetAnalytics: ChecklistSheetAnalytics;
   private readonly itemAnalytics: ChecklistItemAnalytics;
   private readonly analyticsExport: ChecklistAnalyticsExport;
@@ -1788,6 +1792,19 @@ export class ChecklistsService {
   /** PR 459: metrics over the chosen sheets (all accessible ones when none is chosen). */
   getSheetAnalytics(organizationId: string, actor: { id: string; roles: readonly string[] }, userScope: Prisma.UserWhereInput, query: ChecklistSheetAnalyticsQuery) {
     return this.sheetAnalytics.overview(organizationId, actor, userScope, query);
+  }
+
+  /** PR 518: the analytics filter set of the viewer and of the organization. */
+  getAnalyticsFilterSet(organizationId: string, userId: string) {
+    return this.analyticsFilters.getSet(organizationId, userId);
+  }
+
+  saveAnalyticsFilterSet(organizationId: string, actor: { id: string; roles: readonly string[] }, input: ChecklistAnalyticsFilterSetInput) {
+    return this.analyticsFilters.saveSet(organizationId, actor, input, () => { throw new ForbiddenException('Only an administrator can set the organization default'); });
+  }
+
+  listAnalyticsEmployees(organizationId: string, userScope: Prisma.UserWhereInput, search: string | undefined) {
+    return this.analyticsFilters.employees(organizationId, userScope, search);
   }
 
   /** PR 460: one sheet by criteria, groups, feedback fields or notes (404 for a sheet the viewer may not open). */

@@ -457,6 +457,8 @@ model Organization {
 
   assessmentAssignments AssessmentAssignment[]
 
+  checklistAnalyticsFilterSets ChecklistAnalyticsFilterSet[]
+
   @@map("organizations")
 }
 
@@ -1273,6 +1275,20 @@ model AssessmentPlacement {
   @@unique([assessmentId, locationKey])
   @@index([organizationId, courseId, deletedAt])
   @@map("assessment_placements")
+}
+
+/// PR 518: which filters the checklist analytics shows and in what order. `ownerKey` is the user id, or "organization"
+/// for the administrator's default of the whole organization.
+model ChecklistAnalyticsFilterSet {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  ownerKey       String       @map("owner_key")
+  filters        String[]
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, ownerKey])
+  @@map("checklist_analytics_filter_sets")
 }
 
 model QuestionBankFolder {
