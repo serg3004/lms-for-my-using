@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { answerPercentage, buildAnalyticsSummary, weekStart, type SummaryInstance } from './checklist-analytics-summary.js';
+import { answerPercentage, buildAnalyticsSummary, buildHeat, resultBand, weekStart, type SummaryInstance } from './checklist-analytics-summary.js';
 
 const yesNo = (overrides: Partial<SummaryInstance> & { checked?: boolean; itemText?: string }): SummaryInstance => ({
   checklistId: 'sheet-1', sessionStatus: 'completed', instanceStatus: 'completed', percentage: 80, scored: true, at: new Date('2026-11-04T10:00:00Z'),
@@ -29,7 +29,8 @@ describe('analytics summary (PR 519)', () => {
 
   it('keeps cancelled sessions out of every block', () => {
     const summary = buildAnalyticsSummary([yesNo({ sessionStatus: 'cancelled' })]);
-    expect(summary).toEqual({ trend: [], departments: [], weak: [] });
+    expect(summary).toMatchObject({ trend: [], departments: [], weak: [], results: { good: 0, mid: 0, bad: 0 }, people: [] });
+    expect(summary.heat.flat().every((count) => count === 0)).toBe(true);
   });
 
   it('ranks departments by completion, then by score, and names the ones without a department as null', () => {
@@ -57,5 +58,38 @@ describe('analytics summary (PR 519)', () => {
     expect(answerPercentage(item, 'sum_points', result)).toBe(50);
     expect(answerPercentage(item, 'none', result)).toBeNull();
     expect(answerPercentage({ id: 'i1' }, 'sum_points', { ...result, checked: true })).toBe(100);
+  });
+
+  it('splits finished scored results into the three bands at 80 and 60', () => {
+    expect(resultBand(80)).toBe('good');
+    expect(resultBand(79)).toBe('mid');
+    expect(resultBand(60)).toBe('mid');
+    expect(resultBand(59)).toBe('bad');
+    const { results } = buildAnalyticsSummary([yesNo({ percentage: 95 }), yesNo({ percentage: 70 }), yesNo({ percentage: 10 }), yesNo({ scored: false }), yesNo({ sessionStatus: 'scheduled', instanceStatus: 'pending' })]);
+    expect(results).toEqual({ good: 1, mid: 1, bad: 1 });
+  });
+
+  it('draws the heat map by weekday and two-hour block in the viewer\'s time', () => {
+    // Wednesday 2026-11-04 22:30 UTC is Thursday 03:30 at +05:00.
+    const late = yesNo({ completedAt: new Date('2026-11-04T22:30:00Z') });
+    expect(buildHeat([late])[2]![11]).toBe(1);
+    expect(buildHeat([late], 300)[3]![1]).toBe(1);
+    expect(buildHeat([yesNo({ sessionStatus: 'scheduled', instanceStatus: 'pending' })]).flat().reduce((a, b) => a + b, 0)).toBe(0);
+  });
+
+  it('ranks employees by their average, leaves guests out and keeps the five best', () => {
+    const rows = [
+      yesNo({ userId: 'u1', userName: 'Иванов Анна', percentage: 90 }), yesNo({ userId: 'u1', userName: 'Иванов Анна', percentage: 70 }),
+      yesNo({ userId: 'u2', userName: 'Ахметов Нурлан', percentage: 95 }),
+      yesNo({ userId: 'g', userName: 'Guest', percentage: 100, guest: true }),
+      ...['a', 'b', 'c', 'd'].map((id, index) => yesNo({ userId: id, userName: id, percentage: 50 + index })),
+    ];
+    const { people } = buildAnalyticsSummary(rows);
+    expect(people).toHaveLength(5);
+    expect(people.slice(0, 2)).toEqual([
+      { id: 'u2', name: 'Ахметов Нурлан', sessions: 1, averagePercentage: 95 },
+      { id: 'u1', name: 'Иванов Анна', sessions: 2, averagePercentage: 80 },
+    ]);
+    expect(people.some((person) => person.id === 'g')).toBe(false);
   });
 });

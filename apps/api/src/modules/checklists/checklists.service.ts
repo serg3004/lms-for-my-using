@@ -16,6 +16,7 @@ import { performanceBand, type ManagerPerformanceBand } from './checklist-perfor
 import { managerExportRows, employeeExportRows, exportLocale, MAX_EXPORT_ROWS, serializeReportCsv, viewEmployees } from './checklist-report-csv.js';
 import { ChecklistOrgTemplates } from './checklist-org-templates.js';
 import { ChecklistAnalyticsFilters } from './checklist-analytics-filter-set.js';
+import { ChecklistAnalyticsDashboardLayouts } from './checklist-analytics-dashboard-layout.js';
 import { ChecklistSheetAnalytics } from './checklist-sheet-analytics.js';
 import { ChecklistAnalyticsExport } from './checklist-analytics-export.js';
 import { ChecklistItemAnalytics } from './checklist-item-analytics.js';
@@ -39,6 +40,7 @@ import {
   ChecklistManagerAnalyticsQuery,
   ChecklistSheetAnalyticsQuery,
   ChecklistAnalyticsFilterSetInput,
+  ChecklistAnalyticsDashboardLayoutInput,
   ChecklistItemAnalyticsQuery,
   ChecklistAnalyticsExportQuery,
   ChecklistModuleSettingsInput,
@@ -380,6 +382,7 @@ export class ChecklistsService {
       readPhotoBytes: (key, max) => this.readPhotoBytes(key, max),
     });
     this.analyticsFilters = new ChecklistAnalyticsFilters(prisma);
+    this.analyticsDashboardLayouts = new ChecklistAnalyticsDashboardLayouts(prisma);
     this.sheetAnalytics = new ChecklistSheetAnalytics(prisma);
     this.itemAnalytics = new ChecklistItemAnalytics(prisma, this.sheetAnalytics);
     this.analyticsExport = new ChecklistAnalyticsExport(this.sheetAnalytics, this.itemAnalytics, auditLog);
@@ -397,6 +400,7 @@ export class ChecklistsService {
   private readonly orgTemplates: ChecklistOrgTemplates;
   private readonly sheetPhotos: ChecklistSheetPhotos;
   private readonly analyticsFilters: ChecklistAnalyticsFilters;
+  private readonly analyticsDashboardLayouts: ChecklistAnalyticsDashboardLayouts;
   private readonly sheetAnalytics: ChecklistSheetAnalytics;
   private readonly itemAnalytics: ChecklistItemAnalytics;
   private readonly analyticsExport: ChecklistAnalyticsExport;
@@ -1801,6 +1805,15 @@ export class ChecklistsService {
 
   saveAnalyticsFilterSet(organizationId: string, actor: { id: string; roles: readonly string[] }, input: ChecklistAnalyticsFilterSetInput) {
     return this.analyticsFilters.saveSet(organizationId, actor, input, () => { throw new ForbiddenException('Only an administrator can set the organization default'); });
+  }
+
+  /** PR 520: the dashboard layout of the viewer and of the organization. */
+  getAnalyticsDashboardLayout(organizationId: string, userId: string) {
+    return this.analyticsDashboardLayouts.get(organizationId, userId);
+  }
+
+  saveAnalyticsDashboardLayout(organizationId: string, actor: { id: string; roles: readonly string[] }, input: ChecklistAnalyticsDashboardLayoutInput) {
+    return this.analyticsDashboardLayouts.save(organizationId, actor, input, () => { throw new ForbiddenException('Only an administrator can set the organization default'); });
   }
 
   listAnalyticsEmployees(organizationId: string, userScope: Prisma.UserWhereInput, search: string | undefined) {

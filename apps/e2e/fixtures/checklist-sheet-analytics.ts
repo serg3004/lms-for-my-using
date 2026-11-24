@@ -8,6 +8,8 @@ export const employeeAnna = '11111111-1111-4111-8111-111111111111';
 export const employeePetr = '22222222-2222-4222-8222-222222222222';
 /** PR 518: the bodies of the filter-set saves the page sent. */
 export const filterSetSaves: Array<{ filters: string[]; scope: 'user' | 'organization' }> = [];
+/** PR 520: the bodies of the dashboard-layout saves the page sent. */
+export const layoutSaves: Array<{ widgets: Array<{ id: string; size: string }> | null; scope: 'user' | 'organization' }> = [];
 export const sheetList: SheetAnalyticsSheet[] = [
   { id: sheetA, title: 'Охрана труда', status: 'published', folderId: null, sessionsInPeriod: 4 },
   { id: sheetB, title: 'Складская приёмка', status: 'published', folderId: null, sessionsInPeriod: 2 },
@@ -34,11 +36,17 @@ export function sheetAnalyticsFixture(ids: string[]): SheetAnalytics {
       trend: [{ weekStart: '2026-10-05', planned: 3, completed: 2, averagePercentage: 64 }, { weekStart: '2026-10-12', planned: 3, completed: 3, averagePercentage: 72 }, { weekStart: '2026-10-19', planned: 2, completed: 2, averagePercentage: 81 }],
       departments: [{ id: departmentSklad, name: 'Склад', planned: 4, completed: 4, completionPercentage: 100, averagePercentage: 82 }, { id: 'ffffffff-0000-4000-8000-000000000002', name: 'Касса', planned: 4, completed: 2, completionPercentage: 50, averagePercentage: 61 }],
       weak: [{ id: 'c1', checklistId: sheetA, text: 'Каски надеты', answered: 6, percentage: 33 }, { id: 'c2', checklistId: sheetB, text: 'Проход свободен', answered: 4, percentage: 50 }],
+      // PR 520: result bands, weekday x two-hour heat map, ranking and the previous period.
+      results: { good: 5, mid: 3, bad: 2 },
+      heat: Array.from({ length: 7 }, (_, day) => Array.from({ length: 12 }, (_, block) => (block === 4 || block === 5 ? 6 - day : 0))),
+      people: [{ id: employeeAnna, name: 'Иванова Анна', sessions: 4, averagePercentage: 92 }, { id: employeePetr, name: 'Петров Пётр', sessions: 2, averagePercentage: 71 }],
+      previous: { completed: 4, completionPercentage: 60, averagePercentage: 70, overdue: 3 },
     } };
 }
 
 export async function installSheetAnalyticsMocks(page: Page, role: 'admin' | 'manager' | 'instructor', itemRequests: URL[] = [], exportRequests: URL[] = []) {
   const requests: URL[] = [];
+  const savedLayout: { user: { version: 1; widgets: Array<{ id: string; size: string }> } | null; organization: { version: 1; widgets: Array<{ id: string; size: string }> } | null } = { user: null, organization: null };
   await page.route('**/api/v1/**', (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace('/api/v1', '');
@@ -57,6 +65,15 @@ export async function installSheetAnalyticsMocks(page: Page, role: 'admin' | 'ma
         return route.fulfill({ json: { user: body.scope === 'user' && body.filters.length ? body.filters : null, organization: body.scope === 'organization' ? body.filters : null } });
       }
       return route.fulfill({ json: { user: null, organization: null } });
+    }
+    if (path === '/checklists/analytics/dashboard-layout') {
+      if (route.request().method() === 'PUT') {
+        const body = route.request().postDataJSON() as { widgets: Array<{ id: string; size: string }> | null; scope: 'user' | 'organization' };
+        layoutSaves.push(body);
+        if (body.scope === 'user') savedLayout.user = body.widgets && { version: 1, widgets: body.widgets };
+        else savedLayout.organization = body.widgets && { version: 1, widgets: body.widgets };
+      }
+      return route.fulfill({ json: savedLayout });
     }
     if (path === '/checklists/analytics/overview') {
       requests.push(url);

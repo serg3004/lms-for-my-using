@@ -2394,3 +2394,11 @@
   place-items: center;
   padding-inline: 10px;
 }
+
+/* PR 520: the dashboard widgets of the checklist analytics (12 columns; small, medium and large cards) */
+.sheet-analytics-grid { display: grid; gap: 16px; grid-template-columns: repeat(12, minmax(0, 1fr)); }
+.sheet-analytics-widget { align-content: start; display: grid; gap: 12px; min-width: 0; }
+.sheet-analytics-widget--s { grid-column: span 4; }
+.sheet-analytics-widget--m { grid-column: span 6; }
+.sheet-analytics-widget--l { grid-column: span 12; }
+@media (max-width: 860px) { .sheet-analytics-widget--s, .sheet-analytics-widget--m { grid-column: span 12; } }

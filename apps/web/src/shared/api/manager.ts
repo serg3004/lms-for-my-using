@@ -144,7 +144,7 @@ export function exportManagerChecklistManagers(query: ManagerChecklistAnalyticsQ
 
 // ---- PR 461: analytics over several sheets (the "Analytics" tab) ----
 
-export type SheetAnalyticsQuery = { groupByField?: string; from: string; to: string; checklistIds?: string[]; departmentId?: string; /** PR 518: comma separated ids. */ departmentIds?: string; employeeIds?: string; managerId?: string; fieldFilters?: string };
+export type SheetAnalyticsQuery = { /** PR 520: minutes east of UTC, for the heat map. */ tzOffset?: number; groupByField?: string; from: string; to: string; checklistIds?: string[]; departmentId?: string; /** PR 518: comma separated ids. */ departmentIds?: string; employeeIds?: string; managerId?: string; fieldFilters?: string };
 
 export type SheetAnalyticsSheet = { id: string; title: string; status: string; folderId: string | null; sessionsInPeriod: number };
 
@@ -166,6 +166,14 @@ export type SheetAnalyticsSummary = {
   trend: Array<{ weekStart: string; planned: number; completed: number; averagePercentage: number | null }>;
   departments: Array<{ id: string | null; name: string | null; planned: number; completed: number; completionPercentage: number | null; averagePercentage: number | null }>;
   weak: Array<{ id: string; checklistId: string; text: string; answered: number; percentage: number }>;
+  /** PR 520: finished scored results by band (good from 80 %, with remarks from 60 %, bad below). */
+  results?: { good: number; mid: number; bad: number };
+  /** PR 520: finished results by weekday (Monday first) and two-hour block of the day, in the viewer's time. */
+  heat?: number[][];
+  /** PR 520: the best employees by their average score. */
+  people?: Array<{ id: string; name: string; sessions: number; averagePercentage: number }>;
+  /** PR 520: the figures of the period just before, for the change shown on the key numbers; null when it cannot be told. */
+  previous?: { completed: number; completionPercentage: number | null; averagePercentage: number | null; overdue: number } | null;
 };
 export type SheetAnalytics = {
   total: SheetAnalyticsMetrics;
@@ -201,6 +209,22 @@ export function getAnalyticsFilterSet() {
 /** An empty list resets the set; `organization` is the administrator's default for everyone. */
 export function saveAnalyticsFilterSet(filters: AnalyticsFilterKey[], scope: 'user' | 'organization') {
   return apiRequest<AnalyticsFilterSet>('/checklists/analytics/filter-set', { method: 'PUT', body: JSON.stringify({ filters, scope }) });
+}
+
+// ---- PR 520: the widgets of the dashboard ----
+
+export type AnalyticsWidgetId = 'kpi' | 'levels' | 'donut' | 'trend' | 'depts' | 'weak' | 'heat' | 'people';
+export type AnalyticsWidgetSize = 'S' | 'M' | 'L';
+export type AnalyticsWidget = { id: AnalyticsWidgetId; size: AnalyticsWidgetSize };
+export type AnalyticsDashboardLayout = { user: { version: 1; widgets: AnalyticsWidget[] } | null; organization: { version: 1; widgets: AnalyticsWidget[] } | null };
+
+export function getAnalyticsDashboardLayout() {
+  return apiRequest<AnalyticsDashboardLayout>('/checklists/analytics/dashboard-layout');
+}
+
+/** `null` resets: the user's own layout, or the organization default. */
+export function saveAnalyticsDashboardLayout(widgets: AnalyticsWidget[] | null, scope: 'user' | 'organization') {
+  return apiRequest<AnalyticsDashboardLayout>('/checklists/analytics/dashboard-layout', { method: 'PUT', body: JSON.stringify({ widgets, scope }) });
 }
 
 // ---- PR 462: one sheet cut by criteria, groups, feedback fields and notes ----

@@ -206,7 +206,7 @@ export class ChecklistSheetAnalytics {
     const wanted = query.checklistIds?.length ? new Set(query.checklistIds) : null;
     const sheets = accessibleSheets.filter((sheet) => !wanted || wanted.has(sheet.id));
     const sheetIds = sheets.map((sheet) => sheet.id);
-    const empty = { ...buildSheetAnalytics([], [], [], now), summary: { trend: [], departments: [], weak: [] } };
+    const empty = { ...buildSheetAnalytics([], [], [], now), summary: { trend: [], departments: [], weak: [], results: { good: 0, mid: 0, bad: 0 }, heat: Array.from({ length: 7 }, () => Array.from({ length: 12 }, () => 0)), people: [], previous: null } };
     if (sheetIds.length === 0) return { ...empty, period: { from: query.from, to: query.to }, truncated: false };
 
     const from = new Date(query.from);
@@ -216,36 +216,50 @@ export class ChecklistSheetAnalytics {
     );
     const instanceSelect = {
       checklistId: true, userId: true, status: true, percentage: true, scored: true, templateSnapshot: true, completedAt: true,
-      user: { select: { email: true, departmentMemberships: { where: { organizationId, isPrimary: true, effectiveTo: null }, take: 1, select: { department: { select: { id: true, name: true } } } } } },
+      user: { select: { email: true, firstName: true, lastName: true, departmentMemberships: { where: { organizationId, isPrimary: true, effectiveTo: null }, take: 1, select: { department: { select: { id: true, name: true } } } } } },
       results: { select: { itemId: true, answerState: true, scaleLevel: true, checked: true, points: true } },
     } as const;
-    const [sessions, selfDone, waiting] = await Promise.all([
-      this.prisma.checklistSession.findMany({
-        where: { organizationId, deletedAt: null, scheduledAt: { gte: from, lte: to }, instance: { deletedAt: null, checklistId: { in: sheetIds }, user: employeeFilter } },
-        select: { status: true, scheduledAt: true, instance: { select: instanceSelect } }, orderBy: { scheduledAt: 'desc' }, take: MAX_INSTANCES,
-      }),
-      this.prisma.checklistInstance.findMany({
-        where: { organizationId, deletedAt: null, session: { is: null }, status: 'completed', completedAt: { gte: from, lte: to }, checklistId: { in: sheetIds }, user: employeeFilter },
-        select: instanceSelect, orderBy: { completedAt: 'desc' }, take: MAX_INSTANCES,
-      }),
+    const readInstances = async (periodFrom: Date, periodTo: Date) => {
+      const [periodSessions, periodSelfDone] = await Promise.all([
+        this.prisma.checklistSession.findMany({
+          where: { organizationId, deletedAt: null, scheduledAt: { gte: periodFrom, lte: periodTo }, instance: { deletedAt: null, checklistId: { in: sheetIds }, user: employeeFilter } },
+          select: { status: true, scheduledAt: true, instance: { select: instanceSelect } }, orderBy: { scheduledAt: 'desc' }, take: MAX_INSTANCES,
+        }),
+        this.prisma.checklistInstance.findMany({
+          where: { organizationId, deletedAt: null, session: { is: null }, status: 'completed', completedAt: { gte: periodFrom, lte: periodTo }, checklistId: { in: sheetIds }, user: employeeFilter },
+          select: instanceSelect, orderBy: { completedAt: 'desc' }, take: MAX_INSTANCES,
+        }),
+      ]);
+      return { sessions: periodSessions, selfDone: periodSelfDone };
+    };
+    const [{ sessions, selfDone }, waiting] = await Promise.all([
+      readInstances(from, to),
       this.prisma.checklistSession.findMany({
         where: { organizationId, deletedAt: null, status: 'scheduled', instance: { deletedAt: null, checklistId: { in: sheetIds }, user: employeeFilter } },
         select: { scheduledAt: true, createdAt: true, instance: { select: { checklistId: true, userId: true } } }, take: MAX_INSTANCES,
       }),
     ]);
-    const toInstance = (instance: (typeof selfDone)[number], sessionStatus: AnalyticsInstance['sessionStatus'], scheduledAt: Date | null): AnalyticsInstance & { userId: string; at: Date | null; departmentId: string | null; departmentName: string | null } => ({
+    const toInstance = (instance: (typeof selfDone)[number], sessionStatus: AnalyticsInstance['sessionStatus'], scheduledAt: Date | null): AnalyticsInstance & { userId: string; userName: string; completedAt: Date | null; at: Date | null; departmentId: string | null; departmentName: string | null } => ({
       checklistId: instance.checklistId, userId: instance.userId, sessionStatus, scheduledAt, instanceStatus: instance.status, percentage: instance.percentage, scored: instance.scored,
-      at: scheduledAt ?? instance.completedAt,
+      at: scheduledAt ?? instance.completedAt, completedAt: instance.completedAt,
+      userName: `${instance.user?.lastName ?? ''} ${instance.user?.firstName ?? ''}`.trim(),
       departmentId: instance.user?.departmentMemberships[0]?.department.id ?? null, departmentName: instance.user?.departmentMemberships[0]?.department.name ?? null,
       guest: instance.user?.email === GUEST_USER_EMAIL,
       snapshot: (instance.templateSnapshot ?? null) as Snapshot, results: instance.results,
     });
-    const instances = [
-      ...sessions.map((session) => toInstance(session.instance, session.status, session.scheduledAt)),
-      ...selfDone.map((instance) => toInstance(instance, null, null)),
+    const toInstances = (read: { sessions: typeof sessions; selfDone: typeof selfDone }) => [
+      ...read.sessions.map((session) => toInstance(session.instance, session.status, session.scheduledAt)),
+      ...read.selfDone.map((instance) => toInstance(instance, null, null)),
     ];
+    const instances = toInstances({ sessions, selfDone });
     const queue = waiting.map((row) => ({ checklistId: row.instance.checklistId, userId: row.instance.userId, scheduledAt: row.scheduledAt, createdAt: row.createdAt }));
-    const result = { ...buildSheetAnalytics(sheets, instances, queue, now), summary: buildAnalyticsSummary(instances) };
+    // PR 520: the same period just before this one, for the "change against the previous period" of the key figures.
+    const length = to.getTime() - from.getTime();
+    const previousTotal = length > 0
+      ? buildSheetAnalytics(sheets, toInstances(await readInstances(new Date(from.getTime() - length), new Date(from.getTime() - 1))), [], now).total
+      : null;
+    const previous = previousTotal && { completed: previousTotal.plan.completed, completionPercentage: previousTotal.completionPercentage, averagePercentage: previousTotal.averagePercentage, overdue: previousTotal.plan.overdue };
+    const result = { ...buildSheetAnalytics(sheets, instances, queue, now), summary: { ...buildAnalyticsSummary(instances, { tzOffsetMinutes: query.tzOffset }), previous } };
     if (presentation) {
       const sheetById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
       const values = await presentation.values([...new Set([...instances, ...queue].map((row) => row.userId))]);

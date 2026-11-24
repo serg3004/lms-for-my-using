@@ -119,6 +119,8 @@ export const permissionRouteMap: Readonly<Record<string, readonly PermissionActi
   'ChecklistsController.getAnalyticsFilterSet': ['checklist.analytics.read'],
   'ChecklistsController.saveAnalyticsFilterSet': ['checklist.analytics.read'],
   'ChecklistsController.listAnalyticsEmployees': ['checklist.analytics.read'],
+  'ChecklistsController.getAnalyticsDashboardLayout': ['checklist.analytics.read'],
+  'ChecklistsController.saveAnalyticsDashboardLayout': ['checklist.analytics.read'],
   'ChecklistsController.getSheetPhotoFile': ['checklist.instance.read'],
   'ChecklistsController.getWorkplaceSettings': ['checklist.workplace.read'],
   'ChecklistsController.importSessions': ['checklist.session.import'],

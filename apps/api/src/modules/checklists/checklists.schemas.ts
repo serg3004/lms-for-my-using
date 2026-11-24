@@ -384,6 +384,8 @@ export const checklistSheetAnalyticsQuerySchema = z.object({
   departmentIds: analyticsIdList,
   employeeIds: analyticsIdList,
   managerId: z.union([z.guid().toLowerCase(), z.literal('unassigned')]).optional(),
+  // PR 520: the viewer's offset from UTC in minutes, so the weekday/hour heat map is drawn in their own time.
+  tzOffset: z.coerce.number().int().min(-840).max(840).optional(),
 });
 export type ChecklistSheetAnalyticsQuery = z.infer<typeof checklistSheetAnalyticsQuerySchema>;
 
@@ -817,4 +819,12 @@ export const checklistAnalyticsFilterSetSchema = z.object({
   scope: z.enum(['user', 'organization']).default('user'),
 });
 export type ChecklistAnalyticsFilterSetInput = z.infer<typeof checklistAnalyticsFilterSetSchema>;
+// PR 520: the widgets of the analytics dashboard, their order and size; `null` resets the layout (user) or removes the default (organization).
+export const ANALYTICS_WIDGET_IDS = ['kpi', 'levels', 'donut', 'trend', 'depts', 'weak', 'heat', 'people'] as const;
+export const checklistAnalyticsDashboardLayoutSchema = z.object({
+  widgets: z.array(z.object({ id: z.enum(ANALYTICS_WIDGET_IDS), size: z.enum(['S', 'M', 'L']) }).strict()).max(ANALYTICS_WIDGET_IDS.length)
+    .refine((list) => new Set(list.map((widget) => widget.id)).size === list.length, { message: 'Duplicate widget' }).nullable(),
+  scope: z.enum(['user', 'organization']).default('user'),
+});
+export type ChecklistAnalyticsDashboardLayoutInput = z.infer<typeof checklistAnalyticsDashboardLayoutSchema>;
 export const checklistAnalyticsEmployeesQuerySchema = z.object({ search: z.string().trim().max(120).optional() });

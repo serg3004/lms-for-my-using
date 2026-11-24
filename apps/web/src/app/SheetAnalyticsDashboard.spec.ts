@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { rateColor, weekLabel } from './SheetAnalyticsDashboard.js';
+import { heatStrength, rateColor, weekLabel } from './SheetAnalyticsDashboard.js';
 
 describe('analytics dashboard helpers (PR 519)', () => {
   it('colours a rate green from 80, amber from 60 and red below; no data is neutral', () => {
@@ -14,5 +14,12 @@ describe('analytics dashboard helpers (PR 519)', () => {
 
   it('writes a week as day.month', () => {
     expect(weekLabel('2026-10-05')).toBe('05.10');
+  });
+
+  it('scales a heat map cell against the busiest one (PR 520)', () => {
+    expect(heatStrength(6, 6)).toBe(100);
+    expect(heatStrength(3, 6)).toBe(50);
+    expect(heatStrength(0, 6)).toBe(0);
+    expect(heatStrength(0, 0)).toBe(0);
   });
 });
