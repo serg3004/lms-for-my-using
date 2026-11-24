@@ -80,7 +80,7 @@ test('analytics filters: select found sheets, pick employees by name and save th
   // Employees: found by name, sent to the server as employeeIds, kept in the address bar.
   await page.getByText(/^Сотрудник: Все сотрудники/).click();
   await page.getByLabel('Поиск сотрудников').fill('иванова');
-  await page.getByRole('checkbox', { name: 'Иванова Анна' }).check();
+  await page.getByRole('checkbox', { name: 'Иванова Анна' }).click();
   await expect(page).toHaveURL(new RegExp(`employees=${employeeAnna}`));
   await expect.poll(() => requests.at(-1)?.searchParams.get('employeeIds')).toBe(employeeAnna);
 
