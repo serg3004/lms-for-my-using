@@ -18,6 +18,7 @@ for (const width of [390, 1440]) {
     await expect(page.getByRole('table', { name: 'Показатели по чек-листам' }).getByText('Охрана труда')).toBeVisible();
     expect(requests.at(-1)?.searchParams.get('checklistIds')).toBeNull();
     // Switching one sheet off keeps the choice in the address bar and reloads the metrics for the rest only.
+    await page.getByText(/^Чек-листы: Все доступные/).click();
     await page.getByTestId('sheet-analytics-picker').getByLabel(/Охрана труда/).click();
     await expect(page).toHaveURL(new RegExp(`sheets=${sheetB}$|sheets=${sheetB}&`));
     await expect(page.getByRole('table', { name: 'Показатели по чек-листам' }).getByText('Охрана труда')).toHaveCount(0);
