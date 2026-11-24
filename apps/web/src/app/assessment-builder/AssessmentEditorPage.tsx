@@ -1,3 +1,4 @@
+import { AssessmentQuestionBank } from './AssessmentQuestionBank.js';
 import { assessmentPolicySchema, type AssessmentPolicy } from '@lms/shared/assessment-policy';
 import { AssessmentPolicyFields } from './AssessmentPolicyFields.js';
 import { questionDefinitionSchema } from '@lms/shared/assessment-question-types';
@@ -72,6 +73,8 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
   const [unpublished, setUnpublished] = useState(Boolean(initial?.draft));
   const [tab, setTab] = useState<Tab>(initialTab);
   const [preview, setPreview] = useState({ index: 0, run: 0 });
+  const [bankEntryId, setBankEntryId] = useState<string>();
+  const [bankError, setBankError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string[]>([]);
   const [pending, setPending] = useState<{ action: Action; content: EditorContent; document: EditorDocument } | null>(null);
@@ -160,7 +163,7 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
       }
     }
     if (action === 'publish') {
-      if (!questions.length) errors.push(t('admin.assessmentBuilder.publishNoQuestions'));
+      if (!questions.length && !initial?.assessment.bankSampleSize) errors.push(t('admin.assessmentBuilder.publishNoQuestions'));
       for (const question of questions) {
         const count = question.options.filter((option) => option.isCorrect).length;
         if (!question.definition && (!count || (question.type !== 'multiple_choice' && count !== 1))) {
@@ -269,7 +272,20 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
         {(['passMessage', 'failMessage'] as const).map((field) => <RichTextField key={field} id={field}
           label={t(`admin.assessmentBuilder.${field}`)} value={form[field]} maxLength={2000} onChange={(value) => change(field, value)} />)}
       </>}
-      {tab === 'questions' && <AssessmentEditorQuestions questions={questions} onChange={setQuestions} onPreview={startPreview} />}
+      {tab === 'questions' && <>
+        <AssessmentEditorQuestions questions={questions} onChange={setQuestions} onPreview={startPreview} onEditBank={setBankEntryId}
+          onDetachBank={dirty || busy ? undefined : (id) => {
+            setBankError(false);
+            setBusy(true);
+            void apiRequest(`/questions/${id}/detach-bank`, { method: 'POST' }).then(() => window.location.reload(), () => {
+              setBankError(true);
+              setBusy(false);
+            });
+          }} />
+        {bankError && <p role="alert">{t('questionBank.error')}</p>}
+        {initial && <AssessmentQuestionBank assessmentId={initial.assessment.id} disabled={dirty}
+          selectedId={bankEntryId} changed={() => window.location.reload()} />}
+      </>}
       {tab === 'preview' && initial && <>
         <AssessmentEditorPreview key={preview.run} assessment={initial.assessment} content={content} startIndex={preview.index} />
       </>}

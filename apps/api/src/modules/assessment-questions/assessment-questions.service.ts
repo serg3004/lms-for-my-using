@@ -102,6 +102,7 @@ export class AssessmentQuestionsService {
         assessmentId,
         organizationId,
         deletedAt: null,
+        bankSampleCandidate: false,
       },
       orderBy: [{ order: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
       take: LEGACY_LIST_LIMIT,
@@ -155,6 +156,7 @@ export class AssessmentQuestionsService {
 
   async updateQuestion(questionId: string, organizationId: string, input: UpdateAssessmentQuestionInput) {
     const current = await this.ensureQuestionExists(questionId, organizationId);
+    if (current.bankEntryId) throw new BadRequestException('Edit the bank question or detach it first');
     const definitionChanged = input.type !== undefined || input.definition !== undefined;
     const type = input.type ?? current.type;
     const definition = definitionChanged ? validateQuestionDefinition(type, input.definition !== undefined ? input.definition : current.definition) : null;
@@ -177,6 +179,7 @@ export class AssessmentQuestionsService {
 
   async listAnswerOptions(questionId: string, organizationId: string) {
     const question = await this.ensureQuestionExists(questionId, organizationId);
+    if (question.bankEntryId) throw new BadRequestException('Edit the bank question or detach it first');
     if (question.definition || ['matching', 'ordering', 'fill_blank', 'short_answer'].includes(question.type)) return [];
     return this.prisma.assessmentAnswerOption.findMany({
       where: {
@@ -192,6 +195,7 @@ export class AssessmentQuestionsService {
 
   async createAnswerOption(questionId: string, input: CreateAssessmentAnswerOptionInput) {
     const question = await this.ensureQuestionExists(questionId, input.organizationId);
+    if (question.bankEntryId) throw new BadRequestException('Edit the bank question or detach it first');
     if (question.definition || ['matching', 'ordering', 'fill_blank', 'short_answer'].includes(question.type)) throw new BadRequestException('Defined questions do not use answer options');
 
     return this.prisma.assessmentAnswerOption.create({
@@ -206,13 +210,14 @@ export class AssessmentQuestionsService {
   async updateAnswerOption(optionId: string, organizationId: string, input: UpdateAssessmentAnswerOptionInput) {
     const option = await this.prisma.assessmentAnswerOption.findFirst({
       where: { id: optionId, organizationId, deletedAt: null },
-      select: { id: true, text: true, imageUrl: true, question: { select: { type: true, definition: true } } },
+      select: { id: true, text: true, imageUrl: true, question: { select: { type: true, definition: true, bankEntryId: true } } },
     });
 
     if (!option) {
       throw new NotFoundException('Assessment answer option not found');
     }
 
+    if (option.question?.bankEntryId) throw new BadRequestException('Edit the bank question or detach it first');
     if (option.question && (option.question.definition || ['matching', 'ordering', 'fill_blank', 'short_answer'].includes(option.question.type))) throw new BadRequestException('Defined questions do not use answer options');
     const nextText = input.text !== undefined ? input.text : option.text;
     const nextImageUrl = input.imageUrl !== undefined ? input.imageUrl : option.imageUrl;
@@ -231,13 +236,14 @@ export class AssessmentQuestionsService {
   async deleteAnswerOption(optionId: string, organizationId: string) {
     const option = await this.prisma.assessmentAnswerOption.findFirst({
       where: { id: optionId, organizationId, deletedAt: null },
-      select: { id: true, question: { select: { type: true, definition: true } } },
+      select: { id: true, question: { select: { type: true, definition: true, bankEntryId: true } } },
     });
 
     if (!option) {
       throw new NotFoundException('Assessment answer option not found');
     }
 
+    if (option.question?.bankEntryId) throw new BadRequestException('Edit the bank question or detach it first');
     if (option.question && (option.question.definition || ['matching', 'ordering', 'fill_blank', 'short_answer'].includes(option.question.type))) throw new BadRequestException('Defined questions do not use answer options');
     await this.prisma.assessmentAnswerOption.update({
       where: { id: optionId, organizationId },
@@ -268,7 +274,7 @@ export class AssessmentQuestionsService {
         organizationId,
         deletedAt: null,
       },
-      select: { id: true, type: true, definition: true },
+      select: { id: true, type: true, definition: true, bankEntryId: true },
     });
 
     if (!question) {

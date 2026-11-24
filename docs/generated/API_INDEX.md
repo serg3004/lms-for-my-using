@@ -21,6 +21,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/assessments/{assessmentId}/attempts/answer` | `AssessmentAttempts` | `bearer` |
 | `POST` | `/api/v1/assessments/{assessmentId}/attempts/preview` | `AssessmentAttempts` | `bearer` |
 | `POST` | `/api/v1/assessments/{assessmentId}/attempts/start` | `AssessmentAttempts` | `bearer` |
+| `POST` | `/api/v1/assessments/{assessmentId}/question-bank-sample` | `AssessmentQuestions` | `bearer` |
+| `POST` | `/api/v1/assessments/{assessmentId}/question-bank/{id}` | `AssessmentQuestions` | `bearer` |
 | `GET` | `/api/v1/assessments/{assessmentId}/questions` | `AssessmentQuestions` | `bearer` |
 | `POST` | `/api/v1/assessments/{assessmentId}/questions` | `AssessmentQuestions` | `bearer` |
 | `GET` | `/api/v1/assessments/{assessmentId}/quiz` | `AssessmentQuestions` | `bearer` |
@@ -387,9 +389,17 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/public/checklists/{token}/passes/{instanceId}/items/{itemId}/skip` | `ChecklistPublic` | `bearer` |
 | `POST` | `/api/v1/public/checklists/{token}/start` | `ChecklistPublic` | `bearer` |
 | `POST` | `/api/v1/public/checklists/{token}/start-signed-in` | `ChecklistPublic` | `bearer` |
+| `GET` | `/api/v1/question-bank` | `AssessmentQuestions` | `bearer` |
+| `POST` | `/api/v1/question-bank` | `AssessmentQuestions` | `bearer` |
+| `POST` | `/api/v1/question-bank/folders` | `AssessmentQuestions` | `bearer` |
+| `POST` | `/api/v1/question-bank/import` | `AssessmentQuestions` | `bearer` |
+| `GET` | `/api/v1/question-bank/{id}` | `AssessmentQuestions` | `bearer` |
+| `PATCH` | `/api/v1/question-bank/{id}` | `AssessmentQuestions` | `bearer` |
+| `GET` | `/api/v1/question-bank/{id}/usage` | `AssessmentQuestions` | `bearer` |
 | `GET` | `/api/v1/questions/{id}` | `AssessmentQuestions` | `bearer` |
 | `PATCH` | `/api/v1/questions/{id}` | `AssessmentQuestions` | `bearer` |
 | `DELETE` | `/api/v1/questions/{id}` | `AssessmentQuestions` | `bearer` |
+| `POST` | `/api/v1/questions/{id}/detach-bank` | `AssessmentQuestions` | `bearer` |
 | `GET` | `/api/v1/questions/{questionId}/options` | `AssessmentQuestions` | `bearer` |
 | `POST` | `/api/v1/questions/{questionId}/options` | `AssessmentQuestions` | `bearer` |
 | `PATCH` | `/api/v1/questions/{questionId}/options/{id}` | `AssessmentQuestions` | `bearer` |

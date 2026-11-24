@@ -1,3 +1,4 @@
+import { QuestionBankService } from './question-bank.service.js';
 import { Module } from '@nestjs/common';
 
 import { DatabaseModule } from '../../database/database.module.js';
@@ -10,6 +11,6 @@ import { AssessmentsModule } from '../assessments/public.js';
 @Module({
   imports: [AuthModule, DatabaseModule, AssessmentsModule],
   controllers: [AssessmentQuestionsController],
-  providers: [AssessmentQuestionsService],
+  providers: [AssessmentQuestionsService, QuestionBankService],
 })
 export class AssessmentQuestionsModule {}

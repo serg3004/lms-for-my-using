@@ -6,6 +6,20 @@
 >
 > **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
 
+## Assessment question bank migrations (PR 530)
+
+Deploy `20261124160000_freeze_assessment_answers` before
+`20261124170000_question_bank` and the new API. The first migration writes
+snapshots for existing standard assessment answers from the question and option
+data present at migration time. It preserves existing scores and longread
+snapshots. Include this write in migration planning for databases with large
+assessment answer tables.
+
+The second migration adds bank folders, entries and question references, plus
+the sampled-attempt snapshot. Keep both migrations in place on application
+rollback. The previous API cannot resume a sampled attempt from its snapshot,
+so disable sampled assessments before routing learners to an earlier build.
+
 ## Assessment settings migration (PR 529)
 
 `20261124150000_assessment_policy` adds nullable policy, feedback, locked answers and

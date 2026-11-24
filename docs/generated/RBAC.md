@@ -151,7 +151,7 @@ Owner: `packages/shared/src/permission-catalog.ts`; the route table is `apps/api
 | `assessment.read` | tests | `own`, `organization` | yes | - | `assessmentsRead` | `admin`, `manager`, `instructor`, `learner` | 3 |
 | `assessment.author` | tests | `own`, `organization` | yes | `assessment.read` | `assessmentsCreate` | `admin`, `instructor` | 16 |
 | `assessment.question.read` | tests | `own`, `organization` | yes | - | `assessmentQuestionsRead` | `admin`, `manager`, `instructor` | 2 |
-| `assessment.question.edit` | tests | `own`, `organization` | yes | `assessment.question.read` | `assessmentQuestionsCreate` | `admin`, `instructor` | 3 |
+| `assessment.question.edit` | tests | `own`, `organization` | yes | `assessment.question.read` | `assessmentQuestionsCreate` | `admin`, `instructor` | 13 |
 | `assessment.option.read` | tests | `own`, `organization` | yes | - | `assessmentAnswerOptionsRead` | `admin`, `manager`, `instructor` | 1 |
 | `assessment.option.edit` | tests | `own`, `organization` | yes | `assessment.option.read` | `assessmentAnswerOptionsCreate` | `admin`, `instructor` | 3 |
 | `assessment.attempt.start` | tests | `own` | yes | - | `assessmentAttemptsCreate` | `admin`, `manager`, `instructor`, `learner` | 5 |

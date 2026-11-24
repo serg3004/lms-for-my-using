@@ -1,3 +1,4 @@
+import { QuestionBankService } from '../modules/assessment-questions/question-bank.service.js';
 /// <reference types="jest" />
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -89,6 +90,68 @@ describe('seven assessment question types and legacy grading — database', () =
     await prisma.membership.deleteMany({ where: { organizationId: { in: [org, foreignOrg].filter(Boolean) } } });
     await prisma.user.deleteMany({ where: { organizationId: { in: [org, foreignOrg].filter(Boolean) } } });
     await prisma.organization.deleteMany({ where: { id: { in: [org, foreignOrg].filter(Boolean) } } });
+  });
+
+  it('confirms shared edits and keeps the sampled attempt and its review frozen', async () => {
+    const bank = new QuestionBankService(prisma);
+    const folder = await bank.createFolder(org, 'Shared questions');
+    const content = { title: 'Original', type: 'true_false', definition: { type: 'true_false', correctAnswer: true }, options: [] };
+    const entry = await bank.create(org, folder.id, content);
+    const batch = await bank.import(org, folder.id, [
+      { row: 2, content: { ...content, title: 'Extra' } },
+      { row: 3, content: { ...content, title: '' } },
+    ]);
+    expect(batch).toEqual({ count: 1, errors: [3] });
+    expect((await bank.list(org, 'orig', folder.id)).entries.map(({ id }) => id)).toEqual([entry.id]);
+    await expect(bank.get(foreignOrg, entry.id)).rejects.toThrow(NotFoundException);
+
+    const linked = await bank.link(org, assessmentId, entry.id);
+    const lesson = await prisma.lesson.create({ data: { organizationId: org, courseId, type: 'longread', title: 'Safety guide', slug: 'guide' } });
+    const document = await prisma.longreadDocument.create({ data: { organizationId: org, lessonId: lesson.id, lastRevisionNumber: 1 } });
+    const blockId = randomUUID();
+    const published = await prisma.longreadRevision.create({ data: {
+      documentId: document.id, organizationId: org, number: 1, schemaVersion: 1, sourceDraftRevision: 1, settings: {},
+      snapshot: [{ blocks: [{ id: blockId, question: {
+        ...content, id: linked.id, text: null, imageUrl: null, order: 0, points: 3, scoringMode: 'all_or_nothing',
+        assessment: { id: assessmentId, title: 'Seven types', passingScore: 70, maxAttempts: null },
+      } }] }],
+    } });
+    await prisma.longreadDocument.update({ where: { id: document.id }, data: { publishedRevisionId: published.id } });
+    await prisma.assessmentPlacement.create({ data: { organizationId: org, assessmentId, courseId, lessonId: lesson.id, longreadBlockId: blockId, locationKey: `block:${blockId}` } });
+    await bank.configureSample(org, assessmentId, folder.id, 1);
+    await prisma.assessment.update({ where: { id: assessmentId }, data: { status: 'published', showCorrectAnswers: true } });
+
+    const running = await attempts.startAttempt(assessmentId, learner.id, org, null);
+    const selected = 'questions' in running ? running.questions : undefined;
+    expect(selected).toHaveLength(2);
+    expect(JSON.stringify(selected)).not.toContain('correctAnswer');
+    const added = await bank.create(org, folder.id, { ...content, title: 'Added after configuration' });
+    await expect(prisma.assessmentQuestion.count({
+      where: { assessmentId, bankEntryId: added.id, bankSampleCandidate: true, deletedAt: null },
+    })).resolves.toBe(1);
+    const usage = await bank.usage(org, entry.id);
+    expect(usage.assessments.map(({ id }) => id)).toEqual([assessmentId]);
+    expect(usage.longreads).toEqual([{ id: lesson.id, title: 'Safety guide' }]);
+    await expect(bank.update(org, entry.id, { ...content, title: 'Edited' }, 'wrong')).rejects.toThrow('Review');
+    await bank.update(org, entry.id, { ...content, title: 'Edited', definition: { type: 'true_false', correctAnswer: false } }, usage.confirmation);
+    const revised = await prisma.longreadDocument.findUniqueOrThrow({ where: { id: document.id }, include: { publishedRevision: true } });
+    expect(revised.publishedRevision).toMatchObject({
+      number: 2, snapshot: [{ blocks: [{ question: { title: 'Edited', points: 3 } }] }],
+    });
+    expect((await prisma.longreadRevision.findUniqueOrThrow({ where: { id: published.id } })).snapshot).toEqual(published.snapshot);
+    const resumed = await attempts.startAttempt(assessmentId, learner.id, org, null);
+    expect(resumed).toMatchObject({ id: running.id, questions: selected });
+    const result = await submit({
+      attemptId: running.id, placementId: null,
+      answers: selected!.map(({ id }) => ({ questionId: id, response: { type: 'true_false', value: true } })),
+    });
+    expect(result).toMatchObject({ score: 2, maxScore: 2, passed: true });
+    const review = await results.getAttemptResult(running.id, learner.id, org);
+    expect(review.answers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ question: expect.objectContaining({ title: 'Original' }) }),
+    ]));
+    const next = await attempts.startAttempt(assessmentId, learner.id, org, null);
+    expect(next).toMatchObject({ questions: expect.arrayContaining([expect.objectContaining({ title: 'Edited' })]) });
   });
 
   it('publishes settings and enforces both access boundaries and the retry cooldown', async () => {
