@@ -50,10 +50,13 @@ function ReorderList<T extends { id: string }>({ items, onChange, children }: {
   </ol>;
 }
 
-export function AssessmentEditorQuestions({ questions, onChange, onPreview }: {
+export function AssessmentEditorQuestions({ questions, onChange, onPreview, single, onEditBank, onDetachBank }: {
   questions: EditorQuestion[];
   onChange: (questions: EditorQuestion[]) => void;
   onPreview: (index: number) => void;
+  single?: boolean;
+  onEditBank?: (id: string) => void;
+  onDetachBank?: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -73,15 +76,17 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview }: {
             {reorder}
             <div>
               <small>{index + 1} · {t('admin.assessmentBuilder.points')} {question.points}</small>
-              <div><strong>{question.title || t('admin.assessmentBuilder.questionTitle')}</strong></div>
+              <div>{question.bankEntryId && <span>↗ {t('questionBank.linked')} </span>}<strong>{question.title || t('admin.assessmentBuilder.questionTitle')}</strong></div>
             </div>
           </div>
           <div className="admin-header-actions">
             <Button type="button" variant="secondary" size="sm"
-              aria-expanded={expanded === question.id} onClick={() => setExpanded(expanded === question.id ? null : question.id)}>
+              aria-expanded={expanded === question.id} onClick={() => question.bankEntryId ? onEditBank?.(question.bankEntryId) : setExpanded(expanded === question.id ? null : question.id)}>
               {t('admin.assessmentBuilder.edit')}
             </Button>
-            <Button type="button" variant="secondary" size="sm" aria-label={t('admin.assessmentBuilder.editor.copyQuestion')}
+            {question.bankEntryId && <Button type="button" variant="secondary" size="sm"
+              disabled={!onDetachBank} onClick={() => onDetachBank?.(question.id)}>{t('questionBank.detach')}</Button>}
+            {!single && <><Button type="button" variant="secondary" size="sm" aria-label={t('admin.assessmentBuilder.editor.copyQuestion')}
               onClick={() => onChange([...questions.slice(0, index + 1), copyEditorQuestion(question), ...questions.slice(index + 1)])}>
               {t('admin.checklists.copy')}
             </Button>
@@ -89,10 +94,10 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview }: {
             <Button type="button" variant="danger" size="sm" aria-label={t('admin.assessmentBuilder.editor.deleteQuestion')}
               onClick={() => onChange(questions.filter((item) => item.id !== question.id))}>
               {t('admin.assessmentBuilder.delete')}
-            </Button>
+            </Button></>}
           </div>
         </div>
-        {expanded === question.id && <>
+        {(single || expanded === question.id) && !question.bankEntryId && <>
         <FormField id={question.id} label={t('longreadExercises.title')} required>
           <input id={question.id} maxLength={200} value={question.title}
             onChange={(event) => changeQuestion(question.id, { title: event.target.value })} />
@@ -163,12 +168,12 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview }: {
         </>}
       </div>}
     </ReorderList>
-    <section className="admin-card admin-form">
+    {!single && <section className="admin-card admin-form">
       <h2>{t('admin.assessmentBuilder.addQuestionBtn')}</h2>
       {questionTypeSchema.options.map((type) =>
         <Button key={type} type="button" variant="secondary" onClick={() => addQuestion(type)}>
           + {t(type in optionLabels ? `admin.assessmentBuilder.${optionLabels[type as keyof typeof optionLabels]}` : `longreadExercises.types.${type}`)}
         </Button>)}
-    </section>
+    </section>}
   </div>;
 }

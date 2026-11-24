@@ -35,6 +35,7 @@ const assessmentSelect = {
   passingScore: true,
   maxAttempts: true,
   timeLimitMinutes: true,
+  bankSampleSize: true,
   policy: true,
   availableAfterCourseCompletion: true,
   passMessage: true,
@@ -148,10 +149,10 @@ export class AssessmentsService {
         ...assessmentSelect,
         editorDraft: true,
         questions: {
-          where: { organizationId, deletedAt: null },
+          where: { organizationId, deletedAt: null, bankSampleCandidate: false },
           orderBy: [{ order: 'asc' }, { id: 'asc' }],
           select: {
-            id: true, type: true, title: true, text: true, imageUrl: true, points: true, definition: true, scoringMode: true, correctFeedback: true, incorrectFeedback: true,
+            id: true, bankEntryId: true, type: true, title: true, text: true, imageUrl: true, points: true, definition: true, scoringMode: true, correctFeedback: true, incorrectFeedback: true,
             options: {
               where: { organizationId, deletedAt: null },
               orderBy: [{ order: 'asc' }, { id: 'asc' }],
@@ -172,14 +173,21 @@ export class AssessmentsService {
     });
     if (!record) throw new NotFoundException('Assessment not found');
     const { editorDraft, questions, placements, standaloneAssignments, ...assessment } = record;
-    return { assessment, draft: editorDraft, questions, placements, assignments: standaloneAssignments };
+    const draft = editorDraft == null ? null : assessmentEditorContentSchema.parse(editorDraft);
+    if (draft) {
+      const linked = new Map(questions.filter((question) => question.bankEntryId).map((question) => [question.id, question]));
+      draft.questions = draft.questions.map((question) => {
+        const source = linked.get(question.id);
+        return source ? { ...source, points: question.points } : question;
+      });
+    }
+    return { assessment, draft, questions, placements, assignments: standaloneAssignments };
   }
 
   async saveEditor(id: string, organizationId: string, input: SaveAssessmentEditorInput) {
     const { content, action, confirmPublished, revision } = input;
     for (const question of content.questions) validateQuestionDefinition(question.type, question.definition);
     if (action === 'publish') {
-      if (!content.questions.length) throw new BadRequestException('Cannot publish assessment: it has no questions');
       const missing = content.questions.filter((question) => {
         const correct = question.options.filter((option) => option.isCorrect).length;
         return !question.definition && (correct === 0 || (question.type !== 'multiple_choice' && correct !== 1));
@@ -190,8 +198,11 @@ export class AssessmentsService {
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM assessments WHERE id = ${id}::uuid AND organization_id = ${organizationId}::uuid FOR UPDATE`;
       const where = { id, organizationId, deletedAt: null };
-      const current = await tx.assessment.findFirst({ where, select: { updatedAt: true, status: true, timeLimitMinutes: true, maxAttempts: true } });
+      const current = await tx.assessment.findFirst({ where, select: { updatedAt: true, status: true, timeLimitMinutes: true, maxAttempts: true, bankSampleSize: true } });
       if (!current) throw new NotFoundException('Assessment not found');
+      if (action === 'publish' && !content.questions.length && !current.bankSampleSize) {
+        throw new BadRequestException('Cannot publish assessment: it has no questions');
+      }
       if (current.updatedAt.toISOString() !== revision) throw new ConflictException('Assessment was changed by another editor');
       if (current.status === 'published' && !confirmPublished) throw new ConflictException('Confirm changes to the published assessment');
 
@@ -214,12 +225,21 @@ export class AssessmentsService {
         if (active) throw new ConflictException('Cannot publish while an attempt is in progress');
       }
 
+      const linked = await tx.assessmentQuestion.findMany({
+        where: { assessmentId: id, organizationId, deletedAt: null, bankEntryId: { not: null } },
+        select: { id: true },
+      });
+      const linkedIds = new Set(linked.map((question) => question.id));
       const deletedAt = new Date();
       await tx.assessmentQuestion.updateMany({
-        where: { assessmentId: id, organizationId, deletedAt: null, id: { notIn: content.questions.map((question) => question.id) } },
+        where: { assessmentId: id, organizationId, deletedAt: null, bankSampleCandidate: false, id: { notIn: content.questions.map((question) => question.id) } },
         data: { deletedAt },
       });
       for (const [order, { id: questionId, options, definition, ...fields }] of content.questions.entries()) {
+        if (linkedIds.has(questionId)) {
+          await tx.assessmentQuestion.update({ where: { id: questionId }, data: { points: fields.points, order } });
+          continue;
+        }
         const question = { ...fields, order, definition: definition ?? Prisma.DbNull, deletedAt: null };
         await tx.assessmentQuestion.upsert({
           where: { id: questionId, assessmentId: id, organizationId },

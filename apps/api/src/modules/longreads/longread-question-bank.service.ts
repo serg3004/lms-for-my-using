@@ -29,6 +29,7 @@ export class LongreadQuestionBankService {
       if (input.questionId) await tx.$queryRaw`SELECT id FROM assessment_questions WHERE id = ${input.questionId}::uuid FOR UPDATE`;
       const existing = input.questionId ? await tx.assessmentQuestion.findFirst({ where: { id: input.questionId, organizationId, deletedAt: null, assessment: { lessonId, organizationId, deletedAt: null } } }) : null;
       if (input.questionId && !existing) throw new NotFoundException('Question not found');
+      if (existing?.bankEntryId) throw new ConflictException('Edit the shared bank question in the question bank');
       if (existing && (!input.updatedAt || existing.updatedAt.toISOString() !== input.updatedAt)) throw new ConflictException('Question changed');
       if (existing && input.assessmentId && input.assessmentId !== existing.assessmentId) throw new BadRequestException('Cannot move question to another assessment');
       let assessment = existing || input.assessmentId ? await tx.assessment.findFirst({ where: { id: existing?.assessmentId ?? input.assessmentId, lessonId, organizationId, deletedAt: null } }) : await tx.assessment.findFirst({ where: { lessonId, organizationId, deletedAt: null }, orderBy: { createdAt: 'asc' } });

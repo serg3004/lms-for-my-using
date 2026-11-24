@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { QuestionBankService } from './question-bank.service.js';
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard } from '../auth/public.js';
@@ -21,7 +23,78 @@ import { AssessmentQuestionsService } from './assessment-questions.service.js';
 @Controller()
 @UseGuards(AuthGuard, RolesGuard, CourseAccessGuard)
 export class AssessmentQuestionsController {
-  constructor(private readonly assessmentQuestionsService: AssessmentQuestionsService, private readonly standalone: StandaloneAssessmentsService) {}
+  constructor(private readonly assessmentQuestionsService: AssessmentQuestionsService, private readonly standalone: StandaloneAssessmentsService, private readonly bank: QuestionBankService) {}
+
+  @Get('question-bank')
+  @Roles(...rolePolicies.assessmentQuestionsCreate)
+  listBankQuestions(@Req() request: AuthenticatedRequest, @Query('search') search?: string, @Query('folderId') folderId?: string) {
+    return this.bank.list(request.currentUser!.organizationId, z.string().max(200).parse(search ?? ''), z.guid().optional().parse(folderId));
+  }
+
+  @Post('question-bank/folders')
+  @Roles(...rolePolicies.assessmentQuestionsCreate)
+  createBankFolder(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const { name } = z.object({ name: z.string().trim().min(1).max(200) }).parse(body);
+    return this.bank.createFolder(request.currentUser!.organizationId, name);
+  }
+
+  @Post('question-bank')
+  @Roles(...rolePolicies.assessmentQuestionsCreate)
+  createBankQuestion(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const { folderId, content } = z.object({ folderId: z.guid(), content: z.unknown() }).parse(body);
+    return this.bank.create(request.currentUser!.organizationId, folderId, content);
+  }
+
+  @Post('question-bank/import')
+  @Roles(...rolePolicies.assessmentQuestionsCreate)
+  importBankQuestions(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const { folderId, rows } = z.object({
+      folderId: z.guid(),
+      rows: z.array(z.object({ row: z.number().int().min(2), content: z.unknown() })).max(100),
+    }).parse(body);
+    return this.bank.import(request.currentUser!.organizationId, folderId, rows);
+  }
+
+  @Get('question-bank/:id')
+  @Roles(...rolePolicies.assessmentQuestionsCreate)
+  getBankQuestion(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.bank.get(request.currentUser!.organizationId, z.guid().parse(id));
+  }
+
+  @Get('question-bank/:id/usage')
+  @Roles(...rolePolicies.assessmentQuestionsCreate)
+  bankQuestionUsage(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.bank.usage(request.currentUser!.organizationId, z.guid().parse(id));
+  }
+
+  @Patch('question-bank/:id')
+  @Roles(...rolePolicies.assessmentQuestionsCreate)
+  updateBankQuestion(@Param('id') id: string, @Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const { content, confirmation } = z.object({ content: z.unknown(), confirmation: z.string().length(64) }).parse(body);
+    return this.bank.update(request.currentUser!.organizationId, z.guid().parse(id), content, confirmation, request.currentUser!.id);
+  }
+
+  @Post('assessments/:assessmentId/question-bank/:id')
+  @Roles(...rolePolicies.assessmentQuestionsCreate)
+  @CourseScope('param', 'assessmentId', 'assessment')
+  linkBankQuestion(@Param('assessmentId') assessmentId: string, @Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.bank.link(request.currentUser!.organizationId, z.guid().parse(assessmentId), z.guid().parse(id));
+  }
+
+  @Post('assessments/:assessmentId/question-bank-sample')
+  @Roles(...rolePolicies.assessmentQuestionsCreate)
+  @CourseScope('param', 'assessmentId', 'assessment')
+  sampleBankQuestions(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const { folderId, size } = z.object({ folderId: z.guid(), size: z.number().int().min(1).max(100) }).parse(body);
+    return this.bank.configureSample(request.currentUser!.organizationId, z.guid().parse(assessmentId), folderId, size);
+  }
+
+  @Post('questions/:id/detach-bank')
+  @Roles(...rolePolicies.assessmentQuestionsCreate)
+  @CourseScope('param', 'id', 'question')
+  detachBankQuestion(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return this.bank.detach(request.currentUser!.organizationId, z.guid().parse(id));
+  }
 
   @Get('assessments/:assessmentId/questions')
   @Roles(...rolePolicies.assessmentQuestionsRead)

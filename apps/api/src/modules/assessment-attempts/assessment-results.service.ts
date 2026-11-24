@@ -359,20 +359,23 @@ export class AssessmentResultsService {
       user: attempt.user,
       answers:
         attempt.answers?.map((answer) => {
-          const frozen = frozenAnswerQuestionSchema.safeParse(answer.frozenQuestion);
-          const question = frozen.success ? frozen.data.question : answer.question;
-          const reveal = attempt.status === 'completed' && (context.success ? frozen.success && frozen.data.revealAnswers : revealAll || (!answer.isCorrect && policy.incorrectAnswer === 'review'));
-          const correctOptions = frozen.success ? frozen.data.question.options.filter((option) => option.isCorrect).map(({ id, text, imageUrl }) => ({ id, text, imageUrl })) : answer.question.options;
+          const snapshot = frozenAnswerQuestionSchema.safeParse(answer.frozenQuestion);
+          const frozen = snapshot.success && context.success === ('blockId' in snapshot.data) ? snapshot.data : null;
+          const question = frozen ? frozen.question : answer.question;
+          const reveal = attempt.status === 'completed' && (context.success ? frozen && frozen.revealAnswers : revealAll || (!answer.isCorrect && policy.incorrectAnswer === 'review'));
+          const correctOptions = frozen ? frozen.question.options.filter((option) => option.isCorrect).map(({ id, text, imageUrl }) => ({ id, text, imageUrl })) : answer.question.options;
           const definition = questionDefinitionSchema.safeParse(question.definition);
-          const selected = frozen.success ? frozen.data.question.options.find((option) => option.id === answer.selectedOptionId) : null;
+          const selected = frozen ? frozen.question.options.find((option) => option.id === answer.selectedOptionId) : null;
+          const feedbackKey = answer.isCorrect ? 'correctFeedback' : 'incorrectFeedback';
+          const feedback = question[feedbackKey] === undefined ? answer.question[feedbackKey] : question[feedbackKey];
           return {
             id: answer.id, questionId: answer.questionId, selectedOptionId: answer.selectedOptionId, selectedOptionIds: answer.selectedOptionIds,
             ...(answer.response ? { response: answer.response } : {}), isCorrect: answer.isCorrect, score: answer.score, createdAt: answer.createdAt, updatedAt: answer.updatedAt,
             question: { id: question.id, title: question.title, type: question.type, points: question.points, order: question.order,
-              ...(frozen.success ? { options: frozen.data.question.options.map(({ id, text, imageUrl }) => ({ id, text, imageUrl })) } : {}),
+              ...(frozen ? { options: frozen.question.options.map(({ id, text, imageUrl }) => ({ id, text, imageUrl })) } : {}),
               ...(definition.success && definition.data.type === question.type ? { definition: publicQuestionDefinition(definition.data, `result:${answer.id}`) } : {}) },
-            ...(attempt.status === 'completed' && policy.showFeedback ? { feedback: answer.isCorrect ? answer.question.correctFeedback : answer.question.incorrectFeedback } : {}),
-            selectedOption: frozen.success ? selected ? { id: selected.id, text: selected.text, imageUrl: selected.imageUrl } : null : answer.selectedOption,
+            ...(attempt.status === 'completed' && policy.showFeedback ? { feedback } : {}),
+            selectedOption: frozen ? selected ? { id: selected.id, text: selected.text, imageUrl: selected.imageUrl } : null : answer.selectedOption,
             ...(reveal && question.definition ? { correctDefinition: question.definition } : {}),
             correctOptions: reveal ? correctOptions : undefined,
           };

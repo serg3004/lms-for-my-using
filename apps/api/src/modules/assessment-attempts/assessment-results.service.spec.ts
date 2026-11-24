@@ -127,6 +127,36 @@ describe('AssessmentResultsService', () => {
     ]);
   });
 
+  it('reviews the saved question after its title and answers change', async () => {
+    const attempt = createAttempt(userId, true);
+    const [answer] = attempt.answers;
+    const frozenQuestion = {
+      revealAnswers: false,
+      question: {
+        ...answer.question,
+        title: 'Original title',
+        text: null,
+        imageUrl: null,
+        definition: null,
+        scoringMode: 'all_or_nothing',
+        assessment: { id: assessmentId, title: 'Final test', passingScore: 70, maxAttempts: null },
+        options: [{ ...answer.selectedOption, text: 'Original answer', order: 0, isCorrect: true }],
+      },
+    };
+    const prisma = {
+      assessmentAttempt: { findFirst: async () => ({ ...attempt, answers: [{ ...answer, frozenQuestion }] }) },
+    } as unknown as PrismaService;
+    const service = new AssessmentResultsService(prisma);
+
+    const result = await service.getAttemptResult(attemptId, userId, organizationId);
+
+    expect(result.answers[0]).toMatchObject({
+      question: { title: 'Original title' },
+      selectedOption: { text: 'Original answer' },
+      correctOptions: [{ text: 'Original answer' }],
+    });
+  });
+
   it('never exposes either legacy or typed answer keys before completion, even with showCorrectAnswers enabled', async () => {
     const base = createAttempt(userId, true);
     const attempt = {

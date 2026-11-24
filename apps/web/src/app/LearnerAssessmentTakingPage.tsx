@@ -36,7 +36,7 @@ import {
   type SelectedAnswers,
 } from './assessment-taking/model.js';
 
-type LearnerAssessmentTakingData = { assessment: AssessmentSummary; questions: QuestionWithOptions[] };
+type LearnerAssessmentTakingData = { assessment: AssessmentSummary; questions: QuestionWithOptions[]; sampledAttempt?: Awaited<ReturnType<typeof startAssessmentAttempt<QuestionWithOptions>>> };
 
 type TakingResult = Pick<AssessmentAttemptResult, 'passed' | 'score' | 'maxScore' | 'percentage' | 'assessment' | 'answers' | 'effectiveResult'>;
 type TakingPreview = LearnerAssessmentTakingData & {
@@ -67,6 +67,11 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
     async () => {
       if (preview) return { assessment: preview.assessment, questions: preview.questions };
       const assessment = await getAssessment(assessmentId);
+      if (assessment.bankSampleSize) {
+        const sampledAttempt = await startAssessmentAttempt<QuestionWithOptions>(assessmentId, token);
+        if (!sampledAttempt.questions) throw new Error('Missing attempt questions');
+        return { assessment, questions: sampledAttempt.questions, sampledAttempt };
+      }
       const questionsWithOptions = await apiRequest<QuestionWithOptions[]>(
         `/assessments/${encodeURIComponent(assessmentId)}/quiz${assessmentTokenQuery(token)}`,
       );
@@ -94,7 +99,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
 
     const timeLimitMinutes = loadState.data.assessment.timeLimitMinutes;
     const locked = requiresLockedAnswers(loadState.data.assessment.policy);
-    if (preview || (!timeLimitMinutes && !locked)) {
+    if (preview || (!timeLimitMinutes && !locked && !loadState.data.sampledAttempt)) {
       setSecondsLeft(timeLimitMinutes ? timeLimitMinutes * 60 : null);
       setSessionReady(true);
       return;
@@ -106,7 +111,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
 
     void (async () => {
       try {
-        const attempt = await startAssessmentAttempt(assessmentId, token);
+        const attempt = loadState.data.sampledAttempt ?? await startAssessmentAttempt(assessmentId, token);
         if (cancelled) return;
         setAttemptId(attempt.id);
         setSecondsLeft(timeLimitMinutes ? computeSecondsLeft(attempt.startedAt, timeLimitMinutes) : null);
@@ -191,7 +196,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
         setSubmitState({ status: 'done', result, certificateId: null });
         return;
       }
-      const attempt = await createAssessmentAttempt(assessmentId, buildAssessmentAnswers(loadState.data.questions, selected), token, loadState.data.assessment.policy ? attemptId : undefined);
+      const attempt = await createAssessmentAttempt(assessmentId, buildAssessmentAnswers(loadState.data.questions, selected), token, loadState.data.assessment.policy || loadState.data.sampledAttempt ? attemptId : undefined);
       const result = await getAttemptResult(attempt.id);
 
       let certificateId: string | null = null;
