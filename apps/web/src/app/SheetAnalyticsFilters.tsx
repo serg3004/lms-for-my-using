@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { listAnalyticsEmployees, saveAnalyticsFilterSet, type AnalyticsEmployee, type AnalyticsFilterKey, type AnalyticsFilterSet } from '../shared/api/manager.js';
