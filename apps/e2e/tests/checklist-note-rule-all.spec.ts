@@ -43,7 +43,7 @@ test('the rule of one criterion is copied to the others with the same scale afte
   await page.getByRole('button', { name: 'Редактировать' }).click();
   await expect(page.getByRole('heading', { name: /Группы и критерии/ })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Действия' }).first().click();
+  await page.getByRole('button', { name: 'Действия', exact: true }).first().click();
   await page.getByRole('menuitem', { name: 'Описание и пояснение…' }).click();
   const dialog = page.getByRole('dialog', { name: 'Критерий: описание и пояснение' });
   await dialog.getByRole('combobox').selectOption('on_answers');

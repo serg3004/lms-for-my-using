@@ -37,7 +37,8 @@ export async function installSessionImportMocks(page: Page, role: 'admin' | 'man
 export async function openSessionImport(page: Page, role: 'admin' | 'manager' | 'instructor' | 'mentor') {
   const writes = await installSessionImportMocks(page, role);
   await page.goto(role === 'instructor' ? '/instructor/checklists/sessions/all' : role === 'mentor' ? '/mentor/sessions' : '/admin/checklists/sessions');
-  await page.getByRole('button', { name: 'Импорт списка', exact: true }).click();
+  await page.getByRole('button', { name: 'Ещё действия', exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Импорт списка', exact: true }).click();
   return writes;
 }
 

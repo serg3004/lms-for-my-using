@@ -610,11 +610,8 @@ export function ChecklistBuilder({
             )}
           </>
         }
-        action={
-          <div className="admin-builder__header-actions">
-            <Button type="button" variant="secondary" onClick={() => setScaleManagerOpen(true)}>
-              {t('admin.checklists.scaleManager.title', 'Evaluation scales')}
-            </Button>
+        primary={
+          <>
             <Button
               type="button"
               variant="secondary"
@@ -624,11 +621,6 @@ export function ChecklistBuilder({
             >
               {t('admin.checklists.preview', 'Preview')}
             </Button>
-            {canManageTemplates && (
-              <Button type="button" variant="secondary" disabled={templateState === 'saving' || items.length === 0} onClick={() => void saveAsTemplate()}>
-                {t('admin.checklists.templates.saveAs', 'Save as template')}
-              </Button>
-            )}
             {checklist.status !== 'published' && (
               <Button
                 variant="primary"
@@ -641,8 +633,19 @@ export function ChecklistBuilder({
                 {t('admin.checklists.publish', 'Publish')}
               </Button>
             )}
-          </div>
+          </>
         }
+        more={{
+          label: t('admin.checklists.sessions.more', 'More actions'),
+          children: (
+            <>
+              <button onClick={() => setScaleManagerOpen(true)} role="menuitem" type="button">{t('admin.checklists.scaleManager.title', 'Evaluation scales')}</button>
+              {canManageTemplates && (
+                <button disabled={templateState === 'saving' || items.length === 0} onClick={() => void saveAsTemplate()} role="menuitem" type="button">{t('admin.checklists.templates.saveAs', 'Save as template')}</button>
+              )}
+            </>
+          ),
+        }}
       />
       {unsavedGuard && (
         <div className="ui-state ui-state--warning admin-inline-banner" role="status" data-testid="checklist-unsaved-bar" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>

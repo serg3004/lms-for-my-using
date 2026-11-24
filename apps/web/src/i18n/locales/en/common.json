@@ -1574,6 +1574,7 @@
         "exportCsv": "Download CSV",
         "exportError": "Unable to export the sessions.",
         "exportXlsx": "Download Excel",
+        "more": "More actions",
         "summarySameChecklist": "Select sessions of one checklist.",
         "summarySelectAll": "Select all completed sessions",
         "summarySelectRow": "Select for summary: {{title}}, {{employee}}"

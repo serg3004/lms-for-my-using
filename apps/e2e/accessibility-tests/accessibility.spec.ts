@@ -308,7 +308,8 @@ test.describe('WCAG AA browser baseline', () => {
     await loginAs(page, 'admin');
     await expect(page).toHaveURL(/\/admin$/);
     await page.goto('/admin/checklists/sessions');
-    await page.getByRole('button', { name: /Настройки/ }).click();
+    await page.getByRole('button', { name: 'Ещё действия', exact: true }).click();
+    await page.getByRole('menuitem', { name: /Настройки/ }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog.getByText('Кто может быть наблюдателем')).toBeVisible();
     await auditAccessibility(page, testInfo);

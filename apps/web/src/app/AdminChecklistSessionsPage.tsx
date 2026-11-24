@@ -337,16 +337,19 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
         eyebrow={t('admin.checklists.sessions.eyebrow', 'Workplace training')}
         title={t('admin.checklists.sessions.pageTitle', 'Training sessions')}
         subtitle={t('admin.checklists.sessions.subtitle', 'Planning, running and tracking training.')}
-        action={
-          <div className="admin-header-actions">
-            <Button onClick={() => void exportReport('csv')} type="button" variant="secondary">{t('admin.checklists.sessions.exportCsv', 'Download CSV')}</Button>
-            <Button onClick={() => void exportReport('xlsx')} type="button" variant="secondary">{t('admin.checklists.sessions.exportXlsx', 'Download Excel')}</Button>
-            {!isObserverVariant && <Link className="ds-button ds-button--secondary ds-button--md" to="/admin/checklists/analytics">{t('manager.checklists.title', 'Checklist analytics')}</Link>}
-            {<Button onClick={() => setSettingsOpen(true)} type="button" variant="secondary">{t('admin.checklists.settings.open', 'Module settings')}</Button>}
-            {canImport && <Button onClick={() => { setImportMode(true); setWizardOpen(true); }} size="sm" type="button" variant="secondary">{t('sessionImport.title')}</Button>}
-            <Button onClick={() => { setImportMode(false); setWizardOpen(true); }} type="button" variant="primary">+ {t('admin.checklists.sessions.create', 'New session')}</Button>
-          </div>
-        }
+        primary={<Button onClick={() => { setImportMode(false); setWizardOpen(true); }} type="button" variant="primary">+ {t('admin.checklists.sessions.create', 'New session')}</Button>}
+        more={{
+          label: t('admin.checklists.sessions.more', 'More actions'),
+          children: (
+            <>
+              <button onClick={() => void exportReport('csv')} role="menuitem" type="button">{t('admin.checklists.sessions.exportCsv', 'Download CSV')}</button>
+              <button onClick={() => void exportReport('xlsx')} role="menuitem" type="button">{t('admin.checklists.sessions.exportXlsx', 'Download Excel')}</button>
+              {!isObserverVariant && <Link role="menuitem" to="/admin/checklists/analytics">{t('manager.checklists.title', 'Checklist analytics')}</Link>}
+              <button onClick={() => setSettingsOpen(true)} role="menuitem" type="button">{t('admin.checklists.settings.open', 'Module settings')}</button>
+              {canImport && <button onClick={() => { setImportMode(true); setWizardOpen(true); }} role="menuitem" type="button">{t('sessionImport.title')}</button>}
+            </>
+          ),
+        }}
       />
       {isObserverVariant ? <ObserverSessionsNav current="all" /> : <ChecklistsTabs current="sessions" />}
       {/* PR 360в: an admin assigned as the observer needs the queue to start the session; hidden while empty. */}
