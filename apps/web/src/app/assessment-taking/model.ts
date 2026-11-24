@@ -72,6 +72,9 @@ export function getAssessmentSubmitErrorKey(error: unknown): string {
     if (error.status === 401) return 'assessments.sessionExpired';
     if (error.status === 400) {
       const message = error.message.toLowerCase();
+      if (message.includes('retry cooldown')) return 'assessments.policy.cooldownActive';
+      if (message.includes('not open yet')) return 'assessments.policy.notOpen';
+      if (message.includes('availability has ended')) return 'assessments.policy.closed';
       if (message.includes('attempts limit')) return 'assessments.errorAttemptsLimit';
       if (message.includes('course must be completed')) return 'assessments.errorCourseNotComplete';
       if (message.includes('must be published')) return 'assessments.errorNotPublished';

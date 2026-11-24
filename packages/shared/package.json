@@ -29,6 +29,11 @@
       "types": "./src/constants/roles.ts",
       "import": "./dist/constants/roles.js"
     },
+    "./assessment-policy": {
+      "types": "./src/assessment-policy.ts",
+      "development": "./src/assessment-policy.ts",
+      "import": "./dist/assessment-policy.js"
+    },
     "./assessment-question-types": {
       "types": "./src/assessment-question-types.ts",
       "development": "./src/assessment-question-types.ts",

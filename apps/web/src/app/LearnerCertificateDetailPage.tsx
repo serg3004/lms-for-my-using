@@ -110,6 +110,9 @@ export function LearnerCertificateDetailPage({ certificateId }: { certificateId:
             <p className="learner-cert-card__presented">{t('certificates.presentedTo')}</p>
 
             <h1 className="learner-cert-card__course">{courseTitle}</h1>
+            {certificate.assessmentResult && <p>{t('assessments.policy.effective', {
+              policy: t(`assessments.policy.${certificate.assessmentResult.policy}`), percentage: certificate.assessmentResult.percentage,
+            })}</p>}
 
             <p className="learner-cert-card__issued">
               {t('certificates.issuedOn', { date: formatIssuedAt(certificate.issuedAt) })}

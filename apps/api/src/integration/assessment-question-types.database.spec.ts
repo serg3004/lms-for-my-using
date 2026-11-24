@@ -91,6 +91,81 @@ describe('seven assessment question types and legacy grading — database', () =
     await prisma.organization.deleteMany({ where: { id: { in: [org, foreignOrg].filter(Boolean) } } });
   });
 
+  it('publishes settings and enforces both access boundaries and the retry cooldown', async () => {
+    const { question, options } = await createChoice('single_choice');
+    const editor = await papers.getEditor(assessmentId, org);
+    const { title, description, passingScore, maxAttempts, timeLimitMinutes, availableAfterCourseCompletion,
+      passMessage, failMessage, showCorrectAnswers, randomizeOrder } = editor.assessment;
+    await papers.saveEditor(assessmentId, org, {
+      revision: editor.assessment.updatedAt.toISOString(), action: 'publish', confirmPublished: false,
+      content: { settings: { title, description, passingScore, maxAttempts, timeLimitMinutes, availableAfterCourseCompletion,
+        passMessage, failMessage, showCorrectAnswers, randomizeOrder, policy: {
+          opensAt: new Date(Date.now() + 3600000).toISOString(), cooldownHours: 1,
+        } }, questions: editor.questions as Parameters<typeof papers.saveEditor>[2]['content']['questions'] },
+    });
+    const input = { placementId: null, answers: [{ questionId: question.id, selectedOptionId: options[0].id }] } as const;
+    const send = () => submit({ ...input, answers: [...input.answers] });
+    await expect(questions.listLearnerQuizQuestions(assessmentId, org, learner.id)).rejects.toThrow('not open yet');
+    await expect(send()).rejects.toThrow('not open yet');
+    await prisma.assessment.update({ where: { id: assessmentId }, data: { policy: { closesAt: new Date(Date.now() - 60000).toISOString() } } });
+    await expect(send()).rejects.toThrow('availability has ended');
+    await prisma.assessment.update({ where: { id: assessmentId }, data: { policy: { cooldownHours: 1 } } });
+    const concurrent = await Promise.allSettled([send(), send()]);
+    expect(concurrent.filter(({ status }) => status === 'fulfilled')).toHaveLength(1);
+    expect(concurrent.find(({ status }) => status === 'rejected')).toMatchObject({ reason: { message: 'Assessment retry cooldown is active' } });
+    await prisma.assessmentAttempt.updateMany({ where: { assessmentId }, data: { completedAt: new Date(Date.now() - 3600001) } });
+    await expect(send()).resolves.toMatchObject({ passed: true });
+  });
+
+  it('locks answers in order and reveals only the committed incorrect answer immediately', async () => {
+    const first = await createChoice('single_choice');
+    const second = await createChoice('single_choice');
+    await prisma.assessmentQuestion.update({ where: { id: first.question.id }, data: { incorrectFeedback: 'Review the first question.' } });
+    await prisma.assessmentQuestion.update({ where: { id: second.question.id }, data: { order: 1 } });
+    await prisma.assessment.update({ where: { id: assessmentId }, data: { status: 'published',
+      maxAttempts: 2, policy: { incorrectAnswer: 'immediate', showFeedback: true, preventBacktracking: true, answerVisibility: 'last' },
+    } });
+    const start = () => attempts.startAttempt(assessmentId, learner.id, org, null);
+    const [active, resumed] = await Promise.all([start(), start()]);
+    expect(resumed.id).toBe(active.id);
+    const wrong = { questionId: first.question.id, selectedOptionId: first.options[1].id };
+    const correct = { questionId: second.question.id, selectedOptionId: second.options[0].id };
+    const record = (answer: typeof wrong, attemptId = active.id) => attempts.recordAnswer(assessmentId, learner.id, org, attemptId, answer, null);
+    await expect(record(correct)).rejects.toThrow('current assessment question');
+    await expect(record(wrong)).resolves.toMatchObject({
+      answer: wrong, isCorrect: false, feedback: 'Review the first question.', correctOptions: [{ id: first.options[0].id }],
+    });
+    await expect(record({ ...wrong, selectedOptionId: first.options[0].id })).resolves.toMatchObject({ answer: wrong });
+    await expect(start()).resolves.toMatchObject({ lockedAnswers: [wrong] });
+    await expect(record(correct)).resolves.not.toHaveProperty('correctOptions');
+    const submitted = await submit({ placementId: null, attemptId: active.id, answers: [correct, { ...wrong, selectedOptionId: first.options[0].id }] });
+    expect(submitted).toMatchObject({ percentage: 50, passed: false });
+    const beforeLast = await results.getAttemptResult(submitted.id, learner);
+    expect(beforeLast.answers[0]).not.toHaveProperty('correctOptions', expect.anything());
+    const next = await start();
+    await expect(record(wrong)).rejects.toThrow('no active attempt');
+    await record(wrong, next.id);
+    await record(correct, next.id);
+    await submit({ placementId: null, attemptId: next.id, answers: [wrong, correct] });
+    expect((await results.getAttemptResult(submitted.id, learner)).answers.find((answer) => answer.questionId === wrong.questionId))
+      .toMatchObject({ feedback: 'Review the first question.', correctOptions: [{ id: first.options[0].id }] });
+    await expect(start()).rejects.toThrow('attempts limit');
+  });
+
+  it.each([
+    ['best', 100, true], ['latest', 0, false], ['average', 50, true],
+  ] as const)('uses the %s result policy in review and certificates', async (attemptPolicy, percentage, passed) => {
+    const { question, options } = await createChoice('single_choice');
+    await prisma.assessment.update({ where: { id: assessmentId }, data: { status: 'published', passingScore: 50, policy: { attemptPolicy } } });
+    const first = await submit({ answers: [{ questionId: question.id, selectedOptionId: options[0].id }] });
+    const last = await submit({ answers: [{ questionId: question.id, selectedOptionId: options[1].id }] });
+    const effectiveResult = { policy: attemptPolicy, attemptId: attemptPolicy === 'best' ? first.id : last.id, percentage, passed };
+    expect(await results.getAttemptResult(last.id, learner)).toMatchObject({ effectiveResult });
+    expect(await prisma.certificate.findFirst({ where: { organizationId: org, courseId, userId: learner.id } })).toMatchObject({
+      assessmentResult: passed ? effectiveResult : { policy: attemptPolicy, attemptId: first.id, percentage: 100, passed: true },
+    });
+  });
+
   it('assigns a standalone test through all three targets and scopes attempts and links', async () => {
     const service = new StandaloneAssessmentsService(prisma, {} as BackgroundJobsService);
     const paper = await prisma.assessment.create({

@@ -1,3 +1,4 @@
+import { assertAssessmentWindow, readAssessmentPolicy } from '../../common/assessment-policy.js';
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { validateQuestionDefinition, publicQuestionDefinition } from '../../common/assessment-question-definition.js';
@@ -94,6 +95,7 @@ export class AssessmentQuestionsService {
    */
   async listLearnerQuizQuestions(assessmentId: string, organizationId: string, userId: string) {
     const assessment = await this.ensurePublishedAssessmentExists(assessmentId, organizationId);
+    assertAssessmentWindow(readAssessmentPolicy(assessment.policy));
 
     const questions = await this.prisma.assessmentQuestion.findMany({
       where: {
@@ -101,7 +103,7 @@ export class AssessmentQuestionsService {
         organizationId,
         deletedAt: null,
       },
-      orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
+      orderBy: [{ order: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
       take: LEGACY_LIST_LIMIT,
       select: learnerAssessmentQuestionSelect,
     });
@@ -283,7 +285,7 @@ export class AssessmentQuestionsService {
         status: 'published',
         deletedAt: null,
       },
-      select: { id: true, randomizeOrder: true },
+      select: { id: true, randomizeOrder: true, policy: true },
     });
 
     if (!assessment) {

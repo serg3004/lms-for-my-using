@@ -1198,6 +1198,7 @@ model Assessment {
 
   standaloneAssignments AssessmentAssignment[]
   standaloneTokenHash   String?                @map("standalone_token_hash")
+  policy                Json?                  @map("policy")
   editorDraft           Json?                  @map("editor_draft")
 
   @@unique([courseId, slug])
@@ -1283,6 +1284,8 @@ model AssessmentQuestion {
   createdAt      DateTime                      @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime                      @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt      DateTime?                     @map("deleted_at") @db.Timestamptz
+  correctFeedback   String?                   @map("correct_feedback")
+  incorrectFeedback String?                   @map("incorrect_feedback")
   organization   Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   assessment     Assessment                    @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   options        AssessmentAnswerOption[]
@@ -1345,6 +1348,7 @@ model AssessmentAttempt {
   longreadRequestId   String?                   @map("longread_request_id") @db.Uuid
   longreadRequestHash String?                   @map("longread_request_hash")
   longreadResultKey   String?                   @map("longread_result_key")
+  lockedAnswers       Json?                     @map("locked_answers")
   longreadMetadata    Json?                     @map("longread_metadata")
 
   @@unique([userId, longreadRevisionId, longreadBlockId, longreadSequence], map: "assessment_lr_sequence_key")
@@ -1393,6 +1397,7 @@ model Certificate {
   organizationId      String             @map("organization_id") @db.Uuid
   courseId            String             @map("course_id") @db.Uuid
   userId              String             @map("user_id") @db.Uuid
+  assessmentResult    Json?               @map("assessment_result")
   assessmentAttemptId String?            @map("assessment_attempt_id") @db.Uuid
   status              CertificateStatus  @default(issued)
   issuedAt            DateTime           @default(now()) @map("issued_at") @db.Timestamptz

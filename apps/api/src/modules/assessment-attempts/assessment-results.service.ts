@@ -1,3 +1,5 @@
+import type { EffectiveAssessmentResult } from '@lms/shared/assessment-policy';
+import { assessmentAttemptOrder, completedAssessmentAttempts, effectiveAssessmentResult, readAssessmentPolicy } from '../../common/assessment-policy.js';
 import { questionDefinitionSchema } from '@lms/shared/assessment-question-types';
 import { frozenAnswerQuestionSchema, longreadResultMetadataSchema } from '../../common/assessment-frozen.js';
 import { publicQuestionDefinition } from '../../common/assessment-question-definition.js';
@@ -14,6 +16,7 @@ import type { TeamScopeActor } from '../manager-team-scope/public.js';
 const privilegedResultRoles: UserRole[] = ['admin', 'manager', 'instructor'];
 
 const attemptResultSummarySelect = {
+  longreadRevisionId: true,
   longreadMetadata: true,
   id: true,
   organizationId: true,
@@ -39,6 +42,8 @@ const attemptResultSummarySelect = {
       passMessage: true,
       failMessage: true,
       showCorrectAnswers: true,
+      policy: true,
+      maxAttempts: true,
     },
   },
   user: {
@@ -73,6 +78,8 @@ const attemptResultDetailSelect = {
           title: true,
           type: true,
           definition: true,
+          correctFeedback: true,
+          incorrectFeedback: true,
           points: true,
           order: true,
           options: {
@@ -95,6 +102,7 @@ const attemptResultDetailSelect = {
 type AttemptResultInput = {
   id: string;
   longreadMetadata?: unknown;
+  longreadRevisionId?: string | null;
   organizationId: string;
   assessmentId: string;
   placementId: string | null;
@@ -117,6 +125,8 @@ type AttemptResultInput = {
     passMessage: string | null;
     failMessage: string | null;
     showCorrectAnswers: boolean;
+    policy?: unknown;
+    maxAttempts?: number | null;
   };
   user: {
     id: string;
@@ -140,6 +150,8 @@ type AttemptResultInput = {
       title: string;
       type: string;
       definition?: unknown;
+      correctFeedback?: string | null;
+      incorrectFeedback?: string | null;
       points: number;
       order: number;
       options: { id: string; text: string | null; imageUrl: string | null }[];
@@ -171,11 +183,26 @@ export class AssessmentResultsService {
         ...attemptScope(this.teamScope, actor),
         deletedAt: null,
       },
-      orderBy: { completedAt: 'desc' },
+      orderBy: assessmentAttemptOrder,
       select: attemptResultSummarySelect,
     });
 
-    return attempts.map((attempt) => this.toAttemptResult(attempt));
+    const groups = new Map<string, typeof attempts>();
+    const key = (attempt: typeof attempts[number]) => `${attempt.userId}:${attempt.placementId ?? ''}`;
+    for (const attempt of attempts) {
+      if (attempt.longreadRevisionId || attempt.status !== 'completed' || !readAssessmentPolicy(attempt.assessment.policy).attemptPolicy) continue;
+      const group = groups.get(key(attempt)) ?? [];
+      group.push(attempt);
+      groups.set(key(attempt), group);
+    }
+    const effective = new Map<string, EffectiveAssessmentResult>();
+    for (const [groupKey, group] of groups) {
+      const first = group[0];
+      const policy = readAssessmentPolicy(first.assessment.policy).attemptPolicy;
+      const result = policy && effectiveAssessmentResult(policy, group, first.assessment.passingScore);
+      if (result) effective.set(groupKey, result);
+    }
+    return attempts.map((attempt) => this.toAttemptResult(attempt, attempt.longreadRevisionId ? undefined : effective.get(key(attempt))));
   }
 
   async getAttemptResult(attemptId: string, actorInput: TeamScopeActor | string, legacyOrganizationId?: string) {
@@ -200,7 +227,15 @@ export class AssessmentResultsService {
 
     await this.ensureAttemptResultAccess(attempt.userId, actor.id, organizationId, actor);
 
-    return this.toAttemptResult(attempt);
+    const policy = readAssessmentPolicy(attempt.assessment.policy);
+    const history = !attempt.longreadRevisionId && (policy.attemptPolicy || policy.answerVisibility === 'last')
+      ? await this.prisma.assessmentAttempt.findMany({
+        where: completedAssessmentAttempts({ assessmentId: attempt.assessmentId, userId: attempt.userId,
+          organizationId, placementId: attempt.placementId, longreadRevisionId: null }),
+        orderBy: assessmentAttemptOrder, select: { id: true, percentage: true, passed: true },
+      }) : [];
+    const effective = policy.attemptPolicy ? effectiveAssessmentResult(policy.attemptPolicy, history, attempt.assessment.passingScore) : undefined;
+    return this.toAttemptResult(attempt, effective, history.length);
   }
 
   async getAssessmentReport(assessmentId: string, actorInput: TeamScopeActor | string) {
@@ -297,10 +332,14 @@ export class AssessmentResultsService {
     }
   }
 
-  private toAttemptResult(attempt: AttemptResultInput) {
+  private toAttemptResult(attempt: AttemptResultInput, effectiveResult?: EffectiveAssessmentResult, attemptsUsed = 0) {
     const context = longreadResultMetadataSchema.safeParse(attempt.longreadMetadata);
+    const policy = context.success || attempt.longreadRevisionId ? {} : readAssessmentPolicy(attempt.assessment.policy);
+    const visibility = policy.answerVisibility ?? (attempt.assessment.showCorrectAnswers ? 'submitted' : 'never');
+    const revealAll = visibility === 'submitted' || (visibility === 'last' && !!attempt.assessment.maxAttempts && attemptsUsed >= attempt.assessment.maxAttempts);
     return {
       id: attempt.id,
+      ...(effectiveResult ? { effectiveResult } : {}),
       organizationId: attempt.organizationId,
       assessmentId: attempt.assessmentId,
       placementId: attempt.placementId,
@@ -322,7 +361,7 @@ export class AssessmentResultsService {
         attempt.answers?.map((answer) => {
           const frozen = frozenAnswerQuestionSchema.safeParse(answer.frozenQuestion);
           const question = frozen.success ? frozen.data.question : answer.question;
-          const reveal = attempt.status === 'completed' && (context.success ? frozen.success && frozen.data.revealAnswers : attempt.assessment.showCorrectAnswers);
+          const reveal = attempt.status === 'completed' && (context.success ? frozen.success && frozen.data.revealAnswers : revealAll || (!answer.isCorrect && policy.incorrectAnswer === 'review'));
           const correctOptions = frozen.success ? frozen.data.question.options.filter((option) => option.isCorrect).map(({ id, text, imageUrl }) => ({ id, text, imageUrl })) : answer.question.options;
           const definition = questionDefinitionSchema.safeParse(question.definition);
           const selected = frozen.success ? frozen.data.question.options.find((option) => option.id === answer.selectedOptionId) : null;
@@ -332,6 +371,7 @@ export class AssessmentResultsService {
             question: { id: question.id, title: question.title, type: question.type, points: question.points, order: question.order,
               ...(frozen.success ? { options: frozen.data.question.options.map(({ id, text, imageUrl }) => ({ id, text, imageUrl })) } : {}),
               ...(definition.success && definition.data.type === question.type ? { definition: publicQuestionDefinition(definition.data, `result:${answer.id}`) } : {}) },
+            ...(attempt.status === 'completed' && policy.showFeedback ? { feedback: answer.isCorrect ? answer.question.correctFeedback : answer.question.incorrectFeedback } : {}),
             selectedOption: frozen.success ? selected ? { id: selected.id, text: selected.text, imageUrl: selected.imageUrl } : null : answer.selectedOption,
             ...(reveal && question.definition ? { correctDefinition: question.definition } : {}),
             correctOptions: reveal ? correctOptions : undefined,

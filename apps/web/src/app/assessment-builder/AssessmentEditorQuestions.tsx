@@ -123,6 +123,9 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview }: {
           <input id={`${question.id}-points`} type="number" min={1} value={question.points || ''}
             onChange={(event) => changeQuestion(question.id, { points: Number(event.target.value) })} />
         </FormField>
+        {(['correctFeedback', 'incorrectFeedback'] as const).map((field) => <RichTextField key={field}
+          id={`${question.id}-${field}`} label={t(`assessments.policy.${field}`)}
+          value={question[field] ?? ''} maxLength={2000} onChange={(value) => changeQuestion(question.id, { [field]: value || null })} />)}
         {question.definition ? <QuestionDefinitionFields definition={question.definition}
           onChange={(definition) => changeQuestion(question.id, { definition })} /> : <>
           <ReorderList items={question.options} onChange={(options) => changeQuestion(question.id, { options })}>

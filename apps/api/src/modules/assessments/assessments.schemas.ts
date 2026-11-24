@@ -1,3 +1,4 @@
+import { assessmentPolicySchema } from '@lms/shared/assessment-policy';
 import { z } from 'zod';
 import { assessmentAnswerSchema, questionDefinitionSchema, questionTypeSchema, scoringModeSchema } from '@lms/shared/assessment-question-types';
 import { FOLDER_COLORS } from '@lms/shared/constants/folder-colors';
@@ -14,13 +15,14 @@ export const createAssessmentSchema = z.object({
   description: richTextSchema(2000).optional(),
   status: assessmentStatusSchema.default('draft'),
   passingScore: z.number().int().min(0).max(100).default(70),
-  maxAttempts: z.number().int().min(1).optional(),
-  timeLimitMinutes: z.number().int().min(1).optional(),
+  maxAttempts: z.number().int().min(1).max(10).optional(),
+  timeLimitMinutes: z.number().int().min(1).max(600).optional(),
   availableAfterCourseCompletion: z.boolean().default(true),
   passMessage: richTextSchema(2000).optional(),
   failMessage: richTextSchema(2000).optional(),
   showCorrectAnswers: z.boolean().default(false),
   randomizeOrder: z.boolean().default(false),
+  policy: assessmentPolicySchema.optional(),
 });
 
 export type CreateAssessmentInput = z.infer<typeof createAssessmentSchema>;
@@ -103,10 +105,12 @@ const editorQuestionSchema = z.object({
   definition: questionDefinitionSchema.nullable(),
   scoringMode: scoringModeSchema,
   options: z.array(editorOptionSchema),
+  correctFeedback: richTextSchema(2000).nullable().optional(),
+  incorrectFeedback: richTextSchema(2000).nullable().optional(),
 });
 
 export const assessmentEditorContentSchema = z.object({
-  settings: updateAssessmentSchema.omit({ status: true }).required(),
+  settings: updateAssessmentSchema.omit({ status: true }).required().extend({ policy: assessmentPolicySchema.optional() }),
   questions: z.array(editorQuestionSchema),
 }).refine(({ questions }) => {
   const ids = questions.flatMap((question) => [question.id, ...question.options.map((option) => option.id)]);

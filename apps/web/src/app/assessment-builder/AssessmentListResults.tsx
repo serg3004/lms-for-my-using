@@ -28,7 +28,9 @@ export function AssessmentListResults({ assessment, close, t }: { assessment: As
       emptyMessage={t('admin.results.noResults')}
       columns={[
         { key: 'date', label: t('admin.assessmentBuilder.list.lastAttempt'), priority: 'primary', render: (row) => row.completedAt ? formatDate(row.completedAt) : '—' },
-        { key: 'score', label: t('admin.assessmentBuilder.list.score'), priority: 'primary', render: (row) => `${row.percentage}%` },
+        { key: 'score', label: t('admin.assessmentBuilder.list.score'), priority: 'primary', render: (row) => row.effectiveResult
+          ? <>{row.percentage}%<br />{t('assessments.policy.effective', { policy: t(`assessments.policy.${row.effectiveResult.policy}`), percentage: row.effectiveResult.percentage })}</>
+          : `${row.percentage}%` },
         { key: 'status', label: t('admin.assessmentBuilder.col.status'), priority: 'primary', render: (row) =>
           t(row.status === 'in_progress' ? 'admin.assessmentBuilder.list.inProgress' : row.passed ? 'admin.assessmentBuilder.list.passed' : 'admin.assessmentBuilder.list.failed') },
       ]} />}

@@ -91,9 +91,14 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
     (best, a) => (best === null || a.percentage > best ? a.percentage : best),
     null,
   );
-  const attemptsRemaining = Math.max(assessment.maxAttempts - attempts.length, 0);
+  const attemptsRemaining = assessment.maxAttempts === null ? null : Math.max(assessment.maxAttempts - attempts.length, 0);
+  const active = attempts.some(({ status }) => status === 'in_progress');
+  const { opensAt, closesAt } = assessment.policy ?? {};
+  const now = Date.now();
+  const unavailable = opensAt && now < Date.parse(opensAt) ? 'assessments.policy.notOpen'
+    : closesAt && now >= Date.parse(closesAt) ? 'assessments.policy.closed' : null;
   const takeHref = `/learn/assessments/${encodeURIComponent(assessment.id)}/take`;
-  const isAvailable = assessment.status === 'published';
+  const isAvailable = assessment.status === 'published' && !unavailable;
 
   return (
     <>
@@ -108,7 +113,7 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
           </p>
         </div>
         <div style={{ display: 'inline-flex', padding: '9px 12px', borderRadius: '999px', background: COLORS.warningSoft, color: COLORS.warning, fontWeight: 800, fontSize: '13px', whiteSpace: 'nowrap' }}>
-          {isAvailable ? t('assessments.statusAvailable') : assessment.status}
+          {unavailable ? t(unavailable) : isAvailable ? t('assessments.statusAvailable') : assessment.status}
         </div>
       </div>
 
@@ -146,10 +151,12 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
             </div>
             <div style={{ border: `1px solid ${COLORS.border}`, background: COLORS.soft, borderRadius: '14px', padding: '16px' }}>
               <span style={{ display: 'block', color: COLORS.muted, fontSize: '12px', marginBottom: '5px' }}>{t('assessments.metaAttemptsLeft')}</span>
-              <strong style={{ fontSize: '18px' }}>{assessment.maxAttempts}</strong>
+              <strong style={{ fontSize: '18px' }}>{assessment.maxAttempts ?? t('assessments.policy.unlimited')}</strong>
             </div>
           </div>
 
+          {opensAt && <p>{t('assessments.policy.opensAt')} {formatNullableDate(opensAt, '—')}</p>}
+          {closesAt && <p>{t('assessments.policy.closesAt')} {formatNullableDate(closesAt, '—')}</p>}
           <h3 style={{ margin: '0 0 18px', fontSize: '20px', color: COLORS.text }}>{t('assessments.rulesTitle')}</h3>
           <div style={{ display: 'grid', gap: '12px' }}>
             {[1, 2, 3].map((n) => (
@@ -178,7 +185,7 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '14px', padding: '12px 0', borderBottom: `1px solid ${COLORS.border}` }}>
             <span style={{ color: COLORS.muted }}>{t('assessments.attemptsRemainingLabel')}</span>
-            <strong>{attemptsRemaining} {t('assessments.of')} {assessment.maxAttempts}</strong>
+            <strong>{attemptsRemaining === null ? t('assessments.policy.unlimited') : `${attemptsRemaining} ${t('assessments.of')} ${assessment.maxAttempts}`}</strong>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '14px', padding: '12px 0' }}>
             <span style={{ color: COLORS.muted }}>{t('assessments.statsBest')}</span>
@@ -191,7 +198,7 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
             </div>
           ) : null}
 
-          {isAvailable && attemptsRemaining > 0 ? (
+          {isAvailable && (active || attemptsRemaining === null || attemptsRemaining > 0) ? (
             <a
               href={takeHref}
               style={{ display: 'block', textAlign: 'center', width: '100%', border: `1px solid ${COLORS.primary}`, background: COLORS.primary, color: '#fff', borderRadius: '12px', padding: '13px 18px', fontWeight: 800, textDecoration: 'none', marginBottom: '10px' }}
