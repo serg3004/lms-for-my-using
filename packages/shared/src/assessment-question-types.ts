@@ -17,7 +17,8 @@ const text = z.string().max(4000).refine(validUnicode, 'Use well-formed Unicode 
 const item = z.object({ id, text: z.string().trim().min(1).max(2000).refine(validUnicode, 'Use well-formed Unicode without NUL') }).strict();
 const pair = z.object({ leftId: id, rightId: id }).strict();
 const textPolicy = { caseSensitive: z.boolean(), whitespace: z.enum(['exact', 'trim', 'collapse']) };
-const variants = z.array(text.refine((value) => value.length > 0, 'Answer variant cannot be empty')).min(1).max(50);
+const answerVariants = z.array(text.refine((value) => value.length > 0, 'Answer variant cannot be empty')).max(50);
+const variants = answerVariants.min(1);
 export function normalizeQuestionText(value: string, policy: { caseSensitive: boolean; whitespace: 'exact' | 'trim' | 'collapse' }): string {
   let normalized = value.normalize('NFC');
   if (policy.whitespace === 'trim') normalized = normalized.trim();
@@ -29,7 +30,7 @@ export const questionDefinitionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('matching'), left: z.array(item).min(2).max(50), right: z.array(item).min(2).max(50), correctPairs: z.array(pair).min(2).max(50) }).strict(),
   z.object({ type: z.literal('ordering'), items: z.array(item).min(2).max(50), correctOrder: z.array(id).min(2).max(50) }).strict(),
   z.object({ type: z.literal('fill_blank'), blanks: z.array(z.object({ id, acceptedAnswers: variants }).strict()).min(1).max(50), ...textPolicy }).strict(),
-  z.object({ type: z.literal('short_answer'), acceptedAnswers: variants, ...textPolicy }).strict(),
+  z.object({ type: z.literal('short_answer'), acceptedAnswers: answerVariants, manualReview: z.boolean().optional(), ...textPolicy }).strict(),
 ]).superRefine((definition, ctx) => {
   const issue = () => ctx.addIssue({ code: 'custom', message: 'Definition requires unique ids, a complete bijection/permutation, and distinct nonempty normalized answer variants' });
   const sameSet = (actual: string[], expected: string[]) => actual.length === expected.length && new Set(actual).size === actual.length && actual.every((value) => expected.includes(value));
@@ -38,6 +39,7 @@ export const questionDefinitionSchema = z.discriminatedUnion('type', [
   if (definition.type === 'ordering' && (!unique(definition.items) || !sameSet(definition.correctOrder, definition.items.map((value) => value.id)))) issue();
   if (definition.type === 'fill_blank' && !unique(definition.blanks)) issue();
   if (definition.type === 'fill_blank' || definition.type === 'short_answer') {
+    if (definition.type === 'short_answer' && !definition.manualReview && !definition.acceptedAnswers.length) issue();
     const groups = definition.type === 'fill_blank' ? definition.blanks.map((blank) => blank.acceptedAnswers) : [definition.acceptedAnswers];
     for (const group of groups) {
       const normalized = group.map((value) => normalizeQuestionText(value, definition));
@@ -59,7 +61,7 @@ export type PublicQuestionDefinition =
   | { type: 'matching'; left: { id: string; text: string }[]; right: { id: string; text: string }[] }
   | { type: 'ordering'; items: { id: string; text: string }[] }
   | { type: 'fill_blank'; blanks: { id: string }[]; caseSensitive: boolean; whitespace: 'exact' | 'trim' | 'collapse' }
-  | { type: 'short_answer'; caseSensitive: boolean; whitespace: 'exact' | 'trim' | 'collapse' };
+  | { type: 'short_answer'; manualReview?: boolean; caseSensitive: boolean; whitespace: 'exact' | 'trim' | 'collapse' };
 
 export const assessmentAnswerSchema = z.object({
   questionId: z.guid(),
@@ -74,7 +76,7 @@ export const publicQuestionDefinitionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('matching'), left: z.array(item), right: z.array(item) }).strict(),
   z.object({ type: z.literal('ordering'), items: z.array(item) }).strict(),
   z.object({ type: z.literal('fill_blank'), blanks: z.array(z.object({ id }).strict()), ...textPolicy }).strict(),
-  z.object({ type: z.literal('short_answer'), ...textPolicy }).strict(),
+  z.object({ type: z.literal('short_answer'), manualReview: z.boolean().optional(), ...textPolicy }).strict(),
 ]);
 
 /** Explicit allowlist: no answer key can enter the learner's quiz projection. */
@@ -87,6 +89,6 @@ export function projectQuestionDefinition(
     case 'matching': return { type: definition.type, left: arrange(definition.left, 'left'), right: arrange(definition.right, 'right') };
     case 'ordering': return { type: definition.type, items: arrange(definition.items, 'items') };
     case 'fill_blank': return { type: definition.type, blanks: definition.blanks.map(({ id }) => ({ id })), caseSensitive: definition.caseSensitive, whitespace: definition.whitespace };
-    case 'short_answer': return { type: definition.type, caseSensitive: definition.caseSensitive, whitespace: definition.whitespace };
+    case 'short_answer': return { type: definition.type, ...(definition.manualReview ? { manualReview: true } : {}), caseSensitive: definition.caseSensitive, whitespace: definition.whitespace };
   }
 }

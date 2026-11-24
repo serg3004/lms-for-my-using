@@ -33,6 +33,7 @@ export const actionPolicies: Readonly<Record<PermissionActionKey, PolicyName>> =
   'checklist.score.recalculate': 'checklistScoreRecalculate',
   'checklist.access.settings': 'checklistAccessSettingsWrite',
   'assessment.attempt.read': 'assessmentAttemptsRead',
+  'assessment.answer.review': 'assessmentAnswerReview',
   'assessment.attempt.result.read': 'assessmentAttemptResultsRead',
   'course.read': 'coursesRead',
   'course.edit': 'coursesCreate',

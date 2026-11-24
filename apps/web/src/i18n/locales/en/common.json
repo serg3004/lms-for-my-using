@@ -3225,6 +3225,10 @@
         "title": "Assessment deadline approaching",
         "message": "Complete {{assessmentTitle}} before the deadline."
       },
+      "assessment_review_due": {
+        "title": "Review is overdue",
+        "message": "“{{assessmentTitle}}” has answers that have been awaiting review for over 48 hours."
+      },
       "assessment_passed": {
         "title": "Test passed",
         "message": "You passed \"{{assessmentTitle}}\" with {{percentage}}%."
@@ -4093,6 +4097,23 @@
       "fill_blank": "Fill in blanks",
       "short_answer": "Short answer"
     }
+  },
+  "assessmentReview": {
+    "title": "Review answers",
+    "manual": "Reviewed by a person",
+    "pending": "Awaiting review",
+    "assessment": "Assessment",
+    "department": "Department",
+    "dueBefore": "Review due by",
+    "filter": "Apply filters",
+    "empty": "No answers are awaiting review.",
+    "back": "Back to the queue",
+    "next": "Next page",
+    "score": "Score (0 to {{max}})",
+    "comment": "Comment",
+    "save": "Save grade",
+    "saved": "Grade saved.",
+    "error": "Could not load the queue or save the grade."
   },
   "longreadProgress": {
     "continue": "Continue",

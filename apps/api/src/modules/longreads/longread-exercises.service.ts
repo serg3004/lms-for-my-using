@@ -26,8 +26,9 @@ function result(attempt: ComponentAttempt, block: ExerciseSnapshotBlock) {
   const answer = attempt.answers[0];
   const own = answer ? assessmentAnswerSchema.safeParse({ questionId: answer.questionId, selectedOptionId: answer.selectedOptionId ?? undefined, selectedOptionIds: answer.selectedOptionIds ?? undefined, response: answer.response ?? undefined }) : null;
   return { ...(own?.success ? { answer: own.data } : {}), attemptId: attempt.id, attempt: attempt.longreadSequence!, score: attempt.score, maxScore: attempt.maxScore, percentage: attempt.percentage,
-    passed: attempt.passed, isCorrect: answer?.isCorrect ?? false,
-    ...(block.content.feedback === 'answers' ? { correctDefinition: block.question.definition, correctOptionIds: block.question.options.filter((option) => option.isCorrect).map((option) => option.id) } : {}) };
+    passed: attempt.passed, ...(attempt.status === 'pending_review' ? { pendingReview: true } : {}),
+    ...(answer?.reviewComment ? { reviewComment: answer.reviewComment } : {}), isCorrect: answer?.isCorrect ?? false,
+    ...(block.content.feedback === 'answers' && !(block.question.definition?.type === 'short_answer' && block.question.definition.manualReview) ? { correctDefinition: block.question.definition, correctOptionIds: block.question.options.filter((option) => option.isCorrect).map((option) => option.id) } : {}) };
 }
 
 @Injectable()
@@ -59,7 +60,7 @@ export class LongreadExercisesService {
       const tests = [...new Map(blocks.filter((block) => block.content.mode === 'graded').map((block) => [block.question.assessment.id, block.question.assessment])).values()].map((assessment) => {
         const finals = attempts.filter((attempt) => attempt.assessmentId === assessment.id && attempt.countsTowardResults);
         const graded = blocks.filter((block) => block.content.mode === 'graded' && block.question.assessment.id === assessment.id);
-        const answered = new Set(attempts.filter((attempt) => !attempt.countsTowardResults).map((attempt) => attempt.longreadBlockId));
+        const answered = new Set(attempts.filter((attempt) => !attempt.countsTowardResults && attempt.status === 'completed').map((attempt) => attempt.longreadBlockId));
         return { ...assessment, attemptsUsed: finals.length, remaining: assessment.maxAttempts === null ? null : Math.max(0, assessment.maxAttempts - finals.length),
           requiredRemaining: graded.filter((block) => block.content.required && !answered.has(block.id)).length,
           latest: finals.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ? (() => { const value = finals[0]!; return { attemptId: value.id, score: value.score, maxScore: value.maxScore, percentage: value.percentage, passed: value.passed }; })() : null };
@@ -93,6 +94,7 @@ export class LongreadExercisesService {
         const finals = await tx.assessmentAttempt.count({ where: { organizationId: actor.organizationId, userId: actor.id, assessmentId: block.question.assessment.id, longreadRevisionId: revision.id, countsTowardResults: true, deletedAt: null } });
         if (finals >= block.question.assessment.maxAttempts) throw new UnprocessableEntityException('Test attempts exhausted');
       }
+      if (rows.some((row) => row.status === 'pending_review')) throw new ConflictException('An answer is awaiting review');
       const graded = gradeAssessmentAnswers([block.question], [input.answer])[0]!;
       const percentage = Math.round(graded.score / block.question.points * 100);
       const assessmentId = block.question.assessment.id;
@@ -103,6 +105,7 @@ export class LongreadExercisesService {
       });
       const id = await recordCompletedAssessment(tx, { organizationId: actor.organizationId, userId: actor.id, assessmentId, placementId: placement?.id, status: 'completed',
         score: graded.score, maxScore: block.question.points, percentage, passed: percentage >= block.content.passingScore, completedAt: new Date(), countsTowardResults: false,
+        ...(graded.reviewPending ? { reviewPassingScore: block.content.passingScore } : {}),
         longreadRevisionId: revision.id, longreadBlockId: block.id, longreadSequence: input.expectedAttempt, longreadRequestId: input.requestId, longreadRequestHash: hash,
         longreadMetadata: { lessonId, version: input.version, title: block.question.assessment.title, passingScore: block.question.assessment.passingScore } },
       [{ ...graded, frozenQuestion: { question: block.question, revealAnswers: block.content.feedback === 'answers', blockId: block.id } as unknown as Prisma.InputJsonValue }], progress.courseId, block.question.assessment.title);
@@ -119,6 +122,7 @@ export class LongreadExercisesService {
       if (!graded.length || !graded.some((block) => scope.available.has(block.id))) throw new NotFoundException('Longread test not found');
       const assessment = graded[0]!.question.assessment;
       const rows = await tx.assessmentAttempt.findMany({ where: { organizationId: actor.organizationId, userId: actor.id, longreadRevisionId: revision.id, assessmentId, deletedAt: null }, include: componentInclude, orderBy: [{ score: 'desc' }, { createdAt: 'desc' }] });
+      if (rows.some((row) => row.status === 'pending_review')) throw new UnprocessableEntityException('Answers are awaiting review');
       const best = graded.map((block) => ({ block, attempt: rows.find((row) => row.longreadBlockId === block.id) }));
       if (best.some(({ block, attempt }) => block.content.required && !attempt)) throw new UnprocessableEntityException('Required exercises must be answered');
       if (!best.some(({ attempt }) => !!attempt)) throw new UnprocessableEntityException('Answer an exercise before finishing');
@@ -133,7 +137,7 @@ export class LongreadExercisesService {
       return recordCompletedAssessment(tx, { organizationId: actor.organizationId, userId: actor.id, assessmentId, placementId, status: 'completed', score, maxScore, percentage, passed, completedAt: new Date(),
         longreadRevisionId: revision.id, longreadResultKey: fingerprint, longreadMetadata: { lessonId, version, title: assessment.title, passingScore: assessment.passingScore } },
       best.flatMap(({ attempt }) => attempt?.answers.map((answer) => ({ questionId: answer.questionId, selectedOptionId: answer.selectedOptionId,
-        selectedOptionIds: answer.selectedOptionIds ?? undefined, response: answer.response ?? undefined, score: answer.score, isCorrect: answer.isCorrect, frozenQuestion: answer.frozenQuestion ?? undefined })) ?? []), progress.courseId, assessment.title);
+        selectedOptionIds: answer.selectedOptionIds ?? undefined, response: answer.response ?? undefined, score: answer.score, isCorrect: answer.isCorrect, reviewComment: answer.reviewComment, frozenQuestion: answer.frozenQuestion ?? undefined })) ?? []), progress.courseId, assessment.title);
     });
     return { attemptId, state: await this.states(lessonId, actor, version) };
   }
@@ -146,7 +150,7 @@ export class LongreadExercisesService {
     if (!block) throw new NotFoundException('Exercise not found');
     const graded = gradeAssessmentAnswers([block.question], [answer])[0]!;
     const percentage = Math.round(graded.score / block.question.points * 100);
-    return { answer, preview: true, score: graded.score, maxScore: block.question.points, percentage, isCorrect: graded.isCorrect, passed: percentage >= block.content.passingScore,
-      ...(block.content.feedback === 'answers' ? { correctDefinition: block.question.definition, correctOptionIds: block.question.options.filter((option) => option.isCorrect).map((option) => option.id) } : {}) };
+    return { answer, preview: true, ...(graded.reviewPending ? { pendingReview: true } : {}), score: graded.score, maxScore: block.question.points, percentage, isCorrect: graded.isCorrect, passed: percentage >= block.content.passingScore,
+      ...(block.content.feedback === 'answers' && !(block.question.definition?.type === 'short_answer' && block.question.definition.manualReview) ? { correctDefinition: block.question.definition, correctOptionIds: block.question.options.filter((option) => option.isCorrect).map((option) => option.id) } : {}) };
   }
 }

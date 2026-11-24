@@ -22,6 +22,7 @@ export type GradedAnswer = {
   response?: QuestionResponse;
   isCorrect: boolean;
   score: number;
+  reviewPending?: boolean;
 };
 
 export function gradeAssessmentAnswers(questions: QuestionWithOptions[], answers: CreateAssessmentAttemptAnswerInput[]) {

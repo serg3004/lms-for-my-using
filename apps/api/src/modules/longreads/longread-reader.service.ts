@@ -64,7 +64,7 @@ export class LongreadReaderService {
       if (index < 0 || !chapterAccessible(snapshot, learning, index)) throw new NotFoundException('Longread chapter not found');
       if (input.mode === 'bookmark' && previous.chapter !== anchor) throw new ConflictException('Reading chapter changed');
       if (!learning.chapters[anchor]) learning.chapters[anchor] = { enteredAt: now.toISOString(), passed: [] };
-      const attempts = await tx.assessmentAttempt.findMany({ where: { organizationId: actor.organizationId, userId: actor.id, longreadRevisionId: row.longreadRevision.id, deletedAt: null }, select: { longreadBlockId: true, assessmentId: true, countsTowardResults: true, answers: { where: { deletedAt: null }, select: { isCorrect: true } } } });
+      const attempts = await tx.assessmentAttempt.findMany({ where: { organizationId: actor.organizationId, userId: actor.id, longreadRevisionId: row.longreadRevision.id, deletedAt: null }, select: { status: true, longreadBlockId: true, assessmentId: true, countsTowardResults: true, answers: { where: { deletedAt: null }, select: { isCorrect: true } } } });
       let completion = await completionState(tx, row.longreadRevision.documentId, snapshot, learning, attempts, now);
       const current = completion.chapters[index]!;
       const saved = learning.chapters[anchor]!;

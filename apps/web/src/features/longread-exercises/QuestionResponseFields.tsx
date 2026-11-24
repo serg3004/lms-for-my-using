@@ -48,6 +48,6 @@ export function QuestionResponseFields({ question, answer, onChange, disabled = 
       <input id={`${id}-blank-${index}`} style={control} maxLength={4000} value={response?.type === 'fill_blank' ? response.blanks.find((value) => value.blankId === blank.id)?.value ?? '' : ''} onChange={(event) => set({ type: 'fill_blank', blanks: definition.blanks.map((item) => ({ blankId: item.id, value: item.id === blank.id ? event.target.value : response?.type === 'fill_blank' ? response.blanks.find((value) => value.blankId === item.id)?.value ?? '' : '' })) })} />
     </div>)}</div>}
     {definition?.type === 'short_answer' && <><label htmlFor={`${id}-text`}>{t('longreadExercises.shortAnswer')}</label><textarea id={`${id}-text`} style={{ ...control, minHeight: 100 }} maxLength={4000} value={response?.type === 'short_answer' ? response.text : ''} onChange={(event) => set({ type: 'short_answer', text: event.target.value })} /></>}
-    {(definition?.type === 'short_answer' || definition?.type === 'fill_blank') && <p>{t(definition.caseSensitive ? 'longreadExercises.caseSensitive' : 'longreadExercises.caseInsensitive')} · {t(`longreadExercises.whitespaceModes.${definition.whitespace}`)}</p>}
+    {(definition?.type === 'short_answer' && !definition.manualReview || definition?.type === 'fill_blank') && <p>{t(definition.caseSensitive ? 'longreadExercises.caseSensitive' : 'longreadExercises.caseInsensitive')} · {t(`longreadExercises.whitespaceModes.${definition.whitespace}`)}</p>}
   </fieldset>;
 }

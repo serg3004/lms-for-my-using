@@ -33,7 +33,7 @@ export type AnalyticsAttempt = {
   assessmentId: string;
   courseId: string | null;
   userId: string;
-  status: 'in_progress' | 'completed';
+  status: 'in_progress' | 'completed' | 'pending_review';
   percentage: number;
   score: number;
   passed: boolean;
@@ -147,7 +147,8 @@ export function buildCourseUserRows(input: CourseAnalyticsInput): CourseUserRow[
     else if (bests.some((best) => !best.passed)) testResult = 'failed';
     else testResult = 'pending';
 
-    const completed = allLessonsDone || pairAssignments.some((assignment) => assignment.completed);
+    const pendingReview = (attemptsByPair.get(pair) ?? []).some((attempt) => attempt.status === 'pending_review');
+    const completed = !pendingReview && (allLessonsDone || pairAssignments.some((assignment) => assignment.completed));
     const touched = progress.some((row) => row.status !== 'not_started') || (attemptsByPair.get(key(courseId, userId)) ?? []).some((attempt) => assessmentIds.has(attempt.assessmentId));
     const startedAt = earliest([
       ...progress.filter((row) => row.status !== 'not_started').map((row) => row.createdAt),

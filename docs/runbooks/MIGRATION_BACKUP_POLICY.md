@@ -947,3 +947,11 @@ Migration `20261124130000_assessment_author` adds a nullable assessment author
 with a user foreign key and an organization/author index. Existing assessments
 retain a null author. Apply before deploying the matching API. An application
 rollback can leave the column and index in place.
+
+### Assessment manual review
+
+Migration `20261124180000_assessment_manual_review` adds the `pending_review`
+attempt status and review fields. Existing answers keep their recorded scores.
+Deploy the API and web client together. Once attempts enter the review queue,
+resolve them before rolling back to a version that cannot process them. Keep
+the additive database migration in place during the rollback.

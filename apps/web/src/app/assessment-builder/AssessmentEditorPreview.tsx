@@ -8,7 +8,7 @@ import { LearnerAssessmentTakingPage } from '../LearnerAssessmentTakingPage.js';
 import { buildAssessmentAnswers, type QuestionWithOptions, type SelectedAnswers } from '../assessment-taking/model.js';
 import type { EditorContent, EditorDocument } from './editorModel.js';
 
-type Grade = { questionId: string; selectedOptionId?: string; selectedOptionIds?: string[]; response?: QuestionResponse; isCorrect: boolean; score: number };
+type Grade = { questionId: string; selectedOptionId?: string; selectedOptionIds?: string[]; response?: QuestionResponse; isCorrect: boolean; score: number; reviewPending?: boolean };
 
 export function AssessmentEditorPreview({ assessment, content, startIndex }: {
   assessment: EditorDocument['assessment'];
@@ -46,6 +46,7 @@ export function AssessmentEditorPreview({ assessment, content, startIndex }: {
         const answer = buildAssessmentAnswers([question], selected)[0];
         if (policy?.incorrectAnswer !== 'immediate') return { answer };
         const [result] = await grade([question], selected);
+        if (result.reviewPending) return { answer };
         const source = content.questions.find(({ id }) => id === question.id)!;
         return { answer, isCorrect: result.isCorrect, feedback: feedback(source, result.isCorrect),
           ...(!result.isCorrect ? key(source) : {}) };
@@ -72,6 +73,7 @@ export function AssessmentEditorPreview({ assessment, content, startIndex }: {
           }];
         });
         return {
+          ...(graded.some((answer) => answer.reviewPending) ? { status: 'pending_review' } : {}),
           answers, score, maxScore, percentage, passed: percentage >= content.settings.passingScore,
           assessment: { ...assessment, ...content.settings },
         };

@@ -3,7 +3,7 @@ import { exerciseContentSchema } from '@lms/shared/longread-exercises';
 import type { Prisma } from '@prisma/client';
 import { checkLongreadFiles } from './longread-file-references.js';
 import type { ReaderSnapshot, ReaderChapter } from './longread-reader.js';
-type Attempt = { longreadBlockId: string | null; assessmentId: string; countsTowardResults: boolean; answers: { isCorrect: boolean }[] };
+type Attempt = { status?: string; longreadBlockId: string | null; assessmentId: string; countsTowardResults: boolean; answers: { isCorrect: boolean }[] };
 export function requiredCount(snapshot: ReaderSnapshot) { return snapshot.settings.requiredChapters || snapshot.chapters.length; }
 export function chapterAccessible(snapshot: ReaderSnapshot, learning: VersionLearning, index: number) {
   return snapshot.chapters.slice(0, index).every((chapter, prior) => snapshot.settings.readingOrder === 'free' && prior >= requiredCount(snapshot) || !!learning.chapters[chapter.anchor]?.completedAt);
@@ -12,6 +12,7 @@ export function exerciseReasons(blocks: ReaderChapter['blocks'], attempts: Attem
   return blocks.filter((b) => b.type === 'exercise').flatMap<CompletionReason>((block) => {
     const parsed = exerciseContentSchema.safeParse(block.content); if (!parsed.success || !block.id) return [{ code: 'unanswered' as const, blockId: block.id }];
     const rows = attempts.filter((a) => a.longreadBlockId === block.id);
+    if (rows.some((row) => row.status === 'pending_review')) return [{ code: 'pending_review', blockId: block.id }];
     if (correct ? rows.some((a) => a.answers.some((answer) => answer.isCorrect)) : rows.length) return [];
     const parent = block.question?.assessment;
     const parentExhausted = parsed.data.mode === 'graded' && parent?.maxAttempts !== null && parent?.maxAttempts !== undefined && attempts.filter((a) => a.countsTowardResults && a.assessmentId === parent.id).length >= parent.maxAttempts;

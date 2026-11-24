@@ -432,3 +432,12 @@ their organization's shared tree. Course-scoped instructors see counts for
 assigned courses and can move or delete only tests in those courses. Deleting
 a folder that contains active tests outside the instructor's scope is forbidden,
 including its deletion preview.
+
+### Manual review of short answers
+
+The author may read and grade pending answers for their own tests. A custom
+role with the `assessment.answer.review` organization grant may read and grade
+answers across the organization. Managers can read pending answers only for
+their team. To grade a team member's answer, a manager must also be the test
+author or hold the review grant. The same scope applies to list, detail and
+write requests.

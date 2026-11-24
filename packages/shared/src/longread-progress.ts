@@ -1,7 +1,7 @@
 import { z } from 'zod';
 export const continueContentSchema = z.object({ mode: z.enum(['free', 'answered', 'correct']).default('free'), minViewSeconds: z.number().int().min(0).max(86400).default(0) }).strict();
 export const longreadCompletionInputSchema = z.object({ version: z.number().int().min(1), chapter: z.string().regex(/^[A-Za-z0-9_-]{1,120}$/), blockId: z.guid().optional() }).strict();
-export const completionReasonSchema = z.object({ code: z.enum(['unanswered', 'incorrect', 'exhausted', 'file_unavailable', 'time', 'locked', 'continue_required']), blockId: z.string().optional(), remainingSeconds: z.number().int().min(0).optional() });
+export const completionReasonSchema = z.object({ code: z.enum(['unanswered', 'pending_review', 'incorrect', 'exhausted', 'file_unavailable', 'time', 'locked', 'continue_required']), blockId: z.string().optional(), remainingSeconds: z.number().int().min(0).optional() });
 export type CompletionReason = z.infer<typeof completionReasonSchema>;
 export const longreadCompletionSchema = z.object({
   version: z.number().int().min(1), percentage: z.number().min(0).max(100), completed: z.boolean(), requiredCount: z.number().int(), completedCount: z.number().int(),

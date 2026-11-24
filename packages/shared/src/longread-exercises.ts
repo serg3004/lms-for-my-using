@@ -43,7 +43,7 @@ export const publicExerciseQuestionSchema = z.object({
   assessment: z.object({ id: z.guid(), title: z.string(), passingScore: z.number().int(), maxAttempts: z.number().int().nullable() }).strict(),
 }).strict();
 export type PublicExerciseQuestion = z.infer<typeof publicExerciseQuestionSchema>;
-export type ExerciseResult = { answer?: z.infer<typeof assessmentAnswerSchema>; attemptId?: string; attempt?: number; preview?: boolean; score: number; maxScore: number; percentage: number; passed: boolean; isCorrect: boolean;
+export type ExerciseResult = { answer?: z.infer<typeof assessmentAnswerSchema>; attemptId?: string; attempt?: number; preview?: boolean; pendingReview?: boolean; reviewComment?: string; score: number; maxScore: number; percentage: number; passed: boolean; isCorrect: boolean;
   correctDefinition?: z.infer<typeof questionDefinitionSchema> | null; correctOptionIds?: string[] };
 export type ExerciseStates = { version: number; exercises: { blockId: string; attemptsUsed: number; nextAttempt: number; remaining: number; testExhausted: boolean; lastResult: ExerciseResult | null }[];
   tests: { id: string; title: string; passingScore: number; maxAttempts: number | null; attemptsUsed: number; remaining: number | null; requiredRemaining: number;

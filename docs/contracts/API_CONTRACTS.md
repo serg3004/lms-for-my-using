@@ -2672,3 +2672,27 @@ sample size with `{ folderId, size }`. For a sampled assessment, the start
 endpoint returns the fixed questions for that attempt with the answer keys
 removed. The learner submits with the issued attempt ID. Grading and review
 use the persisted question snapshot, including after bank edits.
+
+### Manual review of short answers (PR 531)
+
+A `short_answer` question definition accepts `manualReview: true`. Accepted
+answers may be empty in this mode. When provided, the reference answers do
+not affect the grade. The definition and point limit are frozen with each
+submitted answer.
+
+- `GET /assessment-reviews` lists pending answers visible to the caller, with
+  optional `assessmentId` or `assessment` (title), `departmentId` or `department`
+  (name), `dueBefore` (ISO timestamp), `answerId` and `after` (page cursor).
+  The response returns `answers` and a nullable `next` cursor.
+- `POST /assessment-reviews/:id` accepts `{ score, comment }`. The score is an
+  integer from zero to the frozen question's point limit. The comment is plain
+  text up to 4000 characters. The response returns the attempt status. A
+  repeated decision or an answer outside the caller's write scope returns 404.
+- A submitted attempt remains `pending_review` until every manual answer is
+  graded. Pending attempts consume a retry and are excluded from final
+  results and certificate issuance. Longread gates and test finalization
+  wait for the pending component review. Finalization records the score and
+  sends the employee a notification in the same transaction.
+- Review is due 48 hours after submission. The background jobs worker checks
+  hourly and sends one in-app reminder per overdue attempt to the author or
+  an eligible reviewer. The reminder requires the configured jobs backend.
