@@ -3,9 +3,9 @@ import type { Prisma } from '@prisma/client';
 
 import type { PrismaService } from '../../database/prisma.service.js';
 import { visibleFolderIds, type FolderActor, type FolderNode } from './checklist-folder-tree.js';
-import { buildAnalyticsSummary } from './checklist-analytics-summary.js';
+import { buildAnalyticsSummary, HEAT_BUCKET_HOURS, resultBand } from './checklist-analytics-summary.js';
 import { GUEST_USER_EMAIL } from './checklist-public-access.js';
-import type { ChecklistSheetAnalyticsQuery } from './checklists.schemas.js';
+import type { ChecklistAnalyticsSliceQuery, ChecklistSheetAnalyticsQuery } from './checklists.schemas.js';
 
 /**
  * PR 459: analytics over several sheets at once (the "Analytics" tab). Separate from getManagerAnalytics so the
@@ -167,6 +167,7 @@ export function analyticsEmployeeFilter(organizationId: string, userScope: Prism
 }
 
 const MAX_INSTANCES = 5000;
+const SLICE_PAGE = 100;
 
 /** Plain helper (built in ChecklistsService's constructor body, not injected). */
 export class ChecklistSheetAnalytics {
@@ -195,6 +196,62 @@ export class ChecklistSheetAnalytics {
     for (const session of sessions) perSheet.set(session.instance.checklistId, (perSheet.get(session.instance.checklistId) ?? 0) + 1);
     return sheets.map((sheet) => ({ id: sheet.id, title: sheet.title, status: sheet.status, folderId: sheet.folderId, sessionsInPeriod: perSheet.get(sheet.id) ?? 0 }))
       .sort((a, b) => b.sessionsInPeriod - a.sessionsInPeriod || a.title.localeCompare(b.title));
+  }
+
+  /**
+   * PR 520: the finished results behind one slice of the dashboard: a result band of the pie, or a weekday and two-hour block of the heat map
+   * (in the viewer's time). Same sheets, period and employee scope as the overview; newest first, up to 100 rows.
+   */
+  async slice(organizationId: string, actor: FolderActor, userScope: Prisma.UserWhereInput, query: ChecklistAnalyticsSliceQuery) {
+    const [accessibleSheets, fieldScope] = await Promise.all([
+      this.accessible(organizationId, actor),
+      analyticsFieldFilter(this.prisma, organizationId, actor.roles, query.fieldFilters),
+    ]);
+    const wanted = query.checklistIds?.length ? new Set(query.checklistIds) : null;
+    const sheets = accessibleSheets.filter((sheet) => !wanted || wanted.has(sheet.id));
+    const empty = { total: 0, items: [] as never[], truncated: false, period: { from: query.from, to: query.to } };
+    if (sheets.length === 0) return empty;
+    const titles = new Map(sheets.map((sheet) => [sheet.id, sheet.title]));
+    const from = new Date(query.from);
+    const to = new Date(query.to);
+    const employeeFilter = analyticsEmployeeFilter(organizationId, query.fieldFilters ? { AND: [userScope, fieldScope] } : userScope, query);
+    const instanceSelect = {
+      id: true, checklistId: true, status: true, percentage: true, scored: true, completedAt: true,
+      user: { select: { firstName: true, lastName: true, departmentMemberships: { where: { organizationId, isPrimary: true, effectiveTo: null }, take: 1, select: { department: { select: { name: true } } } } } },
+    } as const;
+    const sheetIds = sheets.map((sheet) => sheet.id);
+    const [sessions, selfDone] = await Promise.all([
+      this.prisma.checklistSession.findMany({
+        where: { organizationId, deletedAt: null, status: 'completed', scheduledAt: { gte: from, lte: to }, instance: { deletedAt: null, checklistId: { in: sheetIds }, user: employeeFilter } },
+        select: { id: true, scheduledAt: true, instance: { select: instanceSelect } }, orderBy: { scheduledAt: 'desc' }, take: MAX_INSTANCES,
+      }),
+      this.prisma.checklistInstance.findMany({
+        where: { organizationId, deletedAt: null, session: { is: null }, status: 'completed', completedAt: { gte: from, lte: to }, checklistId: { in: sheetIds }, user: employeeFilter },
+        select: instanceSelect, orderBy: { completedAt: 'desc' }, take: MAX_INSTANCES,
+      }),
+    ]);
+    const offset = (query.tzOffset ?? 0) * 60_000;
+    const rows = [
+      ...sessions.map((session) => ({ sessionId: session.id as string | null, instance: session.instance, at: session.instance.completedAt ?? session.scheduledAt })),
+      ...selfDone.map((instance) => ({ sessionId: null as string | null, instance, at: instance.completedAt })),
+    ].flatMap((row) => {
+      if (!row.at) return [];
+      const band = row.instance.scored ? resultBand(row.instance.percentage) : null;
+      if (query.result !== undefined) return band === query.result ? [{ ...row, at: row.at, band }] : [];
+      const local = new Date(row.at.getTime() + offset);
+      return (local.getUTCDay() + 6) % 7 === query.weekday && Math.floor(local.getUTCHours() / HEAT_BUCKET_HOURS) === query.block ? [{ ...row, at: row.at, band }] : [];
+    }).sort((a, b) => b.at.getTime() - a.at.getTime());
+    return {
+      total: rows.length,
+      items: rows.slice(0, SLICE_PAGE).map((row) => ({
+        sessionId: row.sessionId, checklistId: row.instance.checklistId, checklistTitle: titles.get(row.instance.checklistId) ?? '',
+        employee: `${row.instance.user?.lastName ?? ''} ${row.instance.user?.firstName ?? ''}`.trim(),
+        department: row.instance.user?.departmentMemberships[0]?.department.name ?? null,
+        percentage: row.instance.scored ? row.instance.percentage : null, band: row.band, at: row.at.toISOString(),
+      })),
+      truncated: sessions.length >= MAX_INSTANCES || selfDone.length >= MAX_INSTANCES,
+      period: { from: query.from, to: query.to },
+    };
   }
 
   async overview(organizationId: string, actor: FolderActor & { locale?: string | null }, userScope: Prisma.UserWhereInput, query: ChecklistSheetAnalyticsQuery, now = new Date()) {

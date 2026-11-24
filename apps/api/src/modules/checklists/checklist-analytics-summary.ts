@@ -29,9 +29,9 @@ export type SummaryInstance = {
 
 const MAX_WEEKS = 26;
 const MAX_DEPARTMENTS = 8;
-const MAX_WEAK = 5;
+const MAX_WEAK = 10;
 const MIN_ANSWERS_FOR_WEAK = 3;
-const MAX_PEOPLE = 5;
+const MAX_PEOPLE = 50;
 /** PR 520: a finished result is "good" from this percentage, "with remarks" from the next one and "bad" below it. */
 export const GOOD_FROM = 80;
 export const REMARKS_FROM = 60;

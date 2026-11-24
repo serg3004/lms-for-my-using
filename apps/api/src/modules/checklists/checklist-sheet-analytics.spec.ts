@@ -166,3 +166,49 @@ describe('ChecklistSheetAnalytics (PR 459)', () => {
     expect(list.every((sheet) => sheet.sessionsInPeriod === 0)).toBe(true);
   });
 });
+
+describe('ChecklistSheetAnalytics.slice (PR 520)', () => {
+  const instance = (id: string, percentage: number, scored = true, completedAt = '2026-10-07T09:30:00.000Z') => ({
+    id, checklistId: A, status: 'completed', percentage, scored, completedAt: new Date(completedAt),
+    user: { firstName: 'Анна', lastName: 'Иванова', departmentMemberships: [{ department: { name: 'Склад' } }] },
+  });
+  function service() {
+    const prisma = {
+      checklist: { findMany: jest.fn(async () => [{ id: A, title: 'Свой', createdBy: 'me', folderId: null, status: 'published' }]) },
+      checklistFolder: { findMany: jest.fn(async () => []) },
+      checklistSession: { findMany: jest.fn(async () => [
+        { id: 's-good', scheduledAt: new Date('2026-10-07T09:00:00.000Z'), instance: instance('i1', 92) },
+        { id: 's-bad', scheduledAt: new Date('2026-10-08T09:00:00.000Z'), instance: instance('i2', 40, true, '2026-10-08T21:30:00.000Z') },
+        { id: 's-unscored', scheduledAt: new Date('2026-10-09T09:00:00.000Z'), instance: instance('i3', 0, false, '2026-10-09T09:30:00.000Z') },
+      ]) },
+      checklistInstance: { findMany: jest.fn(async () => [instance('i4', 65, true, '2026-10-10T09:10:00.000Z')]) },
+    };
+    return new ChecklistSheetAnalytics(prisma as never);
+  }
+  const actor = { id: 'me', roles: ['admin'] };
+  const query = { from: '2026-10-01T00:00:00.000Z', to: '2026-11-01T00:00:00.000Z' };
+
+  it('lists the results of one band, newest first, with a link only for sessions', async () => {
+    const good = await service().slice('org', actor, {}, { ...query, result: 'good' });
+    expect(good.items.map((row) => row.sessionId)).toEqual(['s-good']);
+    const mid = await service().slice('org', actor, {}, { ...query, result: 'mid' });
+    expect(mid.items.map((row) => [row.sessionId, row.percentage, row.band])).toEqual([[null, 65, 'mid']]);
+    const bad = await service().slice('org', actor, {}, { ...query, result: 'bad' });
+    expect(bad).toMatchObject({ total: 1, items: [{ checklistTitle: 'Свой', employee: 'Иванова Анна', department: 'Склад', percentage: 40 }] });
+  });
+
+  it('finds the results of a heat map cell in the viewer\'s own time', async () => {
+    // 2026-10-08 21:30 UTC is Thursday block 10; at +05:00 it is Friday (4) 02:30, block 1.
+    const local = await service().slice('org', actor, {}, { ...query, weekday: 4, block: 1, tzOffset: 300 });
+    expect(local.items.map((row) => row.sessionId)).toEqual(['s-bad']);
+    const utc = await service().slice('org', actor, {}, { ...query, weekday: 3, block: 10 });
+    expect(utc.items.map((row) => row.sessionId)).toEqual(['s-bad']);
+    expect((await service().slice('org', actor, {}, { ...query, weekday: 4, block: 1 })).total).toBe(0);
+  });
+
+  it('leaves unscored results out of the bands but keeps them in a heat cell', async () => {
+    // 2026-10-09 09:30 UTC is Friday (4), block 4.
+    const cell = await service().slice('org', actor, {}, { ...query, weekday: 4, block: 4 });
+    expect(cell.items.map((row) => [row.sessionId, row.percentage, row.band])).toEqual([['s-unscored', null, null]]);
+  });
+});

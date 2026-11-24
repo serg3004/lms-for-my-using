@@ -259,6 +259,15 @@ for (const width of [375, 1440]) test(`checklist analytics dashboard customize m
   await expectVisualMatch(page, `sheet-analytics-customize-${width}`, false, { fullPage: true, maxDiffPixels: 3000 });
 });
 
+// PR 520: the results behind a pie sector.
+for (const width of [375, 1440]) test(`checklist analytics results behind a pie sector are responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installSheetAnalyticsMocks(page, 'admin');
+  await page.goto('/admin/checklists/sheet-analytics?slice=result%3Agood');
+  await page.getByTestId('sheet-analytics-slice').getByRole('table').waitFor();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `sheet-analytics-slice-${width}`, false, { maxDiffPixels: 3000 });
+});
+
 for (const width of [375, 1440]) test(`one-sheet analytics by criteria is responsive at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height }); await installSheetAnalyticsMocks(page, 'admin');
   await page.goto(`/admin/checklists/sheet-analytics/${sheetA}`);

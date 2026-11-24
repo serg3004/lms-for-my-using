@@ -77,7 +77,7 @@ describe('analytics summary (PR 519)', () => {
     expect(buildHeat([yesNo({ sessionStatus: 'scheduled', instanceStatus: 'pending' })]).flat().reduce((a, b) => a + b, 0)).toBe(0);
   });
 
-  it('ranks employees by their average, leaves guests out and keeps the five best', () => {
+  it('ranks employees by their average, leaves guests out and keeps the best 50', () => {
     const rows = [
       yesNo({ userId: 'u1', userName: 'Иванов Анна', percentage: 90 }), yesNo({ userId: 'u1', userName: 'Иванов Анна', percentage: 70 }),
       yesNo({ userId: 'u2', userName: 'Ахметов Нурлан', percentage: 95 }),
@@ -85,7 +85,7 @@ describe('analytics summary (PR 519)', () => {
       ...['a', 'b', 'c', 'd'].map((id, index) => yesNo({ userId: id, userName: id, percentage: 50 + index })),
     ];
     const { people } = buildAnalyticsSummary(rows);
-    expect(people).toHaveLength(5);
+    expect(people).toHaveLength(6);
     expect(people.slice(0, 2)).toEqual([
       { id: 'u2', name: 'Ахметов Нурлан', sessions: 1, averagePercentage: 95 },
       { id: 'u1', name: 'Иванов Анна', sessions: 2, averagePercentage: 80 },

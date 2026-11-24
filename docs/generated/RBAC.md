@@ -132,7 +132,7 @@ Owner: `packages/shared/src/permission-catalog.ts`; the route table is `apps/api
 | `checklist.session.create.own` | checklists | `own` | yes | `checklist.session.read` | `checklistSessionsCreateOwn` | `instructor` | 3 |
 | `checklist.session.import` | checklists | `team`, `department`, `organization` | yes | `checklist.session.manage` | `checklistSessionsImport` | `admin`, `manager`, `instructor`, `mentor` | 2 |
 | `checklist.session.conduct` | checklists | `own`, `assigned` | yes | `checklist.library.read` | `checklistSessionsRunOwn` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 15 |
-| `checklist.analytics.read` | checklists | `team`, `department`, `organization` | yes | `checklist.session.read` | `checklistManagerAnalyticsRead` | `admin`, `manager`, `instructor`, `mentor` | 11 |
+| `checklist.analytics.read` | checklists | `team`, `department`, `organization` | yes | `checklist.session.read` | `checklistManagerAnalyticsRead` | `admin`, `manager`, `instructor`, `mentor` | 12 |
 | `checklist.workplace.read` | checklists | `organization` | yes | - | `checklistWorkplaceSettingsRead` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 1 |
 | `checklist.workplace.write` | checklists | `organization` | yes | `checklist.workplace.read` | `checklistWorkplaceSettingsWrite` | `admin`, `manager`, `instructor`, `mentor` | 1 |
 | `checklist.results.delete` | checklists | `organization` | yes | `checklist.instance.read` | `checklistResultsDelete` | `admin` | 3 |

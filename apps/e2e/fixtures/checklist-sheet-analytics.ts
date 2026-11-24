@@ -8,8 +8,11 @@ export const employeeAnna = '11111111-1111-4111-8111-111111111111';
 export const employeePetr = '22222222-2222-4222-8222-222222222222';
 /** PR 518: the bodies of the filter-set saves the page sent. */
 export const filterSetSaves: Array<{ filters: string[]; scope: 'user' | 'organization' }> = [];
-/** PR 520: the bodies of the dashboard-layout saves the page sent. */
-export const layoutSaves: Array<{ widgets: Array<{ id: string; size: string }> | null; scope: 'user' | 'organization' }> = [];
+/** PR 520: the bodies of the dashboard saves the page sent, and the requests for the results behind a pie sector or a heat map cell. */
+export type SavedDashboard = { id: string; name: string; widgets: Array<{ id: string; size: string; options?: Record<string, string | string[]> }> };
+export const layoutSaves: Array<{ dashboards: SavedDashboard[] | null; current?: string; scope: 'user' | 'organization' }> = [];
+export const sliceRequests: URL[] = [];
+export const sliceSessionId = '55555555-5555-4555-8555-555555555555';
 export const sheetList: SheetAnalyticsSheet[] = [
   { id: sheetA, title: 'Охрана труда', status: 'published', folderId: null, sessionsInPeriod: 4 },
   { id: sheetB, title: 'Складская приёмка', status: 'published', folderId: null, sessionsInPeriod: 2 },
@@ -46,7 +49,8 @@ export function sheetAnalyticsFixture(ids: string[]): SheetAnalytics {
 
 export async function installSheetAnalyticsMocks(page: Page, role: 'admin' | 'manager' | 'instructor', itemRequests: URL[] = [], exportRequests: URL[] = []) {
   const requests: URL[] = [];
-  const savedLayout: { user: { version: 1; widgets: Array<{ id: string; size: string }> } | null; organization: { version: 1; widgets: Array<{ id: string; size: string }> } | null } = { user: null, organization: null };
+  type SavedSet = { version: 2; current: string; dashboards: SavedDashboard[] };
+  const savedLayout: { user: SavedSet | null; organization: SavedSet | null } = { user: null, organization: null };
   await page.route('**/api/v1/**', (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace('/api/v1', '');
@@ -68,12 +72,19 @@ export async function installSheetAnalyticsMocks(page: Page, role: 'admin' | 'ma
     }
     if (path === '/checklists/analytics/dashboard-layout') {
       if (route.request().method() === 'PUT') {
-        const body = route.request().postDataJSON() as { widgets: Array<{ id: string; size: string }> | null; scope: 'user' | 'organization' };
+        const body = route.request().postDataJSON() as { dashboards: SavedDashboard[] | null; current?: string; scope: 'user' | 'organization' };
         layoutSaves.push(body);
-        if (body.scope === 'user') savedLayout.user = body.widgets && { version: 1, widgets: body.widgets };
-        else savedLayout.organization = body.widgets && { version: 1, widgets: body.widgets };
+        const set = body.dashboards && { version: 2 as const, current: body.current ?? body.dashboards[0]!.id, dashboards: body.dashboards };
+        if (body.scope === 'user') savedLayout.user = set; else savedLayout.organization = set;
       }
       return route.fulfill({ json: savedLayout });
+    }
+    if (path === '/checklists/analytics/sessions') {
+      sliceRequests.push(url);
+      return route.fulfill({ json: { total: 2, truncated: false, period: { from: '2026-10-01T00:00:00.000Z', to: '2026-11-01T00:00:00.000Z' }, items: [
+        { sessionId: sliceSessionId, checklistId: sheetA, checklistTitle: 'Охрана труда', employee: 'Иванова Анна', department: 'Склад', percentage: 92, band: 'good', at: '2026-10-07T09:30:00.000Z' },
+        { sessionId: null, checklistId: sheetB, checklistTitle: 'Складская приёмка', employee: 'Петров Пётр', department: null, percentage: 85, band: 'good', at: '2026-10-05T07:00:00.000Z' },
+      ] } });
     }
     if (path === '/checklists/analytics/overview') {
       requests.push(url);

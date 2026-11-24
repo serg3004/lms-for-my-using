@@ -68,6 +68,7 @@ import {
   checklistSheetAnalyticsQuerySchema,
   checklistAnalyticsFilterSetSchema,
   checklistAnalyticsDashboardLayoutSchema,
+  checklistAnalyticsSliceQuerySchema,
   checklistAnalyticsEmployeesQuerySchema,
   checklistItemAnalyticsQuerySchema,
   checklistAnalyticsExportQuerySchema,
@@ -185,6 +186,14 @@ export class ChecklistsController {
   async saveAnalyticsFilterSet(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     return this.checklistsService.saveAnalyticsFilterSet(user.organizationId, user, checklistAnalyticsFilterSetSchema.parse(body));
+  }
+
+  /** PR 520: the finished results behind a pie sector or a heat map cell. */
+  @Get('checklists/analytics/sessions')
+  @Roles(...rolePolicies.checklistManagerAnalyticsRead)
+  async listAnalyticsSlice(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.getAnalyticsSlice(user.organizationId, user, await this.reviewAccess.participantLearnerScope(user), checklistAnalyticsSliceQuerySchema.parse(rawQuery));
   }
 
   /** PR 520: the dashboard widgets (the viewer's own layout and the organization default). */

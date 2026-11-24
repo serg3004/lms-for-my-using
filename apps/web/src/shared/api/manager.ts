@@ -215,16 +215,30 @@ export function saveAnalyticsFilterSet(filters: AnalyticsFilterKey[], scope: 'us
 
 export type AnalyticsWidgetId = 'kpi' | 'levels' | 'donut' | 'trend' | 'depts' | 'weak' | 'heat' | 'people';
 export type AnalyticsWidgetSize = 'S' | 'M' | 'L';
-export type AnalyticsWidget = { id: AnalyticsWidgetId; size: AnalyticsWidgetSize };
-export type AnalyticsDashboardLayout = { user: { version: 1; widgets: AnalyticsWidget[] } | null; organization: { version: 1; widgets: AnalyticsWidget[] } | null };
+/** What the person picked for one card (the figures, the metric, the cut), by option key. */
+export type AnalyticsWidgetOptions = Record<string, string | string[]>;
+export type AnalyticsWidget = { id: AnalyticsWidgetId; size: AnalyticsWidgetSize; options?: AnalyticsWidgetOptions };
+/** An empty name is the default "Main" dashboard. */
+export type AnalyticsDashboard = { id: string; name: string; widgets: AnalyticsWidget[] };
+export type AnalyticsDashboardSet = { version: 2; current: string; dashboards: AnalyticsDashboard[] };
+export type AnalyticsDashboardLayout = { user: AnalyticsDashboardSet | null; organization: AnalyticsDashboardSet | null };
 
 export function getAnalyticsDashboardLayout() {
   return apiRequest<AnalyticsDashboardLayout>('/checklists/analytics/dashboard-layout');
 }
 
-/** `null` resets: the user's own layout, or the organization default. */
-export function saveAnalyticsDashboardLayout(widgets: AnalyticsWidget[] | null, scope: 'user' | 'organization') {
-  return apiRequest<AnalyticsDashboardLayout>('/checklists/analytics/dashboard-layout', { method: 'PUT', body: JSON.stringify({ widgets, scope }) });
+/** `null` resets: the user's own dashboards, or the organization default. */
+export function saveAnalyticsDashboardLayout(set: AnalyticsDashboardSet | null, scope: 'user' | 'organization') {
+  return apiRequest<AnalyticsDashboardLayout>('/checklists/analytics/dashboard-layout', { method: 'PUT', body: JSON.stringify({ dashboards: set?.dashboards ?? null, current: set?.current, scope }) });
+}
+
+/** The finished results behind a pie sector (`result`) or a heat map cell (`weekday` with `block`). */
+export type SheetAnalyticsSliceQuery = Omit<SheetAnalyticsQuery, 'groupByField'> & { result?: 'good' | 'mid' | 'bad'; weekday?: number; block?: number };
+export type SheetAnalyticsSliceRow = { sessionId: string | null; checklistId: string; checklistTitle: string; employee: string; department: string | null; percentage: number | null; band: 'good' | 'mid' | 'bad' | null; at: string };
+export type SheetAnalyticsSlice = { total: number; items: SheetAnalyticsSliceRow[]; truncated: boolean; period: { from: string; to: string } };
+
+export function getSheetAnalyticsSlice({ checklistIds, ...query }: SheetAnalyticsSliceQuery) {
+  return apiRequest<SheetAnalyticsSlice>(`/checklists/analytics/sessions${buildQueryString({ ...query, checklistIds: checklistIds?.join(',') })}`);
 }
 
 // ---- PR 462: one sheet cut by criteria, groups, feedback fields and notes ----

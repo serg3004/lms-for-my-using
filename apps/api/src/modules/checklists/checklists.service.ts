@@ -41,6 +41,7 @@ import {
   ChecklistSheetAnalyticsQuery,
   ChecklistAnalyticsFilterSetInput,
   ChecklistAnalyticsDashboardLayoutInput,
+  ChecklistAnalyticsSliceQuery,
   ChecklistItemAnalyticsQuery,
   ChecklistAnalyticsExportQuery,
   ChecklistModuleSettingsInput,
@@ -1805,6 +1806,11 @@ export class ChecklistsService {
 
   saveAnalyticsFilterSet(organizationId: string, actor: { id: string; roles: readonly string[] }, input: ChecklistAnalyticsFilterSetInput) {
     return this.analyticsFilters.saveSet(organizationId, actor, input, () => { throw new ForbiddenException('Only an administrator can set the organization default'); });
+  }
+
+  /** PR 520: the finished results behind one slice of the dashboard. */
+  getAnalyticsSlice(organizationId: string, actor: { id: string; roles: readonly string[] }, userScope: Prisma.UserWhereInput, query: ChecklistAnalyticsSliceQuery) {
+    return this.sheetAnalytics.slice(organizationId, actor, userScope, query);
   }
 
   /** PR 520: the dashboard layout of the viewer and of the organization. */

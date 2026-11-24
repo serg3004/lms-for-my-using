@@ -12,7 +12,7 @@ import {
   getSheetAnalytics,
   listSheetAnalyticsSheets,
   saveAnalyticsDashboardLayout,
-  type AnalyticsWidget,
+  type AnalyticsDashboardSet,
   type AnalyticsFilterKey,
   type AnalyticsFilterSet,
   type SheetAnalytics,
@@ -24,7 +24,8 @@ import { ObserverPageLayout } from '../shared/observerLayout.js';
 import { Card, DataTable, PageState, type Column } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { percent, ScaleLevelBars } from './SheetAnalyticsParts.js';
-import { resolveWidgets } from './SheetAnalyticsLayout.js';
+import { parseSlice, resolveDashboards } from './SheetAnalyticsLayout.js';
+import { SheetAnalyticsSlice } from './SheetAnalyticsSlice.js';
 import { SheetAnalyticsExport } from './SheetAnalyticsExport.js';
 import { DashboardGrid } from './SheetAnalyticsDashboardGrid.js';
 import { DepartmentFilter, EmployeeFilter, FilterDropdown, FilterSetEditor, ids, resolveFilterKeys } from './SheetAnalyticsFilters.js';
@@ -101,7 +102,8 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
   const { pathname } = useLocation();
   const base = checklistId ? pathname.slice(0, pathname.lastIndexOf('/')) : pathname.replace(/\/$/, '');
   const selected = checklistId ? [checklistId] : parseSelectedSheets(searchParams.get('sheets'));
-  const carry = (() => { const next = new URLSearchParams(searchParams); next.delete('sheets'); next.delete('q'); const text = next.toString(); return text ? `?${text}` : ''; })();
+  const slice = parseSlice(searchParams.get('slice'));
+  const carry = (() => { const next = new URLSearchParams(searchParams); next.delete('sheets'); next.delete('q'); next.delete('slice'); const text = next.toString(); return text ? `?${text}` : ''; })();
   const detailsHref = (id: string) => `${base}/${id}${carry}`;
   const { from, to } = useMemo(() => resolvePeriodRange(period, new Date(), customFrom, customTo), [period, customFrom, customTo]);
 
@@ -122,21 +124,21 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
   }, []);
   // PR 520: the widgets of the dashboard (own layout, else the organization default, else the built-in set) and the "Customize" mode.
   // null until the saved layout has been asked for, so the cards never flash in the built-in order first.
-  const [widgets, setWidgets] = useState<AnalyticsWidget[] | null>(null);
+  const [set, setSet] = useState<AnalyticsDashboardSet | null>(null);
   const [editing, setEditing] = useState(false);
   const [layoutBusy, setLayoutBusy] = useState(false);
   const [layoutFailed, setLayoutFailed] = useState(false);
   useEffect(() => {
     let active = true;
-    void getAnalyticsDashboardLayout().then((loaded) => { if (active) setWidgets(resolveWidgets(loaded)); }, () => { if (active) setWidgets(resolveWidgets(null)); });
+    void getAnalyticsDashboardLayout().then((loaded) => { if (active) setSet(resolveDashboards(loaded)); }, () => { if (active) setSet(resolveDashboards(null)); });
     return () => { active = false; };
   }, []);
-  async function saveLayout(next: AnalyticsWidget[] | null, scope: 'user' | 'organization') {
+  async function saveLayout(next: AnalyticsDashboardSet | null, scope: 'user' | 'organization') {
     setLayoutBusy(true);
     setLayoutFailed(false);
     try {
       const saved = await saveAnalyticsDashboardLayout(next, scope);
-      if (next === null) setWidgets(resolveWidgets(saved));
+      if (next === null) setSet(resolveDashboards(saved));
     } catch {
       setLayoutFailed(true);
     } finally {
@@ -285,11 +287,20 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
             />
           </>
         )
+      ) : slice ? (
+        <>
+          <Link className="ds-button ds-button--text" style={{ justifySelf: 'start', marginBottom: 12 }} to={`${base}${carry}`}>← {t('sheetAnalytics.backToSummary', 'Back to summary')}</Link>
+          <SheetAnalyticsSlice
+            detailsHref={detailsHref}
+            query={{ from, to, tzOffset: -new Date().getTimezoneOffset(), checklistIds: selected.length ? selected : undefined, departmentIds, employeeIds, managerId: managerId || undefined, fieldFilters, ...slice }}
+            sessionPath={sessionPath}
+          />
+        </>
       ) : (
         <>
-      {(state.status === 'loading' || (state.status === 'loaded' && widgets === null)) && <PageState message={t('sheetAnalytics.loading', 'Loading...')} variant="loading" />}
+      {(state.status === 'loading' || (state.status === 'loaded' && set === null)) && <PageState message={t('sheetAnalytics.loading', 'Loading...')} variant="loading" />}
       {(state.status === 'unauthenticated' || state.status === 'notFound' || state.status === 'error') && <PageState title={t('sheetAnalytics.title', 'Checklist analytics')} message={state.message} variant="error" />}
-      {state.status === 'loaded' && widgets !== null && (state.data.sheets.length === 0 ? (
+      {state.status === 'loaded' && set !== null && (state.data.sheets.length === 0 ? (
         <PageState message={t('sheetAnalytics.noSheets', 'No checklists available.')} />
       ) : state.data.total.plan.planned === 0 && state.data.total.selfCompleted === 0 && state.data.total.queue.notStarted === 0 ? (
         <PageState message={t('sheetAnalytics.noData', 'No sessions in this period yet. Results appear here once sessions on these checklists are planned or completed.')} />
@@ -303,13 +314,14 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
             editing={editing}
             failed={layoutFailed}
             isAdmin={isAdmin}
-            onChange={(next) => { setWidgets(next); void saveLayout(next, 'user'); }}
+            onChange={(next) => { setSet(next); void saveLayout(next, 'user'); }}
             onPickDepartment={(id) => update('departments', id)}
             onPickEmployee={(id) => update('employees', id)}
             onReset={() => void saveLayout(null, 'user')}
-            onSaveOrganization={() => void saveLayout(widgets, 'organization')}
+            onSlice={(value) => update('slice', value)}
+            onSaveOrganization={() => void saveLayout(set, 'organization')}
             sheetTitles={new Map(sheets.map((sheet) => [sheet.id, sheet.title]))}
-            widgets={widgets}
+            set={set}
           />
           <section aria-labelledby="sheet-analytics-table" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 8 }}>
             <h2 id="sheet-analytics-table" style={{ fontSize: 20, margin: 0 }}>{t('sheetAnalytics.tableLabel', 'Metrics by checklist')}</h2>
