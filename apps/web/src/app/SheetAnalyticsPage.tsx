@@ -6,24 +6,28 @@ import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 
 import { AdminPageLayout, ChecklistsTabs } from '../shared/adminPage.js';
 import {
+  getAnalyticsDashboardLayout,
   getAnalyticsFilterSet,
   getManagerChecklistAnalytics,
   getSheetAnalytics,
   listSheetAnalyticsSheets,
+  saveAnalyticsDashboardLayout,
+  type AnalyticsDashboardSet,
   type AnalyticsFilterKey,
   type AnalyticsFilterSet,
   type SheetAnalytics,
-  type SheetAnalyticsMetrics,
   type SheetAnalyticsSheet,
 } from '../shared/api/manager.js';
 import { ManagerPageLayout } from '../shared/managerLayout.js';
 import { useSession } from '../shared/session.js';
 import { ObserverPageLayout } from '../shared/observerLayout.js';
-import { Card, DataTable, PageState, StatCard, StatsGrid, type Column } from '../shared/ui.js';
+import { Card, DataTable, PageState, type Column } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import { percent, ScaleLevelBars } from './SheetAnalyticsParts.js';
+import { parseSlice, resolveDashboards } from './SheetAnalyticsLayout.js';
+import { SheetAnalyticsSlice } from './SheetAnalyticsSlice.js';
 import { SheetAnalyticsExport } from './SheetAnalyticsExport.js';
-import { DepartmentsCard, TrendCard, WeakCard } from './SheetAnalyticsDashboard.js';
+import { DashboardGrid } from './SheetAnalyticsDashboardGrid.js';
 import { DepartmentFilter, EmployeeFilter, FilterDropdown, FilterSetEditor, ids, resolveFilterKeys } from './SheetAnalyticsFilters.js';
 import { SheetItemAnalytics } from './SheetItemAnalytics.js';
 import { resolvePeriodRange } from './ManagerChecklistsPage.js';
@@ -59,20 +63,6 @@ export function selectFound(found: readonly string[], all: readonly string[]): s
 }
 
 export { ScaleLevelBars };
-
-function SummaryCards({ metrics, t }: { metrics: SheetAnalyticsMetrics; t: (key: string, fallback: string) => string }) {
-  const { plan, criteria, queue } = metrics;
-  return (
-    <StatsGrid>
-      <StatCard label={t('sheetAnalytics.completion', 'Completion')} value={percent(metrics.completionPercentage)} trend={`${plan.completed} / ${plan.planned}`} />
-      <StatCard label={t('sheetAnalytics.average', 'Average score')} value={percent(metrics.averagePercentage)} />
-      <StatCard label={t('sheetAnalytics.answered', 'Answered')} value={criteria.answered} trend={`${t('sheetAnalytics.remaining', 'Left')}: ${criteria.remaining}`} />
-      <StatCard label={t('sheetAnalytics.planned', 'Planned in period')} value={plan.planned} trend={`${t('sheetAnalytics.fact', 'Done')}: ${plan.completed} · ${t('sheetAnalytics.overdue', 'Overdue')}: ${plan.overdue}`} />
-      <StatCard label={t('sheetAnalytics.queue', 'Not started')} value={queue.notStarted} trend={queue.oldestDays === null ? undefined : t('sheetAnalytics.oldest', 'Oldest: {{days}} d').replace('{{days}}', String(queue.oldestDays))} />
-      {(metrics.guests?.completed ?? 0) > 0 && <StatCard label={t('sheetAnalytics.guests', 'Guests (link or QR)')} value={metrics.guests?.completed ?? 0} trend={`${t('sheetAnalytics.average', 'Average score')}: ${percent(metrics.guests?.averagePercentage ?? null)}`} />}
-    </StatsGrid>
-  );
-}
 
 type Row = SheetAnalytics['sheets'][number];
 
@@ -112,7 +102,8 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
   const { pathname } = useLocation();
   const base = checklistId ? pathname.slice(0, pathname.lastIndexOf('/')) : pathname.replace(/\/$/, '');
   const selected = checklistId ? [checklistId] : parseSelectedSheets(searchParams.get('sheets'));
-  const carry = (() => { const next = new URLSearchParams(searchParams); next.delete('sheets'); next.delete('q'); const text = next.toString(); return text ? `?${text}` : ''; })();
+  const slice = parseSlice(searchParams.get('slice'));
+  const carry = (() => { const next = new URLSearchParams(searchParams); next.delete('sheets'); next.delete('q'); next.delete('slice'); const text = next.toString(); return text ? `?${text}` : ''; })();
   const detailsHref = (id: string) => `${base}/${id}${carry}`;
   const { from, to } = useMemo(() => resolvePeriodRange(period, new Date(), customFrom, customTo), [period, customFrom, customTo]);
 
@@ -131,6 +122,29 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
     void getAnalyticsFilterSet().then((set) => { if (active) setFilterSet(set); }, () => {});
     return () => { active = false; };
   }, []);
+  // PR 520: the widgets of the dashboard (own layout, else the organization default, else the built-in set) and the "Customize" mode.
+  // null until the saved layout has been asked for, so the cards never flash in the built-in order first.
+  const [set, setSet] = useState<AnalyticsDashboardSet | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [layoutBusy, setLayoutBusy] = useState(false);
+  const [layoutFailed, setLayoutFailed] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void getAnalyticsDashboardLayout().then((loaded) => { if (active) setSet(resolveDashboards(loaded)); }, () => { if (active) setSet(resolveDashboards(null)); });
+    return () => { active = false; };
+  }, []);
+  async function saveLayout(next: AnalyticsDashboardSet | null, scope: 'user' | 'organization') {
+    setLayoutBusy(true);
+    setLayoutFailed(false);
+    try {
+      const saved = await saveAnalyticsDashboardLayout(next, scope);
+      if (next === null) setSet(resolveDashboards(saved));
+    } catch {
+      setLayoutFailed(true);
+    } finally {
+      setLayoutBusy(false);
+    }
+  }
   const enabledFilters = useMemo(() => resolveFilterKeys(filterSet).filter((key) => !(checklistId && key === 'sheets')), [filterSet, checklistId]);
 
   const loadError = t('sheetAnalytics.loadError', 'Unable to load analytics.');
@@ -138,7 +152,7 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
   const { state: optionsState } = useAsyncData(() => getManagerChecklistAnalytics({ from, to }).then((data) => ({ departments: data.departmentOptions, managers: data.managerOptions ?? [] })), [from, to], { unauthenticated: '', error: '' });
   const key = selected.join(',');
   const { state } = useAsyncData<SheetAnalytics>(
-    () => getSheetAnalytics({ from, to, checklistIds: selected.length ? selected : undefined, departmentIds, employeeIds, managerId: managerId || undefined, fieldFilters, groupByField }),
+    () => getSheetAnalytics({ from, to, tzOffset: -new Date().getTimezoneOffset(), checklistIds: selected.length ? selected : undefined, departmentIds, employeeIds, managerId: managerId || undefined, fieldFilters, groupByField }),
     [from, to, key, departmentIds, employeeIds, managerId, fieldFilters, groupByField],
     { unauthenticated: loadError, error: loadError },
   );
@@ -238,10 +252,17 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
 
   return (
     <Layout currentPath={currentPath}>
-      <header style={{ marginBottom: 20 }}>
-        <div style={{ color: 'var(--color-primary)', fontSize: 12, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 8 }}>{t('manager.checklists.eyebrow', 'Workplace training')}</div>
-        <h1 style={{ margin: 0, fontSize: 'clamp(28px,4vw,36px)' }}>{t('sheetAnalytics.title', 'Checklist analytics')}</h1>
-        <p style={{ margin: '8px 0 0', color: 'var(--color-text-muted)' }}>{t('sheetAnalytics.subtitle', 'Completion, scores and answers across all your checklists or the ones you pick.')}</p>
+      <header style={{ alignItems: 'flex-end', display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', marginBottom: 20 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ color: 'var(--color-primary)', fontSize: 12, fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', marginBottom: 8 }}>{t('manager.checklists.eyebrow', 'Workplace training')}</div>
+          <h1 style={{ margin: 0, fontSize: 'clamp(28px,4vw,36px)' }}>{t('sheetAnalytics.title', 'Checklist analytics')}</h1>
+          <p style={{ margin: '8px 0 0', color: 'var(--color-text-muted)' }}>{t('sheetAnalytics.subtitle', 'Completion, scores and answers across all your checklists or the ones you pick.')}</p>
+        </div>
+        {!checklistId && (
+          <button aria-pressed={editing} className={`ds-button ${editing ? 'ds-button--primary' : 'ds-button--secondary'}`} onClick={() => setEditing(!editing)} type="button">
+            {editing ? `✓ ${t('sheetAnalytics.customizeDone', 'Done')}` : `⚙ ${t('sheetAnalytics.customize', 'Customize dashboard')}`}
+          </button>
+        )}
       </header>
 
       <Card style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,200px),1fr))', gap: 16, marginBottom: 20, alignItems: 'end' }}>
@@ -266,33 +287,42 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
             />
           </>
         )
+      ) : slice ? (
+        <>
+          <Link className="ds-button ds-button--text" style={{ justifySelf: 'start', marginBottom: 12 }} to={`${base}${carry}`}>← {t('sheetAnalytics.backToSummary', 'Back to summary')}</Link>
+          <SheetAnalyticsSlice
+            detailsHref={detailsHref}
+            query={{ from, to, tzOffset: -new Date().getTimezoneOffset(), checklistIds: selected.length ? selected : undefined, departmentIds, employeeIds, managerId: managerId || undefined, fieldFilters, ...slice }}
+            sessionPath={sessionPath}
+          />
+        </>
       ) : (
         <>
-      {state.status === 'loading' && <PageState message={t('sheetAnalytics.loading', 'Loading...')} variant="loading" />}
+      {(state.status === 'loading' || (state.status === 'loaded' && set === null)) && <PageState message={t('sheetAnalytics.loading', 'Loading...')} variant="loading" />}
       {(state.status === 'unauthenticated' || state.status === 'notFound' || state.status === 'error') && <PageState title={t('sheetAnalytics.title', 'Checklist analytics')} message={state.message} variant="error" />}
-      {state.status === 'loaded' && (state.data.sheets.length === 0 ? (
+      {state.status === 'loaded' && set !== null && (state.data.sheets.length === 0 ? (
         <PageState message={t('sheetAnalytics.noSheets', 'No checklists available.')} />
       ) : state.data.total.plan.planned === 0 && state.data.total.selfCompleted === 0 && state.data.total.queue.notStarted === 0 ? (
         <PageState message={t('sheetAnalytics.noData', 'No sessions in this period yet. Results appear here once sessions on these checklists are planned or completed.')} />
       ) : (
         <div style={{ display: 'grid', gap: 20 }}>
           {state.data.truncated && <div role="status">{t('sheetAnalytics.truncated', 'The period holds more results than can be shown at once; the figures cover the newest ones. Narrow the period or the checklists.')}</div>}
-          <SummaryCards metrics={state.data.total} t={t} />
-          {state.data.summary && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,420px),1fr))', gap: 20 }}>
-              <TrendCard trend={state.data.summary.trend} />
-              <DepartmentsCard departments={state.data.summary.departments} onPick={(id) => update('departments', id)} />
-              <WeakCard detailsHref={detailsHref} sheetTitles={new Map(sheets.map((sheet) => [sheet.id, sheet.title]))} weak={state.data.summary.weak} />
-            </div>
-          )}
-          {state.data.total.scales.length > 0 && (
-            <Card style={{ display: 'grid', gap: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 20 }}>{t('sheetAnalytics.levelsTitle', 'Answers by scale level')}</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,280px),1fr))', gap: 24 }}>
-                {state.data.total.scales.map((scale) => <ScaleLevelBars key={scale.scaleKey} scale={scale} t={t} />)}
-              </div>
-            </Card>
-          )}
+          <DashboardGrid
+            busy={layoutBusy}
+            data={state.data}
+            detailsHref={detailsHref}
+            editing={editing}
+            failed={layoutFailed}
+            isAdmin={isAdmin}
+            onChange={(next) => { setSet(next); void saveLayout(next, 'user'); }}
+            onPickDepartment={(id) => update('departments', id)}
+            onPickEmployee={(id) => update('employees', id)}
+            onReset={() => void saveLayout(null, 'user')}
+            onSlice={(value) => update('slice', value)}
+            onSaveOrganization={() => void saveLayout(set, 'organization')}
+            sheetTitles={new Map(sheets.map((sheet) => [sheet.id, sheet.title]))}
+            set={set}
+          />
           <section aria-labelledby="sheet-analytics-table" style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr)', gap: 8 }}>
             <h2 id="sheet-analytics-table" style={{ fontSize: 20, margin: 0 }}>{t('sheetAnalytics.tableLabel', 'Metrics by checklist')}</h2>
             <SheetAnalyticsExport query={{ view: 'sheets', from, to, checklistIds: selected.length ? selected : undefined, departmentIds, employeeIds, managerId: managerId || undefined, fieldFilters, groupByField }} sheetName={t('sheetAnalytics.tableLabel', 'Metrics by checklist')} />

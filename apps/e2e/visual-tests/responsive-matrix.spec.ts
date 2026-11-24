@@ -248,6 +248,26 @@ for (const width of [375, 1440]) test(`checklist analytics tab is responsive at 
   await expectVisualMatch(page, `sheet-analytics-${width}`, false, { maxDiffPixels: 3000 });
 });
 
+// PR 520: the whole dashboard (all eight cards) and its "Customize" mode.
+for (const width of [375, 1440]) test(`checklist analytics dashboard customize mode is responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installSheetAnalyticsMocks(page, 'admin');
+  await page.goto('/admin/checklists/sheet-analytics');
+  await page.getByTestId('sheet-analytics-widget-heat').waitFor();
+  await page.getByRole('button', { name: /Настроить дашборд/ }).click();
+  await page.getByRole('group', { name: 'Какие карточки показывать' }).waitFor();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `sheet-analytics-customize-${width}`, false, { fullPage: true, maxDiffPixels: 3000 });
+});
+
+// PR 520: the results behind a pie sector.
+for (const width of [375, 1440]) test(`checklist analytics results behind a pie sector are responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installSheetAnalyticsMocks(page, 'admin');
+  await page.goto('/admin/checklists/sheet-analytics?slice=result%3Agood');
+  await page.getByTestId('sheet-analytics-slice').getByRole('table').waitFor();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `sheet-analytics-slice-${width}`, false, { maxDiffPixels: 3000 });
+});
+
 for (const width of [375, 1440]) test(`one-sheet analytics by criteria is responsive at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height }); await installSheetAnalyticsMocks(page, 'admin');
   await page.goto(`/admin/checklists/sheet-analytics/${sheetA}`);

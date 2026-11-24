@@ -458,6 +458,7 @@ model Organization {
   assessmentAssignments AssessmentAssignment[]
 
   checklistAnalyticsFilterSets ChecklistAnalyticsFilterSet[]
+  checklistAnalyticsDashboardLayouts ChecklistAnalyticsDashboardLayout[]
 
   @@map("organizations")
 }
@@ -1289,6 +1290,20 @@ model ChecklistAnalyticsFilterSet {
 
   @@unique([organizationId, ownerKey])
   @@map("checklist_analytics_filter_sets")
+}
+
+/// PR 520: the widgets of the checklist analytics dashboard, their order and size. `ownerKey` is the user id, or "organization" for the
+/// administrator's default. `layout` is `{ version: 1, widgets: [{ id, size }] }`.
+model ChecklistAnalyticsDashboardLayout {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  ownerKey       String       @map("owner_key")
+  layout         Json
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, ownerKey], map: "checklist_dashboard_layouts_org_owner_key")
+  @@map("checklist_analytics_dashboard_layouts")
 }
 
 model QuestionBankFolder {

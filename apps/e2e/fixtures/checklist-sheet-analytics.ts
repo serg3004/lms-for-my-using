@@ -8,6 +8,11 @@ export const employeeAnna = '11111111-1111-4111-8111-111111111111';
 export const employeePetr = '22222222-2222-4222-8222-222222222222';
 /** PR 518: the bodies of the filter-set saves the page sent. */
 export const filterSetSaves: Array<{ filters: string[]; scope: 'user' | 'organization' }> = [];
+/** PR 520: the bodies of the dashboard saves the page sent, and the requests for the results behind a pie sector or a heat map cell. */
+export type SavedDashboard = { id: string; name: string; widgets: Array<{ id: string; size: string; options?: Record<string, string | string[]> }> };
+export const layoutSaves: Array<{ dashboards: SavedDashboard[] | null; current?: string; scope: 'user' | 'organization' }> = [];
+export const sliceRequests: URL[] = [];
+export const sliceSessionId = '55555555-5555-4555-8555-555555555555';
 export const sheetList: SheetAnalyticsSheet[] = [
   { id: sheetA, title: 'Охрана труда', status: 'published', folderId: null, sessionsInPeriod: 4 },
   { id: sheetB, title: 'Складская приёмка', status: 'published', folderId: null, sessionsInPeriod: 2 },
@@ -34,11 +39,18 @@ export function sheetAnalyticsFixture(ids: string[]): SheetAnalytics {
       trend: [{ weekStart: '2026-10-05', planned: 3, completed: 2, averagePercentage: 64 }, { weekStart: '2026-10-12', planned: 3, completed: 3, averagePercentage: 72 }, { weekStart: '2026-10-19', planned: 2, completed: 2, averagePercentage: 81 }],
       departments: [{ id: departmentSklad, name: 'Склад', planned: 4, completed: 4, completionPercentage: 100, averagePercentage: 82 }, { id: 'ffffffff-0000-4000-8000-000000000002', name: 'Касса', planned: 4, completed: 2, completionPercentage: 50, averagePercentage: 61 }],
       weak: [{ id: 'c1', checklistId: sheetA, text: 'Каски надеты', answered: 6, percentage: 33 }, { id: 'c2', checklistId: sheetB, text: 'Проход свободен', answered: 4, percentage: 50 }],
+      // PR 520: result bands, weekday x two-hour heat map, ranking and the previous period.
+      results: { good: 5, mid: 3, bad: 2 },
+      heat: Array.from({ length: 7 }, (_, day) => Array.from({ length: 12 }, (_, block) => (block === 4 || block === 5 ? 6 - day : 0))),
+      people: [{ id: employeeAnna, name: 'Иванова Анна', sessions: 4, averagePercentage: 92 }, { id: employeePetr, name: 'Петров Пётр', sessions: 2, averagePercentage: 71 }],
+      previous: { completed: 4, completionPercentage: 60, averagePercentage: 70, overdue: 3 },
     } };
 }
 
 export async function installSheetAnalyticsMocks(page: Page, role: 'admin' | 'manager' | 'instructor', itemRequests: URL[] = [], exportRequests: URL[] = []) {
   const requests: URL[] = [];
+  type SavedSet = { version: 2; current: string; dashboards: SavedDashboard[] };
+  const savedLayout: { user: SavedSet | null; organization: SavedSet | null } = { user: null, organization: null };
   await page.route('**/api/v1/**', (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace('/api/v1', '');
@@ -57,6 +69,22 @@ export async function installSheetAnalyticsMocks(page: Page, role: 'admin' | 'ma
         return route.fulfill({ json: { user: body.scope === 'user' && body.filters.length ? body.filters : null, organization: body.scope === 'organization' ? body.filters : null } });
       }
       return route.fulfill({ json: { user: null, organization: null } });
+    }
+    if (path === '/checklists/analytics/dashboard-layout') {
+      if (route.request().method() === 'PUT') {
+        const body = route.request().postDataJSON() as { dashboards: SavedDashboard[] | null; current?: string; scope: 'user' | 'organization' };
+        layoutSaves.push(body);
+        const set = body.dashboards && { version: 2 as const, current: body.current ?? body.dashboards[0]!.id, dashboards: body.dashboards };
+        if (body.scope === 'user') savedLayout.user = set; else savedLayout.organization = set;
+      }
+      return route.fulfill({ json: savedLayout });
+    }
+    if (path === '/checklists/analytics/sessions') {
+      sliceRequests.push(url);
+      return route.fulfill({ json: { total: 2, truncated: false, period: { from: '2026-10-01T00:00:00.000Z', to: '2026-11-01T00:00:00.000Z' }, items: [
+        { sessionId: sliceSessionId, checklistId: sheetA, checklistTitle: 'Охрана труда', employee: 'Иванова Анна', department: 'Склад', percentage: 92, band: 'good', at: '2026-10-07T09:30:00.000Z' },
+        { sessionId: null, checklistId: sheetB, checklistTitle: 'Складская приёмка', employee: 'Петров Пётр', department: null, percentage: 85, band: 'good', at: '2026-10-05T07:00:00.000Z' },
+      ] } });
     }
     if (path === '/checklists/analytics/overview') {
       requests.push(url);

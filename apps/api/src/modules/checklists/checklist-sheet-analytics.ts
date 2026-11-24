@@ -3,9 +3,9 @@ import type { Prisma } from '@prisma/client';
 
 import type { PrismaService } from '../../database/prisma.service.js';
 import { visibleFolderIds, type FolderActor, type FolderNode } from './checklist-folder-tree.js';
-import { buildAnalyticsSummary } from './checklist-analytics-summary.js';
+import { buildAnalyticsSummary, HEAT_BUCKET_HOURS, resultBand } from './checklist-analytics-summary.js';
 import { GUEST_USER_EMAIL } from './checklist-public-access.js';
-import type { ChecklistSheetAnalyticsQuery } from './checklists.schemas.js';
+import type { ChecklistAnalyticsSliceQuery, ChecklistSheetAnalyticsQuery } from './checklists.schemas.js';
 
 /**
  * PR 459: analytics over several sheets at once (the "Analytics" tab). Separate from getManagerAnalytics so the
@@ -167,6 +167,7 @@ export function analyticsEmployeeFilter(organizationId: string, userScope: Prism
 }
 
 const MAX_INSTANCES = 5000;
+const SLICE_PAGE = 100;
 
 /** Plain helper (built in ChecklistsService's constructor body, not injected). */
 export class ChecklistSheetAnalytics {
@@ -197,6 +198,62 @@ export class ChecklistSheetAnalytics {
       .sort((a, b) => b.sessionsInPeriod - a.sessionsInPeriod || a.title.localeCompare(b.title));
   }
 
+  /**
+   * PR 520: the finished results behind one slice of the dashboard: a result band of the pie, or a weekday and two-hour block of the heat map
+   * (in the viewer's time). Same sheets, period and employee scope as the overview; newest first, up to 100 rows.
+   */
+  async slice(organizationId: string, actor: FolderActor, userScope: Prisma.UserWhereInput, query: ChecklistAnalyticsSliceQuery) {
+    const [accessibleSheets, fieldScope] = await Promise.all([
+      this.accessible(organizationId, actor),
+      analyticsFieldFilter(this.prisma, organizationId, actor.roles, query.fieldFilters),
+    ]);
+    const wanted = query.checklistIds?.length ? new Set(query.checklistIds) : null;
+    const sheets = accessibleSheets.filter((sheet) => !wanted || wanted.has(sheet.id));
+    const empty = { total: 0, items: [] as never[], truncated: false, period: { from: query.from, to: query.to } };
+    if (sheets.length === 0) return empty;
+    const titles = new Map(sheets.map((sheet) => [sheet.id, sheet.title]));
+    const from = new Date(query.from);
+    const to = new Date(query.to);
+    const employeeFilter = analyticsEmployeeFilter(organizationId, query.fieldFilters ? { AND: [userScope, fieldScope] } : userScope, query);
+    const instanceSelect = {
+      id: true, checklistId: true, status: true, percentage: true, scored: true, completedAt: true,
+      user: { select: { firstName: true, lastName: true, departmentMemberships: { where: { organizationId, isPrimary: true, effectiveTo: null }, take: 1, select: { department: { select: { name: true } } } } } },
+    } as const;
+    const sheetIds = sheets.map((sheet) => sheet.id);
+    const [sessions, selfDone] = await Promise.all([
+      this.prisma.checklistSession.findMany({
+        where: { organizationId, deletedAt: null, status: 'completed', scheduledAt: { gte: from, lte: to }, instance: { deletedAt: null, checklistId: { in: sheetIds }, user: employeeFilter } },
+        select: { id: true, scheduledAt: true, instance: { select: instanceSelect } }, orderBy: { scheduledAt: 'desc' }, take: MAX_INSTANCES,
+      }),
+      this.prisma.checklistInstance.findMany({
+        where: { organizationId, deletedAt: null, session: { is: null }, status: 'completed', completedAt: { gte: from, lte: to }, checklistId: { in: sheetIds }, user: employeeFilter },
+        select: instanceSelect, orderBy: { completedAt: 'desc' }, take: MAX_INSTANCES,
+      }),
+    ]);
+    const offset = (query.tzOffset ?? 0) * 60_000;
+    const rows = [
+      ...sessions.map((session) => ({ sessionId: session.id as string | null, instance: session.instance, at: session.instance.completedAt ?? session.scheduledAt })),
+      ...selfDone.map((instance) => ({ sessionId: null as string | null, instance, at: instance.completedAt })),
+    ].flatMap((row) => {
+      if (!row.at) return [];
+      const band = row.instance.scored ? resultBand(row.instance.percentage) : null;
+      if (query.result !== undefined) return band === query.result ? [{ ...row, at: row.at, band }] : [];
+      const local = new Date(row.at.getTime() + offset);
+      return (local.getUTCDay() + 6) % 7 === query.weekday && Math.floor(local.getUTCHours() / HEAT_BUCKET_HOURS) === query.block ? [{ ...row, at: row.at, band }] : [];
+    }).sort((a, b) => b.at.getTime() - a.at.getTime());
+    return {
+      total: rows.length,
+      items: rows.slice(0, SLICE_PAGE).map((row) => ({
+        sessionId: row.sessionId, checklistId: row.instance.checklistId, checklistTitle: titles.get(row.instance.checklistId) ?? '',
+        employee: `${row.instance.user?.lastName ?? ''} ${row.instance.user?.firstName ?? ''}`.trim(),
+        department: row.instance.user?.departmentMemberships[0]?.department.name ?? null,
+        percentage: row.instance.scored ? row.instance.percentage : null, band: row.band, at: row.at.toISOString(),
+      })),
+      truncated: sessions.length >= MAX_INSTANCES || selfDone.length >= MAX_INSTANCES,
+      period: { from: query.from, to: query.to },
+    };
+  }
+
   async overview(organizationId: string, actor: FolderActor & { locale?: string | null }, userScope: Prisma.UserWhereInput, query: ChecklistSheetAnalyticsQuery, now = new Date()) {
     const [accessibleSheets, fieldScope, presentation] = await Promise.all([
       this.accessible(organizationId, actor),
@@ -206,7 +263,7 @@ export class ChecklistSheetAnalytics {
     const wanted = query.checklistIds?.length ? new Set(query.checklistIds) : null;
     const sheets = accessibleSheets.filter((sheet) => !wanted || wanted.has(sheet.id));
     const sheetIds = sheets.map((sheet) => sheet.id);
-    const empty = { ...buildSheetAnalytics([], [], [], now), summary: { trend: [], departments: [], weak: [] } };
+    const empty = { ...buildSheetAnalytics([], [], [], now), summary: { trend: [], departments: [], weak: [], results: { good: 0, mid: 0, bad: 0 }, heat: Array.from({ length: 7 }, () => Array.from({ length: 12 }, () => 0)), people: [], previous: null } };
     if (sheetIds.length === 0) return { ...empty, period: { from: query.from, to: query.to }, truncated: false };
 
     const from = new Date(query.from);
@@ -216,36 +273,50 @@ export class ChecklistSheetAnalytics {
     );
     const instanceSelect = {
       checklistId: true, userId: true, status: true, percentage: true, scored: true, templateSnapshot: true, completedAt: true,
-      user: { select: { email: true, departmentMemberships: { where: { organizationId, isPrimary: true, effectiveTo: null }, take: 1, select: { department: { select: { id: true, name: true } } } } } },
+      user: { select: { email: true, firstName: true, lastName: true, departmentMemberships: { where: { organizationId, isPrimary: true, effectiveTo: null }, take: 1, select: { department: { select: { id: true, name: true } } } } } },
       results: { select: { itemId: true, answerState: true, scaleLevel: true, checked: true, points: true } },
     } as const;
-    const [sessions, selfDone, waiting] = await Promise.all([
-      this.prisma.checklistSession.findMany({
-        where: { organizationId, deletedAt: null, scheduledAt: { gte: from, lte: to }, instance: { deletedAt: null, checklistId: { in: sheetIds }, user: employeeFilter } },
-        select: { status: true, scheduledAt: true, instance: { select: instanceSelect } }, orderBy: { scheduledAt: 'desc' }, take: MAX_INSTANCES,
-      }),
-      this.prisma.checklistInstance.findMany({
-        where: { organizationId, deletedAt: null, session: { is: null }, status: 'completed', completedAt: { gte: from, lte: to }, checklistId: { in: sheetIds }, user: employeeFilter },
-        select: instanceSelect, orderBy: { completedAt: 'desc' }, take: MAX_INSTANCES,
-      }),
+    const readInstances = async (periodFrom: Date, periodTo: Date) => {
+      const [periodSessions, periodSelfDone] = await Promise.all([
+        this.prisma.checklistSession.findMany({
+          where: { organizationId, deletedAt: null, scheduledAt: { gte: periodFrom, lte: periodTo }, instance: { deletedAt: null, checklistId: { in: sheetIds }, user: employeeFilter } },
+          select: { status: true, scheduledAt: true, instance: { select: instanceSelect } }, orderBy: { scheduledAt: 'desc' }, take: MAX_INSTANCES,
+        }),
+        this.prisma.checklistInstance.findMany({
+          where: { organizationId, deletedAt: null, session: { is: null }, status: 'completed', completedAt: { gte: periodFrom, lte: periodTo }, checklistId: { in: sheetIds }, user: employeeFilter },
+          select: instanceSelect, orderBy: { completedAt: 'desc' }, take: MAX_INSTANCES,
+        }),
+      ]);
+      return { sessions: periodSessions, selfDone: periodSelfDone };
+    };
+    const [{ sessions, selfDone }, waiting] = await Promise.all([
+      readInstances(from, to),
       this.prisma.checklistSession.findMany({
         where: { organizationId, deletedAt: null, status: 'scheduled', instance: { deletedAt: null, checklistId: { in: sheetIds }, user: employeeFilter } },
         select: { scheduledAt: true, createdAt: true, instance: { select: { checklistId: true, userId: true } } }, take: MAX_INSTANCES,
       }),
     ]);
-    const toInstance = (instance: (typeof selfDone)[number], sessionStatus: AnalyticsInstance['sessionStatus'], scheduledAt: Date | null): AnalyticsInstance & { userId: string; at: Date | null; departmentId: string | null; departmentName: string | null } => ({
+    const toInstance = (instance: (typeof selfDone)[number], sessionStatus: AnalyticsInstance['sessionStatus'], scheduledAt: Date | null): AnalyticsInstance & { userId: string; userName: string; completedAt: Date | null; at: Date | null; departmentId: string | null; departmentName: string | null } => ({
       checklistId: instance.checklistId, userId: instance.userId, sessionStatus, scheduledAt, instanceStatus: instance.status, percentage: instance.percentage, scored: instance.scored,
-      at: scheduledAt ?? instance.completedAt,
+      at: scheduledAt ?? instance.completedAt, completedAt: instance.completedAt,
+      userName: `${instance.user?.lastName ?? ''} ${instance.user?.firstName ?? ''}`.trim(),
       departmentId: instance.user?.departmentMemberships[0]?.department.id ?? null, departmentName: instance.user?.departmentMemberships[0]?.department.name ?? null,
       guest: instance.user?.email === GUEST_USER_EMAIL,
       snapshot: (instance.templateSnapshot ?? null) as Snapshot, results: instance.results,
     });
-    const instances = [
-      ...sessions.map((session) => toInstance(session.instance, session.status, session.scheduledAt)),
-      ...selfDone.map((instance) => toInstance(instance, null, null)),
+    const toInstances = (read: { sessions: typeof sessions; selfDone: typeof selfDone }) => [
+      ...read.sessions.map((session) => toInstance(session.instance, session.status, session.scheduledAt)),
+      ...read.selfDone.map((instance) => toInstance(instance, null, null)),
     ];
+    const instances = toInstances({ sessions, selfDone });
     const queue = waiting.map((row) => ({ checklistId: row.instance.checklistId, userId: row.instance.userId, scheduledAt: row.scheduledAt, createdAt: row.createdAt }));
-    const result = { ...buildSheetAnalytics(sheets, instances, queue, now), summary: buildAnalyticsSummary(instances) };
+    // PR 520: the same period just before this one, for the "change against the previous period" of the key figures.
+    const length = to.getTime() - from.getTime();
+    const previousTotal = length > 0
+      ? buildSheetAnalytics(sheets, toInstances(await readInstances(new Date(from.getTime() - length), new Date(from.getTime() - 1))), [], now).total
+      : null;
+    const previous = previousTotal && { completed: previousTotal.plan.completed, completionPercentage: previousTotal.completionPercentage, averagePercentage: previousTotal.averagePercentage, overdue: previousTotal.plan.overdue };
+    const result = { ...buildSheetAnalytics(sheets, instances, queue, now), summary: { ...buildAnalyticsSummary(instances, { tzOffsetMinutes: query.tzOffset }), previous } };
     if (presentation) {
       const sheetById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
       const values = await presentation.values([...new Set([...instances, ...queue].map((row) => row.userId))]);

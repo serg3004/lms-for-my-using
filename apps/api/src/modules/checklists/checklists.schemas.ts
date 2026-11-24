@@ -384,8 +384,18 @@ export const checklistSheetAnalyticsQuerySchema = z.object({
   departmentIds: analyticsIdList,
   employeeIds: analyticsIdList,
   managerId: z.union([z.guid().toLowerCase(), z.literal('unassigned')]).optional(),
+  // PR 520: the viewer's offset from UTC in minutes, so the weekday/hour heat map is drawn in their own time.
+  tzOffset: z.coerce.number().int().min(-840).max(840).optional(),
 });
 export type ChecklistSheetAnalyticsQuery = z.infer<typeof checklistSheetAnalyticsQuerySchema>;
+
+// PR 520: the finished results behind one slice of the dashboard: a result band of the pie, or a weekday and two-hour block of the heat map.
+export const checklistAnalyticsSliceQuerySchema = checklistSheetAnalyticsQuerySchema.extend({
+  result: z.enum(['good', 'mid', 'bad']).optional(),
+  weekday: z.coerce.number().int().min(0).max(6).optional(),
+  block: z.coerce.number().int().min(0).max(11).optional(),
+}).refine((query) => query.result !== undefined || (query.weekday !== undefined && query.block !== undefined), { message: 'Pick a result band or a weekday with a block' });
+export type ChecklistAnalyticsSliceQuery = z.infer<typeof checklistAnalyticsSliceQuerySchema>;
 
 // PR 460: one sheet cut by criteria, groups, feedback fields or notes (the notes list is paged by 20).
 export const checklistItemAnalyticsQuerySchema = z.object({
@@ -817,4 +827,24 @@ export const checklistAnalyticsFilterSetSchema = z.object({
   scope: z.enum(['user', 'organization']).default('user'),
 });
 export type ChecklistAnalyticsFilterSetInput = z.infer<typeof checklistAnalyticsFilterSetSchema>;
+// PR 520: the dashboards of the analytics page. A person may keep several named dashboards (an empty name is the default "Main" one),
+// each a list of widgets with a size and the source options the person picked for the card. `null` resets (user) or removes the default (organization).
+export const ANALYTICS_WIDGET_IDS = ['kpi', 'levels', 'donut', 'trend', 'depts', 'weak', 'heat', 'people'] as const;
+export const MAX_ANALYTICS_DASHBOARDS = 10;
+export const analyticsWidgetOptionsSchema = z.record(z.string().max(20), z.union([z.string().max(40), z.array(z.string().max(40)).max(10)]))
+  .refine((options) => Object.keys(options).length <= 6, { message: 'Too many options' });
+export const analyticsWidgetSchema = z.object({ id: z.enum(ANALYTICS_WIDGET_IDS), size: z.enum(['S', 'M', 'L']), options: analyticsWidgetOptionsSchema.optional() }).strict();
+export const analyticsDashboardSchema = z.object({
+  id: z.string().regex(/^[a-z0-9-]{1,24}$/),
+  name: z.string().trim().max(60),
+  widgets: z.array(analyticsWidgetSchema).max(ANALYTICS_WIDGET_IDS.length)
+    .refine((list) => new Set(list.map((widget) => widget.id)).size === list.length, { message: 'Duplicate widget' }),
+}).strict();
+export const checklistAnalyticsDashboardLayoutSchema = z.object({
+  dashboards: z.array(analyticsDashboardSchema).min(1).max(MAX_ANALYTICS_DASHBOARDS)
+    .refine((list) => new Set(list.map((dashboard) => dashboard.id)).size === list.length, { message: 'Duplicate dashboard' }).nullable(),
+  current: z.string().regex(/^[a-z0-9-]{1,24}$/).optional(),
+  scope: z.enum(['user', 'organization']).default('user'),
+}).refine((body) => body.dashboards === null || body.current === undefined || body.dashboards.some((dashboard) => dashboard.id === body.current), { message: 'Unknown current dashboard', path: ['current'] });
+export type ChecklistAnalyticsDashboardLayoutInput = z.infer<typeof checklistAnalyticsDashboardLayoutSchema>;
 export const checklistAnalyticsEmployeesQuerySchema = z.object({ search: z.string().trim().max(120).optional() });

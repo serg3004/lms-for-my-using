@@ -67,6 +67,8 @@ import {
   checklistManagerAnalyticsQuerySchema,
   checklistSheetAnalyticsQuerySchema,
   checklistAnalyticsFilterSetSchema,
+  checklistAnalyticsDashboardLayoutSchema,
+  checklistAnalyticsSliceQuerySchema,
   checklistAnalyticsEmployeesQuerySchema,
   checklistItemAnalyticsQuerySchema,
   checklistAnalyticsExportQuerySchema,
@@ -184,6 +186,29 @@ export class ChecklistsController {
   async saveAnalyticsFilterSet(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     return this.checklistsService.saveAnalyticsFilterSet(user.organizationId, user, checklistAnalyticsFilterSetSchema.parse(body));
+  }
+
+  /** PR 520: the finished results behind a pie sector or a heat map cell. */
+  @Get('checklists/analytics/sessions')
+  @Roles(...rolePolicies.checklistManagerAnalyticsRead)
+  async listAnalyticsSlice(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.getAnalyticsSlice(user.organizationId, user, await this.reviewAccess.participantLearnerScope(user), checklistAnalyticsSliceQuerySchema.parse(rawQuery));
+  }
+
+  /** PR 520: the dashboard widgets (the viewer's own layout and the organization default). */
+  @Get('checklists/analytics/dashboard-layout')
+  @Roles(...rolePolicies.checklistManagerAnalyticsRead)
+  async getAnalyticsDashboardLayout(@Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.getAnalyticsDashboardLayout(user.organizationId, user.id);
+  }
+
+  @Put('checklists/analytics/dashboard-layout')
+  @Roles(...rolePolicies.checklistManagerAnalyticsRead)
+  async saveAnalyticsDashboardLayout(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.saveAnalyticsDashboardLayout(user.organizationId, user, checklistAnalyticsDashboardLayoutSchema.parse(body));
   }
 
   /** PR 518: employees of the viewer's scope for the employee filter. */

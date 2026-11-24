@@ -21,6 +21,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `BadgeScanLog` |
 | `Certificate` |
 | `Checklist` |
+| `ChecklistAnalyticsDashboardLayout` |
 | `ChecklistAnalyticsFilterSet` |
 | `ChecklistAnswerSet` |
 | `ChecklistFolder` |
