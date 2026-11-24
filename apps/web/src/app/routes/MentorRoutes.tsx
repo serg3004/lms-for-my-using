@@ -22,6 +22,7 @@ export function MentorRoutes() {
       <Route index element={<MentorChecklistReviewsPage />} />
       <Route path="analytics" element={<AnalyticsPage />} />
       <Route path="sheet-analytics" element={<SheetAnalyticsPage />} />
+      <Route path="sheet-analytics/:checklistId" element={<SheetAnalyticsPage />} />
       <Route path="library" element={<LibraryPage />} />
       <Route path="sessions" element={<AllSessionsPage />} />
       <Route path="sessions/:id" element={<SessionReportPage />} />

@@ -250,7 +250,7 @@ for (const width of [375, 1440]) test(`checklist analytics tab is responsive at 
 
 for (const width of [375, 1440]) test(`one-sheet analytics by criteria is responsive at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height }); await installSheetAnalyticsMocks(page, 'admin');
-  await page.goto(`/admin/checklists/sheet-analytics?sheets=${sheetA}`);
+  await page.goto(`/admin/checklists/sheet-analytics/${sheetA}`);
   await page.getByTestId('item-analytics').getByRole('table').waitFor();
   await expectNoPageOverflow(page);
   await expectVisualMatch(page, `sheet-item-analytics-${width}`, false, { maxDiffPixels: 3000 });

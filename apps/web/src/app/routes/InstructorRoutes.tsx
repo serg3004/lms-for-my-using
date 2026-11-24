@@ -45,6 +45,7 @@ export function InstructorRoutes() {
       <Route path="checklists" element={<InstructorChecklistReviewsPage />} />
       <Route path="checklists/analytics" element={<AnalyticsPage />} />
       <Route path="checklists/sheet-analytics" element={<SheetAnalyticsPage />} />
+      <Route path="checklists/sheet-analytics/:checklistId" element={<SheetAnalyticsPage />} />
       <Route path="checklists/library" element={<LibraryPage />} />
       <Route path="checklists/sessions" element={<InstructorChecklistSessionsPage />} />
       <Route path="checklists/sessions/all" element={<AllSessionsPage />} />

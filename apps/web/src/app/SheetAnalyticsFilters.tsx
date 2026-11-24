@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { listAnalyticsEmployees, saveAnalyticsFilterSet, type AnalyticsEmployee, type AnalyticsFilterKey, type AnalyticsFilterSet } from '../shared/api/manager.js';
@@ -27,7 +27,54 @@ export function moveFilter<T>(list: readonly T[], index: number, step: -1 | 1): 
   return next;
 }
 
-const summaryStyle: CSSProperties = { fontWeight: 600, minHeight: 44, display: 'flex', alignItems: 'center', cursor: 'pointer' };
+/**
+ * PR 519: one filter of the bar as in the approved mock-up: a small caption, a field with the current value and a panel that opens under it.
+ * Closes on Escape and on a click outside; the panel is a labelled group so keyboard and screen reader users reach it like any control.
+ */
+export function FilterDropdown({ label, value, children, wide, bare }: { label: string; value: string; children: ReactNode; wide?: boolean; bare?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+  const panelId = useId();
+  useEffect(() => {
+    if (!open) return undefined;
+    const onPointer = (event: MouseEvent) => { if (root.current && !root.current.contains(event.target as Node)) setOpen(false); };
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onPointer); document.removeEventListener('keydown', onKey); };
+  }, [open]);
+  return (
+    <div ref={root} style={{ display: 'grid', gap: 6, minWidth: 0, position: 'relative', alignContent: bare ? 'end' : undefined }}>
+      {!bare && <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--color-text-muted)' }}>{label}</span>}
+      <button
+        aria-controls={open ? panelId : undefined}
+        aria-expanded={open}
+        aria-haspopup="true"
+        aria-label={bare ? label : `${label}: ${value}`}
+        className={bare ? 'ds-button ds-button--secondary' : 'ds-input'}
+        onClick={() => setOpen((current) => !current)}
+        style={{ alignItems: 'center', cursor: 'pointer', display: 'flex', gap: 8, justifyContent: 'space-between', minHeight: 44, textAlign: 'left' }}
+        type="button"
+      >
+        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bare ? label : value}</span>
+        <span aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div
+          aria-label={label}
+          id={panelId}
+          role="group"
+          style={{
+            background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 12, boxShadow: '0 12px 32px rgba(0,0,0,.22)', display: 'grid', gap: 8,
+            left: 0, maxHeight: 420, maxWidth: 'min(92vw, 460px)', minWidth: wide ? 320 : 240, overflowY: 'auto', padding: 12, position: 'absolute', top: '100%', width: 'max-content', zIndex: 30,
+          }}
+        >
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function ids(value: string): string[] {
   return value.split(',').map((part) => part.trim()).filter(Boolean);
@@ -40,20 +87,17 @@ export function toggleId(selected: readonly string[], id: string): string[] {
 /** Several departments at once; an empty selection means every department. */
 export function DepartmentFilter({ options, selected, onChange }: { options: Array<{ id: string; name: string }>; selected: string[]; onChange: (ids: string[]) => void }) {
   const { t } = useTranslation();
+  const label = t('manager.checklists.departmentFilter', 'Department');
+  const value = selected.length === 0 ? t('manager.checklists.allDepartments', 'All departments') : selected.length === 1 ? (options.find((option) => option.id === selected[0])?.name ?? '1') : String(selected.length);
   return (
-    <details open={selected.length > 0 || undefined} style={{ minWidth: 0 }}>
-      <summary style={summaryStyle}>
-        {t('manager.checklists.departmentFilter', 'Department')}: {selected.length === 0 ? t('manager.checklists.allDepartments', 'All departments') : selected.length}
-      </summary>
-      <div style={{ display: 'grid', gap: 2, maxHeight: 220, overflowY: 'auto' }}>
-        {options.map((option) => (
-          <label key={option.id} style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44 }}>
-            <input checked={selected.includes(option.id)} onChange={() => onChange(toggleId(selected, option.id))} style={{ width: 20, height: 20, flex: 'none' }} type="checkbox" />
-            <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{option.name}</span>
-          </label>
-        ))}
-      </div>
-    </details>
+    <FilterDropdown label={label} value={value}>
+      {options.map((option) => (
+        <label key={option.id} style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44 }}>
+          <input checked={selected.includes(option.id)} onChange={() => onChange(toggleId(selected, option.id))} style={{ width: 20, height: 20, flex: 'none' }} type="checkbox" />
+          <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{option.name}</span>
+        </label>
+      ))}
+    </FilterDropdown>
   );
 }
 
@@ -77,34 +121,30 @@ export function EmployeeFilter({ selected, onChange }: { selected: string[]; onC
     return () => { active = false; clearTimeout(timer); };
   }, [query]);
 
+  const value = selected.length === 0 ? t('sheetAnalytics.allEmployees', 'All employees') : selected.length === 1 ? (names[selected[0]!] ?? '1') : String(selected.length);
   return (
-    <details open={selected.length > 0 || undefined} style={{ minWidth: 0 }}>
-      <summary style={summaryStyle}>
-        {t('sheetAnalytics.employeeFilter', 'Employee')}: {selected.length === 0 ? t('sheetAnalytics.allEmployees', 'All employees') : selected.length}
-      </summary>
-      <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
-        <input aria-label={t('sheetAnalytics.employeeSearch', 'Search employees')} className="ds-input" onChange={(event) => setQuery(event.target.value)} placeholder={t('sheetAnalytics.employeeSearch', 'Search employees')} type="search" value={query} />
-        {selected.length > 0 && (
-          <ul aria-label={t('sheetAnalytics.selectedEmployees', 'Selected employees')} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, listStyle: 'none', margin: 0, padding: 0 }}>
-            {selected.map((id) => (
-              <li className="ui-status-badge" key={id} style={{ alignItems: 'center', display: 'inline-flex', gap: 4 }}>
-                {names[id] ?? t('sheetAnalytics.employeeUnknown', 'Employee')}
-                <button aria-label={`${t('sheetAnalytics.removeSheet', 'Remove')}: ${names[id] ?? id}`} className="ds-button ds-button--text ds-button--icon" onClick={() => onChange(toggleId(selected, id))} type="button">×</button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div style={{ maxHeight: 220, overflowY: 'auto', display: 'grid', gap: 2 }}>
-          {found.map((employee) => (
-            <label key={employee.id} style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44 }}>
-              <input checked={selected.includes(employee.id)} onChange={() => onChange(toggleId(selected, employee.id))} style={{ width: 20, height: 20, flex: 'none' }} type="checkbox" />
-              <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{employee.name}</span>
-            </label>
+    <FilterDropdown label={t('sheetAnalytics.employeeFilter', 'Employee')} value={value} wide>
+      <input aria-label={t('sheetAnalytics.employeeSearch', 'Search employees')} className="ds-input" onChange={(event) => setQuery(event.target.value)} placeholder={t('sheetAnalytics.employeeSearch', 'Search employees')} type="search" value={query} />
+      {selected.length > 0 && (
+        <ul aria-label={t('sheetAnalytics.selectedEmployees', 'Selected employees')} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, listStyle: 'none', margin: 0, padding: 0 }}>
+          {selected.map((id) => (
+            <li className="ui-status-badge" key={id} style={{ alignItems: 'center', display: 'inline-flex', gap: 4 }}>
+              {names[id] ?? t('sheetAnalytics.employeeUnknown', 'Employee')}
+              <button aria-label={`${t('sheetAnalytics.removeSheet', 'Remove')}: ${names[id] ?? id}`} className="ds-button ds-button--text ds-button--icon" onClick={() => onChange(toggleId(selected, id))} type="button">×</button>
+            </li>
           ))}
-          {found.length === 0 && <span style={{ color: 'var(--color-text-muted)' }}>{t('sheetAnalytics.noEmployees', 'No employees found.')}</span>}
-        </div>
+        </ul>
+      )}
+      <div style={{ display: 'grid', gap: 2 }}>
+        {found.map((employee) => (
+          <label key={employee.id} style={{ display: 'flex', gap: 8, alignItems: 'center', minHeight: 44 }}>
+            <input checked={selected.includes(employee.id)} onChange={() => onChange(toggleId(selected, employee.id))} style={{ width: 20, height: 20, flex: 'none' }} type="checkbox" />
+            <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{employee.name}</span>
+          </label>
+        ))}
+        {found.length === 0 && <span style={{ color: 'var(--color-text-muted)' }}>{t('sheetAnalytics.noEmployees', 'No employees found.')}</span>}
       </div>
-    </details>
+    </FilterDropdown>
   );
 }
 
@@ -139,8 +179,7 @@ export function FilterSetEditor({ enabled, isAdmin, onSaved }: { enabled: Analyt
   }
 
   return (
-    <details style={{ gridColumn: '1 / -1', minWidth: 0 }}>
-      <summary style={summaryStyle}>{t('sheetAnalytics.filterSetTitle', 'Choose filters')}</summary>
+    <FilterDropdown bare label={t('sheetAnalytics.filterSetTitle', 'Choose filters')} value="" wide>
       <div style={{ display: 'grid', gap: 8 }}>
         <ol style={{ display: 'grid', gap: 4, listStyle: 'none', margin: 0, padding: 0 }}>
           {draft.map((entry, index) => {
@@ -165,6 +204,6 @@ export function FilterSetEditor({ enabled, isAdmin, onSaved }: { enabled: Analyt
           <button className="ds-button ds-button--secondary" disabled={busy} onClick={() => void save([], 'user')} type="button">{t('sheetAnalytics.filterSetReset', 'Reset my set')}</button>
         </div>
       </div>
-    </details>
+    </FilterDropdown>
   );
 }

@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 
 import type { PrismaService } from '../../database/prisma.service.js';
 import { visibleFolderIds, type FolderActor, type FolderNode } from './checklist-folder-tree.js';
+import { buildAnalyticsSummary } from './checklist-analytics-summary.js';
 import { GUEST_USER_EMAIL } from './checklist-public-access.js';
 import type { ChecklistSheetAnalyticsQuery } from './checklists.schemas.js';
 
@@ -205,7 +206,7 @@ export class ChecklistSheetAnalytics {
     const wanted = query.checklistIds?.length ? new Set(query.checklistIds) : null;
     const sheets = accessibleSheets.filter((sheet) => !wanted || wanted.has(sheet.id));
     const sheetIds = sheets.map((sheet) => sheet.id);
-    const empty = buildSheetAnalytics([], [], [], now);
+    const empty = { ...buildSheetAnalytics([], [], [], now), summary: { trend: [], departments: [], weak: [] } };
     if (sheetIds.length === 0) return { ...empty, period: { from: query.from, to: query.to }, truncated: false };
 
     const from = new Date(query.from);
@@ -214,7 +215,8 @@ export class ChecklistSheetAnalytics {
       organizationId, query.fieldFilters ? { AND: [userScope, fieldScope] } : userScope, query,
     );
     const instanceSelect = {
-      checklistId: true, userId: true, status: true, percentage: true, scored: true, templateSnapshot: true, user: { select: { email: true } },
+      checklistId: true, userId: true, status: true, percentage: true, scored: true, templateSnapshot: true, completedAt: true,
+      user: { select: { email: true, departmentMemberships: { where: { organizationId, isPrimary: true, effectiveTo: null }, take: 1, select: { department: { select: { id: true, name: true } } } } } },
       results: { select: { itemId: true, answerState: true, scaleLevel: true, checked: true, points: true } },
     } as const;
     const [sessions, selfDone, waiting] = await Promise.all([
@@ -231,8 +233,10 @@ export class ChecklistSheetAnalytics {
         select: { scheduledAt: true, createdAt: true, instance: { select: { checklistId: true, userId: true } } }, take: MAX_INSTANCES,
       }),
     ]);
-    const toInstance = (instance: (typeof selfDone)[number], sessionStatus: AnalyticsInstance['sessionStatus'], scheduledAt: Date | null): AnalyticsInstance & { userId: string } => ({
+    const toInstance = (instance: (typeof selfDone)[number], sessionStatus: AnalyticsInstance['sessionStatus'], scheduledAt: Date | null): AnalyticsInstance & { userId: string; at: Date | null; departmentId: string | null; departmentName: string | null } => ({
       checklistId: instance.checklistId, userId: instance.userId, sessionStatus, scheduledAt, instanceStatus: instance.status, percentage: instance.percentage, scored: instance.scored,
+      at: scheduledAt ?? instance.completedAt,
+      departmentId: instance.user?.departmentMemberships[0]?.department.id ?? null, departmentName: instance.user?.departmentMemberships[0]?.department.name ?? null,
       guest: instance.user?.email === GUEST_USER_EMAIL,
       snapshot: (instance.templateSnapshot ?? null) as Snapshot, results: instance.results,
     });
@@ -241,7 +245,7 @@ export class ChecklistSheetAnalytics {
       ...selfDone.map((instance) => toInstance(instance, null, null)),
     ];
     const queue = waiting.map((row) => ({ checklistId: row.instance.checklistId, userId: row.instance.userId, scheduledAt: row.scheduledAt, createdAt: row.createdAt }));
-    const result = buildSheetAnalytics(sheets, instances, queue, now);
+    const result = { ...buildSheetAnalytics(sheets, instances, queue, now), summary: buildAnalyticsSummary(instances) };
     if (presentation) {
       const sheetById = new Map(sheets.map((sheet) => [sheet.id, sheet]));
       const values = await presentation.values([...new Set([...instances, ...queue].map((row) => row.userId))]);

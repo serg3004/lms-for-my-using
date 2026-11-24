@@ -3,6 +3,7 @@ import type { ItemAnalytics, ItemAnalyticsMetrics, SheetAnalytics, SheetAnalytic
 
 export const sheetA = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 export const sheetB = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+export const departmentSklad = 'ffffffff-0000-4000-8000-000000000001';
 export const employeeAnna = '11111111-1111-4111-8111-111111111111';
 export const employeePetr = '22222222-2222-4222-8222-222222222222';
 /** PR 518: the bodies of the filter-set saves the page sent. */
@@ -27,7 +28,13 @@ export function sheetAnalyticsFixture(ids: string[]): SheetAnalytics {
   const rows = [{ checklistId: sheetA, title: 'Охрана труда', ...metrics(4, 3, [yesNo]) }, { checklistId: sheetB, title: 'Складская приёмка', ...metrics(2, 1, [ownScale]) }].filter((row) => ids.length === 0 || ids.includes(row.checklistId));
   const planned = rows.reduce((sum, row) => sum + row.plan.planned, 0);
   const completed = rows.reduce((sum, row) => sum + row.plan.completed, 0);
-  return { total: metrics(planned, completed, rows.flatMap((row) => row.scales)), sheets: rows, period: { from: '2026-10-01T00:00:00.000Z', to: '2026-11-01T00:00:00.000Z' }, truncated: false };
+  return { total: metrics(planned, completed, rows.flatMap((row) => row.scales)), sheets: rows, period: { from: '2026-10-01T00:00:00.000Z', to: '2026-11-01T00:00:00.000Z' }, truncated: false,
+    // PR 519: the dashboard blocks.
+    summary: {
+      trend: [{ weekStart: '2026-10-05', planned: 3, completed: 2, averagePercentage: 64 }, { weekStart: '2026-10-12', planned: 3, completed: 3, averagePercentage: 72 }, { weekStart: '2026-10-19', planned: 2, completed: 2, averagePercentage: 81 }],
+      departments: [{ id: departmentSklad, name: 'Склад', planned: 4, completed: 4, completionPercentage: 100, averagePercentage: 82 }, { id: 'ffffffff-0000-4000-8000-000000000002', name: 'Касса', planned: 4, completed: 2, completionPercentage: 50, averagePercentage: 61 }],
+      weak: [{ id: 'c1', checklistId: sheetA, text: 'Каски надеты', answered: 6, percentage: 33 }, { id: 'c2', checklistId: sheetB, text: 'Проход свободен', answered: 4, percentage: 50 }],
+    } };
 }
 
 export async function installSheetAnalyticsMocks(page: Page, role: 'admin' | 'manager' | 'instructor', itemRequests: URL[] = [], exportRequests: URL[] = []) {

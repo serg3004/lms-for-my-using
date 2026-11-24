@@ -20,6 +20,7 @@ export function ManagerRoutes() {
       <Route path="reports" element={<ManagerReportsPage />} />
       <Route path="checklists" element={<ManagerChecklistsPage />} />
       <Route path="checklists/sheets" element={<ManagerSheetAnalyticsPage />} />
+      <Route path="checklists/sheets/:checklistId" element={<ManagerSheetAnalyticsPage />} />
     </Route>
   );
 }
