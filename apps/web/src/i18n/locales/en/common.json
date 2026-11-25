@@ -572,6 +572,7 @@
         "course": "Course",
         "assignment": "Assignment",
         "confirmTitle": "Confirm changes to the published assessment",
+        "confirmWithAttempts": "This assessment has attempts. New attempts will use the published changes, and previous reviews will be preserved. Removed questions will be archived. Review where the assessment is used.",
         "confirmText": "Review where the assessment is used before confirming these changes.",
         "confirm": "Confirm changes",
         "conflict": "The assessment changed or a learner still has an active attempt. Check the current state and try again.",

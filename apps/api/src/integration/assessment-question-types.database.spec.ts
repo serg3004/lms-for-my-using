@@ -14,6 +14,7 @@ import { AssessmentManualReviewService } from '../modules/assessment-attempts/as
 import { ManagerTeamScope } from '../modules/manager-team-scope/public.js';
 import { AssessmentResultsService } from '../modules/assessment-attempts/assessment-results.service.js';
 import { createAssessmentAttemptSchema, type CreateAssessmentAttemptInput } from '../modules/assessment-attempts/assessment-attempts.schemas.js';
+import { assessmentEditorContentSchema, type SaveAssessmentEditorInput } from '../modules/assessments/assessments.schemas.js';
 import { AssessmentsService } from '../modules/assessments/assessments.service.js';
 import { EffectivePermissionsLookup, RolesGuard, type CurrentUser, type AuthenticatedRequest } from '../modules/auth/public.js';
 import { CourseAccessGuard, CourseAccessPolicy } from '../modules/course-access/public.js';
@@ -47,6 +48,18 @@ describe('seven assessment question types and legacy grading — database', () =
     await prisma.membership.create({ data: { organizationId, userId: user.id, role } });
     return { ...user, roles: [role] };
   }
+  async function publishEdit(edit: (content: SaveAssessmentEditorInput['content']) => void) {
+    const editor = await papers.getEditor(assessmentId, org);
+    const content = assessmentEditorContentSchema.parse({
+      settings: { ...editor.assessment, policy: editor.assessment.policy ?? undefined },
+      questions: editor.questions,
+    });
+    edit(content);
+    await papers.saveEditor(assessmentId, org, {
+      revision: editor.assessment.updatedAt.toISOString(), action: 'publish', confirmPublished: true, content,
+    }, instructor.id);
+  }
+
   async function createDefined(definition: QuestionDefinition, scoringMode: QuestionScoringMode = 'all_or_nothing') {
     return questions.createQuestion(assessmentId, createAssessmentQuestionSchema.parse({ organizationId: org, type: definition.type, definition, title: definition.type, points: 8, scoringMode }));
   }
@@ -336,12 +349,13 @@ describe('seven assessment question types and legacy grading — database', () =
     expect(await prisma.certificate.findFirst({ where: { assessmentAttemptId: attempt.id } })).toMatchObject({ status: 'issued', userId: learner.id, courseId });
     expect(await results.getAssessmentReport(assessmentId, org)).toMatchObject({ attemptsCount: 1, passedCount: 1, averagePercentage: 100 });
     expect(JSON.stringify(await results.getAttemptResult(attempt.id, learner))).not.toMatch(/correctPairs|correctOrder|acceptedAnswers|correctAnswer/);
-    await papers.updateAssessment(assessmentId, org, { showCorrectAnswers: true });
-    expect((await results.getAttemptResult(attempt.id, learner)).answers.filter((answer) => 'correctDefinition' in answer)).toHaveLength(5);
+    await publishEdit(({ settings }) => { settings.showCorrectAnswers = true; });
+    expect((await results.getAttemptResult(attempt.id, learner)).answers.filter((answer) => 'correctDefinition' in answer)).toHaveLength(0);
     const wrong: QuestionResponse[] = [{ type: 'true_false', value: true }, { type: 'matching', pairs: items.map(({ id }, index) => ({ leftId: id, rightId: items[(index + 1) % 4]!.id })) }, { type: 'ordering', itemIds: ['b', 'd', 'a', 'c'] }, { type: 'fill_blank', blanks: [{ blankId: 'city', value: '' }, { blankId: 'country', value: 'wrong' }] }, { type: 'short_answer', text: 'Cafe' }];
     const failed = await submit({ answers: [{ questionId: single.question.id, selectedOptionId: single.options[1]!.id }, { questionId: multiple.question.id, selectedOptionIds: [multiple.options[2]!.id] }, ...defined.map((question, index) => ({ questionId: question.id, response: wrong[index]! }))] });
     expect(failed).toMatchObject({ score: 0, maxScore: 48, percentage: 0, passed: false });
     expect(await prisma.certificate.count({ where: { assessmentAttemptId: failed.id } })).toBe(0);
+    expect((await results.getAttemptResult(failed.id, learner)).answers.filter((answer) => 'correctDefinition' in answer)).toHaveLength(5);
   });
 
   it.each(['all_or_nothing', 'proportional', 'proportional_with_penalty', 'per_option'] as const)('preserves legacy option-id grades and stored results in %s', async (mode) => {
@@ -351,7 +365,10 @@ describe('seven assessment question types and legacy grading — database', () =
     const expected = { all_or_nothing: 4, proportional: 6, proportional_with_penalty: 6, per_option: 7 }[mode];
     expect(attempt).toMatchObject({ score: expected, maxScore: 12, percentage: Math.round(expected / 12 * 100), passed: false });
     const before = await results.getAttemptResult(attempt.id, learner), report = await results.getAssessmentReport(assessmentId, org);
-    await createDefined(definitions[1]!);
+    await publishEdit(({ questions: current }) => current.push({
+      id: randomUUID(), type: definitions[1]!.type, title: 'Added question', text: null, imageUrl: null,
+      points: 4, scoringMode: 'all_or_nothing', definition: definitions[1]!, options: [],
+    }));
     expect(await results.getAttemptResult(attempt.id, learner)).toEqual(before);
     expect(await results.getAssessmentReport(assessmentId, org)).toEqual(report);
   });

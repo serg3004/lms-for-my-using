@@ -82,6 +82,13 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
         data: { organizationId, email: employee.email, password },
       }));
       const learnerHeaders = { Authorization: `Bearer ${learnerLogin.accessToken}` };
+      const started = await json<{ id: string; questions: { id: string; options: { id: string }[] }[] }>(
+        request.post(`${endpoint}/attempts/start?draft=true`, { headers: learnerHeaders }),
+      );
+      await json(request.post(`${endpoint}/attempts`, {
+        headers: learnerHeaders,
+        data: { attemptId: started.id, answers: started.questions.map((item) => ({ questionId: item.id, selectedOptionId: item.options[0]!.id })) },
+      }));
       const published = await json<{ title: string }[]>(request.get(`${endpoint}/quiz`, { headers: learnerHeaders }));
       expect(published.map((question) => question.title)).toEqual(['Второй вопрос', 'Первый вопрос']);
       expect(await json(request.get(endpoint, { headers }))).toMatchObject({ status: 'published', timeLimitMinutes: 12, policy: { attemptPolicy: 'best', showFeedback: true } });
@@ -90,7 +97,15 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
       await questions.first().getByRole('button', { name: 'Редактировать' }).click();
       await questions.first().getByRole('textbox').first().fill('Изменённый вопрос');
       await page.getByRole('button', { name: 'Сохранить изменения', exact: true }).click();
-      await expect(page.getByRole('dialog')).toContainText('Test Employee');
+      const confirmation = page.getByRole('dialog');
+      await expect(confirmation).toContainText('Test Employee');
+      await expect(confirmation).toContainText('У теста есть попытки');
+      for (const width of [375, 1440]) {
+        await page.setViewportSize({ width, height: 900 });
+        const bounds = await confirmation.boundingBox();
+        expect(bounds?.x).toBeGreaterThanOrEqual(0);
+        expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+      }
       await page.getByRole('button', { name: 'Подтвердить изменения', exact: true }).click();
       await expect(page.getByText('Неопубликованные изменения', { exact: true })).toBeVisible();
       expect(await json(request.get(`${endpoint}/quiz`, { headers: learnerHeaders }))).toMatchObject(published);
@@ -116,6 +131,7 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
       await context.close();
     }
   } finally {
+    await prisma.assessmentAttempt.deleteMany({ where: { organizationId } });
     await prisma.user.deleteMany({ where: { organizationId } });
     await prisma.organization.delete({ where: { id: organizationId } });
     await prisma.$disconnect();

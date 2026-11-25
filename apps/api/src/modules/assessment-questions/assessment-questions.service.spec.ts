@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { jest } from '@jest/globals';
 
 import {
@@ -264,6 +264,21 @@ describe('AssessmentQuestionsService.updateQuestion / deleteQuestion', () => {
     const service = new AssessmentQuestionsService(prisma);
 
     await expect(service.updateQuestion(questionId, organizationId, { points: 5 })).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('requires editor confirmation to change or remove a published question with attempts', async () => {
+    const update = jest.fn();
+    const prisma = {
+      assessmentQuestion: {
+        findFirst: async () => ({ id: questionId, assessment: { status: 'published', attempts: [{ id: 'attempt-id' }] } }),
+        update,
+      },
+    } as unknown as PrismaService;
+    const service = new AssessmentQuestionsService(prisma);
+
+    await expect(service.updateQuestion(questionId, organizationId, { points: 5 })).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.deleteQuestion(questionId, organizationId)).rejects.toBeInstanceOf(ConflictException);
+    expect(update).not.toHaveBeenCalled();
   });
 
   it('soft-deletes a question', async () => {

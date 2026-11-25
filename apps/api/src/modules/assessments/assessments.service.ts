@@ -1,8 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { frozenAssessmentQuestionSchema } from '../../common/assessment-frozen.js';
+import { refreshPublishedAssessmentExercises } from '../longreads/public.js';
 import { validateQuestionDefinition } from '../../common/assessment-question-definition.js';
 
+import { stableJson } from '../../common/stable-json.js';
 import { releaseSlugOnDelete } from '../../common/soft-delete-slug.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { LEGACY_LIST_LIMIT } from '../../common/query-limits.js';
@@ -45,6 +48,13 @@ const assessmentSelect = {
   createdAt: true,
   updatedAt: true,
 } as const;
+
+const assessmentRevisionQuestionSelect = {
+  id: true, type: true, title: true, text: true, imageUrl: true, order: true, points: true,
+  scoringMode: true, definition: true, correctFeedback: true, incorrectFeedback: true,
+  options: { where: { deletedAt: null }, orderBy: [{ order: 'asc' }, { id: 'asc' }],
+    select: { id: true, text: true, imageUrl: true, order: true, isCorrect: true } },
+} as const satisfies Prisma.AssessmentQuestionSelect;
 
 @Injectable()
 export class AssessmentsService {
@@ -148,6 +158,7 @@ export class AssessmentsService {
       select: {
         ...assessmentSelect,
         editorDraft: true,
+        attempts: { where: { deletedAt: null }, take: 1, select: { id: true } },
         questions: {
           where: { organizationId, deletedAt: null, bankSampleCandidate: false },
           orderBy: [{ order: 'asc' }, { id: 'asc' }],
@@ -172,7 +183,7 @@ export class AssessmentsService {
       },
     });
     if (!record) throw new NotFoundException('Assessment not found');
-    const { editorDraft, questions, placements, standaloneAssignments, ...assessment } = record;
+    const { editorDraft, questions, placements, standaloneAssignments, attempts, ...assessment } = record;
     const draft = editorDraft == null ? null : assessmentEditorContentSchema.parse(editorDraft);
     if (draft) {
       const linked = new Map(questions.filter((question) => question.bankEntryId).map((question) => [question.id, question]));
@@ -181,10 +192,10 @@ export class AssessmentsService {
         return source ? { ...source, points: question.points, definition: validateQuestionDefinition(source.type, source.definition) } : question;
       });
     }
-    return { assessment, draft, questions, placements, assignments: standaloneAssignments };
+    return { assessment, draft, questions, placements, assignments: standaloneAssignments, hasAttempts: !!attempts?.length };
   }
 
-  async saveEditor(id: string, organizationId: string, input: SaveAssessmentEditorInput) {
+  async saveEditor(id: string, organizationId: string, input: SaveAssessmentEditorInput, actorId?: string) {
     const { content, action, confirmPublished, revision } = input;
     for (const question of content.questions) validateQuestionDefinition(question.type, question.definition);
     if (action === 'publish') {
@@ -198,7 +209,7 @@ export class AssessmentsService {
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM assessments WHERE id = ${id}::uuid AND organization_id = ${organizationId}::uuid FOR UPDATE`;
       const where = { id, organizationId, deletedAt: null };
-      const current = await tx.assessment.findFirst({ where, select: { updatedAt: true, status: true, timeLimitMinutes: true, maxAttempts: true, bankSampleSize: true } });
+      const current = await tx.assessment.findFirst({ where, select: assessmentSelect });
       if (!current) throw new NotFoundException('Assessment not found');
       if (action === 'publish' && !content.questions.length && !current.bankSampleSize) {
         throw new BadRequestException('Cannot publish assessment: it has no questions');
@@ -209,15 +220,24 @@ export class AssessmentsService {
       this.validateLimits(content.settings, current);
       const updatedAt = new Date(Math.max(Date.now(), current.updatedAt.getTime() + 1));
       if (current.status === 'published' && (action === 'save' || action === 'archive')) {
-        return tx.assessment.update({
+        const result = await tx.assessment.update({
           where, data: { updatedAt, editorDraft: content, ...(action === 'archive' ? { status: 'archived' } : {}) }, select: { updatedAt: true, status: true },
         });
+        if (action === 'archive') await tx.auditLog.create({ data: {
+          organizationId, actorId, action: 'assessment.editor.archive', targetType: 'assessment', targetId: id,
+          summary: current.title, metadata: { revision },
+        } });
+        return result;
       }
 
-      if (action === 'publish' && current.status === 'published') {
+      const changedSettings = Object.entries(content.settings).filter(([key, value]) =>
+        stableJson(value) !== stableJson(current[key as keyof typeof content.settings]),
+      ).map(([key]) => key);
+      if (current.status === 'published' || action === 'publish') {
         const active = await tx.assessmentAttempt.findFirst({
           where: {
-            assessmentId: id, organizationId, status: 'in_progress', deletedAt: null,
+            assessmentId: id, organizationId, status: 'in_progress', longreadRevisionId: null, deletedAt: null,
+            ...(action === 'publish' && !changedSettings.length ? { bankQuestionSnapshot: { equals: Prisma.DbNull } } : {}),
             ...(current.timeLimitMinutes ? { startedAt: { gt: new Date(Date.now() - current.timeLimitMinutes * 60_000) } } : {}),
           },
           select: { id: true },
@@ -225,14 +245,18 @@ export class AssessmentsService {
         if (active) throw new ConflictException('Cannot publish while an attempt is in progress');
       }
 
-      const linked = await tx.assessmentQuestion.findMany({
-        where: { assessmentId: id, organizationId, deletedAt: null, bankEntryId: { not: null } },
-        select: { id: true },
+      const liveQuestions = { assessmentId: id, organizationId, deletedAt: null, bankSampleCandidate: false };
+      const tracksPublication = current.status === 'published' || action === 'publish';
+      const previousQuestions = tracksPublication ? await tx.assessmentQuestion.findMany({
+        where: liveQuestions, select: { ...assessmentRevisionQuestionSelect, bankEntryId: true },
+      }) : [];
+      const linked = tracksPublication ? previousQuestions : await tx.assessmentQuestion.findMany({
+        where: { ...liveQuestions, bankEntryId: { not: null } }, select: { id: true, bankEntryId: true },
       });
-      const linkedIds = new Set(linked.map((question) => question.id));
+      const linkedIds = new Set(linked.filter((question) => question.bankEntryId).map((question) => question.id));
       const deletedAt = new Date();
       await tx.assessmentQuestion.updateMany({
-        where: { assessmentId: id, organizationId, deletedAt: null, bankSampleCandidate: false, id: { notIn: content.questions.map((question) => question.id) } },
+        where: { ...liveQuestions, id: { notIn: content.questions.map((question) => question.id) } },
         data: { deletedAt },
       });
       for (const [order, { id: questionId, options, definition, ...fields }] of content.questions.entries()) {
@@ -259,7 +283,7 @@ export class AssessmentsService {
           });
         }
       }
-      return tx.assessment.update({
+      const result = await tx.assessment.update({
         where,
         data: {
           ...content.settings,
@@ -269,6 +293,40 @@ export class AssessmentsService {
         },
         select: { updatedAt: true, status: true },
       });
+      if (tracksPublication) {
+        const [placements, questions] = await Promise.all([
+          action === 'publish' ? tx.assessmentPlacement.findMany({
+            where: { assessmentId: id, organizationId, deletedAt: null, longreadBlockId: { not: null } },
+            select: { lessonId: true, longreadBlockId: true },
+          }) : [],
+          tx.assessmentQuestion.findMany({ where: liveQuestions, select: assessmentRevisionQuestionSelect }),
+        ]);
+        const byId = new Map(questions.map((question) => [question.id, question]));
+        const previousById = new Map(previousQuestions.map((question) => [question.id, { ...question, bankEntryId: undefined }]));
+        const added = questions.filter((question) => !previousById.has(question.id)).map(({ id, title }) => ({ id, title }));
+        const modified = questions.filter((question) => {
+          const previous = previousById.get(question.id);
+          return previous && stableJson(previous) !== stableJson(question);
+        }).map(({ id, title }) => ({ id, title }));
+        const archived = previousQuestions.filter((question) => !byId.has(question.id)).map(({ id, title }) => ({ id, title }));
+        if (placements.length) {
+          const { title, passingScore, maxAttempts } = content.settings;
+          const assessment = { id, title, passingScore, maxAttempts };
+          const lessons = [...new Set(placements.flatMap(({ lessonId }) => lessonId ? [lessonId] : []))];
+          const blocks = new Set(placements.map(({ longreadBlockId }) => longreadBlockId));
+          await refreshPublishedAssessmentExercises(tx, organizationId, lessons, (old, blockId) => {
+            if (old.assessment.id !== id || !blocks.has(blockId)) return old;
+            const question = byId.get(old.id);
+            return question ? frozenAssessmentQuestionSchema.parse({ ...question, points: old.points, assessment }) : null;
+          }, actorId);
+        }
+        await tx.auditLog.create({ data: {
+          organizationId, actorId, action: `assessment.editor.${action}`, targetType: 'assessment', targetId: id,
+          summary: content.settings.title,
+          metadata: { revision, changedSettings, added, modified, archived, previousStatus: current.status, status: result.status },
+        } });
+      }
+      return result;
     }, { timeout: 15000 });
   }
 

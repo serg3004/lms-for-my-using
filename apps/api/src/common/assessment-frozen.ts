@@ -13,7 +13,10 @@ export const frozenAssessmentQuestionSchema = z.object({
 export type FrozenAssessmentQuestion = z.infer<typeof frozenAssessmentQuestionSchema>;
 export const frozenAnswerQuestionSchema = z.union([
   z.object({ question: frozenAssessmentQuestionSchema, revealAnswers: z.boolean(), blockId: z.guid() }).strict(),
-  z.object({ question: frozenAssessmentQuestionSchema, revealAnswers: z.literal(false) }).strict(),
+  z.object({ question: frozenAssessmentQuestionSchema, revealAnswers: z.literal(false), resultSettings: z.object({
+    passMessage: z.string().nullable(), failMessage: z.string().nullable(),
+    showCorrectAnswers: z.boolean(), policy: z.unknown(),
+  }).optional() }).strict(),
 ]);
 export const longreadResultMetadataSchema = z.object({ lessonId: z.guid(), version: z.number().int().min(1), title: z.string(), passingScore: z.number().int().min(0).max(100) }).strict();
 
