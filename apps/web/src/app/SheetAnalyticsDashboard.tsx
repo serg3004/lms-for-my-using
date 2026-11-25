@@ -36,7 +36,7 @@ function Empty({ children }: { children: ReactNode }) {
   return <span style={muted}>{children}</span>;
 }
 
-function Bar({ label, value, color, hint }: { label: string; value: number | null; color: string; hint?: string }) {
+export function Bar({ label, value, color, hint }: { label: string; value: number | null; color: string; hint?: string }) {
   return (
     <div style={{ display: 'grid', gap: 4 }}>
       <div style={{ display: 'flex', gap: 12, justifyContent: 'space-between' }}>
@@ -106,13 +106,12 @@ function LevelsBody({ data, widget, t }: { data: SheetAnalytics; widget: Analyti
   return <div style={{ display: 'grid', gap: 20 }}>{scales.map((scale) => <ScaleLevelBars key={scale.scaleKey} scale={scale} t={t} />)}</div>;
 }
 
-function TrendBody({ trend, widget, t }: { trend: SheetAnalyticsSummary['trend']; widget: AnalyticsWidget; t: Translate }) {
-  const metric = optionValue(widget, 'metric');
-  const title = t('sheetAnalytics.trendTitle', 'Completion over time');
-  const value = (row: SheetAnalyticsSummary['trend'][number]) => (metric === 'completion' ? (row.planned > 0 ? Math.round((row.completed / row.planned) * 100) : null) : metric === 'done' ? row.completed : row.averagePercentage);
-  const unit = metric === 'done' ? '' : '%';
-  const points = trend.flatMap((row) => { const v = value(row); return v === null ? [] : [{ weekStart: row.weekStart, value: v }]; });
-  if (points.length === 0) return <Empty>{t('sheetAnalytics.noTrend', 'No finished sessions in this period yet.')}</Empty>;
+export function AnalyticsTrendChart({ points, title, unit }: {
+  points: readonly { id: string; label: string; value: number }[];
+  title: string;
+  unit: string;
+}) {
+  if (!points.length) return null;
   const top = unit === '%' ? 100 : Math.max(1, ...points.map((row) => row.value));
   const width = 520;
   const height = 150;
@@ -121,19 +120,31 @@ function TrendBody({ trend, widget, t }: { trend: SheetAnalyticsSummary['trend']
   const y = (v: number) => 10 + (height - 34) * (1 - v / top);
   const line = points.map((row, index) => `${x(index)},${y(row.value)}`).join(' ');
   return (
+    <svg aria-label={`${title}: ${points.map((row) => `${row.label} ${row.value}${unit}`).join(', ')}`} role="img" style={{ width: '100%', height: 'auto' }} viewBox={`0 0 ${width} ${height}`}>
+      {[0, top / 2, top].map((mark) => (
+        <g key={mark}>
+          <line stroke="var(--color-border)" x1={left} x2={width - 10} y1={y(mark)} y2={y(mark)} />
+          <text fill="var(--color-text-muted)" fontSize="11" x={0} y={y(mark) + 4}>{Math.round(mark)}{unit}</text>
+        </g>
+      ))}
+      {points.length > 1 && <polyline fill="none" points={line} stroke="var(--color-primary)" strokeLinejoin="round" strokeWidth="2.5" />}
+      {points.map((row, index) => <circle cx={x(index)} cy={y(row.value)} fill="var(--color-primary)" key={row.id} r="4"><title>{`${row.label}: ${row.value}${unit}`}</title></circle>)}
+      <text fill="var(--color-text-muted)" fontSize="11" x={left} y={height - 6}>{points[0]!.label}</text>
+      <text fill="var(--color-text-muted)" fontSize="11" textAnchor="end" x={width - 10} y={height - 6}>{points[points.length - 1]!.label}</text>
+    </svg>
+  );
+}
+
+function TrendBody({ trend, widget, t }: { trend: SheetAnalyticsSummary['trend']; widget: AnalyticsWidget; t: Translate }) {
+  const metric = optionValue(widget, 'metric');
+  const title = t('sheetAnalytics.trendTitle', 'Completion over time');
+  const value = (row: SheetAnalyticsSummary['trend'][number]) => (metric === 'completion' ? (row.planned > 0 ? Math.round((row.completed / row.planned) * 100) : null) : metric === 'done' ? row.completed : row.averagePercentage);
+  const unit = metric === 'done' ? '' : '%';
+  const points = trend.flatMap((row) => { const v = value(row); return v === null ? [] : [{ weekStart: row.weekStart, value: v }]; });
+  if (points.length === 0) return <Empty>{t('sheetAnalytics.noTrend', 'No finished sessions in this period yet.')}</Empty>;
+  return (
     <>
-      <svg aria-label={`${title}: ${points.map((row) => `${weekLabel(row.weekStart)} ${row.value}${unit}`).join(', ')}`} role="img" style={{ width: '100%', height: 'auto' }} viewBox={`0 0 ${width} ${height}`}>
-        {[0, top / 2, top].map((mark) => (
-          <g key={mark}>
-            <line stroke="var(--color-border)" x1={left} x2={width - 10} y1={y(mark)} y2={y(mark)} />
-            <text fill="var(--color-text-muted)" fontSize="11" x={0} y={y(mark) + 4}>{Math.round(mark)}{unit}</text>
-          </g>
-        ))}
-        {points.length > 1 && <polyline fill="none" points={line} stroke="var(--color-primary)" strokeLinejoin="round" strokeWidth="2.5" />}
-        {points.map((row, index) => <circle cx={x(index)} cy={y(row.value)} fill="var(--color-primary)" key={row.weekStart} r="4"><title>{`${weekLabel(row.weekStart)}: ${row.value}${unit}`}</title></circle>)}
-        <text fill="var(--color-text-muted)" fontSize="11" x={left} y={height - 6}>{weekLabel(points[0]!.weekStart)}</text>
-        <text fill="var(--color-text-muted)" fontSize="11" textAnchor="end" x={width - 10} y={height - 6}>{weekLabel(points[points.length - 1]!.weekStart)}</text>
-      </svg>
+      <AnalyticsTrendChart points={points.map(({ weekStart, value }) => ({ id: weekStart, label: weekLabel(weekStart), value }))} title={title} unit={unit} />
       <table style={hidden}>
         <caption>{title}</caption>
         <thead><tr><th>{t('sheetAnalytics.week', 'Week of')}</th><th>{t('sheetAnalytics.fact', 'Done')}</th><th>{t('sheetAnalytics.average', 'Average score')}</th></tr></thead>

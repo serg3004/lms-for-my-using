@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Body, Controller, ForbiddenException, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 
 import { AuthGuard } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
@@ -13,6 +13,7 @@ import {
   recordAssessmentAnswerSchema,
   CreateAssessmentAttemptInput,
 } from './assessment-attempts.schemas.js';
+import { assessmentAnalyticsQuery } from './assessment-analytics.js';
 import { AssessmentResultsService } from './assessment-results.service.js';
 
 import { AssessmentManualReviewService, reviewQueueQuery, reviewAnswerInput } from './assessment-manual-review.service.js';
@@ -53,6 +54,25 @@ export class AssessmentAttemptsController {
   @CourseScope('param', 'assessmentId', 'assessment')
   listAssessmentResults(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest, @Query('placementId') placementId?: string) {
     return this.assessmentResultsService.listAssessmentResults(assessmentId, request.currentUser!, placementQuery.parse(placementId));
+  }
+
+  @Get('assessment-analytics/layout')
+  @Roles(...rolePolicies.assessmentAttemptsRead)
+  getAnalyticsLayout(@Req() request: AuthenticatedRequest) {
+    return this.assessmentResultsService.getAnalyticsLayout(request.currentUser!);
+  }
+
+  @Put('assessment-analytics/layout')
+  @Roles(...rolePolicies.assessmentAttemptsRead)
+  saveAnalyticsLayout(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    return this.assessmentResultsService.saveAnalyticsLayout(request.currentUser!, body);
+  }
+
+  @Get('assessments/:assessmentId/analytics')
+  @Roles(...rolePolicies.assessmentAttemptsRead)
+  @CourseScope('param', 'assessmentId', 'assessment')
+  getAssessmentAnalytics(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest, @Query() query: unknown) {
+    return this.assessmentResultsService.getAssessmentAnalytics(z.guid().parse(assessmentId), request.currentUser!, assessmentAnalyticsQuery.parse(query));
   }
 
   @Get('assessments/:assessmentId/report')

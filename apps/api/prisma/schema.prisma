@@ -533,6 +533,7 @@ model User {
   instructedCourses          CourseInstructor[]
   groupMemberships           GroupMember[]
   managedGroups              ManagerGroup[]
+  assessmentAnalyticsLayouts AssessmentAnalyticsLayout[]
   departmentMemberships      DepartmentMembership[]
   departmentManagers         DepartmentManager[]
   reportingLinesAsEmployee   ReportingLine[]            @relation("ReportingLineEmployee")
@@ -1382,6 +1383,16 @@ model AssessmentAnswerOption {
   @@index([organizationId])
   @@index([questionId, order])
   @@map("assessment_answer_options")
+}
+
+model AssessmentAnalyticsLayout {
+  organizationId String @map("organization_id") @db.Uuid
+  userId         String @map("user_id") @db.Uuid
+  cards          Json
+  user           User   @relation(fields: [userId, organizationId], references: [id, organizationId], onDelete: Cascade)
+
+  @@id([organizationId, userId])
+  @@map("assessment_analytics_layouts")
 }
 
 model AssessmentAttempt {

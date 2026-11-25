@@ -138,7 +138,7 @@ Owner: `packages/shared/src/permission-catalog.ts`; the route table is `apps/api
 | `checklist.results.delete` | checklists | `organization` | yes | `checklist.instance.read` | `checklistResultsDelete` | `admin` | 3 |
 | `checklist.review.write` | reviews | `team`, `department`, `organization` | yes | `checklist.instance.read` | `checklistReviewWrite` | `admin`, `manager`, `instructor`, `mentor` | 5 |
 | `checklist.score.recalculate` | reviews | `team`, `department`, `organization` | yes | `checklist.instance.read` | `checklistScoreRecalculate` | `admin`, `manager`, `instructor`, `mentor` | 1 |
-| `assessment.attempt.read` | reviews | `own`, `team`, `department`, `organization` | yes | - | `assessmentAttemptsRead` | `admin`, `manager`, `instructor` | 4 |
+| `assessment.attempt.read` | reviews | `own`, `team`, `department`, `organization` | yes | - | `assessmentAttemptsRead` | `admin`, `manager`, `instructor` | 7 |
 | `assessment.attempt.result.read` | reviews | `own`, `team`, `department`, `organization` | yes | - | `assessmentAttemptResultsRead` | `admin`, `manager`, `instructor`, `learner` | 1 |
 | `course.read` | courses | `own`, `organization` | yes | - | `coursesRead` | `admin`, `manager`, `instructor`, `learner` | 5 |
 | `course.edit` | courses | `own`, `organization` | yes | `course.read` | `coursesCreate` | `admin`, `instructor` | 6 |
