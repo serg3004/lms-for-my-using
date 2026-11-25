@@ -1,6 +1,7 @@
 import { lazy } from 'react';
 import { Navigate, Outlet, Route } from 'react-router-dom';
 
+const ManagerAssessmentAnalyticsPage = lazy(() => import('../assessment-builder/AssessmentAnalyticsPage.js').then((m) => ({ default: m.ManagerAssessmentAnalyticsPage })));
 const ManagerDashboardPage = lazy(() => import('../ManagerDashboardPage.js').then((m) => ({ default: m.ManagerDashboardPage })));
 const ManagerTeamPage = lazy(() => import('../ManagerTeamPage.js').then((m) => ({ default: m.ManagerTeamPage })));
 const ManagerOverduePage = lazy(() => import('../ManagerOverduePage.js').then((m) => ({ default: m.ManagerOverduePage })));
@@ -17,6 +18,8 @@ export function ManagerRoutes() {
       <Route path="team" element={<ManagerTeamPage />} />
       <Route path="overdue" element={<ManagerOverduePage />} />
       <Route path="reports/courses/*" element={<ManagerCourseAnalyticsPage />} />
+      <Route path="reports/assessments" element={<ManagerAssessmentAnalyticsPage />} />
+      <Route path="reports/assessments/:assessmentId" element={<ManagerAssessmentAnalyticsPage />} />
       <Route path="reports" element={<ManagerReportsPage />} />
       <Route path="checklists" element={<ManagerChecklistsPage />} />
       <Route path="checklists/sheets" element={<ManagerSheetAnalyticsPage />} />

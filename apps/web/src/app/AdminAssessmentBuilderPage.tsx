@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { AdminPageHeader, AdminPageLayout, ConfirmDialog, type AdminNavItem } from '../shared/adminPage.js';
 import { Badge, Button, Menu, PageState, SearchInput, Toolbar, type Column } from '../shared/ui.js';
@@ -126,6 +127,8 @@ export function AdminAssessmentBuilderPage() {
         />
       }
     />
+
+    <Link to="/admin/assessments/analytics">{t('assessmentAnalytics.title')}</Link>
 
     {statusError && (
       <div className="ui-state ui-state--error admin-inline-banner" role="alert">

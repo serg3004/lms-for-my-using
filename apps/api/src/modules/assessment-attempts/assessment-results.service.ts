@@ -9,6 +9,7 @@ import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import type { UserRole } from '../auth/public.js';
 import { isOrgWideGrant } from '../auth/public.js';
+import { assessmentAnalyticsCards, assessmentAnalyticsSelect, summarizeAssessment, type AssessmentAnalyticsAnswer, type AssessmentAnalyticsQuery } from './assessment-analytics.js';
 import { attemptScope } from './attempt-scope.js';
 import { ManagerTeamScope, isManagerTeamScoped, normalizeActor } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
@@ -240,6 +241,70 @@ export class AssessmentResultsService {
       }) : [];
     const effective = policy.attemptPolicy ? effectiveAssessmentResult(policy.attemptPolicy, history, attempt.assessment.passingScore) : undefined;
     return this.toAttemptResult(attempt, effective, history.length);
+  }
+
+  async getAnalyticsLayout({ id, organizationId }: TeamScopeActor) {
+    const layout = await this.prisma.assessmentAnalyticsLayout.findUnique({
+      where: { organizationId_userId: { organizationId, userId: id } },
+      select: { cards: true },
+    });
+    return { cards: assessmentAnalyticsCards.safeParse(layout?.cards).data ?? [] };
+  }
+
+  async saveAnalyticsLayout({ id, organizationId }: TeamScopeActor, input: unknown) {
+    const cards = assessmentAnalyticsCards.parse(input);
+    await this.prisma.assessmentAnalyticsLayout.upsert({
+      where: { organizationId_userId: { organizationId, userId: id } },
+      create: { organizationId, userId: id, cards },
+      update: { cards },
+    });
+    return { cards };
+  }
+
+  async getAssessmentAnalytics(assessmentId: string, actor: TeamScopeActor, query: AssessmentAnalyticsQuery) {
+    const { organizationId } = actor;
+    const assessment = await this.ensureAssessmentExists(assessmentId, organizationId);
+    const period = query.from || query.to ? {
+      gte: query.from ? new Date(query.from) : undefined,
+      lt: query.to ? new Date(Date.parse(query.to) + 86_400_000) : undefined,
+    } : undefined;
+    const [attempts, legacyQuestions] = await Promise.all([
+      this.prisma.assessmentAttempt.findMany({
+        where: {
+          assessmentId, organizationId, status: 'completed', countsTowardResults: true, deletedAt: null,
+          ...attemptScope(this.teamScope, actor),
+          ...(period ? { OR: [{ completedAt: period }, { completedAt: null, createdAt: period }] } : {}),
+        },
+        orderBy: [{ completedAt: 'desc' }, { id: 'asc' }],
+        select: {
+          ...assessmentAnalyticsSelect,
+          user: { select: {
+            ...assessmentAnalyticsSelect.user.select,
+            groupMemberships: {
+              ...assessmentAnalyticsSelect.user.select.groupMemberships,
+              where: { organizationId, deletedAt: null, group: { deletedAt: null, ...this.teamScope.group(actor) } },
+            },
+          } },
+        },
+      }),
+      this.prisma.assessmentQuestion.findMany({
+        where: { assessmentId, organizationId },
+        select: { id: true, title: true, text: true, options: { select: { id: true, text: true, isCorrect: true } } },
+      }),
+    ]);
+    const summary = await summarizeAssessment(attempts, legacyQuestions, query, (attemptIds) =>
+      // Use the filtered and authorized attempt IDs. Aggregate repeated answers before transferring snapshots.
+      this.prisma.$queryRaw<AssessmentAnalyticsAnswer[]>`
+        SELECT answer.question_id AS "questionId", answer.is_correct AS "isCorrect",
+          answer.selected_option_id AS "selectedOptionId", answer.selected_option_ids AS "selectedOptionIds",
+          answer.frozen_question AS "frozenQuestion", COUNT(*)::integer AS count
+        FROM unnest(string_to_array(${attemptIds.join(',')}, ',')::uuid[]) WITH ORDINALITY AS attempt(id, position)
+        JOIN assessment_attempt_answers AS answer ON answer.attempt_id = attempt.id
+        WHERE answer.organization_id = ${organizationId}::uuid AND answer.deleted_at IS NULL
+        GROUP BY answer.question_id, answer.is_correct, answer.selected_option_id, answer.selected_option_ids, answer.frozen_question
+        ORDER BY MIN(attempt.position), answer.question_id
+      `);
+    return { title: assessment.title, ...summary };
   }
 
   async getAssessmentReport(assessmentId: string, actorInput: TeamScopeActor | string) {

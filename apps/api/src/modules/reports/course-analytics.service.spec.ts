@@ -93,7 +93,11 @@ describe('CourseAnalyticsService scope', () => {
   it('counts only attempts that count toward results', async () => {
     const { service, calls } = build();
     await service.getCourses(admin, {} as never);
-    expect(JSON.stringify(calls.find((call) => call.resource === 'assessmentAttempt')?.args.where)).toContain('"countsTowardResults":true');
+    expect(calls.find((call) => call.resource === 'assessmentAttempt')?.args.where).toMatchObject({
+      countsTowardResults: true,
+      longreadRevisionId: null,
+    });
+    expect(calls.find((call) => call.resource === 'assessmentPlacement')?.args.where).toMatchObject({ longreadBlockId: null });
   });
 
   it('does not reveal a course outside access: not found and no data query', async () => {

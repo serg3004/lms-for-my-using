@@ -6,6 +6,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 
 | Method | Path | Tag | Auth |
 |---|---|---|---|
+| `GET` | `/api/v1/assessment-analytics/layout` | `AssessmentAttempts` | `bearer` |
+| `PUT` | `/api/v1/assessment-analytics/layout` | `AssessmentAttempts` | `bearer` |
 | `GET` | `/api/v1/assessment-folders` | `AssessmentFolders` | `bearer` |
 | `POST` | `/api/v1/assessment-folders` | `AssessmentFolders` | `bearer` |
 | `POST` | `/api/v1/assessment-folders/bulk` | `AssessmentFolders` | `bearer` |
@@ -18,6 +20,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/assessments` | `Assessments` | `bearer` |
 | `GET` | `/api/v1/assessments/library` | `Assessments` | `bearer` |
 | `GET` | `/api/v1/assessments/standalone/mine` | `StandaloneAssessments` | `bearer` |
+| `GET` | `/api/v1/assessments/{assessmentId}/analytics` | `AssessmentAttempts` | `bearer` |
 | `GET` | `/api/v1/assessments/{assessmentId}/attempts` | `AssessmentAttempts` | `bearer` |
 | `POST` | `/api/v1/assessments/{assessmentId}/attempts` | `AssessmentAttempts` | `bearer` |
 | `POST` | `/api/v1/assessments/{assessmentId}/attempts/answer` | `AssessmentAttempts` | `bearer` |
