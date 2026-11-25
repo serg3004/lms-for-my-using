@@ -117,6 +117,11 @@ Canonical inventory — `.env.production.example` + current env validation.
 
 Preferred production mode — configured Redis. Решение владельца (DEC-INFRA-001, 2026-10-25): Redis обязателен; без него recurring-джобы (в т.ч. напоминания чек-листов) не исполняются. Нужны сервис Redis в Railway и `REDIS_URL` у `api`.
 
+Для крупных выгрузок по тестам нужен consumer очереди фоновых задач. Запустите существующий
+worker командой `pnpm --filter @lms/api jobs:worker` с теми же `REDIS_URL` и
+`BACKGROUND_JOBS_QUEUE`, что у API. Если consumer уже запущен с
+`BACKGROUND_JOBS_RUN_WORKER=true`, отдельный worker для выгрузок не нужен.
+
 Если Redis отсутствует, production startup допускается только через explicit emergency flag:
 
 ```text

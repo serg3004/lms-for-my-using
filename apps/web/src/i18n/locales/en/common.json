@@ -4284,6 +4284,16 @@
       "text": "Text"
     }
   },
+  "assessmentExport": {
+    "label": "Export",
+    "results": "Test results",
+    "questions": "Question analysis",
+    "folder": "Folder summary",
+    "download": "Download {{format}}",
+    "pending": "Preparing export…",
+    "ready": "Download file",
+    "error": "Could not export the report"
+  },
   "assessmentAnalytics": {
     "save": "Save",
     "title": "Assessment analytics",

@@ -4284,6 +4284,16 @@
       "text": "文本"
     }
   },
+  "assessmentExport": {
+    "label": "导出",
+    "results": "测试结果",
+    "questions": "题目分析",
+    "folder": "文件夹汇总",
+    "download": "下载 {{format}}",
+    "pending": "正在准备导出…",
+    "ready": "下载文件",
+    "error": "无法导出报告"
+  },
   "assessmentAnalytics": {
     "save": "保存",
     "title": "测验分析",

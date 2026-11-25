@@ -24,6 +24,15 @@ export const assessmentAnalyticsQuery = z.object({
 
 export type AssessmentAnalyticsQuery = z.infer<typeof assessmentAnalyticsQuery>;
 
+export function assessmentAnalyticsPeriod({ from, to }: AssessmentAnalyticsQuery): Prisma.AssessmentAttemptWhereInput {
+  if (!from && !to) return {};
+  const period = {
+    gte: from ? new Date(from) : undefined,
+    lt: to ? new Date(Date.parse(to) + 86_400_000) : undefined,
+  };
+  return { OR: [{ completedAt: period }, { completedAt: null, createdAt: period }] };
+}
+
 export const assessmentAnalyticsSelect = {
   id: true, userId: true, score: true, maxScore: true, percentage: true, passed: true,
   startedAt: true, completedAt: true, createdAt: true, courseId: true, placementId: true, longreadRevisionId: true,
@@ -44,7 +53,7 @@ type Attempt = Prisma.AssessmentAttemptGetPayload<{ select: typeof assessmentAna
 type Option = { id: string; text: string | null; isCorrect: boolean };
 type Question = { id: string; title: string; text: string | null; options: Option[] };
 
-export function analyticsPlace(attempt: Pick<Attempt, 'longreadRevisionId' | 'courseId' | 'placementId'>) {
+export function analyticsPlace(attempt: Pick<Attempt, 'longreadRevisionId' | 'courseId' | 'placementId'>): 'standalone' | 'course' | 'longread' {
   if (attempt.longreadRevisionId) return 'longread';
   return attempt.courseId || attempt.placementId ? 'course' : 'standalone';
 }
@@ -74,6 +83,7 @@ export async function summarizeAssessment(
   legacyQuestions: Question[],
   query: AssessmentAnalyticsQuery,
   loadAnswers: (attemptIds: string[]) => Promise<AssessmentAnalyticsAnswer[]>,
+  allRows = false,
 ) {
   const places = { standalone: 0, course: 0, longread: 0 };
   const distribution = Array<number>(10).fill(0);
@@ -112,8 +122,8 @@ export async function summarizeAssessment(
     selectedAttemptIds.push(attempt.id);
 
     const date = (attempt.completedAt ?? attempt.createdAt).toISOString().slice(0, 10);
-    if (count >= (query.page - 1) * pageSize && rows.length < pageSize) {
-      rows.push({ id: attempt.id, name, date, place, percentage: attempt.percentage, score: attempt.score, maxScore: attempt.maxScore, passed: attempt.passed });
+    if (allRows || (count >= (query.page - 1) * pageSize && rows.length < pageSize)) {
+      rows.push({ id: attempt.id, name, department: department?.name ?? null, date, place, percentage: attempt.percentage, score: attempt.score, maxScore: attempt.maxScore, passed: attempt.passed });
     }
     count++;
     passed += Number(attempt.passed);

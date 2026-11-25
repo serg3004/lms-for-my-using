@@ -4284,6 +4284,16 @@
       "text": "Текст"
     }
   },
+  "assessmentExport": {
+    "label": "Выгрузка",
+    "results": "Результаты теста",
+    "questions": "Анализ вопросов",
+    "folder": "Сводка по папке",
+    "download": "Скачать {{format}}",
+    "pending": "Готовим выгрузку…",
+    "ready": "Скачать файл",
+    "error": "Не удалось выгрузить отчёт"
+  },
   "assessmentAnalytics": {
     "save": "Сохранить",
     "title": "Аналитика тестов",

@@ -8,6 +8,7 @@ import { toBackgroundJob } from './background-job.backend.js';
 import type {
   BackgroundJobData,
   BackgroundJobHandler,
+  BackgroundJobResult,
   EnqueuedBackgroundJob,
   EnqueueBackgroundJobOptions,
   RecurringBackgroundJobOptions,
@@ -96,6 +97,17 @@ export class BullMqBackgroundJobBackend implements BackgroundJobBackend {
   async close(): Promise<void> {
     await this.worker?.close();
     await Promise.all([this.queue.close(), this.deadLetterQueue.close()]);
+  }
+
+  async getResult(name: string, id: string): Promise<BackgroundJobResult | null> {
+    const job = await this.queue.getJob(id);
+    if (!job || job.name !== name || Date.now() - job.timestamp >= 24 * 60 * 60_000) return null;
+    const state = await job.getState();
+    return {
+      data: job.data.data,
+      state: state === 'completed' || state === 'failed' ? state : 'pending',
+      result: state === 'completed' ? job.returnvalue : undefined,
+    };
   }
 
   async getOperationalStatus() {

@@ -7,6 +7,9 @@ import type { PermissionActionKey } from '@lms/shared/permission-catalog';
  */
 export const permissionRouteMap: Readonly<Record<string, readonly PermissionActionKey[]>> = {
   'AssessmentAttemptsController.createAttempt': ['assessment.attempt.start'],
+  'AssessmentAttemptsController.downloadAnalyticsExport': ['assessment.attempt.read'],
+  'AssessmentAttemptsController.getAnalyticsExportStatus': ['assessment.attempt.read'],
+  'AssessmentAttemptsController.startAnalyticsExport': ['assessment.attempt.read'],
   'AssessmentAttemptsController.getAnalyticsLayout': ['assessment.attempt.read'],
   'AssessmentAttemptsController.getAssessmentAnalytics': ['assessment.attempt.read'],
   'AssessmentAttemptsController.getAssessmentReport': ['assessment.attempt.read'],
