@@ -275,13 +275,13 @@ export class CourseAnalyticsService {
 
     const [lessons, assessments, progress, attempts, certificates] = await Promise.all([
       this.prisma.lesson.findMany({ where: { organizationId, courseId: { in: pairCourseIds }, deletedAt: null, status: 'published' }, select: { id: true, courseId: true } }),
-      this.prisma.assessmentPlacement.findMany({ where: { organizationId, courseId: { in: pairCourseIds }, deletedAt: null, assessment: { deletedAt: null, status: 'published' } }, select: { assessmentId: true, courseId: true } }),
+      this.prisma.assessmentPlacement.findMany({ where: { organizationId, longreadBlockId: null, courseId: { in: pairCourseIds }, deletedAt: null, assessment: { deletedAt: null, status: 'published' } }, select: { assessmentId: true, courseId: true } }),
       this.prisma.progress.findMany({
         where: { organizationId, courseId: { in: pairCourseIds }, userId: { in: userIds }, deletedAt: null },
         select: { courseId: true, userId: true, lessonId: true, status: true, createdAt: true, completedAt: true },
       }),
       this.prisma.assessmentAttempt.findMany({
-        where: { organizationId, userId: { in: userIds }, deletedAt: null, countsTowardResults: true, courseId: { in: pairCourseIds }, assessment: { deletedAt: null, status: 'published' } },
+        where: { organizationId, userId: { in: userIds }, deletedAt: null, countsTowardResults: true, longreadRevisionId: null, courseId: { in: pairCourseIds }, assessment: { deletedAt: null, status: 'published' } },
         select: { assessmentId: true, courseId: true, userId: true, status: true, percentage: true, score: true, passed: true, startedAt: true, completedAt: true },
       }),
       this.prisma.certificate.findMany({

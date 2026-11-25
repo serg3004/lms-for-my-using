@@ -2145,9 +2145,26 @@ for older assessments or standalone mode for assessments created without a cours
 Explicit standalone submission uses JSON `null`, and timed start uses `?placementId=standalone`.
 An explicit course or lesson placement uses its UUID. Exercise blocks use the longread endpoints.
 Attempts and results can be filtered by `?placementId=<uuid>` or `?placementId=standalone`.
-Omitting the filter returns results across places. Course progress, course analytics and certificate
-issuance attribute an attempt to its recorded course. Standalone attempts have no course and
-do not issue course certificates.
+Omitting the filter returns results across places. Course analytics uses attempts recorded
+against the course and excludes attempts tied to a longread revision. Course progress and
+certificate issuance use the recorded course. Standalone attempts have no course and do
+not issue course certificates.
+
+## Assessment analytics (PR 533)
+
+`GET /assessments/:assessmentId/analytics` uses the assessment-attempt read policy and
+the existing course and manager team scopes. Only completed attempts counted toward
+results are included. Query filters are `place` (`all`, `standalone`, `course`, `longread`),
+`from` and `to` (inclusive UTC dates), `departmentId`, `groupId`, `userId`, and `attemptId`.
+`page` selects a 25-row page of attempt details. Card totals cover all matching attempts.
+The place counters apply the other filters before the place selection, so the combined
+counter is the sum of the three places. An attempt tied to a longread revision is
+counted under longread even when the revision belongs to a course.
+
+`GET /assessment-analytics/layout` returns `{ cards }` for the caller.
+`PUT /assessment-analytics/layout` replaces it with the submitted ordered array of
+unique `{ id, enabled }` entries and returns `{ cards }`. Both routes use the same
+assessment-attempt read policy. The layout is scoped by user and organization.
 
 ## Standalone assessment assignments (PR 523)
 

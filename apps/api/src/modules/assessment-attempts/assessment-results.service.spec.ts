@@ -1,6 +1,8 @@
+import { jest } from '@jest/globals';
 import { ForbiddenException } from '@nestjs/common';
 
 import { PrismaService } from '../../database/prisma.service.js';
+import { assessmentAnalyticsQuery } from './assessment-analytics.js';
 import { AssessmentResultsService } from './assessment-results.service.js';
 
 const organizationId = '11111111-1111-1111-1111-111111111111';
@@ -67,6 +69,60 @@ function createAttempt(userIdOverride = userId, showCorrectAnswers = false) {
 }
 
 describe('AssessmentResultsService', () => {
+  it('splits result attempts by place and calculates analytics within the selected place', async () => {
+    const user = { firstName: 'Learner', lastName: 'User', departmentMemberships: [], groupMemberships: [] };
+    const base = {
+      id: attemptId, userId, user, score: 8, maxScore: 10, percentage: 80, passed: true,
+      startedAt: new Date(now.getTime() - 60_000), completedAt: now, createdAt: now,
+      courseId: null, placementId: null, longreadRevisionId: null,
+      answers: [{ questionId: 'question', isCorrect: true, selectedOptionId: 'right', selectedOptionIds: null, frozenQuestion: null }],
+    };
+    const wrongOptionId = '77777777-7777-7777-7777-777777777777';
+    const attempts = [
+      base,
+      { ...base, id: 'course-attempt', courseId: 'course', score: 2, percentage: 20, passed: false,
+        answers: [{ ...base.answers[0]!, isCorrect: false, selectedOptionId: wrongOptionId, frozenQuestion: {
+          revealAnswers: false,
+          question: { title: 'Original question', text: null, points: 1,
+            options: [{ id: wrongOptionId, text: 'Original distractor', imageUrl: null, isCorrect: false, order: 0 }] },
+        } }] },
+      { ...base, id: 'longread-attempt', courseId: 'course', longreadRevisionId: 'revision' },
+    ];
+    const findMany = jest.fn(async () => attempts);
+    const loadAnswers = jest.fn(async (_query: TemplateStringsArray, ids: string) =>
+      attempts.filter(({ id }) => ids.split(',').includes(id))
+        .flatMap(({ answers }) => answers.map((answer) => ({ ...answer, count: 1 }))));
+    const service = new AssessmentResultsService({
+      $queryRaw: loadAnswers,
+      assessment: { findFirst: async () => ({ title: 'Final test' }) },
+      assessmentAttempt: { findMany },
+      assessmentQuestion: { findMany: async () => [{
+        id: 'question', title: 'Question', text: null, options: [{ id: wrongOptionId, text: 'Edited distractor', isCorrect: false }],
+      }] },
+    } as unknown as PrismaService);
+    const actor = { id: userId, organizationId, roles: ['manager' as const] };
+
+    const course = await service.getAssessmentAnalytics(assessmentId, actor, assessmentAnalyticsQuery.parse({ place: 'course' }));
+    expect(course).toMatchObject({
+      count: 1, passed: 0, average: 20, duration: 60, places: { standalone: 1, course: 1, longread: 1 },
+      rows: [{ id: 'course-attempt' }],
+      questions: [{ id: 'question', text: 'Original question', total: 1, correct: 0, trap: { text: 'Original distractor', count: 1 } }],
+    });
+    expect(loadAnswers).toHaveBeenLastCalledWith(expect.anything(), 'course-attempt', organizationId);
+    expect(findMany).toHaveBeenLastCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        organizationId, assessmentId, status: 'completed', countsTowardResults: true, deletedAt: null,
+        user: { groupMemberships: { some: expect.objectContaining({
+          organizationId, group: expect.objectContaining({ managers: { some: expect.objectContaining({ managerId: userId }) } }),
+        }) } },
+      }),
+    }));
+
+    const all = await service.getAssessmentAnalytics(assessmentId, actor, assessmentAnalyticsQuery.parse({}));
+    expect(all.count).toBe(Object.values(all.places).reduce((sum, count) => sum + count, 0));
+    expect(all).toMatchObject({ count: 3, passed: 2, average: 60 });
+  });
+
   it('returns own attempt result with answer summary', async () => {
     const prisma = {
       assessmentAttempt: {

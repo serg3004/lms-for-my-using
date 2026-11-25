@@ -6,6 +6,13 @@
 >
 > **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
 
+## Assessment analytics layout migration (PR 533)
+
+Deploy `20261125090000_assessment_analytics_layouts` before the API. It adds the
+`assessment_analytics_layouts` table for personal card settings. Existing records do
+not require backfill. Keep the table on application rollback so saved layouts are
+available after redeployment.
+
 ## Assessment question bank migrations (PR 530)
 
 Deploy `20261124160000_freeze_assessment_answers` before
