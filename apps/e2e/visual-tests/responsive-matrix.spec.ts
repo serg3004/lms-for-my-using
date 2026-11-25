@@ -1203,6 +1203,40 @@ for (const width of widths) {
       }
     });
 
+    // PR 508: dictation is on (a fake speech recognition: the real one needs the internet and a microphone): the phrase heard so far and a refused microphone.
+    test('keeps the dictation into the comment responsive', async ({ page }) => {
+      await page.addInitScript(() => {
+        type Handlers = { onresult?: (event: unknown) => void; onerror?: (event: { error: string }) => void; onend?: () => void };
+        const state: { last: Handlers | null } = { last: null };
+        class FakeRecognition implements Handlers {
+          onresult?: Handlers['onresult']; onerror?: Handlers['onerror']; onend?: Handlers['onend'];
+          constructor() { state.last = this; }
+          start() {}
+          stop() { this.onend?.(); }
+          abort() {}
+        }
+        Object.assign(window, {
+          SpeechRecognition: FakeRecognition, webkitSpeechRecognition: FakeRecognition,
+          __say: (text: string, isFinal: boolean) => { const list = [Object.assign([{ transcript: text }], { isFinal, length: 1 })]; state.last?.onresult?.({ resultIndex: 0, results: Object.assign(list, { length: 1 }) }); },
+          __fail: (error: string) => { state.last?.onerror?.({ error }); state.last?.onend?.(); },
+        });
+      });
+      await installInstructorConductMocks(page, true);
+      await page.clock.setFixedTime(new Date('2026-02-01T09:10:00.000Z'));
+      await page.goto('/instructor/checklists/sessions');
+      await page.getByRole('button', { name: /Leo Learner/ }).click();
+      await page.getByRole('button', { name: 'Диктовать' }).first().click();
+      await page.evaluate(() => { const w = window as unknown as { __say: (text: string, isFinal: boolean) => void }; w.__say('Порядок на кассе', true); w.__say('чек не выдали', false); });
+      await expect(page.getByRole('button', { name: 'Остановить' })).toBeVisible();
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await expectVisualMatch(page, `dictation-recording-${width}`);
+      await page.evaluate(() => (window as unknown as { __fail: (code: string) => void }).__fail('not-allowed'));
+      await expect(page.getByRole('alert').filter({ hasText: 'Нет доступа к микрофону' })).toBeVisible();
+      await expectNoPageOverflow(page);
+      await expectVisualMatch(page, `dictation-refused-${width}`);
+    });
+
     for (const role of ['learner', 'manager'] as const) {
       test(`keeps the ${role} assigned-observer block and conduct screen responsive`, async ({ page }) => {
         if (role === 'learner') await installLearnerMocks(page);
