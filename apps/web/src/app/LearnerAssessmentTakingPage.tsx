@@ -11,6 +11,7 @@ import { RichText, plainText } from '../shared/RichText.js';
 import { useTranslation } from 'react-i18next';
 
 import {
+  apiRequest,
   AssessmentAttemptResult,
   AssessmentSummary,
   createAssessmentAttempt,
@@ -74,6 +75,13 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
     async () => {
       if (preview) return { assessment: preview.assessment, questions: preview.questions };
       const assessment = await getAssessment(assessmentId);
+      if (!assessment.bankSampleSize) {
+        // Check compatibility before starting the timer or persisting an attempt.
+        const questions = await apiRequest<QuestionWithOptions[]>(
+          `/assessments/${encodeURIComponent(assessmentId)}/quiz${assessmentTokenQuery(token)}`,
+        );
+        if (questions.some((question) => !supportsTakingQuestion(question))) return { assessment, questions };
+      }
       const startedAttempt = await startAssessmentAttempt<QuestionWithOptions>(assessmentId, token, true);
       if (!startedAttempt.questions) throw new Error('Missing attempt questions');
       return { assessment, questions: startedAttempt.questions, startedAttempt };
