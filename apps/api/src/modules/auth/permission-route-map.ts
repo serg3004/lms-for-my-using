@@ -7,6 +7,8 @@ import type { PermissionActionKey } from '@lms/shared/permission-catalog';
  */
 export const permissionRouteMap: Readonly<Record<string, readonly PermissionActionKey[]>> = {
   'AssessmentAttemptsController.createAttempt': ['assessment.attempt.start'],
+  'AssessmentAttemptsController.getAnalyticsLayout': ['assessment.attempt.read'],
+  'AssessmentAttemptsController.getAssessmentAnalytics': ['assessment.attempt.read'],
   'AssessmentAttemptsController.getAssessmentReport': ['assessment.attempt.read'],
   'AssessmentAttemptsController.getAttempt': ['assessment.attempt.read'],
   'AssessmentAttemptsController.getAttemptResult': ['assessment.attempt.result.read'],
@@ -16,6 +18,7 @@ export const permissionRouteMap: Readonly<Record<string, readonly PermissionActi
   'AssessmentAttemptsController.reviewQueue': ['assessment.answer.review'],
   'AssessmentAttemptsController.reviewAnswer': ['assessment.answer.review'],
   'AssessmentAttemptsController.recordAnswer': ['assessment.attempt.start'],
+  'AssessmentAttemptsController.saveAnalyticsLayout': ['assessment.attempt.read'],
   'AssessmentAttemptsController.startAttempt': ['assessment.attempt.start'],
   'AssessmentQuestionsController.sampleBankQuestions': ['assessment.question.edit'],
   'AssessmentQuestionsController.getBankQuestion': ['assessment.question.edit'],

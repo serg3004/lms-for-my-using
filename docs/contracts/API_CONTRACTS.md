@@ -2145,9 +2145,10 @@ for older assessments or standalone mode for assessments created without a cours
 Explicit standalone submission uses JSON `null`, and timed start uses `?placementId=standalone`.
 An explicit course or lesson placement uses its UUID. Exercise blocks use the longread endpoints.
 Attempts and results can be filtered by `?placementId=<uuid>` or `?placementId=standalone`.
-Omitting the filter returns results across places. Course progress, course analytics and certificate
-issuance attribute an attempt to its recorded course. Standalone attempts have no course and
-do not issue course certificates.
+Omitting the filter returns results across places. Course analytics uses attempts recorded
+against the course and excludes attempts tied to a longread revision. Course progress and
+certificate issuance use the recorded course. Standalone attempts have no course and do
+not issue course certificates.
 
 ## Assessment analytics (PR 533)
 
