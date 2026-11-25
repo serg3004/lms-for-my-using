@@ -42,6 +42,11 @@ async function render(props: Parameters<typeof Harness>[0] = {}) {
 const dictate = async () => { await act(async () => { (host.querySelector('#note-dictation') as HTMLButtonElement).click(); }); };
 const say = async (text: string) => { await act(async () => { FakeRecognition.last?.say(text); }); };
 
+// jsdom has no layout; the editor asks the caret's node or range for rectangles when it scrolls it into view.
+for (const proto of [Range.prototype, Text.prototype] as { getClientRects?: () => unknown }[]) {
+  if (!proto.getClientRects) proto.getClientRects = () => [];
+}
+
 beforeEach(async () => {
   changes.length = 0;
   FakeRecognition.last = undefined;
