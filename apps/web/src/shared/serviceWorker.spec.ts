@@ -112,6 +112,6 @@ describe('manifest and files for installing', () => {
     expect(headers).toContain("script-src 'self';");
     expect(headers).not.toContain("script-src 'self' 'unsafe-inline'");
     expect(headers).toContain('camera=(self)');
-    expect(headers).toContain('microphone=()');
+    expect(headers).toContain('microphone=(self)');
   });
 });

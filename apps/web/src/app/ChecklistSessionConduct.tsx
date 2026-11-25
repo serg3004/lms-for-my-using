@@ -765,6 +765,7 @@ function CriterionCard({
           disabled={!editable}
           onChange={onCommentChange}
           maxLength={1000}
+          dictation
         />
         <Button
           type="button"

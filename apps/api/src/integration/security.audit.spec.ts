@@ -202,11 +202,11 @@ describe('Security audit', () => {
       expect(response.headers['referrer-policy']).toBe('no-referrer');
     });
 
-    it('sets Permissions-Policy restricting camera, microphone and geolocation', async () => {
+    it('sets Permissions-Policy restricting camera and geolocation and allowing the microphone to the page itself (PR 508)', async () => {
       const response = await makeRequest(`${getAppUrl(app)}/api/v1/health`);
 
       expect(response.headers['permissions-policy']).toContain('camera=()');
-      expect(response.headers['permissions-policy']).toContain('microphone=()');
+      expect(response.headers['permissions-policy']).toContain('microphone=(self)');
       expect(response.headers['permissions-policy']).toContain('geolocation=()');
     });
 

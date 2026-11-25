@@ -4207,6 +4207,24 @@
     "requiredFields": "Fill in and save the required feedback fields.",
     "item": "Item {{number}}"
   },
+  "dictation": {
+    "start": "Dictate",
+    "stop": "Stop",
+    "language": "Dictation language",
+    "listening": "Recording is on, speak",
+    "hint": "The speech is processed by your browser (Google or Apple); we do not keep the sound.",
+    "retry": "Try again",
+    "errorDenied": "No access to the microphone. Allow it in the site settings of your browser (the lock icon next to the address) and press \"Try again\".",
+    "errorNoMicrophone": "No microphone was found. Connect one and press \"Try again\".",
+    "errorNetwork": "Speech recognition needs the internet and could not connect. Press \"Try again\".",
+    "errorLanguage": "Your browser cannot recognise this language. Pick another one or type the text.",
+    "errorFailed": "Dictation stopped because of an error. Press \"Try again\" or type the text.",
+    "silence": "Nothing was heard. Check the microphone and speak closer to it.",
+    "lang_ru": "Русский",
+    "lang_en": "English",
+    "lang_kk": "Қазақша",
+    "lang_zh": "中文"
+  },
   "richDescription": {
     "title": "Text formatting",
     "hint": "Select text, then right-click, long-press or press Shift+F10. Ctrl+B/I/U changes emphasis.",
