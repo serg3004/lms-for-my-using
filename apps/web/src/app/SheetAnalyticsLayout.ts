@@ -1,7 +1,7 @@
 import type { AnalyticsDashboard, AnalyticsDashboardLayout, AnalyticsDashboardSet, AnalyticsWidget, AnalyticsWidgetId, AnalyticsWidgetSize } from '../shared/api/manager.js';
 
 /** PR 520: the dashboards of the analytics page and the options of their cards. Pure helpers: the page only keeps and saves the set. */
-export const WIDGET_IDS: readonly AnalyticsWidgetId[] = ['kpi', 'levels', 'donut', 'trend', 'depts', 'weak', 'heat', 'people'];
+export const WIDGET_IDS: readonly AnalyticsWidgetId[] = ['kpi', 'levels', 'donut', 'trend', 'depts', 'weak', 'heat', 'people', 'map'];
 export const MAX_DASHBOARDS = 10;
 export const MAIN_DASHBOARD_ID = 'main';
 
@@ -54,7 +54,7 @@ export function removeDashboard(set: AnalyticsDashboardSet, id: string): Analyti
   return { ...set, dashboards, current: set.current === id ? dashboards[0]!.id : set.current };
 }
 
-export const defaultSize = (id: AnalyticsWidgetId): AnalyticsWidgetSize => (id === 'kpi' ? 'L' : 'M');
+export const defaultSize = (id: AnalyticsWidgetId): AnalyticsWidgetSize => (id === 'kpi' || id === 'map' ? 'L' : 'M');
 
 /** Turns a card on (at the end) or off. */
 export function toggleWidget(widgets: readonly AnalyticsWidget[], id: AnalyticsWidgetId): AnalyticsWidget[] {
@@ -90,6 +90,7 @@ export const WIDGET_OPTIONS: Partial<Record<AnalyticsWidgetId, WidgetOption[]>> 
   depts: [{ key: 'metric', kind: 'select', label: ['sheetAnalytics.optMetric', 'Metric'], defaults: ['completion'], choices: [{ value: 'completion', label: ['sheetAnalytics.completion', 'Completion'] }, { value: 'average', label: ['sheetAnalytics.average', 'Average score'] }] }],
   weak: [{ key: 'limit', kind: 'select', label: ['sheetAnalytics.optLimit', 'How many'], defaults: ['5'], choices: [{ value: '5', label: ['sheetAnalytics.optTop5', '5'] }, { value: '10', label: ['sheetAnalytics.optTop10', '10'] }] }],
   heat: [{ key: 'days', kind: 'select', label: ['sheetAnalytics.optDays', 'Days'], defaults: ['all'], choices: [{ value: 'all', label: ['sheetAnalytics.optAllDays', 'Every day'] }, { value: 'work', label: ['sheetAnalytics.optWorkDays', 'Monday to Friday'] }] }],
+  map: [{ key: 'view', kind: 'select', label: ['sheetAnalytics.optMapView', 'View'], defaults: ['points'], choices: [{ value: 'points', label: ['sheetAnalytics.optMapPoints', 'Points by result'] }, { value: 'density', label: ['sheetAnalytics.optMapDensity', 'Density'] }] }],
   people: [
     { key: 'metric', kind: 'select', label: ['sheetAnalytics.optMetric', 'Metric'], defaults: ['average'], choices: [{ value: 'average', label: ['sheetAnalytics.average', 'Average score'] }, { value: 'sessions', label: ['sheetAnalytics.optChecks', 'Number of checks'] }] },
     { key: 'limit', kind: 'select', label: ['sheetAnalytics.optLimit', 'How many'], defaults: ['5'], choices: [{ value: '5', label: ['sheetAnalytics.optTop5', '5'] }, { value: '10', label: ['sheetAnalytics.optTop10', '10'] }] },

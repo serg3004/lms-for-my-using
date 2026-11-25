@@ -2,7 +2,7 @@ import { plainText } from '@lms/shared/rich-text';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 
-import type { AnalyticsWidget, AnalyticsWidgetId, SheetAnalytics, SheetAnalyticsSummary } from '../shared/api/manager.js';
+import type { AnalyticsWidget, AnalyticsWidgetId, SheetAnalytics, SheetAnalyticsQuery, SheetAnalyticsSummary } from '../shared/api/manager.js';
 import { StatCard, StatsGrid } from '../shared/ui.js';
 import { figureChange, optionValue, optionValues } from './SheetAnalyticsLayout.js';
 import { percent, ScaleLevelBars } from './SheetAnalyticsParts.js';
@@ -312,10 +312,13 @@ export type WidgetBodyProps = {
   onPickEmployee: (id: string) => void;
   /** PR 520: opens the results behind a pie sector or a heat map cell (`result:good`, `slot:2:4`). */
   onSlice: (slice: string) => void;
+  /** PR 521: the filters of the page, for the map card, which loads its own points. */
+  placesQuery: Omit<SheetAnalyticsQuery, 'groupByField'>;
+  sessionPath?: (sessionId: string) => string;
 };
 
 /** The body of one widget. */
-export function WidgetBody({ widget, data, t, detailsHref, sheetTitles, onPickDepartment, onPickEmployee, onSlice }: WidgetBodyProps & { widget: AnalyticsWidget }) {
+export function WidgetBody({ widget, data, t, detailsHref, sheetTitles, onPickDepartment, onPickEmployee, onSlice }: Omit<WidgetBodyProps, 'placesQuery' | 'sessionPath'> & { widget: AnalyticsWidget }) {
   const summary = data.summary;
   switch (widget.id) {
     case 'kpi': return <KpiBody data={data} t={t} widget={widget} />;
@@ -326,6 +329,8 @@ export function WidgetBody({ widget, data, t, detailsHref, sheetTitles, onPickDe
     case 'weak': return <WeakBody detailsHref={detailsHref} sheetTitles={sheetTitles} t={t} weak={summary?.weak ?? []} widget={widget} />;
     case 'heat': return <HeatBody heat={summary?.heat ?? []} onSlice={onSlice} t={t} widget={widget} />;
     case 'people': return <PeopleBody onPick={onPickEmployee} people={summary?.people ?? []} t={t} widget={widget} />;
+    // PR 521: the map loads its own points; the grid draws it (it needs the filters of the page, not the summary).
+    case 'map': return null;
   }
 }
 
@@ -338,4 +343,5 @@ export const WIDGET_TITLES: Record<AnalyticsWidgetId, [string, string]> = {
   weak: ['sheetAnalytics.weakTitle', 'Weak spots'],
   heat: ['sheetAnalytics.heatTitle', 'Heat map: weekday and hour'],
   people: ['sheetAnalytics.peopleTitle', 'Employee ranking'],
+  map: ['sheetAnalytics.mapTitle', 'Check map'],
 };

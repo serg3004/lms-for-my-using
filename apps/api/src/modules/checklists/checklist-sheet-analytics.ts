@@ -168,6 +168,7 @@ export function analyticsEmployeeFilter(organizationId: string, userScope: Prism
 
 const MAX_INSTANCES = 5000;
 const SLICE_PAGE = 100;
+const MAP_POINTS = 1000;
 
 /** Plain helper (built in ChecklistsService's constructor body, not injected). */
 export class ChecklistSheetAnalytics {
@@ -198,28 +199,36 @@ export class ChecklistSheetAnalytics {
       .sort((a, b) => b.sessionsInPeriod - a.sessionsInPeriod || a.title.localeCompare(b.title));
   }
 
-  /**
-   * PR 520: the finished results behind one slice of the dashboard: a result band of the pie, or a weekday and two-hour block of the heat map
-   * (in the viewer's time). Same sheets, period and employee scope as the overview; newest first, up to 100 rows.
-   */
-  async slice(organizationId: string, actor: FolderActor, userScope: Prisma.UserWhereInput, query: ChecklistAnalyticsSliceQuery) {
+  /** The sheets, period and employee scope a dashboard query reads: the same for the overview, a slice and the map. */
+  private async scope(organizationId: string, actor: FolderActor, userScope: Prisma.UserWhereInput, query: ChecklistSheetAnalyticsQuery) {
     const [accessibleSheets, fieldScope] = await Promise.all([
       this.accessible(organizationId, actor),
       analyticsFieldFilter(this.prisma, organizationId, actor.roles, query.fieldFilters),
     ]);
     const wanted = query.checklistIds?.length ? new Set(query.checklistIds) : null;
     const sheets = accessibleSheets.filter((sheet) => !wanted || wanted.has(sheet.id));
+    return {
+      sheets,
+      titles: new Map(sheets.map((sheet) => [sheet.id, sheet.title])),
+      sheetIds: sheets.map((sheet) => sheet.id),
+      from: new Date(query.from),
+      to: new Date(query.to),
+      employeeFilter: analyticsEmployeeFilter(organizationId, query.fieldFilters ? { AND: [userScope, fieldScope] } : userScope, query),
+    };
+  }
+
+  /**
+   * PR 520: the finished results behind one slice of the dashboard: a result band of the pie, or a weekday and two-hour block of the heat map
+   * (in the viewer's time). Same sheets, period and employee scope as the overview; newest first, up to 100 rows.
+   */
+  async slice(organizationId: string, actor: FolderActor, userScope: Prisma.UserWhereInput, query: ChecklistAnalyticsSliceQuery) {
+    const { sheets, titles, sheetIds, from, to, employeeFilter } = await this.scope(organizationId, actor, userScope, query);
     const empty = { total: 0, items: [] as never[], truncated: false, period: { from: query.from, to: query.to } };
     if (sheets.length === 0) return empty;
-    const titles = new Map(sheets.map((sheet) => [sheet.id, sheet.title]));
-    const from = new Date(query.from);
-    const to = new Date(query.to);
-    const employeeFilter = analyticsEmployeeFilter(organizationId, query.fieldFilters ? { AND: [userScope, fieldScope] } : userScope, query);
     const instanceSelect = {
       id: true, checklistId: true, status: true, percentage: true, scored: true, completedAt: true,
       user: { select: { firstName: true, lastName: true, departmentMemberships: { where: { organizationId, isPrimary: true, effectiveTo: null }, take: 1, select: { department: { select: { name: true } } } } } },
     } as const;
-    const sheetIds = sheets.map((sheet) => sheet.id);
     const [sessions, selfDone] = await Promise.all([
       this.prisma.checklistSession.findMany({
         where: { organizationId, deletedAt: null, status: 'completed', scheduledAt: { gte: from, lte: to }, instance: { deletedAt: null, checklistId: { in: sheetIds }, user: employeeFilter } },
@@ -251,6 +260,44 @@ export class ChecklistSheetAnalytics {
       })),
       truncated: sessions.length >= MAX_INSTANCES || selfDone.length >= MAX_INSTANCES,
       period: { from: query.from, to: query.to },
+    };
+  }
+
+  /**
+   * PR 521: the finished checks that have a place (geolocation is taken at the start and the end of a session only, and only where the
+   * sheet's policy asks for it and the person allowed it). The end point wins over the start point. Same sheets, period and employee
+   * scope as the overview; `withoutPlace` counts the finished checks in the same scope that have no usable point, so the page can say so.
+   */
+  async places(organizationId: string, actor: FolderActor, userScope: Prisma.UserWhereInput, query: ChecklistSheetAnalyticsQuery) {
+    const { sheets, titles, sheetIds, from, to, employeeFilter } = await this.scope(organizationId, actor, userScope, query);
+    const period = { from: query.from, to: query.to };
+    if (sheets.length === 0) return { total: 0, withoutPlace: 0, items: [] as never[], truncated: false, period };
+    const sessions = await this.prisma.checklistSession.findMany({
+      where: { organizationId, deletedAt: null, status: 'completed', scheduledAt: { gte: from, lte: to }, instance: { deletedAt: null, checklistId: { in: sheetIds }, user: employeeFilter } },
+      select: {
+        id: true, scheduledAt: true,
+        locationCaptures: { where: { status: 'captured', latitude: { not: null }, longitude: { not: null } }, select: { capturePoint: true, latitude: true, longitude: true, accuracyMeters: true } },
+        instance: { select: { checklistId: true, percentage: true, scored: true, completedAt: true, user: { select: { firstName: true, lastName: true } } } },
+      },
+      orderBy: { scheduledAt: 'desc' }, take: MAX_INSTANCES,
+    });
+    const rows = sessions.flatMap((session) => {
+      const point = session.locationCaptures.find((capture) => capture.capturePoint === 'end') ?? session.locationCaptures[0];
+      const at = session.instance.completedAt ?? session.scheduledAt;
+      if (!point || point.latitude === null || point.longitude === null || !at) return [];
+      return [{
+        sessionId: session.id, checklistId: session.instance.checklistId, checklistTitle: titles.get(session.instance.checklistId) ?? '',
+        employee: `${session.instance.user?.lastName ?? ''} ${session.instance.user?.firstName ?? ''}`.trim(),
+        percentage: session.instance.scored ? session.instance.percentage : null,
+        band: session.instance.scored ? resultBand(session.instance.percentage) : null,
+        at: at.toISOString(), latitude: point.latitude, longitude: point.longitude,
+        accuracyMeters: point.accuracyMeters === null ? null : Math.round(point.accuracyMeters),
+        point: point.capturePoint,
+      }];
+    });
+    return {
+      total: rows.length, withoutPlace: sessions.length - rows.length,
+      items: rows.slice(0, MAP_POINTS), truncated: rows.length > MAP_POINTS || sessions.length >= MAX_INSTANCES, period,
     };
   }
 

@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
+
 import { expect, test } from '@playwright/test';
-import { departmentSklad, employeeAnna, filterSetSaves, installSheetAnalyticsMocks, layoutSaves, sheetA, sheetB, sliceRequests, sliceSessionId } from '../fixtures/checklist-sheet-analytics.js';
+import { departmentSklad, employeeAnna, filterSetSaves, installSheetAnalyticsMocks, layoutSaves, placeSessionId, placesMode, placesRequests, sheetA, sheetB, sliceRequests, sliceSessionId, tileRequests } from '../fixtures/checklist-sheet-analytics.js';
 
 for (const width of [390, 1440]) {
   test(`admin opens the Analytics tab next to Sessions and Evaluation scales and picks sheets at ${width}px`, async ({ page }) => {
@@ -293,4 +295,93 @@ test('analytics dashboard: a pie sector and a heat map cell open the results beh
   expect(sliceRequests.at(-1)?.searchParams.get('block')).toBe('4');
   expect(sliceRequests.at(-1)?.searchParams.get('tzOffset')).not.toBeNull();
   expect(requests.length).toBeGreaterThan(0);
+});
+
+test('analytics dashboard: the check map shows the checks that have a place and opens their details (PR 521)', async ({ page }) => {
+  placesMode.value = 'data';
+  placesRequests.length = 0;
+  tileRequests.length = 0;
+  layoutSaves.length = 0;
+  await installSheetAnalyticsMocks(page, 'admin');
+  await page.setViewportSize({ width: 1440, height: 3000 });
+  await page.goto('/admin/checklists/sheet-analytics?period=quarter&departments=' + departmentSklad);
+  // The card is off by default: no request for places and no request to the tile server.
+  await expect(page.getByTestId('sheet-analytics-widget-heat')).toBeVisible();
+  await expect(page.getByTestId('sheet-analytics-widget-map')).toHaveCount(0);
+  expect(placesRequests).toHaveLength(0);
+  expect(tileRequests).toHaveLength(0);
+
+  await page.getByRole('button', { name: /Настроить дашборд/ }).click();
+  await page.getByRole('checkbox', { name: 'Карта проверок' }).check();
+  const map = page.getByTestId('sheet-analytics-widget-map');
+  await expect(map.getByRole('button', { name: /Охрана труда, Иванова Анна/ })).toHaveCount(2);
+  await expect(map.getByRole('button', { name: /Складская приёмка, Петров Пётр/ })).toHaveCount(1);
+  await expect(map).toContainText('Место есть у 3 из 4 завершённых проверок.');
+  await expect(map).toContainText('не координаты проверок');
+  // The filters of the dashboard apply to the map; the background comes from the tile server.
+  expect(placesRequests.at(-1)?.searchParams.get('departmentIds')).toBe(departmentSklad);
+  await expect.poll(() => tileRequests.length).toBeGreaterThan(0);
+  await expect.poll(() => layoutSaves.at(-1)?.dashboards?.[0]?.widgets.map((widget) => widget.id)).toContain('map');
+
+  // A point opens its details with the links to the checklist results and the report.
+  await map.getByRole('button', { name: /Складская приёмка, Петров Пётр/ }).click();
+  const details = map.getByRole('status');
+  await expect(details).toContainText('Складская приёмка');
+  await expect(details).toContainText('Петров Пётр');
+  await expect(details).toContainText('40%');
+  await expect(details).toContainText('место в начале проверки');
+  await expect(details).toContainText('точность 250 м');
+  await expect(details.getByRole('link', { name: 'Открыть отчёт' })).toHaveAttribute('href', '/admin/checklists/sessions/77777777-7777-4777-8777-777777777777');
+  await expect(details.getByRole('link', { name: 'Открыть результаты чек-листа' })).toHaveAttribute('href', new RegExp(`${sheetB}`));
+  await details.getByRole('button', { name: 'Закрыть подробности' }).click();
+  await expect(details).toHaveCount(0);
+
+  // Zoom and "show all" move the map; the points stay on it.
+  const point = map.getByRole('button', { name: new RegExp(`Охрана труда, Иванова Анна, .*92%`) });
+  const before = await point.boundingBox();
+  await map.getByRole('button', { name: 'Приблизить' }).click();
+  const zoomed = await point.boundingBox();
+  expect(zoomed?.x).not.toBe(before?.x);
+  await map.getByRole('button', { name: 'Показать все проверки' }).click();
+  const after = await point.boundingBox();
+  expect(after).toEqual(before);
+
+  // The text list is there for those who do not use the map.
+  await expect(map.getByRole('table')).toContainText('43.2380, 76.9450');
+
+  // The density view is chosen per card and kept.
+  await page.getByLabel('Вид: Карта проверок').selectOption('density');
+  await expect.poll(() => layoutSaves.at(-1)?.dashboards?.[0]?.widgets.find((widget) => widget.id === 'map')?.options).toEqual({ view: 'density' });
+  await page.getByRole('button', { name: /Готово/ }).click();
+  await page.reload();
+  await expect(page.getByTestId('sheet-analytics-widget-map').getByRole('button', { name: new RegExp(`Охрана труда, Иванова Анна`) })).toHaveCount(2);
+  expect(placeSessionId).toBeTruthy();
+});
+
+test('analytics dashboard: the check map explains how to get points and recovers from an error (PR 521)', async ({ page }) => {
+  layoutSaves.length = 0;
+  placesMode.value = 'empty';
+  await installSheetAnalyticsMocks(page, 'admin');
+  await page.setViewportSize({ width: 1440, height: 3000 });
+  await page.goto('/admin/checklists/sheet-analytics?period=quarter');
+  await page.getByRole('button', { name: /Настроить дашборд/ }).click();
+  await page.getByRole('checkbox', { name: 'Карта проверок' }).check();
+  const map = page.getByTestId('sheet-analytics-widget-map');
+  await expect(map).toContainText('включите «Геолокацию» в настройках чек-листа');
+  await expect(map).toContainText('Завершённых проверок без места: 3.');
+
+  // An error is shown with a retry that loads the map when the server answers again.
+  placesMode.value = 'error';
+  await page.reload();
+  await expect(page.getByTestId('sheet-analytics-widget-map').getByRole('alert')).toContainText('Не удалось загрузить карту.');
+  placesMode.value = 'data';
+  await page.getByTestId('sheet-analytics-widget-map').getByRole('button', { name: 'Повторить' }).click();
+  await expect(page.getByTestId('sheet-analytics-widget-map').getByRole('button', { name: /Охрана труда, Иванова Анна/ })).toHaveCount(2);
+});
+
+test('the page policy lets the check map draw tiles without opening anything else (PR 521)', () => {
+  const config = readFileSync(new URL('../../../infra/nginx/security-headers.conf', import.meta.url), 'utf8');
+  expect(config).toContain("img-src 'self' data: blob: https:");
+  expect(config).toContain("script-src 'self';");
+  expect(config).toContain("object-src 'none'");
 });

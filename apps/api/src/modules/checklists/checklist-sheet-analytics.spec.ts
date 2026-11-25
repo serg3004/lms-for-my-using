@@ -212,3 +212,50 @@ describe('ChecklistSheetAnalytics.slice (PR 520)', () => {
     expect(cell.items.map((row) => [row.sessionId, row.percentage, row.band])).toEqual([['s-unscored', null, null]]);
   });
 });
+
+describe('ChecklistSheetAnalytics.places (PR 521)', () => {
+  const instance = (percentage: number, scored = true) => ({
+    checklistId: A, percentage, scored, completedAt: new Date('2026-10-07T09:30:00.000Z'), user: { firstName: 'Анна', lastName: 'Иванова' },
+  });
+  const capture = (capturePoint: 'start' | 'end', latitude: number, longitude: number, accuracyMeters: number | null = 12.4) => ({ capturePoint, latitude, longitude, accuracyMeters });
+  function service() {
+    const sessionFind = jest.fn(async () => [
+      { id: 's-both', scheduledAt: new Date('2026-10-07T09:00:00.000Z'), locationCaptures: [capture('start', 43.2, 76.9), capture('end', 43.3, 77.0)], instance: instance(92) },
+      { id: 's-start', scheduledAt: new Date('2026-10-08T09:00:00.000Z'), locationCaptures: [capture('start', 51.1, 71.4, null)], instance: instance(40) },
+      { id: 's-none', scheduledAt: new Date('2026-10-09T09:00:00.000Z'), locationCaptures: [], instance: instance(70, false) },
+    ]);
+    const prisma = {
+      checklist: { findMany: jest.fn(async () => [{ id: A, title: 'Свой', createdBy: 'me', folderId: null, status: 'published' }]) },
+      checklistFolder: { findMany: jest.fn(async () => []) },
+      checklistSession: { findMany: sessionFind },
+    };
+    return { service: new ChecklistSheetAnalytics(prisma as never), sessionFind };
+  }
+  const actor = { id: 'me', roles: ['admin'] };
+  const query = { from: '2026-10-01T00:00:00.000Z', to: '2026-11-01T00:00:00.000Z' };
+
+  it('takes the end point first, then the start point, and counts the checks without a place', async () => {
+    const result = await service().service.places('org', actor, {}, query);
+    expect(result.total).toBe(2);
+    expect(result.withoutPlace).toBe(1);
+    expect(result.items.map((row) => [row.sessionId, row.point, row.latitude, row.longitude, row.accuracyMeters, row.band])).toEqual([
+      ['s-both', 'end', 43.3, 77.0, 12, 'good'],
+      ['s-start', 'start', 51.1, 71.4, null, 'bad'],
+    ]);
+  });
+
+  it('reads only captured points inside the scope of the viewer', async () => {
+    const { service: places, sessionFind } = service();
+    await places.places('org', actor, { organizationId: 'org' }, query);
+    const call = JSON.stringify(sessionFind.mock.calls[0]);
+    expect(call).toContain('"status":"captured"');
+    expect(call).toContain('"organizationId":"org"');
+  });
+
+  it('answers empty without reading sessions when no requested sheet is accessible', async () => {
+    const { service: places, sessionFind } = service();
+    const result = await places.places('org', actor, {}, { ...query, checklistIds: ['22222222-2222-4222-8222-222222222222'] });
+    expect(result).toMatchObject({ total: 0, withoutPlace: 0, items: [] });
+    expect(sessionFind).not.toHaveBeenCalled();
+  });
+});

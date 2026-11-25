@@ -319,6 +319,8 @@ export function SheetAnalyticsContent({ Layout, currentPath, sessionPath }: { La
             onPickEmployee={(id) => update('employees', id)}
             onReset={() => void saveLayout(null, 'user')}
             onSlice={(value) => update('slice', value)}
+            placesQuery={{ from, to, checklistIds: selected.length ? selected : undefined, departmentIds, employeeIds, managerId: managerId || undefined, fieldFilters }}
+            sessionPath={sessionPath}
             onSaveOrganization={() => void saveLayout(set, 'organization')}
             sheetTitles={new Map(sheets.map((sheet) => [sheet.id, sheet.title]))}
             set={set}

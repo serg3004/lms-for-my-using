@@ -12,6 +12,13 @@ export const filterSetSaves: Array<{ filters: string[]; scope: 'user' | 'organiz
 export type SavedDashboard = { id: string; name: string; widgets: Array<{ id: string; size: string; options?: Record<string, string | string[]> }> };
 export const layoutSaves: Array<{ dashboards: SavedDashboard[] | null; current?: string; scope: 'user' | 'organization' }> = [];
 export const sliceRequests: URL[] = [];
+export const placesRequests: URL[] = [];
+/** PR 521: what the places route answers; tests change it before opening the page. */
+export const placesMode: { value: 'data' | 'empty' | 'error' } = { value: 'data' };
+export const tileRequests: string[] = [];
+/** A flat 256 x 256 tile, so the tests never reach the real tile server. */
+const FLAT_TILE = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAIAAADTED8xAAACAElEQVR42u3TQQkAAAgEweufUnwZw7cZHJgEC5uegrciAQYAA4ABwABgADAAGAAMAAYAA4ABwABgADAAGAAMAAYAA4ABwABgADAAGAAMAAYAA4ABwABgADAAGAAMAAYAA4ABwABgADAAGAAMAAYAA4ABwABgADAAGAAMAAYAA4ABMIAKGAAMAAYAA4ABwABgADAAGAAMAAYAA4ABwABgADAAGAAMAAYAA4ABwABgADAAGAAMAAYAA4ABwABgADAAGAAMAAYAA4ABwABgADAAGAAMAAYAA4ABwABgADAAGAAMAAbAAGAAMAAYAAwABgADgAHAAGAAMAAYAAwABgADgAHAAGAAMAAYAAwABgADgAHAAGAAMAAYAAwABgADgAHAAGAAMAAYAAwABgADgAHAAGAAMAAYAAwABgADgAHAAGAAMAAGUAEDgAHAAGAAMAAYAAwABgADgAHAAGAAMAAYAAwABgADgAHAAGAAMAAYAAwABgADgAHAAGAAMAAYAAwABgADgAHAAGAAMAAYAAwABgADgAHAAGAAMAAYAAwABgADgAHAABgADAAGAAOAAcAAYAAwABgADAAGAAOAAcAAYAAwABgADAAGAAOAAcAAYAAwABgADAAGAAOAAcAAYAAwABgADAAGAAOAAcAAYAAwABgADAAGAAOAAcAAYAAwAFwLgMMn9z646BcAAAAASUVORK5CYII=', 'base64');
+export const placeSessionId = '66666666-6666-4666-8666-666666666666';
 export const sliceSessionId = '55555555-5555-4555-8555-555555555555';
 export const sheetList: SheetAnalyticsSheet[] = [
   { id: sheetA, title: 'Охрана труда', status: 'published', folderId: null, sessionsInPeriod: 4 },
@@ -51,6 +58,10 @@ export async function installSheetAnalyticsMocks(page: Page, role: 'admin' | 'ma
   const requests: URL[] = [];
   type SavedSet = { version: 2; current: string; dashboards: SavedDashboard[] };
   const savedLayout: { user: SavedSet | null; organization: SavedSet | null } = { user: null, organization: null };
+  await page.route('https://tile.openstreetmap.org/**', (route) => {
+    tileRequests.push(new URL(route.request().url()).pathname);
+    return route.fulfill({ body: FLAT_TILE, contentType: 'image/png' });
+  });
   await page.route('**/api/v1/**', (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname.replace('/api/v1', '');
@@ -78,6 +89,17 @@ export async function installSheetAnalyticsMocks(page: Page, role: 'admin' | 'ma
         if (body.scope === 'user') savedLayout.user = set; else savedLayout.organization = set;
       }
       return route.fulfill({ json: savedLayout });
+    }
+    if (path === '/checklists/analytics/places') {
+      placesRequests.push(url);
+      if (placesMode.value === 'error') return route.fulfill({ status: 500, json: { message: 'boom' } });
+      const period = { from: '2026-10-01T00:00:00.000Z', to: '2026-11-01T00:00:00.000Z' };
+      if (placesMode.value === 'empty') return route.fulfill({ json: { total: 0, withoutPlace: 3, items: [], truncated: false, period } });
+      return route.fulfill({ json: { total: 3, withoutPlace: 1, truncated: false, period, items: [
+        { sessionId: placeSessionId, checklistId: sheetA, checklistTitle: 'Охрана труда', employee: 'Иванова Анна', percentage: 92, band: 'good', at: '2026-10-07T09:30:00.000Z', latitude: 43.238, longitude: 76.945, accuracyMeters: 8, point: 'end' },
+        { sessionId: '77777777-7777-4777-8777-777777777777', checklistId: sheetB, checklistTitle: 'Складская приёмка', employee: 'Петров Пётр', percentage: 40, band: 'bad', at: '2026-10-08T07:00:00.000Z', latitude: 43.26, longitude: 76.93, accuracyMeters: 250, point: 'start' },
+        { sessionId: '88888888-8888-4888-8888-888888888888', checklistId: sheetA, checklistTitle: 'Охрана труда', employee: 'Иванова Анна', percentage: 70, band: 'mid', at: '2026-10-09T08:00:00.000Z', latitude: 43.22, longitude: 76.88, accuracyMeters: null, point: 'end' },
+      ] } });
     }
     if (path === '/checklists/analytics/sessions') {
       sliceRequests.push(url);

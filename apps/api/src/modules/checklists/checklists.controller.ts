@@ -196,6 +196,14 @@ export class ChecklistsController {
     return this.checklistsService.getAnalyticsSlice(user.organizationId, user, await this.reviewAccess.participantLearnerScope(user), checklistAnalyticsSliceQuerySchema.parse(rawQuery));
   }
 
+  /** PR 521: the finished checks that have a place (the map card). */
+  @Get('checklists/analytics/places')
+  @Roles(...rolePolicies.checklistManagerAnalyticsRead)
+  async listAnalyticsPlaces(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.getAnalyticsPlaces(user.organizationId, user, await this.reviewAccess.participantLearnerScope(user), checklistSheetAnalyticsQuerySchema.parse(rawQuery));
+  }
+
   /** PR 520: the dashboard widgets (the viewer's own layout and the organization default). */
   @Get('checklists/analytics/dashboard-layout')
   @Roles(...rolePolicies.checklistManagerAnalyticsRead)

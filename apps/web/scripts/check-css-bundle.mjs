@@ -23,7 +23,9 @@ const assetDirectory = new URL('../dist/assets/', import.meta.url);
 // 96 KiB -> 100 KiB on purpose, not to absorb PR 566: PR 567-569 replace the old component rules with the new
 // light ones, and during that transition old and new rules coexist in the bundle. Each of those PRs must delete
 // what it replaces, and PR 570 (acceptance) re-checks that the bundle fits in 96 KiB again.
-const maximumCssBytes = 100 * 1024;
+// Bumped 100 KiB -> 110 KiB on the owner's decision (2026-11-24): PR 520 (analytics dashboard) left 14 B of headroom, and PR 521
+// (check map) needs new rules. The extra ~10 KiB costs a few tenths of a second on the slowest phone connection.
+const maximumCssBytes = 110 * 1024;
 
 const cssAssets = (await readdir(assetDirectory)).filter((file) => file.endsWith('.css'));
 

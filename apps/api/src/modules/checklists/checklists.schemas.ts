@@ -829,7 +829,7 @@ export const checklistAnalyticsFilterSetSchema = z.object({
 export type ChecklistAnalyticsFilterSetInput = z.infer<typeof checklistAnalyticsFilterSetSchema>;
 // PR 520: the dashboards of the analytics page. A person may keep several named dashboards (an empty name is the default "Main" one),
 // each a list of widgets with a size and the source options the person picked for the card. `null` resets (user) or removes the default (organization).
-export const ANALYTICS_WIDGET_IDS = ['kpi', 'levels', 'donut', 'trend', 'depts', 'weak', 'heat', 'people'] as const;
+export const ANALYTICS_WIDGET_IDS = ['kpi', 'levels', 'donut', 'trend', 'depts', 'weak', 'heat', 'people', 'map'] as const;
 export const MAX_ANALYTICS_DASHBOARDS = 10;
 export const analyticsWidgetOptionsSchema = z.record(z.string().max(20), z.union([z.string().max(40), z.array(z.string().max(40)).max(10)]))
   .refine((options) => Object.keys(options).length <= 6, { message: 'Too many options' });
