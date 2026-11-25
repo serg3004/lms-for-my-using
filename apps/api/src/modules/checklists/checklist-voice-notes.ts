@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { z } from 'zod';
 
 import type { PrismaService } from '../../database/prisma.service.js';
@@ -29,7 +29,8 @@ type WritableCheck = (instanceId: string, organizationId: string, requesterId: s
 /**
  * PR 509: voice recordings of the comment of one answer. Writing follows the answer photo exactly (`assertWritable` is
  * the service's own writable-instance rule: an observer for a session, the executor for a self-filled check, nothing
- * after the check is finished or expired). Reading follows the photo too: the executor or a reviewer, only through the
+ * after the check is finished or expired). Since PR 510 a recording may precede the answer: it counts as the answer's
+ * explanation. Reading follows the photo too: the executor or a reviewer, only through the
  * API. A check deleted by an administrator is "not found" here as everywhere. Storage failures after the database
  * change are best-effort: an orphaned object never breaks a check.
  */
@@ -48,6 +49,15 @@ export class ChecklistVoiceNotes {
     return instance;
   }
 
+  /**
+   * PR 510: a recording counts as the explanation of an answer, so it may come before the answer is saved (a required
+   * explanation is the reason the answer waits). It only has to belong to a criterion of this very check.
+   */
+  private async assertItemOfCheck(db: Pick<PrismaService, 'checklistItem'>, instanceId: string, itemId: string, organizationId: string) {
+    const item = await db.checklistItem.findFirst({ where: { id: itemId, organizationId, checklist: { instances: { some: { id: instanceId } } } }, select: { id: true } });
+    if (!item) throw new NotFoundException('Checklist item not found');
+  }
+
   /** The recordings of a check, without storage keys. The check's executor and reviewers see them. */
   async list(instanceId: string, organizationId: string, requesterId: string, isPrivileged: boolean) {
     const instance = await this.requireInstance(instanceId, organizationId);
@@ -59,8 +69,7 @@ export class ChecklistVoiceNotes {
   async assertHasRoom(instanceId: string, itemId: string, organizationId: string, requesterId: string, isPrivileged: boolean, replaceId?: string) {
     await this.requireInstance(instanceId, organizationId);
     await this.assertWritable(instanceId, organizationId, requesterId, isPrivileged);
-    const result = await this.prisma.checklistItemResult.findUnique({ where: { instanceId_itemId: { instanceId, itemId } }, select: { id: true } });
-    if (!result) throw new BadRequestException('Mark this item before recording a voice comment');
+    await this.assertItemOfCheck(this.prisma, instanceId, itemId, organizationId);
     const count = await this.prisma.checklistVoiceNote.count({ where: { instanceId, organizationId, itemId, place: 'answer', ...(replaceId ? { id: { not: replaceId } } : {}) } });
     if (count >= VOICE_NOTES_PER_COMMENT) throw new ConflictException(`At most ${VOICE_NOTES_PER_COMMENT} voice recordings per comment`);
   }
@@ -86,8 +95,7 @@ export class ChecklistVoiceNotes {
         await tx.checklistVoiceNote.delete({ where: { id: old.id } });
         replacedKey = old.objectKey;
       }
-      const result = await tx.checklistItemResult.findUnique({ where: { instanceId_itemId: { instanceId, itemId } }, select: { id: true } });
-      if (!result) throw new BadRequestException('Mark this item before recording a voice comment');
+      await this.assertItemOfCheck(tx, instanceId, itemId, organizationId);
       const count = await tx.checklistVoiceNote.count({ where: { instanceId, organizationId, itemId, place: 'answer' } });
       if (count >= VOICE_NOTES_PER_COMMENT) throw new ConflictException(`At most ${VOICE_NOTES_PER_COMMENT} voice recordings per comment`);
       return tx.checklistVoiceNote.create({

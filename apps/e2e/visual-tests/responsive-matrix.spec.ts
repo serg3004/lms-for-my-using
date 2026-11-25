@@ -1,3 +1,4 @@
+import { fakeRecorder } from '../fixtures/checklist-voice.js';
 import { answerSetServer, openFeedbackBuilder, openFeedbackConduct } from '../fixtures/checklist-feedback.js';
 import { scaleLibraryServer } from '../fixtures/scale-library.js';
 import { progressReaderServer, continueEditorServer, openProgressReport } from '../fixtures/longread-progress.js';
@@ -30,7 +31,7 @@ import { installIdentityMocks, sampleActivationQr } from '../fixtures/identity-a
 import { installUserFieldsMocks } from '../fixtures/user-fields.js';
 import { installUserBulkMocks } from '../fixtures/user-bulk-actions.js';
 import { installUserProfileMocks } from '../fixtures/user-profile.js';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 const widths = [320, 375, 768, 1024, 1280, 1440] as const;
 const height = 900;
@@ -416,7 +417,7 @@ async function expectTouchTargets(page: Page) {
 //
 // `networkidle` plus a short settle guards against capturing a screenshot before in-flight
 // rendering work (e.g. a route that resolves a tick late) has finished.
-async function expectVisualMatch(page: Page, name: string, soft = false, options: { fullPage?: boolean; maxDiffPixels?: number } = {}) {
+async function expectVisualMatch(page: Page, name: string, soft = false, options: { fullPage?: boolean; maxDiffPixels?: number; mask?: Locator[] } = {}) {
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(300);
   const assertion = soft ? expect.soft(page) : expect(page);
@@ -1235,6 +1236,23 @@ for (const width of widths) {
       await expect(page.getByRole('alert').filter({ hasText: 'Нет доступа к микрофону' })).toBeVisible();
       await expectNoPageOverflow(page);
       await expectVisualMatch(page, `dictation-refused-${width}`);
+    });
+
+    // PR 510: "Record sound" next to the dictation, with a finished recording waiting to be sent (a fake recorder; the native player is masked, its time differs from run to run).
+    test('keeps the voice recording of the comment responsive', async ({ page }) => {
+      await page.addInitScript(fakeRecorder);
+      await installInstructorConductMocks(page, true);
+      await page.clock.setFixedTime(new Date('2026-02-01T09:10:00.000Z'));
+      await page.goto('/instructor/checklists/sessions');
+      await page.getByRole('button', { name: /Leo Learner/ }).click();
+      await page.getByRole('button', { name: 'Записать звук' }).first().click();
+      await expect(page.getByRole('button', { name: 'Остановить запись' })).toBeVisible();
+      await page.clock.setFixedTime(new Date('2026-02-01T09:10:02.000Z')); // the clock is frozen: two seconds pass at once
+      await page.getByRole('button', { name: 'Остановить запись' }).click();
+      await expect(page.getByLabel('Новая запись, ещё не отправлена')).toBeVisible();
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await expectVisualMatch(page, `voice-recording-${width}`, false, { mask: [page.locator('audio')] });
     });
 
     for (const role of ['learner', 'manager'] as const) {

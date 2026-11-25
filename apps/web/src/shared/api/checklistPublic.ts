@@ -1,5 +1,6 @@
-import { apiRequest } from '../apiClient.js';
+import { apiDownloadRequest, apiRequest } from '../apiClient.js';
 import type { ChecklistInstanceSummary } from './types.js';
+import type { ChecklistVoiceNote } from './checklists.js';
 
 /** PR 467: the guest side of a checklist link. No session; the token names the sheet and the pass key names one pass. */
 export type PublicChecklistFront = {
@@ -34,3 +35,19 @@ export const attachPublicPhoto = (token: string, instanceId: string, itemId: str
   return apiRequest<ChecklistInstanceSummary>(`${itemBase(token, instanceId, itemId)}/photo`, withKey(passKey, { method: 'POST', body: form }));
 };
 export const finishPublicChecklist = (token: string, instanceId: string, passKey: string, input: { captchaChallenge: string; captchaCode: string }) => apiRequest<ChecklistInstanceSummary>(`${passBase(token, instanceId)}/finish`, withKey(passKey, json('POST', input)));
+
+/** PR 510: the guest's voice recordings, by the pass key like the photo. */
+const voiceBase = (token: string, instanceId: string) => `${passBase(token, instanceId)}/voice-notes`;
+export const listPublicVoiceNotes = (token: string, instanceId: string, passKey: string) => apiRequest<ChecklistVoiceNote[]>(voiceBase(token, instanceId), withKey(passKey));
+export function uploadPublicVoiceNote(token: string, instanceId: string, itemId: string, passKey: string, blob: Blob, durationMs: number, replaceId?: string) {
+  const form = new FormData();
+  form.append('durationMs', String(Math.round(durationMs)));
+  if (replaceId) form.append('replaceId', replaceId);
+  form.append('file', blob, 'voice');
+  return apiRequest<ChecklistVoiceNote>(`${itemBase(token, instanceId, itemId)}/voice-notes`, withKey(passKey, { method: 'POST', body: form }));
+}
+export async function getPublicVoiceNoteBlob(token: string, instanceId: string, noteId: string, passKey: string) {
+  return (await apiDownloadRequest(`${voiceBase(token, instanceId)}/${encodeURIComponent(noteId)}/file`, undefined, withKey(passKey))).blob;
+}
+export const removePublicVoiceNote = (token: string, instanceId: string, noteId: string, passKey: string) =>
+  apiRequest<void>(`${voiceBase(token, instanceId)}/${encodeURIComponent(noteId)}`, withKey(passKey, { method: 'DELETE' }));

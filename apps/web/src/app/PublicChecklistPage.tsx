@@ -13,6 +13,10 @@ import {
   attachPublicPhoto,
   finishPublicChecklist,
   getPublicCaptcha,
+  getPublicVoiceNoteBlob,
+  listPublicVoiceNotes,
+  removePublicVoiceNote,
+  uploadPublicVoiceNote,
   getPublicPass,
   openPublicChecklist,
   startPublicChecklist,
@@ -302,6 +306,12 @@ function PassScreen({ front, token, pass, instance, onInstance, onRestart, t }: 
   const api = useMemo<ChecklistTakingApi>(() => ({
     submit: (_instanceId, itemId, input) => submitPublicItem(token, pass.instanceId, itemId, pass.passKey, input),
     uploadPhoto: (_instanceId, itemId, file) => attachPublicPhoto(token, pass.instanceId, itemId, pass.passKey, file),
+    voice: {
+      list: () => listPublicVoiceNotes(token, pass.instanceId, pass.passKey),
+      upload: (_instanceId, itemId, blob, durationMs, replaceId) => uploadPublicVoiceNote(token, pass.instanceId, itemId, pass.passKey, blob, durationMs, replaceId),
+      blob: (_instanceId, noteId) => getPublicVoiceNoteBlob(token, pass.instanceId, noteId, pass.passKey),
+      remove: (_instanceId, noteId) => removePublicVoiceNote(token, pass.instanceId, noteId, pass.passKey),
+    },
     removePhoto: () => Promise.reject(new ApiClientError(t('publicChecklist.photoNoRemove', 'A photo cannot be removed here; attach another one instead.'), 400)),
     finish: async () => {
       const current = captchaRef.current;

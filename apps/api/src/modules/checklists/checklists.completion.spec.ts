@@ -155,6 +155,8 @@ function createHarness({
       findMany: jest.fn(async () => items),
     },
     checklistItemResult,
+    // PR 510: a voice recording counts as the explanation; none in these scenarios.
+    checklistVoiceNote: { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) },
     checklistInstanceEvent: { createMany: jest.fn(async () => ({ count: 1 })) },
   } as unknown as PrismaService;
 

@@ -263,6 +263,8 @@ type CompletionResult = {
   reviewStatus: string;
   answerState?: string;
   comment?: string | null;
+  /** PR 510: the criterion has a voice recording, which counts as the explanation of the answer. */
+  hasVoice?: boolean;
 };
 type ChecklistSnapshotItemScale = {
   id: string;
@@ -2382,7 +2384,7 @@ export class ChecklistsService {
       });
       const nextAnswer = answersCriterion ? { checked: input.checked ?? false, scaleLevel: input.scaleLevel ?? null, answerState: 'answered' } : existingResult ?? undefined;
       const nextComment = input.comment !== undefined ? input.comment : existingResult?.comment ?? '';
-      if (nextAnswer && isNoteRequired(item, nextAnswer, Boolean(item.scale)) && !nextComment.trim()) {
+      if (nextAnswer && isNoteRequired(item, nextAnswer, Boolean(item.scale)) && !nextComment.trim() && !(await this.itemHasVoice(instanceId, itemId))) {
         throw new BadRequestException(`An explanation is required for the criterion "${item.text}"`);
       }
     }
@@ -3150,6 +3152,16 @@ export class ChecklistsService {
     return item.points;
   }
 
+  /** PR 510: criteria of this check that have a voice recording in their answer comment. */
+  private async itemsWithVoice(instanceId: string): Promise<Set<string>> {
+    const rows = await this.prisma.checklistVoiceNote.findMany({ where: { instanceId, place: 'answer', itemId: { not: null } }, select: { itemId: true }, distinct: ['itemId'] });
+    return new Set(rows.flatMap((row) => (row.itemId ? [row.itemId] : [])));
+  }
+
+  private async itemHasVoice(instanceId: string, itemId: string): Promise<boolean> {
+    return (await this.prisma.checklistVoiceNote.count({ where: { instanceId, itemId, place: 'answer' } })) > 0;
+  }
+
   private hasValidAnswer(scoringMode: string, result: CompletionResult | undefined, item?: ItemScaleRef) {
     if (!result || result.answerState === 'skipped') return false;
     if (item?.scale) return item.scale.levels.some((level) => level.value === result.scaleLevel);
@@ -3170,7 +3182,7 @@ export class ChecklistsService {
       return !item.isRequired;
     }
 
-    if (isNoteRequired(item, result, Boolean(item.scale)) && !plainText(result?.comment ?? '').trim()) {
+    if (isNoteRequired(item, result, Boolean(item.scale)) && !plainText(result?.comment ?? '').trim() && !result?.hasVoice) {
       return false;
     }
 
@@ -3235,7 +3247,8 @@ export class ChecklistsService {
       where: { instanceId },
       select: { itemId: true, checked: true, scaleLevel: true, points: true, photoObjectKey: true, reviewStatus: true, answerState: true, comment: true },
     });
-    const byItem = new Map<string, CompletionResult>(results.map((result) => [result.itemId, result]));
+    const voiceItems = await this.itemsWithVoice(instanceId);
+    const byItem = new Map<string, CompletionResult>(results.map((result) => [result.itemId, { ...result, hasVoice: voiceItems.has(result.itemId) }]));
     const missing = checklist.items.filter((item) => !this.isItemSatisfied(checklist.scoringMode, item, byItem.get(item.id))).map((item) => item.id);
     if (missing.length > 0) throw new ConflictException({ message: 'Required criteria are not answered', missingItemIds: missing });
 
@@ -3344,7 +3357,8 @@ export class ChecklistsService {
     });
     const itemIds = new Set(checklist.items.map((item) => item.id));
     const relevantResults = results.filter((result) => itemIds.has(result.itemId));
-    const resultByItemId = new Map<string, CompletionResult>(relevantResults.map((result) => [result.itemId, result]));
+    const voiceItems = await this.itemsWithVoice(instanceId);
+    const resultByItemId = new Map<string, CompletionResult>(relevantResults.map((result) => [result.itemId, { ...result, hasVoice: voiceItems.has(result.itemId) }]));
 
     // Auto-skip: an item with autoSkipUnanswered=true that has no valid answer on file resolves
     // itself as skipped -- persisted as a real ChecklistItemResult row (not just a computed

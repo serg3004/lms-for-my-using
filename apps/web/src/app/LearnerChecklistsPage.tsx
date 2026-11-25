@@ -5,13 +5,16 @@ import { checklistLabel, checklistNumbers } from '@lms/shared/checklist-numberin
 import { RichDescription } from '../shared/RichDescription.js';
 import { CriterionOptions, yesNoOptions } from '../shared/CriterionOptions.js';
 import { ObserverSessionsBlock } from './ObserverSessionsBlock.js';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint, validateChecklistPhoto } from '../shared/checklistPhoto.js';
-import { finishChecklistInstance, listChecklistsTransferredFromMe, listFreeChecklists, listMyChecklistInstances, removeChecklistItemPhoto, startFreeChecklist, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
+import { finishChecklistInstance, getChecklistVoiceNoteBlob, listChecklistVoiceNotes, listChecklistsTransferredFromMe, removeChecklistVoiceNote, uploadChecklistVoiceNote, listFreeChecklists, listMyChecklistInstances, removeChecklistItemPhoto, startFreeChecklist, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
+import type { ChecklistVoiceNote } from '../shared/api/checklists.js';
+import { ChecklistVoiceNotes } from './ChecklistVoiceNotes.js';
+import type { ChecklistVoiceApi } from './checklistVoice.js';
 import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary, ChecklistTransferredAway, FreeChecklistSummary } from '../shared/api/types.js';
 import { ChecklistCover } from '../shared/ChecklistCover.js';
 import { ChecklistPhotoStrip } from '../shared/ChecklistPhotoStrip.js';
@@ -302,6 +305,8 @@ export type ChecklistTakingApi = {
   uploadPhoto: (instanceId: string, itemId: string, file: File) => Promise<unknown>;
   removePhoto: (instanceId: string, itemId: string) => Promise<unknown>;
   finish: (instanceId: string) => Promise<unknown>;
+  /** PR 510: voice recordings of the comment; without it the "Record sound" control is not drawn. */
+  voice?: ChecklistVoiceApi;
 };
 
 const signedInTakingApi: ChecklistTakingApi = {
@@ -309,6 +314,12 @@ const signedInTakingApi: ChecklistTakingApi = {
   uploadPhoto: (instanceId, itemId, file) => uploadChecklistItemPhoto(instanceId, itemId, file),
   removePhoto: (instanceId, itemId) => removeChecklistItemPhoto(instanceId, itemId),
   finish: (instanceId) => finishChecklistInstance(instanceId),
+  voice: {
+    list: (instanceId) => listChecklistVoiceNotes(instanceId),
+    upload: (instanceId, itemId, blob, durationMs, replaceId) => uploadChecklistVoiceNote(instanceId, itemId, blob, durationMs, replaceId),
+    blob: (instanceId, noteId) => getChecklistVoiceNoteBlob(instanceId, noteId),
+    remove: (instanceId, noteId) => removeChecklistVoiceNote(instanceId, noteId),
+  },
 };
 
 export function ChecklistTaking({
@@ -343,14 +354,24 @@ export function ChecklistTaking({
   // PR 415: the explanation being typed, and an answer held back until a required explanation is filled.
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [pendingAnswers, setPendingAnswers] = useState<Record<string, { checked?: boolean; scaleLevel?: number }>>({});
+  // PR 510: the voice recordings of this check; a recording counts as the explanation of its criterion.
+  const [voiceNotes, setVoiceNotes] = useState<ChecklistVoiceNote[]>([]);
+  const voiceApi = api.voice;
+  const reloadVoice = useCallback(async () => {
+    if (!voiceApi) return;
+    try { const list = await voiceApi.list(instance.id); setVoiceNotes(Array.isArray(list) ? list : []); } catch { /* the recordings are an extra: the check itself keeps working */ }
+  }, [voiceApi, instance.id]);
+  useEffect(() => { void reloadVoice(); }, [reloadVoice]);
 
   if (!checklist) return null;
+  const voiceItemIds = new Set(voiceNotes.filter((note) => note.place === 'answer' && note.itemId).map((note) => note.itemId as string));
   const numbering = checklistNumbers(checklist.items, checklist.itemGroups ?? []);
   const resultFor = (itemId: string) => findResultForItem(instance.results, itemId);
   const { completedRequired, requiredCount } = getRequiredChecklistProgress(
     checklist.items,
     instance.results,
     checklist.scoringMode,
+    voiceItemIds,
   );
   const editable = instance.status === 'assigned' || instance.status === 'in_progress';
   async function submit(item: ChecklistItemSummary, input: { checked?: boolean; scaleLevel?: number; photoUrl?: string; comment?: string }) {
@@ -371,7 +392,7 @@ export function ChecklistTaking({
   function choose(item: ChecklistItemSummary, input: { checked?: boolean; scaleLevel?: number }, hasScale: boolean) {
     const typed = noteDrafts[item.id];
     const note = typed ?? resultFor(item.id)?.comment ?? '';
-    if (isNoteRequired(item, pendingAnswer(input), hasScale) && !note.trim()) {
+    if (isNoteRequired(item, pendingAnswer(input), hasScale) && !note.trim() && !voiceItemIds.has(item.id)) {
       setPendingAnswers((current) => ({ ...current, [item.id]: input }));
       return;
     }
@@ -393,7 +414,7 @@ export function ChecklistTaking({
     }
   }
   const missingTitles = checklist.items
-    .filter((item) => !isChecklistRequirementSatisfied(item, checklist.scoringMode, checklistResultToAnswer(resultFor(item.id))))
+    .filter((item) => !isChecklistRequirementSatisfied(item, checklist.scoringMode, checklistResultToAnswer(resultFor(item.id), voiceItemIds.has(item.id))))
     .map((item) => item.text);
   async function finish() {
     setError(null);
@@ -451,7 +472,7 @@ export function ChecklistTaking({
         {checklist.items.map((item) => {
           const result = resultFor(item.id);
           const levels = checklistItemLevels(item, checklist.scoringMode, checklist.scaleLevels);
-          const isDone = isChecklistAnswerComplete(item, checklist.scoringMode, checklistResultToAnswer(result));
+          const isDone = isChecklistAnswerComplete(item, checklist.scoringMode, checklistResultToAnswer(result, voiceItemIds.has(item.id)));
           return (
             <div
               key={item.id}
@@ -498,7 +519,7 @@ export function ChecklistTaking({
                       value={text}
                     />
                     <Button
-                      disabled={!editable || submitting === item.id || text === (result?.comment ?? '') && !held || (required && !text.trim())}
+                      disabled={!editable || submitting === item.id || text === (result?.comment ?? '') && !held || (required && !text.trim() && !voiceItemIds.has(item.id))}
                       onClick={() => void submit(item, held ? { ...held, comment: text } : { comment: text })}
                       size="sm"
                       style={{ marginTop: 6, minHeight: 44 }}
@@ -507,6 +528,17 @@ export function ChecklistTaking({
                     >
                       {t('checklists.noteSave', 'Save explanation')}
                     </Button>
+                    {api.voice && (
+                      <ChecklistVoiceNotes
+                        api={api.voice}
+                        editable={editable && submitting !== item.id}
+                        instanceId={instance.id}
+                        itemId={item.id}
+                        notes={voiceNotes.filter((note) => note.place === 'answer' && note.itemId === item.id)}
+                        onChanged={() => void reloadVoice()}
+                        t={t}
+                      />
+                    )}
                   </div>
                 );
               })()}

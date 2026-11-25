@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { ChecklistItemSummary, ChecklistScoringMode } from '../shared/api/types.js';
 import {
+  checklistResultToAnswer,
   getRequiredChecklistProgress,
   hasChecklistAnswer,
   isChecklistAnswerComplete,
@@ -89,5 +90,17 @@ describe('per-criterion scale completion (PR 358)', () => {
     expect(isChecklistAnswerComplete(criterion, mode, { checked: true })).toBe(false);
     expect(isChecklistAnswerComplete({ ...criterion, photoRequired: true }, mode, { scaleLevel: 1 })).toBe(false);
     expect(isChecklistAnswerComplete({ ...criterion, photoRequired: true }, mode, { scaleLevel: 1, hasPhoto: true })).toBe(true);
+  });
+});
+
+describe('PR 510: a voice recording stands in for a required explanation', () => {
+  const item = { isRequired: true, photoRequired: false, scale: null, noteRule: 'always', noteRequired: true } as never;
+  it('counts the answer as complete only with a comment or a recording', () => {
+    expect(isChecklistAnswerComplete(item, 'all_required', { checked: true, comment: '' })).toBe(false);
+    expect(isChecklistAnswerComplete(item, 'all_required', { checked: true, comment: '', hasVoice: true })).toBe(true);
+  });
+  it('hasVoice is carried by checklistResultToAnswer', () => {
+    expect(checklistResultToAnswer({ itemId: 'i', checked: true } as never, true)?.hasVoice).toBe(true);
+    expect(checklistResultToAnswer({ itemId: 'i', checked: true } as never)?.hasVoice).toBeUndefined();
   });
 });

@@ -3,13 +3,16 @@ import { checklistResultText } from '../shared/checklistResultText.js';
 import { checklistNumbers } from '@lms/shared/checklist-numbering';
 import { RichDescription } from '../shared/RichDescription.js';
 import { readFeedbackAnswers, isCustomFeedback, firstMissingRequiredFeedback } from '@lms/shared/checklist-feedback';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import type { TFunction } from 'i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { uploadChecklistItemPhotoWithProgress } from '../shared/apiClient.js';
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint, validateChecklistPhoto } from '../shared/checklistPhoto.js';
-import { clearChecklistItemAnswer, getChecklistInstance, removeChecklistItemPhoto, skipChecklistItem, submitChecklistItemResult } from '../shared/api/checklists.js';
+import { clearChecklistItemAnswer, getChecklistInstance, getChecklistVoiceNoteBlob, listChecklistVoiceNotes, removeChecklistItemPhoto, removeChecklistVoiceNote, skipChecklistItem, submitChecklistItemResult, uploadChecklistVoiceNote } from '../shared/api/checklists.js';
+import type { ChecklistVoiceNote } from '../shared/api/checklists.js';
+import { ChecklistVoiceNotes } from './ChecklistVoiceNotes.js';
+import type { ChecklistVoiceApi } from './checklistVoice.js';
 import { ChecklistPhotoProof } from './ChecklistPhotoProof.js';
 import {
   captureChecklistSessionLocation,
@@ -217,6 +220,14 @@ export function ChecklistSessionConduct({ sessionId, onBack, t }: { sessionId: s
   return <ConductScreen data={state.data} onBack={onBack} onReload={reload} onMutate={mutate} t={t} />;
 }
 
+/** PR 510: the observer records for the session's own check, the same way as the executor of a self-filled one. */
+const conductVoiceApi: ChecklistVoiceApi = {
+  list: (instanceId) => listChecklistVoiceNotes(instanceId),
+  upload: (instanceId, itemId, blob, durationMs, replaceId) => uploadChecklistVoiceNote(instanceId, itemId, blob, durationMs, replaceId),
+  blob: (instanceId, noteId) => getChecklistVoiceNoteBlob(instanceId, noteId),
+  remove: (instanceId, noteId) => removeChecklistVoiceNote(instanceId, noteId),
+};
+
 export function ConductScreen({
   data,
   onBack,
@@ -233,6 +244,12 @@ export function ConductScreen({
   const { session, instance } = data;
   const checklist = instance.checklist;
   const [stepIndex, setStepIndex] = useState(0);
+  const [voiceNotes, setVoiceNotes] = useState<ChecklistVoiceNote[]>([]);
+  const reloadVoice = useCallback(async () => {
+    try { const list = await conductVoiceApi.list(instance.id); setVoiceNotes(Array.isArray(list) ? list : []); } catch { /* an extra: the conduct itself keeps working */ }
+  }, [instance.id]);
+  useEffect(() => { void reloadVoice(); }, [reloadVoice]);
+  const voiceItemIds = new Set(voiceNotes.filter((note) => note.place === 'answer' && note.itemId).map((note) => note.itemId as string));
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [hideAnswered, setHideAnswered] = useState(false);
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
@@ -297,7 +314,7 @@ export function ConductScreen({
     );
   }
 
-  const { completedRequired, requiredCount } = getRequiredChecklistProgress(items, instance.results, checklist.scoringMode);
+  const { completedRequired, requiredCount } = getRequiredChecklistProgress(items, instance.results, checklist.scoringMode, voiceItemIds);
   // PR 330: on a checklist that allows finishing incomplete the client doesn't block Complete; the
   // server records the unanswered criteria as skipped.
   const allowFinishIncomplete = checklist.allowFinishIncomplete === true;
@@ -469,7 +486,7 @@ export function ConductScreen({
                 // PR 368: the sheet-level "Skip" flag turns skipping on for every criterion.
                 const currentItem = checklist.allowSkipAll === true && !rawItem.allowSkip ? { ...rawItem, allowSkip: true } : rawItem;
                 const currentResult = instance.results.find((r) => r.itemId === currentItem.id);
-                const isDone = isChecklistAnswerComplete(currentItem, checklist.scoringMode, checklistResultToAnswer(currentResult));
+                const isDone = isChecklistAnswerComplete(currentItem, checklist.scoringMode, checklistResultToAnswer(currentResult, voiceItemIds.has(currentItem.id)));
                 const groupStyle = resolveBlockStyle(checklist.appearance, 'group', currentItem.groupId);
                 const groupTitle = checklist.itemGroups?.find((group) => group.id === currentItem.groupId)?.title;
                 return (
@@ -489,6 +506,8 @@ export function ConductScreen({
                     <CriterionCard
                       key={currentItem.id}
                       instanceId={instance.id}
+                      voiceNotes={voiceNotes.filter((note) => note.place === 'answer' && note.itemId === currentItem.id)}
+                      onVoiceChanged={() => void reloadVoice()}
                       item={currentItem}
                       number={checklist.showNumbering === false ? '' : checklistNumbers(items, checklist.itemGroups ?? []).itemNumbers.get(currentItem.id)}
                       result={currentResult}
@@ -656,6 +675,8 @@ export function formatElapsed(ms: number) {
 function CriterionCard({
   number,
   instanceId,
+  voiceNotes,
+  onVoiceChanged,
   item,
   result,
   comment,
@@ -670,6 +691,8 @@ function CriterionCard({
   t,
 }: {
   instanceId: string;
+  voiceNotes: ChecklistVoiceNote[];
+  onVoiceChanged: () => void;
   item: ChecklistItemSummary;
   number?: string;
   result: ChecklistItemResultSummary | undefined;
@@ -691,6 +714,7 @@ function CriterionCard({
   const [heldAnswer, setHeldAnswer] = useState<{ checked?: boolean; scaleLevel?: number } | null>(null);
   const hasScale = Boolean(item.scale) || scoringMode === 'scale';
   const shownAnswer = heldAnswer ? pendingAnswer(heldAnswer) : checklistResultToAnswer(result);
+  const hasVoice = voiceNotes.length > 0;
   const noteRequired = isNoteRequired(item, shownAnswer, hasScale);
   // Combines this card's own save state with the photo upload's (tracked separately below, since
   // it doesn't go through run()) so the parent stepper can block navigation during either -- see
@@ -725,7 +749,7 @@ function CriterionCard({
   }
   function choose(input: { checked?: boolean; scaleLevel?: number }) {
     setCleared(false);
-    if (isNoteRequired(item, pendingAnswer(input), hasScale) && !comment.trim()) {
+    if (isNoteRequired(item, pendingAnswer(input), hasScale) && !comment.trim() && !hasVoice) {
       setHeldAnswer(input);
       return;
     }
@@ -771,7 +795,7 @@ function CriterionCard({
           type="button"
           size="sm"
           variant="secondary"
-          disabled={!canAct || (comment === (result?.comment ?? '') && !heldAnswer) || (noteRequired && !comment.trim())}
+          disabled={!canAct || (comment === (result?.comment ?? '') && !heldAnswer) || (noteRequired && !comment.trim() && !hasVoice)}
           onClick={() => {
             const held = heldAnswer;
             setHeldAnswer(null);
@@ -781,6 +805,7 @@ function CriterionCard({
         >
           {noteRequired ? t('checklists.noteSave', 'Save explanation') : t('checklistSessions.conduct.saveComment', 'Save comment')}
         </Button>
+        <ChecklistVoiceNotes api={conductVoiceApi} editable={canAct} instanceId={instanceId} itemId={item.id} notes={voiceNotes} onChanged={onVoiceChanged} t={t} />
       </div>
 
       {item.photoRequired && (
