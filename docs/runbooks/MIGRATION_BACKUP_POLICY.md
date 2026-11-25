@@ -50,9 +50,10 @@ and cannot continue an untimed attempt with locked answers.
 ## Assessment review settings migration (PR 535)
 
 `20261125130000_freeze_assessment_review_settings` extends existing assessment
-answer snapshots with the review settings available at migration time. It preserves
-existing question snapshots, scores, responses and timestamps. Apply it before
-deploying the updated API and retain the snapshots on rollback.
+answer snapshots with the review settings available at migration time. It fills
+missing snapshots from the question and option records available at that time.
+Existing snapshots, scores, responses and timestamps are preserved. Apply the
+migration before deploying the updated API and retain the snapshots on rollback.
 
 ## Assessment editor draft migration (PR 527)
 
