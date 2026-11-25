@@ -178,6 +178,14 @@ export class UploadService {
     return { objectKey: key, fileName: file.originalname, mimeType: file.mimetype, sizeBytes: file.size };
   }
 
+  /** PR 509: a voice recording of a comment of a check (tenant/check-scoped key `checklist-voice/`); `mimeType` is the plain type from `validateVoiceNoteFile`. */
+  async uploadChecklistVoiceNote(file: Express.Multer.File, mimeType: string, organizationId: string, instanceId: string): Promise<UploadResult> {
+    const { s3, bucket } = this.requireStorage();
+    const key = `organizations/${organizationId}/checklist-voice/${instanceId}/${randomUUID()}`;
+    await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: file.buffer, ContentType: mimeType, ContentLength: file.size }));
+    return { objectKey: key, fileName: 'voice', mimeType, sizeBytes: file.size };
+  }
+
   async uploadOrganizationLogo(file: Express.Multer.File, organizationId: string): Promise<string> {
     if (!this.s3 || !this.bucket) {
       throw new ServiceUnavailableException('File storage is not configured');

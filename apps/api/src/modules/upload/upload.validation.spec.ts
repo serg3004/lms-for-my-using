@@ -2,12 +2,14 @@ import { BadRequestException } from '@nestjs/common';
 
 import {
   MAX_UPLOAD_FILE_SIZE_BYTES,
+  MAX_VOICE_NOTE_BYTES,
   MAX_ZIP_COMPRESSION_RATIO,
   MAX_ZIP_ENTRY_COUNT,
   MAX_ZIP_UNCOMPRESSED_BYTES,
   validateFileName,
   validateUploadFile,
   validateUploadMetadata,
+  validateVoiceNoteFile,
 } from './upload.validation';
 
 function createFile(overrides: Partial<Express.Multer.File>): Express.Multer.File {
@@ -214,5 +216,40 @@ describe('picture formats accepted by the API up to the upload limit', () => {
   it('accepts a picture just under the 8 MB limit', () => {
     const buffer = Buffer.concat([header['image/png']!, Buffer.alloc(8 * 1024 * 1024 - 100)]);
     expect(() => validateUploadFile(createFile({ originalname: 'big.png', mimetype: 'image/png', buffer }))).not.toThrow();
+  });
+});
+
+// PR 509: a voice recording is judged by its content; only these three browser formats are accepted, and only on this path.
+describe('validateVoiceNoteFile', () => {
+  const webm = Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x01, 0x02]);
+  const ogg = Buffer.concat([Buffer.from('OggS', 'ascii'), Buffer.alloc(8)]);
+  const mp4 = Buffer.concat([Buffer.alloc(4), Buffer.from('ftypisom', 'ascii')]);
+  const voice = (mimetype: string, buffer: Buffer) => createFile({ originalname: 'voice', mimetype, buffer, size: buffer.length });
+
+  it.each([['audio/webm', webm], ['audio/ogg', ogg], ['audio/mp4', mp4]] as const)('accepts %s with matching content', (mimetype, buffer) => {
+    expect(validateVoiceNoteFile(voice(mimetype, buffer))).toBe(mimetype);
+  });
+
+  it('strips codec parameters and returns the plain type', () => {
+    expect(validateVoiceNoteFile(voice('audio/webm;codecs=opus', webm))).toBe('audio/webm');
+    expect(validateVoiceNoteFile(voice('Audio/MP4; codecs=mp4a.40.2', mp4))).toBe('audio/mp4');
+  });
+
+  it('rejects other types, including ones the general upload accepts', () => {
+    expect(() => validateVoiceNoteFile(voice('audio/mpeg', Buffer.from('ID3....')))).toThrow(BadRequestException);
+    expect(() => validateVoiceNoteFile(voice('video/webm', webm))).toThrow(BadRequestException);
+    expect(() => validateVoiceNoteFile(voice('application/pdf', Buffer.from('%PDF-1')))).toThrow(BadRequestException);
+  });
+
+  it('rejects content that does not match the declared type', () => {
+    expect(() => validateVoiceNoteFile(voice('audio/webm', ogg))).toThrow('does not match');
+    expect(() => validateVoiceNoteFile(voice('audio/ogg', mp4))).toThrow('does not match');
+    expect(() => validateVoiceNoteFile(voice('audio/mp4', webm))).toThrow('does not match');
+  });
+
+  it('rejects an empty and an oversized recording', () => {
+    expect(() => validateVoiceNoteFile(createFile({ mimetype: 'audio/webm', buffer: Buffer.alloc(0), size: 0 }))).toThrow('empty');
+    const big = Buffer.concat([webm, Buffer.alloc(MAX_VOICE_NOTE_BYTES)]);
+    expect(() => validateVoiceNoteFile(voice('audio/webm', big))).toThrow('too large');
   });
 });

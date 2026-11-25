@@ -79,6 +79,7 @@ module.exports = {
     '/src/integration/checklist-session-feedback\\.database\\.spec\\.ts$',
     '/src/integration/checklist-feedback-layout\\.database\\.spec\\.ts$',
     '/src/integration/checklist-photo-removal\\.database\\.spec\\.ts$',
+    '/src/integration/checklist-voice-notes\\.database\\.spec\\.ts$',
     '/src/integration/checklist-finish\\.database\\.spec\\.ts$',
     '/src/integration/checklist-deadline\\.database\\.spec\\.ts$',
     '/src/integration/reports-summary\\.database\\.spec\\.ts$',

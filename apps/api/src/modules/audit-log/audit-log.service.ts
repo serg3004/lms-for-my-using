@@ -141,6 +141,8 @@ export type AuditLogAction =
   | 'checklist_location.accessed'
   | 'checklist_evidence.accessed'
   | 'checklist_evidence.removed'
+  | 'checklist_voice_note.added'
+  | 'checklist_voice_note.removed'
   | 'checklist_instance.finished'
   | 'checklist_instance.transferred';
 

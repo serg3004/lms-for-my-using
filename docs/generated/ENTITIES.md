@@ -41,6 +41,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `ChecklistSessionEvent` |
 | `ChecklistSessionReminder` |
 | `ChecklistTemplate` |
+| `ChecklistVoiceNote` |
 | `ChecklistWorkplaceSettings` |
 | `Course` |
 | `CourseInstructor` |
@@ -123,6 +124,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 | `ChecklistSessionReminderType` | `pre_start`, `incomplete_after_start` |
 | `ChecklistSessionStatus` | `scheduled`, `in_progress`, `paused`, `completed`, `cancelled` |
 | `ChecklistStatus` | `draft`, `published`, `archived` |
+| `ChecklistVoiceNotePlace` | `answer`, `reviewer_comment`, `summary` |
 | `CourseMaterialKind` | `file`, `link` |
 | `CourseMaterialStatus` | `active`, `archived` |
 | `CourseStatus` | `draft`, `published`, `archived` |

@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Headers, Param, Patch, Post, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 
@@ -7,6 +7,8 @@ import type { AuthenticatedRequest } from '../auth/public.js';
 import { MAX_BUFFERED_UPLOAD_SIZE_BYTES } from '../upload/public.js';
 import { ChecklistPublicService } from './checklist-public.service.js';
 import { finishPublicChecklistSchema, skipChecklistItemSchema, startPublicChecklistSchema, submitChecklistItemResultSchema } from './checklists.schemas.js';
+
+type VoiceFileResponse = { set(headers: Record<string, string>): VoiceFileResponse; status(code: number): VoiceFileResponse; send(body?: Buffer): VoiceFileResponse };
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const assertUuid = (value: string) => {
@@ -81,6 +83,39 @@ export class ChecklistPublicController {
   attachPhoto(@Param('token') token: string, @Param('instanceId') instanceId: string, @Param('itemId') itemId: string, @Headers('x-guest-pass') passKey: string | undefined, @UploadedFile() file: Express.Multer.File | undefined) {
     assertUuid(itemId);
     return this.publicChecklists.attachPhoto(token, instanceId, itemId, passKey, file);
+  }
+
+  // PR 509: voice recordings of a guest's comments (same pass key as every save; the file is read by the server, never a public link).
+  @Get(':token/passes/:instanceId/voice-notes')
+  @PublicAccess()
+  listVoiceNotes(@Param('token') token: string, @Param('instanceId') instanceId: string, @Headers('x-guest-pass') passKey: string | undefined) {
+    return this.publicChecklists.listVoiceNotes(token, instanceId, passKey);
+  }
+
+  @Post(':token/passes/:instanceId/items/:itemId/voice-notes')
+  @PublicAccess()
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_BUFFERED_UPLOAD_SIZE_BYTES } }))
+  uploadVoiceNote(@Param('token') token: string, @Param('instanceId') instanceId: string, @Param('itemId') itemId: string, @Headers('x-guest-pass') passKey: string | undefined, @UploadedFile() file: Express.Multer.File | undefined, @Body() body: unknown) {
+    assertUuid(itemId);
+    return this.publicChecklists.uploadVoiceNote(token, instanceId, itemId, passKey, file, body);
+  }
+
+  @Get(':token/passes/:instanceId/voice-notes/:noteId/file')
+  @PublicAccess()
+  async getVoiceNoteFile(@Param('token') token: string, @Param('instanceId') instanceId: string, @Param('noteId') noteId: string, @Headers('x-guest-pass') passKey: string | undefined, @Headers('if-none-match') ifNoneMatch: string | undefined, @Res() response: VoiceFileResponse) {
+    assertUuid(noteId);
+    const file = await this.publicChecklists.getVoiceNoteFile(token, instanceId, noteId, passKey);
+    const etag = `"${file.version}"`;
+    const headers = { 'Content-Type': file.mimeType, 'Cache-Control': 'private, no-cache', ETag: etag, 'X-Content-Type-Options': 'nosniff' };
+    if (ifNoneMatch === etag) { response.set(headers).status(304).send(); return; }
+    response.set({ ...headers, 'Content-Length': String(file.bytes.length) }).send(file.bytes);
+  }
+
+  @Delete(':token/passes/:instanceId/voice-notes/:noteId')
+  @PublicAccess()
+  removeVoiceNote(@Param('token') token: string, @Param('instanceId') instanceId: string, @Param('noteId') noteId: string, @Headers('x-guest-pass') passKey: string | undefined) {
+    assertUuid(noteId);
+    return this.publicChecklists.removeVoiceNote(token, instanceId, noteId, passKey);
   }
 
   @Post(':token/passes/:instanceId/finish')

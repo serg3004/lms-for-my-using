@@ -6,6 +6,16 @@
 >
 > **Проверено по `main`:** `bd602622a4647f825cf5f5bc3bf10f663940c0a5` (2026-08-09).
 
+## Checklist voice recordings migration (PR 509)
+
+Deploy `20261125120000_checklist_voice_notes` before the API. It is additive: the
+enum `ChecklistVoiceNotePlace` and the table `checklist_voice_notes` (check, criterion,
+place, private storage key and type, length, size, author), with cascading foreign keys
+to organizations and checks and `SET NULL` for the author. Existing checks have no rows
+and need no backfill. On application rollback keep the table: the recordings stay in
+storage under `organizations/<id>/checklist-voice/` and are simply not shown. Deleting
+rows without deleting the objects leaves orphaned files, so remove both together.
+
 ## Assessment analytics layout migration (PR 533)
 
 Deploy `20261125090000_assessment_analytics_layouts` before the API. It adds the

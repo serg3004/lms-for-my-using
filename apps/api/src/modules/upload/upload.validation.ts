@@ -59,6 +59,27 @@ export function validateUploadFile(file: Express.Multer.File): void {
   }
 }
 
+/** PR 509: what a browser records with MediaRecorder; only the voice-comment path accepts these (Chrome/Firefox: webm/ogg, Safari: mp4). */
+export const VOICE_NOTE_MIME_TYPES = ['audio/webm', 'audio/ogg', 'audio/mp4'] as const;
+export const MAX_VOICE_NOTE_BYTES = 4 * 1024 * 1024;
+
+/**
+ * PR 509: a voice recording is accepted by its content, not by its name. The declared type may carry parameters
+ * (`audio/webm;codecs=opus`); the stored type is the plain one. Returns that plain type.
+ */
+export function validateVoiceNoteFile(file: Express.Multer.File): string {
+  const mimeType = (file.mimetype ?? '').split(';')[0]!.trim().toLowerCase();
+  if (!(VOICE_NOTE_MIME_TYPES as readonly string[]).includes(mimeType)) throw new BadRequestException(`Voice recording type "${mimeType}" is not allowed`);
+  if (!Number.isSafeInteger(file.size) || file.size <= 0 || !file.buffer?.length) throw new BadRequestException('Voice recording is empty');
+  if (file.size > MAX_VOICE_NOTE_BYTES || file.buffer.length > MAX_VOICE_NOTE_BYTES) throw new BadRequestException('Voice recording is too large');
+  const buffer = file.buffer;
+  const matches = mimeType === 'audio/webm' ? startsWithBytes(buffer, [0x1a, 0x45, 0xdf, 0xa3])
+    : mimeType === 'audio/ogg' ? buffer.subarray(0, 4).toString('ascii') === 'OggS'
+      : buffer.subarray(4, 8).toString('ascii') === 'ftyp';
+  if (!matches) throw new BadRequestException('Voice recording content does not match its declared type');
+  return mimeType;
+}
+
 export function validateFileName(originalname: string): void {
   if (!originalname || originalname.length === 0) {
     throw new BadRequestException('File name is missing');

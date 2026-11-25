@@ -4,10 +4,11 @@ import { Prisma } from '@prisma/client';
 import { getJwtSecret } from '../../config/env.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
-import { UploadService, validateUploadFile } from '../upload/public.js';
+import { UploadService, validateUploadFile, validateVoiceNoteFile } from '../upload/public.js';
 import { guestPassKey, isGuestPassKey, PublicCaptcha, type CaptchaVerdict } from './checklist-public-captcha.js';
 import { GUEST_USER_EMAIL, isEligibleForPublicAccess, PUBLIC_TOKEN_PATTERN } from './checklist-public-access.js';
 import { presentLearnerInstance } from './checklist-learner-result.js';
+import { voiceNoteFieldsSchema } from './checklist-voice-notes.js';
 import { ChecklistsService } from './checklists.service.js';
 import type { FinishPublicChecklistInput, SkipChecklistItemInput, StartPublicChecklistInput, SubmitChecklistItemResultInput } from './checklists.schemas.js';
 
@@ -227,6 +228,37 @@ export class ChecklistPublicService {
       await this.uploadService.deleteObject(uploaded.objectKey).catch(() => undefined);
       throw error;
     }
+  }
+
+  /** PR 509: voice recordings of a guest's comments. Same pass key as every save; limits of count, length and size are the server's. */
+  async uploadVoiceNote(token: string, instanceId: string, itemId: string, passKey: string | undefined, file: Express.Multer.File | undefined, body: unknown) {
+    const { sheet, guestUserId } = await this.authorizePass(token, instanceId, passKey);
+    if (!file) throw new BadRequestException('No file provided');
+    const mimeType = validateVoiceNoteFile(file);
+    const fields = voiceNoteFieldsSchema.parse(body ?? {});
+    await this.checklists.assertVoiceNoteRoom(instanceId, itemId, sheet.organizationId, guestUserId, false, fields.replaceId);
+    const uploaded = await this.uploadService.uploadChecklistVoiceNote(file, mimeType, sheet.organizationId, instanceId);
+    try {
+      return await this.checklists.addVoiceNote(instanceId, itemId, sheet.organizationId, guestUserId, false, uploaded, fields.durationMs, fields.replaceId);
+    } catch (error) {
+      await this.uploadService.deleteObject(uploaded.objectKey).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  async listVoiceNotes(token: string, instanceId: string, passKey: string | undefined) {
+    const { sheet, guestUserId } = await this.authorizePass(token, instanceId, passKey);
+    return this.checklists.listVoiceNotes(instanceId, sheet.organizationId, guestUserId, false);
+  }
+
+  async getVoiceNoteFile(token: string, instanceId: string, noteId: string, passKey: string | undefined) {
+    const { sheet, guestUserId } = await this.authorizePass(token, instanceId, passKey);
+    return this.checklists.getVoiceNoteFile(instanceId, noteId, sheet.organizationId, guestUserId, false);
+  }
+
+  async removeVoiceNote(token: string, instanceId: string, noteId: string, passKey: string | undefined) {
+    const { sheet, guestUserId } = await this.authorizePass(token, instanceId, passKey);
+    await this.checklists.removeVoiceNote(instanceId, noteId, sheet.organizationId, guestUserId, false);
   }
 
   async finish(token: string, instanceId: string, passKey: string | undefined, input: FinishPublicChecklistInput) {
