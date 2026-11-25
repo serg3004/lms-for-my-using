@@ -14,6 +14,8 @@ export type ChecklistAnswerState = {
   hasPhoto?: boolean;
   /** PR 415: the explanation (the result's comment). */
   comment?: string | null;
+  /** PR 510: a voice recording of the comment stands in for a required explanation. */
+  hasVoice?: boolean;
 };
 
 export function checklistItemLevels(item: Pick<ChecklistItemSummary, 'scale'>, scoringMode: ChecklistScoringMode, levels: ChecklistScaleLevel[] | null): ChecklistScaleLevel[] | null {
@@ -33,7 +35,7 @@ export function isChecklistNoteMissing(
   scoringMode: ChecklistScoringMode,
   answer: ChecklistAnswerState | undefined,
 ) {
-  return isNoteRequired(item, answer, Boolean(item.scale) || scoringMode === 'scale') && !(answer?.comment ?? '').trim();
+  return isNoteRequired(item, answer, Boolean(item.scale) || scoringMode === 'scale') && !(answer?.comment ?? '').trim() && answer?.hasVoice !== true;
 }
 
 export function isChecklistAnswerComplete(
@@ -55,9 +57,10 @@ export function isChecklistRequirementSatisfied(
   return isChecklistAnswerComplete(item, scoringMode, answer);
 }
 
-export function checklistResultToAnswer(result: ChecklistItemResultSummary | undefined): ChecklistAnswerState | undefined {
+export function checklistResultToAnswer(result: ChecklistItemResultSummary | undefined, hasVoice = false): ChecklistAnswerState | undefined {
   if (!result) return undefined;
   return {
+    ...(hasVoice ? { hasVoice } : {}),
     checked: result.checked,
     scaleLevel: result.scaleLevel,
     hasPhoto: hasChecklistPhotoEvidence(result),
@@ -69,11 +72,12 @@ export function getRequiredChecklistProgress(
   items: ChecklistItemSummary[],
   results: ChecklistItemResultSummary[],
   scoringMode: ChecklistScoringMode,
+  voiceItemIds?: ReadonlySet<string>,
 ) {
   const requiredItems = items.filter((item) => item.isRequired);
   const resultByItemId = new Map(results.map((result) => [result.itemId, result]));
   const completedRequired = requiredItems.filter((item) =>
-    isChecklistAnswerComplete(item, scoringMode, checklistResultToAnswer(resultByItemId.get(item.id))),
+    isChecklistAnswerComplete(item, scoringMode, checklistResultToAnswer(resultByItemId.get(item.id), voiceItemIds?.has(item.id))),
   ).length;
 
   return { completedRequired, requiredCount: requiredItems.length };

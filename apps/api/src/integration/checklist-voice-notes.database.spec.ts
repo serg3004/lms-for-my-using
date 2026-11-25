@@ -100,9 +100,16 @@ describe('checklist voice notes — database', () => {
     expect(deleteObject).toHaveBeenCalledWith(old.objectKey);
   });
 
-  it('needs the answer to exist first', async () => {
+  it('may come before the answer, only for a criterion of this check, and then stands in for a required explanation', async () => {
     const id = await instance('in_progress', false);
-    await expect(service.addVoiceNote(id, itemId, organizationId, learnerId, false, file(), 1000)).rejects.toThrow('Mark this item');
+    const foreign = (await prisma.checklistItem.create({ data: { organizationId, checklistId: (await prisma.checklist.create({ data: { organizationId, title: 'Other sheet', status: 'published' } })).id, order: 0, text: 'Elsewhere', points: 1, isRequired: true } })).id;
+    await expect(service.addVoiceNote(id, foreign, organizationId, learnerId, false, file(), 1000)).rejects.toThrow('Checklist item not found');
+
+    await prisma.checklistItem.update({ where: { id: itemId }, data: { noteRule: 'always', noteRequired: true } });
+    await expect(service.submitItemResult(id, itemId, organizationId, learnerId, false, { checked: true })).rejects.toThrow('explanation is required');
+    await service.addVoiceNote(id, itemId, organizationId, learnerId, false, file(), 1000);
+    await expect(service.submitItemResult(id, itemId, organizationId, learnerId, false, { checked: true })).resolves.toBeDefined();
+    expect(await prisma.checklistItemResult.count({ where: { instanceId: id, itemId } })).toBe(1);
   });
 
   it('removes only the author’s own recording, deletes the object and audits it', async () => {

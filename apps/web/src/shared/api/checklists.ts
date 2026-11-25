@@ -498,3 +498,20 @@ export function getChecklistInstanceReport(instanceId: string) {
 export function downloadChecklistInstanceReportPdf(instanceId: string) {
   return apiDownloadRequest(`/checklist-instances/${encodeURIComponent(instanceId)}/report.pdf`, 60_000);
 }
+
+/** PR 510: voice recordings of a comment. Never carries the storage key; the sound itself comes only through the API. */
+export type ChecklistVoiceNote = { id: string; itemId: string | null; place: 'answer' | 'reviewer_comment' | 'summary'; durationMs: number; sizeBytes: number; createdBy: string; createdAt: string };
+const voiceBase = (instanceId: string) => `/checklist-instances/${encodeURIComponent(instanceId)}/voice-notes`;
+export const listChecklistVoiceNotes = (instanceId: string) => apiRequest<ChecklistVoiceNote[]>(voiceBase(instanceId));
+export function uploadChecklistVoiceNote(instanceId: string, itemId: string, blob: Blob, durationMs: number, replaceId?: string) {
+  const form = new FormData();
+  form.append('durationMs', String(Math.round(durationMs)));
+  if (replaceId) form.append('replaceId', replaceId);
+  form.append('file', blob, 'voice');
+  return apiRequest<ChecklistVoiceNote>(`/checklist-instances/${encodeURIComponent(instanceId)}/items/${encodeURIComponent(itemId)}/voice-notes`, { method: 'POST', body: form });
+}
+export async function getChecklistVoiceNoteBlob(instanceId: string, noteId: string) {
+  return (await apiDownloadRequest(`${voiceBase(instanceId)}/${encodeURIComponent(noteId)}/file`)).blob;
+}
+export const removeChecklistVoiceNote = (instanceId: string, noteId: string) =>
+  apiRequest<void>(`${voiceBase(instanceId)}/${encodeURIComponent(noteId)}`, { method: 'DELETE' });

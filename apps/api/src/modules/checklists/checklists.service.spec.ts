@@ -38,6 +38,8 @@ function createFakePrisma() {
   const nextId = (prefix: string) => `${prefix}-${++seq}`;
   const prisma = {
     checklistWorkplaceSettings: { findUnique: async () => null },
+    // PR 510: no voice recordings in these scenarios.
+    checklistVoiceNote: { findMany: async () => [], count: async () => 0 },
     checklist: {
       findFirst: async ({ where }: { where: Record<string, unknown> }) =>
         checklists.find((c) => c.id === where['id'] && c.organizationId === where['organizationId'] && c.deletedAt === (where['deletedAt'] ?? null)) ?? null,
@@ -847,7 +849,7 @@ describe('ChecklistsService — explanation rule (PR 415)', () => {
     await service.updateItem(created.id, organizationId, rule);
     await service.updateChecklist(checklist.id, organizationId, { status: 'published' });
     const instance = await service.assignChecklist(checklist.id, organizationId, { userId: learnerId }, instructorId);
-    return { service, instance, itemId: created.id };
+    return { service, instance, itemId: created.id, prisma };
   }
 
   it('refuses the answer that opens a required explanation until a comment comes with it, and accepts the other answer without one', async () => {
@@ -856,6 +858,14 @@ describe('ChecklistsService — explanation rule (PR 415)', () => {
     await service.submitItemResult(instance.id, itemId, organizationId, learnerId, false, { checked: false, comment: 'Нет ценников' });
     // The explanation cannot be erased while the answer that needs it stands.
     await expect(service.submitItemResult(instance.id, itemId, organizationId, learnerId, false, { comment: '' })).rejects.toThrow(/explanation is required/);
+  });
+
+  it('PR 510: a voice recording stands in for a required explanation, for the save and for finishing', async () => {
+    const { service, instance, itemId, prisma } = await publishedWithItem({ noteRule: 'always', noteRequired: true });
+    await expect(service.submitItemResult(instance.id, itemId, organizationId, learnerId, false, { checked: true })).rejects.toThrow(/explanation is required/);
+    (prisma as unknown as { checklistVoiceNote: { findMany: unknown; count: unknown } }).checklistVoiceNote = { findMany: async () => [{ itemId }], count: async () => 1 };
+    const done = await service.submitItemResult(instance.id, itemId, organizationId, learnerId, false, { checked: true });
+    expect(done.status).toBe('completed');
   });
 
   it('does not ask for an explanation on an answer the rule does not list', async () => {

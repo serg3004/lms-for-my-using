@@ -22,7 +22,7 @@ function setup(over: { count?: number; result?: unknown; note?: unknown; instanc
       count: jest.fn(async () => over.count ?? 0),
       create: jest.fn(async () => ({ id: 'new', itemId, place: 'answer', durationMs: 1000, sizeBytes: 100, createdBy: author, createdAt: new Date() })),
     },
-    checklistItemResult: { findUnique: jest.fn(async () => (over.result === undefined ? { id: 'r1' } : over.result)) },
+    checklistItem: { findFirst: jest.fn(async () => (over.result === undefined ? { id: itemId } : over.result)) },
   };
   const prisma = {
     ...tx,
@@ -63,9 +63,9 @@ describe('ChecklistVoiceNotes.add', () => {
     await expect(notes.add(instanceId, itemId, org, author, false, uploaded, 1000)).rejects.toBeInstanceOf(ConflictException);
   });
 
-  it('wants the answer marked first', async () => {
+  it('may come before the answer, but only for a criterion of this check', async () => {
     const { notes } = setup({ result: null });
-    await expect(notes.add(instanceId, itemId, org, author, false, uploaded, 1000)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(notes.add(instanceId, itemId, org, author, false, uploaded, 1000)).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('replaces the author’s own recording and deletes the old object after the swap', async () => {

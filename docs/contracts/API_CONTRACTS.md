@@ -905,7 +905,7 @@ PR 509: voice recordings of the comment of an answer (the server side; the scree
 only `answer` is used now). `POST /checklist-instances/:instanceId/items/:itemId/voice-notes` is multipart: `file` and `durationMs`
 (and an optional `replaceId`, the author's earlier recording to swap out in the same step). Accepted by content, not name: `audio/webm`,
 `audio/ogg`, `audio/mp4` (the types browsers record; codec parameters are dropped), up to 4 MiB, 0.3 s to 2 minutes, at most 3 recordings
-per comment (409 beyond that); other type or mismatching content 400, a criterion without an answer 400. Writing follows `POST .../photo`
+per comment (409 beyond that); other type or mismatching content 400. Since PR 510 a recording may come before the answer (a required explanation is what makes an answer wait): it only has to belong to a criterion of this very check (otherwise 404), and a recording of the answer's comment counts as the explanation, both when the answer is saved (`PATCH .../items/:itemId`) and when the check is finished. Writing follows `POST .../photo`
 (the executor, the assigned observer of a session, privileged roles with reviewer access; a finished or expired check, another organization
 or another session is rejected like for an answer write). `GET /checklist-instances/:instanceId/voice-notes` lists the recordings
 (`id, itemId, place, durationMs, sizeBytes, createdBy, createdAt`, never the key); `GET .../voice-notes/:noteId/file` returns the bytes read
