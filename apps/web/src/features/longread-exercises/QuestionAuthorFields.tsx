@@ -1,3 +1,4 @@
+import { AssessmentMaterialField } from '../assessment-materials/AssessmentMaterial.js';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { QuestionDefinition } from '@lms/shared/assessment-question-types';
@@ -21,6 +22,9 @@ export function QuestionAuthorFields({ value, onChange }: { value: WriteLongread
   return <>
     {value.options.map((option, index) => <div key={option.id ?? index} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
       <QuestionTextField name="option" value={option.text} onChange={(label) => onChange({ ...value, options: value.options.map((o, i) => i === index ? { ...o, text: label } : o) })} />
+      <AssessmentMaterialField value={option.material} onChange={(material) => onChange({
+        ...value, options: value.options.map((item, i) => i === index ? { ...item, material } : item),
+      })} />
       <label><input type={value.type === 'multiple_choice' ? 'checkbox' : 'radio'} name={`${id}-correct`} checked={option.isCorrect} onChange={(e) => onChange({ ...value, options: value.options.map((o, i) => ({ ...o, isCorrect: i === index ? e.target.checked : value.type === 'multiple_choice' && o.isCorrect })) })} /> {t('longreadExercises.correctOption')}</label>
       <button type="button" className="admin-btn admin-btn--secondary" disabled={value.options.length <= 2} onClick={() => onChange({ ...value, options: value.options.filter((_, i) => i !== index) })}>{t('longread.delete')}</button>
     </div>)}

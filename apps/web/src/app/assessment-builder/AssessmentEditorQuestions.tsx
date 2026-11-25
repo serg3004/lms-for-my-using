@@ -1,3 +1,4 @@
+import { AssessmentMaterialField } from '../../features/assessment-materials/AssessmentMaterial.js';
 import { questionTypeSchema, scoringModeSchema, type QuestionType } from '@lms/shared/assessment-question-types';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -117,6 +118,7 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview, sing
         <FormField id={`${question.id}-image`} label={t('admin.assessmentBuilder.editor.questionImage')}>
           <input id={`${question.id}-image`} maxLength={2000} value={question.imageUrl ?? ''}
             onChange={(event) => changeQuestion(question.id, { imageUrl: event.target.value || null })} />
+          <AssessmentMaterialField value={question.material} onChange={(material) => changeQuestion(question.id, { material })} />
         </FormField>
         <FormField id={`${question.id}-scoring`} label={t('longreadExercises.scoringMode')}>
           <select id={`${question.id}-scoring`} value={question.scoringMode} onChange={(event) =>
@@ -146,6 +148,7 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview, sing
                   changeQuestion(question.id, { options: question.options.map((item) =>
                     item.id === option.id ? { ...item, imageUrl: event.target.value || null } : item) })} />
               </FormField>
+              <AssessmentMaterialField value={option.material} onChange={(material) => changeQuestion(question.id, { options: question.options.map((item) => item.id === option.id ? { ...item, material } : item) })} />
               {option.imageUrl && <img className="admin-preview__option-image" src={option.imageUrl} alt={option.text ?? ''} />}
               <label className="admin-checkbox-field">
                 <input type={question.type === 'multiple_choice' ? 'checkbox' : 'radio'} name={`correct-${question.id}`}

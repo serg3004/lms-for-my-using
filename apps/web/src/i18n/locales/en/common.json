@@ -4665,5 +4665,14 @@
     "exporting": "Preparing the file…",
     "exportError": "Could not export the file. Try again.",
     "exportTooLarge": "Too many rows to export (the limit is 5000). Narrow the period or pick a course."
+  },
+  "assessmentMaterials": {
+    "material": "Material",
+    "link": "HTTPS link or embed code",
+    "alt": "Accessible title",
+    "invalid": "Use an HTTPS link or supported embed code.",
+    "open": "Open in a new tab",
+    "choose": "Choose uploaded image",
+    "imageError": "Unable to load or upload an image. JPEG, PNG, GIF and WebP up to 8 MB are accepted."
   }
 }

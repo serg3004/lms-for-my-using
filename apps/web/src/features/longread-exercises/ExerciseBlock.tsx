@@ -1,3 +1,4 @@
+import { AssessmentMaterial } from '../assessment-materials/AssessmentMaterial.js';
 import { ApiClientError } from '../../shared/apiClient.js';
 import { RichText } from '../../shared/RichText.js';
 import { useEffect, useRef, useState } from 'react';
@@ -56,6 +57,7 @@ export function ExerciseBlock({ block }: { block: ReaderBlock }) {
     <h3>{question.title}</h3>
     <p>{t(config.mode === 'practice' ? 'longreadExercises.practice' : 'longreadExercises.graded')} · {t(config.required ? 'longreadExercises.required' : 'longreadExercises.optional')} · {t('longreadExercises.points', { count: question.points })}</p>
     {question.text && <p><RichText value={question.text} /></p>}
+    <AssessmentMaterial value={question.material} />
     {question.imageUrl && <img src={question.imageUrl} alt={question.title} style={{ maxWidth: '100%', maxHeight: 360 }} />}
     {config.hint && <details><summary style={{ minHeight: 44 }}>{t('longreadExercises.hint')}</summary><p><RichText value={config.hint} /></p></details>}
     <QuestionResponseFields question={question} answer={answer} onChange={(value) => { if (!pending.current) setAnswer(value); }} disabled={busy || !editing || blocked || !!pending.current} />

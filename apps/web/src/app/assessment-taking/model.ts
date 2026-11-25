@@ -8,6 +8,7 @@ export type AssessmentQuestion = {
   definition?: PublicQuestionDefinition | null;
   title: string;
   text: string | null;
+  material?: string | null;
   imageUrl?: string | null;
   points: number;
   order: number;
@@ -17,6 +18,7 @@ export type AssessmentOption = {
   id: string;
   questionId: string;
   text: string | null;
+  material?: string | null;
   imageUrl: string | null;
   order: number;
 };

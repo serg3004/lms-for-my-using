@@ -20,7 +20,7 @@ const assessmentQuestionSelect = {
   type: true,
   title: true,
   text: true,
-  imageUrl: true,
+  imageUrl: true, material: true,
   points: true,
   order: true,
   scoringMode: true,
@@ -34,7 +34,7 @@ const assessmentAnswerOptionSelect = {
   organizationId: true,
   questionId: true,
   text: true,
-  imageUrl: true,
+  imageUrl: true, material: true,
   isCorrect: true,
   order: true,
   createdAt: true,
@@ -48,7 +48,7 @@ const learnerQuizOptionsSelect = {
     id: true,
     questionId: true,
     text: true,
-    imageUrl: true,
+    imageUrl: true, material: true,
     order: true,
   },
 };
@@ -60,7 +60,7 @@ const learnerAssessmentQuestionSelect = {
   type: true,
   title: true,
   text: true,
-  imageUrl: true,
+  imageUrl: true, material: true,
   points: true,
   order: true,
   scoringMode: true,
@@ -224,7 +224,7 @@ export class AssessmentQuestionsService {
   async updateAnswerOption(optionId: string, organizationId: string, input: UpdateAssessmentAnswerOptionInput) {
     const option = await this.prisma.assessmentAnswerOption.findFirst({
       where: { id: optionId, organizationId, deletedAt: null },
-      select: { id: true, text: true, imageUrl: true, question: { select: { type: true, definition: true, bankEntryId: true, assessment: { select: publishedEditSelect } } } },
+      select: { id: true, text: true, imageUrl: true, material: true, question: { select: { type: true, definition: true, bankEntryId: true, assessment: { select: publishedEditSelect } } } },
     });
 
     if (!option) {
@@ -237,7 +237,7 @@ export class AssessmentQuestionsService {
     const nextText = input.text !== undefined ? input.text : option.text;
     const nextImageUrl = input.imageUrl !== undefined ? input.imageUrl : option.imageUrl;
 
-    if (!nextText && !nextImageUrl) {
+    if (!nextText && !nextImageUrl && !(input.material === undefined ? option.material : input.material)) {
       throw new BadRequestException('Answer option requires text or imageUrl');
     }
 

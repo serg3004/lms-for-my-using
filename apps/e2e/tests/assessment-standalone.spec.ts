@@ -36,7 +36,7 @@ test('assign a standalone test and take it by link after signing in', async ({ p
       headers, data: { organizationId, title: 'Самостоятельная проверка', slug: 'standalone-e2e' },
     }));
     const path = `/api/v1/assessments/${id}`;
-    const question = await json<{ id: string }>(request.post(`${path}/questions`, { headers, data: { organizationId, title: 'Вопрос' } }));
+    const question = await json<{ id: string }>(request.post(`${path}/questions`, { headers, data: { organizationId, title: 'Вопрос', material: JSON.stringify({ kind: 'link', url: 'https://vimeo.com/123456789', alt: 'Видео к вопросу' }) } }));
     for (const [text, isCorrect] of [['Правильный ответ', true], ['Неправильный ответ', false]] as const) {
       await json(request.post(`/api/v1/questions/${question.id}/options`, { headers, data: { organizationId, text, isCorrect } }));
     }
@@ -60,6 +60,7 @@ test('assign a standalone test and take it by link after signing in', async ({ p
     } finally {
       await authorPage.close();
     }
+    await page.route('https://player.vimeo.com/**', (route) => route.fulfill({ body: 'Video fixture' }));
     await page.goto(shareUrl.href);
     await expect(page).toHaveURL(/\/login$/);
     await page.locator('input[name="organizationId"]').fill(organizationId);
@@ -67,9 +68,14 @@ test('assign a standalone test and take it by link after signing in', async ({ p
     await page.locator('input[name="password"]').fill(password);
     await page.locator('button[type="submit"]').click();
     await expect(page).toHaveURL(shareUrl.href);
+    await page.setViewportSize({ width: 360, height: 844 });
+    const video = page.locator('iframe[title="Видео к вопросу"]');
+    await expect(video).toHaveAttribute('src', 'https://player.vimeo.com/video/123456789');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
     await page.getByRole('radio', { name: 'Правильный ответ', exact: true }).check();
     await page.getByRole('button', { name: 'Отправить ответы', exact: true }).click();
     await expect(page.getByText('100%', { exact: true }).first()).toBeVisible();
+    await expect(page.locator('.learner-quiz__breakdown').locator(video)).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/learn/assessments');
     await expect(page.getByText('Самостоятельная проверка', { exact: true })).toBeVisible();

@@ -36,13 +36,13 @@ export class LongreadQuestionBankService {
       if (input.assessmentId && !assessment) throw new NotFoundException('Assessment not found');
       if (!assessment) assessment = await tx.assessment.create({ data: { organizationId, courseId: lesson.courseId, lessonId, title: lesson.title, createdBy, isLongreadExercise: true, slug: `longread-${randomUUID()}`, availableAfterCourseCompletion: false, status: 'draft' } });
       await tx.assessment.update({ where: { id: assessment.id }, data: { passingScore: input.assessmentPassingScore, maxAttempts: input.assessmentMaxAttempts } });
-      const data = { type: input.type, title: input.title, text: input.text, definition: definition ?? Prisma.DbNull, scoringMode: input.scoringMode };
+      const data = { type: input.type, title: input.title, text: input.text, material: input.material, definition: definition ?? Prisma.DbNull, scoringMode: input.scoringMode };
       const question = existing ? await tx.assessmentQuestion.update({ where: { id: existing.id }, data }) : await tx.assessmentQuestion.create({ data: { ...data, organizationId, assessmentId: assessment.id } });
       const oldOptions = await tx.assessmentAnswerOption.findMany({ where: { questionId: question.id, organizationId, deletedAt: null } });
       if (input.options.some((option) => option.id && !oldOptions.some((old) => old.id === option.id))) throw new BadRequestException('Option does not belong to this question');
       await tx.assessmentAnswerOption.updateMany({ where: { questionId: question.id, organizationId, deletedAt: null, id: { notIn: input.options.flatMap((option) => option.id ? [option.id] : []) } }, data: { deletedAt: new Date() } });
       for (const [order, option] of input.options.entries()) {
-        const fields = { text: option.text, isCorrect: option.isCorrect, imageUrl: null, order };
+        const fields = { text: option.text, isCorrect: option.isCorrect, imageUrl: null, material: option.material, order };
         if (option.id) await tx.assessmentAnswerOption.update({ where: { id: option.id }, data: fields });
         else await tx.assessmentAnswerOption.create({ data: { ...fields, organizationId, questionId: question.id } });
       }

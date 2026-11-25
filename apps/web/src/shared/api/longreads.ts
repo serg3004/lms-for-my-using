@@ -43,7 +43,7 @@ export const getLongreadFile = (id: string, fileId: string, signal?: AbortSignal
 export const getLongreadFileUrl = (id: string, fileId: string, version: number | null, signal?: AbortSignal) => apiRequest<{ url: string; expiresIn: number; fileName: string; mimeType: string; sizeBytes: number }>(`${path(id)}/files/${encodeURIComponent(fileId)}/${version === null ? 'preview' : `download?version=${version}`}`, { signal });
 
 export type LongreadBankQuestion = { id: string; assessmentId: string; type: QuestionType; title: string; text: string | null; definition: QuestionDefinition | null;
-  scoringMode: QuestionScoringMode; updatedAt: string; options: { id: string; text: string | null; imageUrl: string | null; isCorrect: boolean; order: number }[] };
+  scoringMode: QuestionScoringMode; material?: string | null; updatedAt: string; options: { id: string; text: string | null; imageUrl: string | null; material?: string | null; isCorrect: boolean; order: number }[] };
 export type LongreadQuestionBank = { id: string; title: string; passingScore: number; maxAttempts: number | null; questions: LongreadBankQuestion[] }[];
 export const getLongreadQuestionBank = (id: string) => apiRequest<LongreadQuestionBank>(`${path(id)}/questions`);
 export const writeLongreadQuestion = (id: string, revision: number, question: WriteLongreadQuestion) => apiRequest<{ questionId: string; revision: number }>(`${path(id)}/questions`, { method: 'POST', body: JSON.stringify({ revision, question }) });

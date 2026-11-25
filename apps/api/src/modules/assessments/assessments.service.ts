@@ -33,7 +33,7 @@ const assessmentSelect = {
   isLongreadExercise: true,
   title: true,
   slug: true,
-  description: true,
+  description: true, material: true,
   status: true,
   passingScore: true,
   maxAttempts: true,
@@ -50,10 +50,10 @@ const assessmentSelect = {
 } as const;
 
 const assessmentRevisionQuestionSelect = {
-  id: true, type: true, title: true, text: true, imageUrl: true, order: true, points: true,
+  id: true, type: true, title: true, text: true, imageUrl: true, material: true, order: true, points: true,
   scoringMode: true, definition: true, correctFeedback: true, incorrectFeedback: true,
   options: { where: { deletedAt: null }, orderBy: [{ order: 'asc' }, { id: 'asc' }],
-    select: { id: true, text: true, imageUrl: true, order: true, isCorrect: true } },
+    select: { id: true, text: true, imageUrl: true, material: true, order: true, isCorrect: true } },
 } as const satisfies Prisma.AssessmentQuestionSelect;
 
 @Injectable()
@@ -119,23 +119,23 @@ export class AssessmentsService {
           questions: {
             where: { organizationId, deletedAt: null },
             select: {
-              type: true, title: true, text: true, imageUrl: true, points: true, order: true, definition: true, scoringMode: true, correctFeedback: true, incorrectFeedback: true,
-              options: { where: { organizationId, deletedAt: null }, select: { text: true, imageUrl: true, isCorrect: true, order: true } },
+              type: true, title: true, text: true, imageUrl: true, material: true, points: true, order: true, definition: true, scoringMode: true, correctFeedback: true, incorrectFeedback: true,
+              options: { where: { organizationId, deletedAt: null }, select: { text: true, imageUrl: true, material: true, isCorrect: true, order: true } },
             },
           },
         },
       });
       if (!source) throw new NotFoundException('Assessment not found');
-      const { questions, isLongreadExercise, courseId, folderId, title, description, passingScore, maxAttempts,
+      const { questions, isLongreadExercise, courseId, folderId, title, description, material, passingScore, maxAttempts,
         timeLimitMinutes, availableAfterCourseCompletion, passMessage, failMessage, showCorrectAnswers, randomizeOrder } = source;
       const draft = source.editorDraft == null ? null : assessmentEditorContentSchema.parse(source.editorDraft);
-      const copiedQuestions = draft?.questions.map(({ type, title, text, imageUrl, points, definition, scoringMode, options, correctFeedback, incorrectFeedback }, order) => ({
-        type, title, text, imageUrl, points, definition, scoringMode, order, correctFeedback, incorrectFeedback,
-        options: options.map(({ text, imageUrl, isCorrect }, order) => ({ text, imageUrl, isCorrect, order })),
+      const copiedQuestions = draft?.questions.map(({ type, title, text, imageUrl, material, points, definition, scoringMode, options, correctFeedback, incorrectFeedback }, order) => ({
+        type, title, text, imageUrl, material, points, definition, scoringMode, order, correctFeedback, incorrectFeedback,
+        options: options.map(({ text, imageUrl, material, isCorrect }, order) => ({ text, imageUrl, material, isCorrect, order })),
       })) ?? questions;
       return tx.assessment.create({
         data: {
-          courseId, folderId, title, description, passingScore, maxAttempts, timeLimitMinutes,
+          courseId, folderId, title, description, material, passingScore, maxAttempts, timeLimitMinutes,
           availableAfterCourseCompletion, passMessage, failMessage, showCorrectAnswers, randomizeOrder,
           policy: source.policy ?? Prisma.DbNull,
           ...draft?.settings,
@@ -163,11 +163,11 @@ export class AssessmentsService {
           where: { organizationId, deletedAt: null, bankSampleCandidate: false },
           orderBy: [{ order: 'asc' }, { id: 'asc' }],
           select: {
-            id: true, bankEntryId: true, type: true, title: true, text: true, imageUrl: true, points: true, definition: true, scoringMode: true, correctFeedback: true, incorrectFeedback: true,
+            id: true, bankEntryId: true, type: true, title: true, text: true, imageUrl: true, material: true, points: true, definition: true, scoringMode: true, correctFeedback: true, incorrectFeedback: true,
             options: {
               where: { organizationId, deletedAt: null },
               orderBy: [{ order: 'asc' }, { id: 'asc' }],
-              select: { id: true, text: true, imageUrl: true, isCorrect: true },
+              select: { id: true, text: true, imageUrl: true, material: true, isCorrect: true },
             },
           },
         },

@@ -1,3 +1,4 @@
+import { assessmentMaterialSchema } from '@lms/shared/longread-media';
 import { assessmentPolicySchema } from '@lms/shared/assessment-policy';
 import { z } from 'zod';
 import { assessmentAnswerSchema, questionDefinitionSchema, questionTypeSchema, scoringModeSchema } from '@lms/shared/assessment-question-types';
@@ -12,7 +13,7 @@ export const createAssessmentSchema = z.object({
   lessonId: z.guid().optional(),
   title: z.string().trim().min(1).max(200),
   slug: z.string().trim().min(1).max(120),
-  description: richTextSchema(2000).optional(),
+  description: richTextSchema(2000).optional(), material: assessmentMaterialSchema.nullable().optional(),
   status: assessmentStatusSchema.default('draft'),
   passingScore: z.number().int().min(0).max(100).default(70),
   maxAttempts: z.number().int().min(1).max(10).optional(),
@@ -35,7 +36,7 @@ export type UpdateAssessmentStatusInput = z.infer<typeof updateAssessmentStatusS
 export const updateAssessmentSchema = z
   .object({
     title: z.string().trim().min(1).max(200),
-    description: richTextSchema(2000).nullable(),
+    description: richTextSchema(2000).nullable(), material: assessmentMaterialSchema.nullable().optional(),
     status: assessmentStatusSchema,
     passingScore: z.number().int().min(0).max(100),
     maxAttempts: z.number().int().min(1).nullable(),
@@ -91,16 +92,16 @@ export type AssessmentLibraryQuery = z.infer<typeof assessmentLibrarySchema>;
 const editorOptionSchema = z.object({
   id: z.guid(),
   text: z.string().trim().max(2000).nullable(),
-  imageUrl: z.string().trim().min(1).max(2000).nullable(),
+  imageUrl: z.string().trim().min(1).max(2000).nullable(), material: assessmentMaterialSchema.nullable().optional(),
   isCorrect: z.boolean(),
-}).refine((option) => option.text || option.imageUrl);
+}).refine((option) => option.text || option.imageUrl || option.material);
 
 const editorQuestionSchema = z.object({
   id: z.guid(),
   type: questionTypeSchema,
   title: z.string().trim().min(1).max(200),
   text: z.string().max(4000).nullable(),
-  imageUrl: z.string().max(2000).nullable(),
+  imageUrl: z.string().max(2000).nullable(), material: assessmentMaterialSchema.nullable().optional(),
   points: z.number().int().min(1).max(2147483647),
   definition: questionDefinitionSchema.nullable(),
   scoringMode: scoringModeSchema,
@@ -110,7 +111,7 @@ const editorQuestionSchema = z.object({
 });
 
 export const assessmentEditorContentSchema = z.object({
-  settings: updateAssessmentSchema.omit({ status: true }).required().extend({ policy: assessmentPolicySchema.optional() }),
+  settings: updateAssessmentSchema.omit({ status: true }).required().extend({ material: assessmentMaterialSchema.nullable().optional(), policy: assessmentPolicySchema.optional() }),
   questions: z.array(editorQuestionSchema),
 }).refine(({ questions }) => {
   const ids = questions.flatMap((question) => [question.id, ...question.options.map((option) => option.id)]);

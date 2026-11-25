@@ -56,6 +56,7 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
       await expect(page.getByRole('alert')).toBeVisible();
 
       const questions = page.getByTestId('assessment-editor-questions').locator(':scope > ol > li');
+      await page.route('https://www.youtube-nocookie.com/**', (route) => route.fulfill({ body: 'Video fixture' }));
       for (const [index, title] of ['Первый вопрос', 'Второй вопрос'].entries()) {
         await page.getByRole('button', { name: '+ Один вариант', exact: true }).click();
         const question = questions.nth(index);
@@ -63,14 +64,25 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
         await question.getByRole('button', { name: 'Добавить вариант', exact: true }).click();
         await question.getByLabel('Текст варианта', { exact: true }).fill(`Ответ ${index + 1}`);
         await question.getByRole('radio', { name: 'Верный' }).check();
+        if (index === 0) {
+          await question.locator('summary').filter({ hasText: 'Материал' }).first().click();
+          await question.getByLabel('Ссылка HTTPS или код встраивания').fill('https://youtu.be/dQw4w9WgXcQ');
+          await question.getByLabel('Название для экранного диктора').fill('Видео к первому вопросу');
+          await question.getByRole('button', { name: 'Применить источник', exact: true }).click();
+        }
       }
       await questions.nth(1).getByRole('button', { name: 'Переместить элемент 2 вверх' }).click();
       await expect(questions.first().getByRole('textbox').first()).toHaveValue('Второй вопрос');
       await questions.nth(1).getByRole('button', { name: 'С этого вопроса' }).click();
       await expect(page.getByRole('heading', { name: 'Первый вопрос' })).toBeVisible();
+      await page.setViewportSize({ width: 360, height: 900 });
+      await expect(page.locator('iframe[title="Видео к первому вопросу"]')).toHaveAttribute('src', 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
       await page.getByRole('radio', { name: 'Ответ 1' }).check();
       await page.getByRole('button', { name: 'Отправить ответы', exact: true }).click();
       await expect(page.locator('.learner-quiz__result-score')).toContainText('100%');
+      await expect(page.locator('.learner-quiz__breakdown iframe[title="Видео к первому вопросу"]')).toBeVisible();
+      await page.setViewportSize({ width: 1280, height: 900 });
       await page.getByRole('button', { name: 'Предпросмотр с начала' }).click();
       await expect(page.getByRole('heading', { name: 'Второй вопрос' })).toBeVisible();
       await page.getByRole('button', { name: 'Опубликовать', exact: true }).click();
@@ -90,6 +102,7 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
         data: { attemptId: started.id, answers: started.questions.map((item) => ({ questionId: item.id, selectedOptionId: item.options[0]!.id })) },
       }));
       const published = await json<{ title: string }[]>(request.get(`${endpoint}/quiz`, { headers: learnerHeaders }));
+      expect(published[1]).toMatchObject({ material: expect.stringContaining('dQw4w9WgXcQ') });
       expect(published.map((question) => question.title)).toEqual(['Второй вопрос', 'Первый вопрос']);
       expect(await json(request.get(endpoint, { headers }))).toMatchObject({ status: 'published', timeLimitMinutes: 12, policy: { attemptPolicy: 'best', showFeedback: true } });
 

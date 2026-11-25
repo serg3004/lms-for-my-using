@@ -12,9 +12,9 @@ export function visibleExercises(chapters: SnapshotChapter[]): ExerciseSnapshotB
   return chapters.filter((chapter) => !chapter.hidden).flatMap((chapter) => chapter.blocks.filter((block) => !block.hidden && block.type === 'exercise' && block.id && block.question) as ExerciseSnapshotBlock[]);
 }
 export function publicExerciseQuestion(question: FrozenQuestion, seed: string) {
-  return { id: question.id, type: question.type, title: question.title, text: question.text, imageUrl: question.imageUrl, points: question.points,
+  return { id: question.id, type: question.type, title: question.title, text: question.text, imageUrl: question.imageUrl, material: question.material, points: question.points,
     scoringMode: question.scoringMode, assessment: question.assessment,
-    options: question.definition ? [] : seededShuffle(question.options.map(({ id, text, imageUrl }) => ({ id, text, imageUrl })), `${seed}:options`),
+    options: question.definition ? [] : seededShuffle(question.options.map(({ id, text, imageUrl, material }) => ({ id, text, imageUrl, material })), `${seed}:options`),
     ...(question.definition ? { definition: publicQuestionDefinition(question.definition, seed) } : {}) };
 }
 /** Resolve references under the publication transaction. Only version snapshots contain answer keys. */
@@ -25,9 +25,9 @@ export async function captureExerciseQuestions(db: Pick<Prisma.TransactionClient
   // Independent ORM relation reads could straddle a concurrent edit through the ordinary test API.
   const captured = ids.length ? await db.$queryRaw<{ question: FrozenQuestion; lessonId: string | null; placements: { blockId: string; active: boolean }[] }[]>(Prisma.sql`
     SELECT jsonb_build_object(
-      'id', q.id, 'type', q.type, 'title', q.title, 'text', q.text, 'imageUrl', q.image_url,
+      'id', q.id, 'type', q.type, 'title', q.title, 'text', q.text, 'imageUrl', q.image_url, 'material', q.material,
       'order', q."order", 'points', q.points, 'scoringMode', q.scoring_mode, 'definition', q.definition,
-      'options', COALESCE((SELECT jsonb_agg(jsonb_build_object('id', o.id, 'text', o.text, 'imageUrl', o.image_url,
+      'options', COALESCE((SELECT jsonb_agg(jsonb_build_object('id', o.id, 'text', o.text, 'imageUrl', o.image_url, 'material', o.material,
         'isCorrect', o.is_correct, 'order', o."order") ORDER BY o."order", o.id)
         FROM assessment_answer_options o WHERE o.question_id = q.id AND o.organization_id = ${organizationId}::uuid AND o.deleted_at IS NULL), '[]'::jsonb),
       'assessment', jsonb_build_object('id', a.id, 'title', a.title, 'passingScore', a.passing_score, 'maxAttempts', a.max_attempts)

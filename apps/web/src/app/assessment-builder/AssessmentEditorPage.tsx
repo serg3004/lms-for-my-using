@@ -1,3 +1,4 @@
+import { AssessmentMaterialField } from '../../features/assessment-materials/AssessmentMaterial.js';
 import { AssessmentQuestionBank } from './AssessmentQuestionBank.js';
 import { assessmentPolicySchema, type AssessmentPolicy } from '@lms/shared/assessment-policy';
 import { AssessmentPolicyFields } from './AssessmentPolicyFields.js';
@@ -67,7 +68,8 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
     : emptyAssessmentForm());
   const [questions, setQuestions] = useState(initial?.draft?.questions ?? initial?.questions ?? []);
   const [policy, setPolicy] = useState<AssessmentPolicy>(initial?.draft?.settings.policy ?? initial?.assessment.policy ?? {});
-  const [baseline, setBaseline] = useState(() => JSON.stringify({ form, questions, policy }));
+  const [material, setMaterial] = useState(initial?.draft?.settings.material === undefined ? initial?.assessment.material : initial.draft.settings.material);
+  const [baseline, setBaseline] = useState(() => JSON.stringify({ form, questions, policy, material }));
   const [revision, setRevision] = useState(initial?.assessment.updatedAt);
   const [status, setStatus] = useState(initial?.assessment.status ?? 'draft');
   const [unpublished, setUnpublished] = useState(Boolean(initial?.draft));
@@ -81,7 +83,7 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
   const [placementDirty, setPlacementDirty] = useState(false);
   const [copying, setCopying] = useState(false);
   const bypassGuard = useRef(false);
-  const snapshot = JSON.stringify({ form, questions, policy });
+  const snapshot = JSON.stringify({ form, questions, policy, material });
   const dirty = snapshot !== baseline || placementDirty;
   const values = mapAssessmentForm(form, initial?.assessment.slug ?? 'assessment');
   let content: EditorContent | null = null;
@@ -93,7 +95,7 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
     const { title, description, passingScore, maxAttempts, timeLimitMinutes, availableAfterCourseCompletion,
       passMessage, failMessage, showCorrectAnswers, randomizeOrder } = values;
     content = {
-      settings: { title, description, passingScore, maxAttempts, timeLimitMinutes: timeLimitMinutes ?? null,
+      settings: { title, description, material, passingScore, maxAttempts, timeLimitMinutes: timeLimitMinutes ?? null,
         availableAfterCourseCompletion, passMessage, failMessage, showCorrectAnswers, randomizeOrder,
         ...(Object.keys(parsedPolicy.data).length ? { policy: parsedPolicy.data } : {}) },
       questions,
@@ -156,7 +158,7 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
     const errors: string[] = [];
     if (!content) errors.push(t('assessments.policy.invalidSettings'));
     if (questions.some((question) => !question.title.trim() || !Number.isInteger(question.points) || question.points < 1
-      || question.options.some((option) => !option.imageUrl && !option.text?.trim()))) errors.push(label('invalidQuestions'));
+      || question.options.some((option) => !option.imageUrl && !option.material && !option.text?.trim()))) errors.push(label('invalidQuestions'));
     for (const question of questions) {
       if (question.definition && !questionDefinitionSchema.safeParse(question.definition).success) {
         errors.push(t('admin.assessmentBuilder.editor.invalidDefinition', { title: question.title }));
@@ -255,6 +257,7 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
         </FormField>
         <RichTextField id="assessment-editor-description" label={t('admin.assessmentBuilder.description')}
           value={form.description} maxLength={2000} onChange={(value) => change('description', value)} />
+        <AssessmentMaterialField value={material} onChange={setMaterial} />
       </>}
       {tab === 'settings' && <>
         <AssessmentPolicyFields policy={policy} onChange={setPolicy} legacyReveal={form.showCorrectAnswers} />
