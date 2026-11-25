@@ -7,7 +7,7 @@ import { kindAppearance } from './checklist-appearance.js';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
-import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, UploadService } from '../upload/public.js';
+import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, MAX_VOICE_NOTE_BYTES, UploadService } from '../upload/public.js';
 import { withResolvedLevelColors } from './checklist-colors.js';
 import { ChecklistScaleService } from './checklist-scale.service.js';
 import { ChecklistAnswerSetService } from './checklist-answer-set.service.js';
@@ -21,6 +21,7 @@ import { ChecklistSheetAnalytics } from './checklist-sheet-analytics.js';
 import { ChecklistAnalyticsExport } from './checklist-analytics-export.js';
 import { ChecklistItemAnalytics } from './checklist-item-analytics.js';
 import { ChecklistSheetPhotos, sheetPhotosInclude } from './checklist-sheet-photos.js';
+import { ChecklistVoiceNotes } from './checklist-voice-notes.js';
 import { assertObserversBelongToOrganization, freezeReportSettings, loadEffectiveSettings, overridesToColumns, presentOverrides, presentStaffChecklist, SHEET_OVERRIDES_SELECT } from './checklist-settings-overrides.js';
 import { ChecklistBulkActions, type ChecklistBulkAction } from './checklist-bulk-actions.js';
 import { ChecklistPublicAccess, markGuestPassesDisabled, publicAccessOffData } from './checklist-public-access.js';
@@ -375,6 +376,13 @@ export class ChecklistsService {
       (checklistId, organizationId, userId, isPrivileged) => this.assertSheetMediaVisible(checklistId, organizationId, userId, isPrivileged),
       MAX_BUFFERED_UPLOAD_SIZE_BYTES,
     );
+    this.voiceNotes = new ChecklistVoiceNotes(
+      prisma,
+      uploadService,
+      auditLog,
+      (instanceId, organizationId, requesterId, isPrivileged) => this.assertInstanceWritable(instanceId, organizationId, requesterId, isPrivileged),
+      MAX_VOICE_NOTE_BYTES,
+    );
     this.instanceTransfer = new ChecklistInstanceTransfer(prisma, auditLog);
     this.instanceReport = new ChecklistInstanceReport({
       prisma, auditLog,
@@ -400,6 +408,7 @@ export class ChecklistsService {
   private readonly instanceReport: ChecklistInstanceReport;
   private readonly orgTemplates: ChecklistOrgTemplates;
   private readonly sheetPhotos: ChecklistSheetPhotos;
+  private readonly voiceNotes: ChecklistVoiceNotes;
   private readonly analyticsFilters: ChecklistAnalyticsFilters;
   private readonly analyticsDashboardLayouts: ChecklistAnalyticsDashboardLayouts;
   private readonly sheetAnalytics: ChecklistSheetAnalytics;
@@ -535,6 +544,12 @@ export class ChecklistsService {
   }
 
   /** PR 421: extra pictures of a sheet. */
+  // PR 509: voice recordings of the comment of an answer.
+  listVoiceNotes(instanceId: string, organizationId: string, requesterId: string, isPrivileged: boolean) { return this.voiceNotes.list(instanceId, organizationId, requesterId, isPrivileged); }
+  assertVoiceNoteRoom(instanceId: string, itemId: string, organizationId: string, requesterId: string, isPrivileged: boolean, replaceId?: string) { return this.voiceNotes.assertHasRoom(instanceId, itemId, organizationId, requesterId, isPrivileged, replaceId); }
+  addVoiceNote(instanceId: string, itemId: string, organizationId: string, requesterId: string, isPrivileged: boolean, uploaded: { objectKey: string; mimeType: string; sizeBytes: number }, durationMs: number, replaceId?: string) { return this.voiceNotes.add(instanceId, itemId, organizationId, requesterId, isPrivileged, uploaded, durationMs, replaceId); }
+  removeVoiceNote(instanceId: string, noteId: string, organizationId: string, requesterId: string, isPrivileged: boolean) { return this.voiceNotes.remove(instanceId, noteId, organizationId, requesterId, isPrivileged); }
+  getVoiceNoteFile(instanceId: string, noteId: string, organizationId: string, requesterId: string, isPrivileged: boolean) { return this.voiceNotes.getFile(instanceId, noteId, organizationId, requesterId, isPrivileged); }
   assertSheetPhotoRoom(checklistId: string, organizationId: string) { return this.sheetPhotos.assertHasRoom(checklistId, organizationId); }
   addSheetPhoto(checklistId: string, organizationId: string, actorId: string, uploaded: { objectKey: string; mimeType: string }, caption: string) { return this.sheetPhotos.add(checklistId, organizationId, actorId, uploaded, caption); }
   updateSheetPhoto(checklistId: string, photoId: string, organizationId: string, caption: string) { return this.sheetPhotos.setCaption(checklistId, photoId, organizationId, caption); }

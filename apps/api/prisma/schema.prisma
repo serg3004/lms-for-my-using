@@ -204,6 +204,13 @@ enum ChecklistInstanceStatus {
   expired
 }
 
+/// PR 509: where a voice recording sits. Only `answer` is used now; the other places are here so PR 512 needs no new migration.
+enum ChecklistVoiceNotePlace {
+  answer
+  reviewer_comment
+  summary
+}
+
 enum ChecklistReviewStatus {
   pending
   approved
@@ -431,6 +438,7 @@ model Organization {
   checklistItemGroups        ChecklistItemGroup[]
   checklistInstances         ChecklistInstance[]
   checklistItemResults       ChecklistItemResult[]
+  checklistVoiceNotes        ChecklistVoiceNote[]
   checklistInstanceEvents    ChecklistInstanceEvent[]
   checklistWorkplaceSettings ChecklistWorkplaceSettings?
   checklistSessions          ChecklistSession[]
@@ -546,6 +554,7 @@ model User {
   checklistInstances         ChecklistInstance[]        @relation("ChecklistInstanceUser")
   checklistInstancesAssigned ChecklistInstance[]        @relation("ChecklistInstanceAssignedBy")
   checklistItemReviews       ChecklistItemResult[]      @relation("ChecklistItemResultReviewedBy")
+  checklistVoiceNotes        ChecklistVoiceNote[]       @relation("ChecklistVoiceNoteAuthor")
   checklistInstancesReviewed ChecklistInstance[]        @relation("ChecklistInstanceReviewer")
   checklistReviewsAssigned   ChecklistInstance[]        @relation("ChecklistInstanceReviewAssignedBy")
   checklistInstanceEvents    ChecklistInstanceEvent[]   @relation("ChecklistInstanceEventActor")
@@ -1755,6 +1764,7 @@ model ChecklistInstance {
   reviewer           User?                    @relation("ChecklistInstanceReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
   reviewAssigner     User?                    @relation("ChecklistInstanceReviewAssignedBy", fields: [reviewAssignedBy], references: [id], onDelete: SetNull)
   results            ChecklistItemResult[]
+  voiceNotes         ChecklistVoiceNote[]
   events             ChecklistInstanceEvent[]
   session            ChecklistSession?
   scoreRevisions     ChecklistScoreRevision[]
@@ -1815,6 +1825,30 @@ model ChecklistItemResult {
   @@index([instanceId])
   @@index([itemId])
   @@map("checklist_item_results")
+}
+
+/// PR 509: a short voice recording attached to a comment of a check. The storage key and MIME type are private (never in an
+/// API select); the file is served only through the API after the same access check as the answer photo. Rows go with the
+/// instance (cascade); `itemId` is empty for a place that belongs to the whole check (`summary`).
+model ChecklistVoiceNote {
+  id             String                  @id @default(uuid()) @db.Uuid
+  organizationId String                  @map("organization_id") @db.Uuid
+  instanceId     String                  @map("instance_id") @db.Uuid
+  itemId         String?                 @map("item_id") @db.Uuid
+  place          ChecklistVoiceNotePlace @default(answer)
+  objectKey      String                  @map("object_key")
+  mimeType       String                  @map("mime_type")
+  durationMs     Int                     @map("duration_ms")
+  sizeBytes      Int                     @map("size_bytes")
+  createdBy      String?                 @map("created_by") @db.Uuid
+  createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  instance       ChecklistInstance       @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+  author         User?                   @relation("ChecklistVoiceNoteAuthor", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@index([instanceId, itemId, place, createdAt])
+  @@index([organizationId])
+  @@map("checklist_voice_notes")
 }
 
 /// Tenant-scoped configuration for the Checklist "workplace training session" mode.

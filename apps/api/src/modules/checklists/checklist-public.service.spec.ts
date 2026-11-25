@@ -61,8 +61,13 @@ function setup(sheetOverrides: Partial<Sheet> = {}) {
     startFreeChecklist: jest.fn(async () => ({ id: 'free-instance' })),
     assertInstanceWritable: jest.fn(async () => undefined),
     attachItemPhoto: jest.fn(async (id: string) => ({ id })),
+    assertVoiceNoteRoom: jest.fn(async () => undefined),
+    addVoiceNote: jest.fn(async () => ({ id: 'note' })),
+    listVoiceNotes: jest.fn(async () => []),
+    getVoiceNoteFile: jest.fn(async () => ({ bytes: Buffer.from('a'), mimeType: 'audio/webm', version: 1 })),
+    removeVoiceNote: jest.fn(async () => undefined),
   };
-  const upload = { uploadChecklistItemPhoto: jest.fn(async () => ({ objectKey: 'k', fileName: 'f', mimeType: 'image/png', sizeBytes: 1 })), deleteObject: jest.fn(async () => undefined) };
+  const upload = { uploadChecklistVoiceNote: jest.fn(async () => ({ objectKey: 'v', fileName: 'voice', mimeType: 'audio/webm', sizeBytes: 7 })), uploadChecklistItemPhoto: jest.fn(async () => ({ objectKey: 'k', fileName: 'f', mimeType: 'image/png', sizeBytes: 1 })), deleteObject: jest.fn(async () => undefined) };
   const record = jest.fn(async () => undefined);
   const service = new ChecklistPublicService(prisma as never, checklists as never, upload as never, { record } as never);
   // The service's own captcha: read the code back from the picture.
@@ -207,6 +212,42 @@ describe('ChecklistPublicService (PR 465)', () => {
     const open = setup({ guestPhotosAllowed: true });
     const opened = await open.service.start(TOKEN, { guestName: 'Аня', ...(await open.solve()) });
     await expect(open.service.attachPhoto(TOKEN, opened.instanceId, itemId, opened.passKey, { mimetype: 'text/html', buffer: Buffer.alloc(1), size: 1 } as never)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  // PR 509: a guest's voice comment follows the pass key, the server's limits and the guest's own (non-privileged) rights.
+  it('stores a guest voice recording only with the pass key, with the guest’s own rights and the server’s limits', async () => {
+    const { service, checklists, upload, solve } = setup();
+    const pass = await service.start(TOKEN, { guestName: 'Аня', ...(await solve()) });
+    const webm = { mimetype: 'audio/webm;codecs=opus', buffer: Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 1, 2]), size: 6 } as never;
+
+    await expect(service.uploadVoiceNote(TOKEN, pass.instanceId, itemId, 'wrong-key', webm, { durationMs: '3000' })).rejects.toBeInstanceOf(NotFoundException);
+    expect(upload.uploadChecklistVoiceNote).not.toHaveBeenCalled();
+    await expect(service.uploadVoiceNote(TOKEN, pass.instanceId, itemId, pass.passKey, undefined, { durationMs: '3000' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.uploadVoiceNote(TOKEN, pass.instanceId, itemId, pass.passKey, { mimetype: 'audio/mpeg', buffer: Buffer.alloc(8), size: 8 } as never, { durationMs: '3000' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.uploadVoiceNote(TOKEN, pass.instanceId, itemId, pass.passKey, webm, { durationMs: '999999' })).rejects.toThrow();
+    expect(upload.uploadChecklistVoiceNote).not.toHaveBeenCalled();
+
+    await expect(service.uploadVoiceNote(TOKEN, pass.instanceId, itemId, pass.passKey, webm, { durationMs: '3000' })).resolves.toEqual({ id: 'note' });
+    expect(upload.uploadChecklistVoiceNote).toHaveBeenCalledWith(expect.anything(), 'audio/webm', orgId, pass.instanceId);
+    expect(checklists.addVoiceNote).toHaveBeenCalledWith(pass.instanceId, itemId, orgId, guestId, false, expect.objectContaining({ objectKey: 'v' }), 3000, undefined);
+  });
+
+  it('cleans the stored guest recording when saving the row fails, and reads and removes only with the pass key', async () => {
+    const { service, checklists, upload, solve } = setup();
+    const pass = await service.start(TOKEN, { guestName: 'Аня', ...(await solve()) });
+    const webm = { mimetype: 'audio/webm', buffer: Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 1, 2]), size: 6 } as never;
+    checklists.addVoiceNote.mockRejectedValueOnce(new Error('db down') as never);
+    await expect(service.uploadVoiceNote(TOKEN, pass.instanceId, itemId, pass.passKey, webm, { durationMs: '3000' })).rejects.toThrow('db down');
+    expect(upload.deleteObject).toHaveBeenCalledWith('v');
+
+    const noteId = '99999999-9999-9999-9999-999999999999';
+    await expect(service.getVoiceNoteFile(TOKEN, pass.instanceId, noteId, undefined)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.removeVoiceNote(TOKEN, pass.instanceId, noteId, undefined)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.listVoiceNotes(TOKEN, pass.instanceId, 'x')).rejects.toBeInstanceOf(NotFoundException);
+    await service.getVoiceNoteFile(TOKEN, pass.instanceId, noteId, pass.passKey);
+    await service.removeVoiceNote(TOKEN, pass.instanceId, noteId, pass.passKey);
+    expect(checklists.getVoiceNoteFile).toHaveBeenCalledWith(pass.instanceId, noteId, orgId, guestId, false);
+    expect(checklists.removeVoiceNote).toHaveBeenCalledWith(pass.instanceId, noteId, orgId, guestId, false);
   });
 
   it('shows a guest nothing about the owner or the organizer', () => {

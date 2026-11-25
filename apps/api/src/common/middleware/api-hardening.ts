@@ -85,13 +85,15 @@ export const DEFAULT_SENSITIVE_RATE_LIMIT_POLICY: SensitiveRateLimitPolicy = {
  * requesting a code, starting a pass, sending the result, and (loosely) every other save of a pass. The token in the path
  * is never part of a key or a metric label.
  */
-export type PublicChecklistRouteKind = 'open' | 'start' | 'finish' | 'pass';
+export type PublicChecklistRouteKind = 'open' | 'start' | 'finish' | 'pass' | 'voice';
 
 export const DEFAULT_PUBLIC_CHECKLIST_RATE_LIMITS: Record<PublicChecklistRouteKind, RateLimitRule> = {
   open: { maxRequests: 120, windowMs: 15 * 60_000 },
   start: { maxRequests: 20, windowMs: 15 * 60_000 },
   finish: { maxRequests: 20, windowMs: 15 * 60_000 },
   pass: { maxRequests: 1200, windowMs: 15 * 60_000 },
+  // PR 509: recording a voice comment writes a file, so it has its own tighter limit than the other saves of a pass.
+  voice: { maxRequests: 40, windowMs: 15 * 60_000 },
 };
 
 const PUBLIC_CHECKLIST_PATH = /^\/api\/v1\/public\/checklists\/[^/]+(\/.*)?$/;
@@ -104,6 +106,7 @@ export function matchPublicChecklistRoute(method: string | undefined, path: stri
   if (method === 'GET' && (rest === '' || rest === '/captcha')) return { kind: 'open', route: `${prefix}${rest}` };
   if (method === 'POST' && rest === '/start') return { kind: 'start', route: `${prefix}/start` };
   if (method === 'POST' && /^\/passes\/[^/]+\/finish$/.test(rest)) return { kind: 'finish', route: `${prefix}/passes/:id/finish` };
+  if (method === 'POST' && /^\/passes\/[^/]+\/items\/[^/]+\/voice-notes$/.test(rest)) return { kind: 'voice', route: `${prefix}/passes/:id/items/:itemId/voice-notes` };
   // Signing in is a different gate (its own session); everything else of a pass is a save.
   if (rest === '/start-signed-in') return undefined;
   if (rest.startsWith('/passes/')) return { kind: 'pass', route: `${prefix}/passes/:id/...` };

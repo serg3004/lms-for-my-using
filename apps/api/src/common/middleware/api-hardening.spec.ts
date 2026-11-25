@@ -463,6 +463,8 @@ describe('Redis rate limit store', () => {
       ['POST', `${base}/passes/abc/finish`, 'finish', '/api/v1/public/checklists/:token/passes/:id/finish'],
       ['PATCH', `${base}/passes/abc/items/def`, 'pass', '/api/v1/public/checklists/:token/passes/:id/...'],
       ['GET', `${base}/passes/abc`, 'pass', '/api/v1/public/checklists/:token/passes/:id/...'],
+      ['POST', `${base}/passes/abc/items/def/voice-notes`, 'voice', '/api/v1/public/checklists/:token/passes/:id/items/:itemId/voice-notes'],
+      ['GET', `${base}/passes/abc/voice-notes/n1/file`, 'pass', '/api/v1/public/checklists/:token/passes/:id/...'],
     ])('classifies %s %s as %s without the token in the route', (method, url, kind, route) => {
       expect(matchPublicChecklistRoute(method, url)).toEqual({ kind, route });
     });
@@ -478,7 +480,7 @@ describe('Redis rate limit store', () => {
       const rejected = jest.fn();
       const middleware = createSensitiveRouteRateLimitMiddleware(store, undefined, {
         observability: { modeChanged: jest.fn(), recordRequest: jest.fn(), rejected },
-        publicChecklistLimits: { open: { maxRequests: 5, windowMs: 60_000 }, start: { maxRequests: 2, windowMs: 60_000 }, finish: { maxRequests: 2, windowMs: 60_000 }, pass: { maxRequests: 5, windowMs: 60_000 } },
+        publicChecklistLimits: { open: { maxRequests: 5, windowMs: 60_000 }, start: { maxRequests: 2, windowMs: 60_000 }, finish: { maxRequests: 2, windowMs: 60_000 }, pass: { maxRequests: 5, windowMs: 60_000 }, voice: { maxRequests: 1, windowMs: 60_000 } },
       });
       const request = createRequest({ method: 'POST', url: `${base}/start`, body: {}, ip: '10.0.0.1' });
       for (let attempt = 0; attempt < 2; attempt += 1) {

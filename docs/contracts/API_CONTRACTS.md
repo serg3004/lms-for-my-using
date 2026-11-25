@@ -900,6 +900,23 @@ again) and the updated instance is returned. A criterion without a photo is 404.
 `checklist_evidence.removed` with the item id in the metadata. People who fill a sheet never see points on
 answer buttons; points stay in results, reports, PDF and analytics.
 
+PR 509: voice recordings of the comment of an answer (the server side; the screen is PR 510). Table `checklist_voice_notes`
+(organization, check, criterion, place `answer | reviewer_comment | summary`, private storage key and type, length, size, author, date;
+only `answer` is used now). `POST /checklist-instances/:instanceId/items/:itemId/voice-notes` is multipart: `file` and `durationMs`
+(and an optional `replaceId`, the author's earlier recording to swap out in the same step). Accepted by content, not name: `audio/webm`,
+`audio/ogg`, `audio/mp4` (the types browsers record; codec parameters are dropped), up to 4 MiB, 0.3 s to 2 minutes, at most 3 recordings
+per comment (409 beyond that); other type or mismatching content 400, a criterion without an answer 400. Writing follows `POST .../photo`
+(the executor, the assigned observer of a session, privileged roles with reviewer access; a finished or expired check, another organization
+or another session is rejected like for an answer write). `GET /checklist-instances/:instanceId/voice-notes` lists the recordings
+(`id, itemId, place, durationMs, sizeBytes, createdBy, createdAt`, never the key); `GET .../voice-notes/:noteId/file` returns the bytes read
+by the API (`Cache-Control: private, no-cache`, `nosniff`, `ETag`, 304 on a matching `If-None-Match`; no stored public link; the executor or a
+reviewer, another employee 403); `DELETE .../voice-notes/:noteId` is for the author only and only while the check is open. Listening is not
+logged; audit actions `checklist_voice_note.added` and `checklist_voice_note.removed`. The recordings of a result deleted by an administrator
+are 404 like the rest of it (and come back with a restored result); the rows go with the check. The same four operations exist for a guest
+under `/public/checklists/:token/passes/:instanceId/...` with the pass key (`POST .../items/:itemId/voice-notes` has its own per-address
+limit, 40 per 15 minutes; the other three share the pass limit). The length and count limits are constants of the server for now; PR 511
+turns them and the on/off switch into settings.
+
 PR 406б: `POST /checklist-instances/:instanceId/finish` is the explicit end of a self-filled sheet (an
 instance without an observer session). The last answer no longer completes such an instance: it stays
 `in_progress` until the executor (or a privileged role that can access the instance) calls finish. Allowed
@@ -1207,7 +1224,7 @@ started `dailyLimit` guest passes in 24 hours, default 200, set with `PATCH .../
 the instance without `organizationId`, `userId`, `assignedBy` and reviewer fields. `registered` audience: open, captcha and start answer 401 with detail `returnTo = /c/:token`;
 a signed-in employee uses `POST /:token/start-signed-in` (roles of `checklistsStartFree`, same organization only) which starts the ordinary free pass under their own account.
 The pass key is `HMAC(instanceId | token)`: reissuing the link or switching the entry off stops every guest pass at once, and open guest passes get a `guest_link_disabled` event.
-Per-address limits (in `api-hardening`, keyed by route pattern, never by the token): open and captcha 120, start 20, finish 20, other pass saves 1200 per 15 minutes; 429 carries
+Per-address limits (in `api-hardening`, keyed by route pattern, never by the token): open and captcha 120, start 20, finish 20, recording a voice comment 40 (PR 509), other pass saves 1200 per 15 minutes; 429 carries
 `Retry-After` and detail `retryAfterSeconds` (the whole window, an upper bound); an unreachable shared store answers 503 (fail closed). A guest pass belongs to one archived service user
 `guest@guest.invalid` per organization (cannot sign in, not in user lists); parallel passes of one sheet by that user are allowed only on this path. Audit: `checklist.public_access.limit_reached`
 once per sheet and day, without the token.

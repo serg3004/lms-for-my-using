@@ -125,13 +125,13 @@ Owner: `packages/shared/src/permission-catalog.ts`; the route table is `apps/api
 | `checklist.template.manage` | checklists | `organization` | yes | `checklist.library.read` | `checklistTemplatesManage` | `admin` | 3 |
 | `checklist.free.start` | checklists | `own` | yes | - | `checklistsStartFree` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 3 |
 | `checklist.assign` | checklists | `team`, `department`, `organization` | yes | `checklist.instance.read` | `checklistInstancesCreate` | `admin`, `manager`, `instructor` | 2 |
-| `checklist.instance.read` | checklists | `own`, `team`, `department`, `organization` | yes | - | `checklistInstancesRead` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 12 |
-| `checklist.answer.write` | checklists | `own`, `team`, `department`, `organization` | yes | `checklist.instance.read` | `checklistItemResultsWrite` | `admin`, `manager`, `instructor`, `learner` | 8 |
+| `checklist.instance.read` | checklists | `own`, `team`, `department`, `organization` | yes | - | `checklistInstancesRead` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 14 |
+| `checklist.answer.write` | checklists | `own`, `team`, `department`, `organization` | yes | `checklist.instance.read` | `checklistItemResultsWrite` | `admin`, `manager`, `instructor`, `learner` | 10 |
 | `checklist.session.read` | checklists | `own`, `assigned`, `team`, `department`, `organization` | yes | - | `checklistSessionsRead` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 8 |
 | `checklist.session.manage` | checklists | `assigned`, `team`, `department`, `organization` | yes | `checklist.session.read` | `checklistSessionsManage` | `admin`, `manager`, `instructor`, `mentor` | 9 |
 | `checklist.session.create.own` | checklists | `own` | yes | `checklist.session.read` | `checklistSessionsCreateOwn` | `instructor` | 3 |
 | `checklist.session.import` | checklists | `team`, `department`, `organization` | yes | `checklist.session.manage` | `checklistSessionsImport` | `admin`, `manager`, `instructor`, `mentor` | 2 |
-| `checklist.session.conduct` | checklists | `own`, `assigned` | yes | `checklist.library.read` | `checklistSessionsRunOwn` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 15 |
+| `checklist.session.conduct` | checklists | `own`, `assigned` | yes | `checklist.library.read` | `checklistSessionsRunOwn` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 17 |
 | `checklist.analytics.read` | checklists | `team`, `department`, `organization` | yes | `checklist.session.read` | `checklistManagerAnalyticsRead` | `admin`, `manager`, `instructor`, `mentor` | 13 |
 | `checklist.workplace.read` | checklists | `organization` | yes | - | `checklistWorkplaceSettingsRead` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 1 |
 | `checklist.workplace.write` | checklists | `organization` | yes | `checklist.workplace.read` | `checklistWorkplaceSettingsWrite` | `admin`, `manager`, `instructor`, `mentor` | 1 |

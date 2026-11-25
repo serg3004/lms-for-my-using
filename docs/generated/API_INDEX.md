@@ -127,8 +127,12 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}/photo/file` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}/review` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}/skip` | `Checklists` | `bearer` |
+| `POST` | `/api/v1/checklist-instances/{instanceId}/items/{itemId}/voice-notes` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-instances/{instanceId}/transfer` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-instances/{instanceId}/transfer-candidates` | `Checklists` | `bearer` |
+| `GET` | `/api/v1/checklist-instances/{instanceId}/voice-notes` | `Checklists` | `bearer` |
+| `DELETE` | `/api/v1/checklist-instances/{instanceId}/voice-notes/{noteId}` | `Checklists` | `bearer` |
+| `GET` | `/api/v1/checklist-instances/{instanceId}/voice-notes/{noteId}/file` | `Checklists` | `bearer` |
 | `PATCH` | `/api/v1/checklist-item-groups/{id}` | `Checklists` | `bearer` |
 | `DELETE` | `/api/v1/checklist-item-groups/{id}` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-item-groups/{id}/copy` | `Checklists` | `bearer` |
@@ -402,6 +406,10 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `DELETE` | `/api/v1/public/checklists/{token}/passes/{instanceId}/items/{itemId}/answer` | `ChecklistPublic` | `bearer` |
 | `POST` | `/api/v1/public/checklists/{token}/passes/{instanceId}/items/{itemId}/photo` | `ChecklistPublic` | `bearer` |
 | `POST` | `/api/v1/public/checklists/{token}/passes/{instanceId}/items/{itemId}/skip` | `ChecklistPublic` | `bearer` |
+| `POST` | `/api/v1/public/checklists/{token}/passes/{instanceId}/items/{itemId}/voice-notes` | `ChecklistPublic` | `bearer` |
+| `GET` | `/api/v1/public/checklists/{token}/passes/{instanceId}/voice-notes` | `ChecklistPublic` | `bearer` |
+| `DELETE` | `/api/v1/public/checklists/{token}/passes/{instanceId}/voice-notes/{noteId}` | `ChecklistPublic` | `bearer` |
+| `GET` | `/api/v1/public/checklists/{token}/passes/{instanceId}/voice-notes/{noteId}/file` | `ChecklistPublic` | `bearer` |
 | `POST` | `/api/v1/public/checklists/{token}/start` | `ChecklistPublic` | `bearer` |
 | `POST` | `/api/v1/public/checklists/{token}/start-signed-in` | `ChecklistPublic` | `bearer` |
 | `GET` | `/api/v1/question-bank` | `AssessmentQuestions` | `bearer` |

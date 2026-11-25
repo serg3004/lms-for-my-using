@@ -7,7 +7,7 @@ import { AuthGuard } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
 import { isLearnerOnly, OrganizationScope, OrganizationScopeGuard, Roles, rolePolicies } from '../auth/public.js';
 import { RolesGuard } from '../auth/public.js';
-import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, UploadService, validateUploadFile } from '../upload/public.js';
+import { validateVoiceNoteFile, MAX_BUFFERED_UPLOAD_SIZE_BYTES, UploadService, validateUploadFile } from '../upload/public.js';
 import { ChecklistReviewAccessService } from './checklist-review-access.service.js';
 import { ChecklistAnswerSetService } from './checklist-answer-set.service.js';
 import { ChecklistScaleService } from './checklist-scale.service.js';
@@ -15,6 +15,7 @@ import { ChecklistSessionService } from './checklist-session.service.js';
 import type { ChecklistSessionAction, ChecklistSessionViewerContext } from './checklist-session.service.js';
 import { ChecklistWorkplaceSettingsService } from './checklist-workplace-settings.service.js';
 import { listTemplates } from './checklist-templates.js';
+import { voiceNoteFieldsSchema } from './checklist-voice-notes.js';
 import { reorderSheetPhotosSchema, sheetPhotoCaptionSchema, updateSheetPhotoSchema } from './checklist-sheet-photos.js';
 import { ChecklistsService } from './checklists.service.js';
 import {
@@ -84,7 +85,7 @@ type FileDownloadResponse = {
   send(body?: Buffer): FileDownloadResponse;
 };
 
-/** PR 400: image bytes for `<img>`; private cache, revalidated by ETag so an unchanged picture is a 304. */
+/** PR 400: image bytes for `<img>` (PR 509: also a voice recording for `<audio>`); private cache, revalidated by ETag so an unchanged picture is a 304. */
 function sendPrivateImage(ifNoneMatch: string | undefined, response: FileDownloadResponse, file: { bytes: Buffer; mimeType: string; version: string | number }) {
   const etag = `"${file.version}"`;
   const headers = { 'Content-Type': file.mimeType, 'Cache-Control': 'private, no-cache', ETag: etag, 'X-Content-Type-Options': 'nosniff' };
@@ -1045,6 +1046,66 @@ export class ChecklistsController {
       user.id,
       isObserver || !isLearnerOnly(user.roles),
     ));
+  }
+  // PR 509: voice recordings of the comment of an answer. Write access is the answer photo's; the file is served only through the API.
+  private async voiceActor(user: NonNullable<AuthenticatedRequest['currentUser']>, instanceId: string, write: boolean) {
+    const isObserver = await this.reviewAccess.isAssignedObserver(user, instanceId);
+    if (write && !isObserver && !rolePolicies.checklistItemResultsWrite.some((role) => user.roles.includes(role))) {
+      throw new NotFoundException('Checklist assignment not found');
+    }
+    const isPrivileged = isObserver || !isLearnerOnly(user.roles);
+    if (isPrivileged && !isObserver) await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
+    return isPrivileged;
+  }
+  @Get('checklist-instances/:instanceId/voice-notes')
+  @Roles(...rolePolicies.checklistInstancesRead)
+  async listVoiceNotes(@Param('instanceId', ParseUUIDPipe) instanceId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.listVoiceNotes(instanceId, user.organizationId, user.id, await this.voiceActor(user, instanceId, false));
+  }
+  @Post('checklist-instances/:instanceId/items/:itemId/voice-notes')
+  @Roles(...rolePolicies.checklistItemResultsWrite, ...rolePolicies.checklistSessionsRunOwn)
+  @UseInterceptors(
+    FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_BUFFERED_UPLOAD_SIZE_BYTES } }),
+  )
+  async uploadVoiceNote(
+    @Param('instanceId', ParseUUIDPipe) instanceId: string,
+    @Param('itemId', ParseUUIDPipe) itemId: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    if (!file) throw new BadRequestException('No file provided');
+    const mimeType = validateVoiceNoteFile(file);
+    const fields = voiceNoteFieldsSchema.parse(body ?? {});
+    const user = request.currentUser!;
+    const isPrivileged = await this.voiceActor(user, instanceId, true);
+    await this.checklistsService.assertVoiceNoteRoom(instanceId, itemId, user.organizationId, user.id, isPrivileged, fields.replaceId);
+    const uploaded = await this.uploadService.uploadChecklistVoiceNote(file, mimeType, user.organizationId, instanceId);
+    try {
+      return await this.checklistsService.addVoiceNote(instanceId, itemId, user.organizationId, user.id, isPrivileged, uploaded, fields.durationMs, fields.replaceId);
+    } catch (error) {
+      await this.uploadService.deleteObject(uploaded.objectKey).catch(() => undefined);
+      throw error;
+    }
+  }
+  @Get('checklist-instances/:instanceId/voice-notes/:noteId/file')
+  @Roles(...rolePolicies.checklistInstancesRead)
+  async getVoiceNoteFile(
+    @Param('instanceId', ParseUUIDPipe) instanceId: string,
+    @Param('noteId', ParseUUIDPipe) noteId: string,
+    @Headers('if-none-match') ifNoneMatch: string | undefined,
+    @Req() request: AuthenticatedRequest,
+    @Res() response: FileDownloadResponse,
+  ) {
+    const user = request.currentUser!;
+    sendPrivateImage(ifNoneMatch, response, await this.checklistsService.getVoiceNoteFile(instanceId, noteId, user.organizationId, user.id, await this.voiceActor(user, instanceId, false)));
+  }
+  @Delete('checklist-instances/:instanceId/voice-notes/:noteId')
+  @Roles(...rolePolicies.checklistItemResultsWrite, ...rolePolicies.checklistSessionsRunOwn)
+  async removeVoiceNote(@Param('instanceId', ParseUUIDPipe) instanceId: string, @Param('noteId', ParseUUIDPipe) noteId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    await this.checklistsService.removeVoiceNote(instanceId, noteId, user.organizationId, user.id, await this.voiceActor(user, instanceId, true));
   }
   @Post('checklist-instances/:instanceId/items/:itemId/review')
   @Roles(...rolePolicies.checklistReviewWrite)
