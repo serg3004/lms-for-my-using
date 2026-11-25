@@ -27,3 +27,5 @@ export type { EffectivePermissions, ScopeFilter } from './effective-permissions.
 export { EffectivePermissionsLookup, loadEffectivePermissions } from './effective-permissions.loader.js';
 export { customUserScope, isOrgWideGrant, isOwnOnlyGrant } from './access-scope.js';
 export { EMPLOYEE_NUMBER_KEY } from './employee-identity.js';
+
+export { markRequestScope } from './access-scope.js';

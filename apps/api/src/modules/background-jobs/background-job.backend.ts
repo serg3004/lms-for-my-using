@@ -2,6 +2,7 @@ import type {
   BackgroundJob,
   BackgroundJobData,
   BackgroundJobHandler,
+  BackgroundJobResult,
   EnqueueBackgroundJobOptions,
   EnqueuedBackgroundJob,
   RecurringBackgroundJobOptions,
@@ -28,6 +29,7 @@ export interface BackgroundJobBackend {
     data: BackgroundJobData,
     options: Required<RecurringBackgroundJobOptions>,
   ): Promise<void>;
+  getResult?(name: string, id: string): Promise<BackgroundJobResult | null>;
   getOperationalStatus(): Promise<BackgroundJobOperationalStatus>;
   close(): Promise<void>;
 }

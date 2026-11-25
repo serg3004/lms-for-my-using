@@ -10,15 +10,17 @@ import { useAsyncData } from '../../shared/useAsyncData.js';
 import { AnalyticsTrendChart, Bar, rateColor } from '../SheetAnalyticsDashboard.js';
 import { FilterDropdown, moveFilter } from '../SheetAnalyticsFilters.js';
 
+import { AssessmentExportControls } from './AssessmentExportControls.js';
+
 const places = ['standalone', 'course', 'longread'] as const;
 const cards = ['passRate', 'average', 'duration', 'distribution', 'difficulty', 'traps', 'trend', 'departments', 'employees'] as const;
 type CardId = typeof cards[number];
 type CardSetting = { id: CardId; enabled: boolean };
 type Choice = { id: string; name: string };
 type Metric = Choice & { count: number; value: number };
-type Attempt = { id: string; name: string; date: string; place: typeof places[number]; percentage: number; score: number; maxScore: number; passed: boolean };
+type Attempt = { id: string; name: string; department: string | null; date: string; place: typeof places[number]; percentage: number; score: number; maxScore: number; passed: boolean };
 type Analytics = {
-  title: string; count: number; passed: number; places: Record<typeof places[number], number>;
+  title: string; folderId: string | null; count: number; passed: number; places: Record<typeof places[number], number>;
   average: number | null; duration: number | null; distribution: number[];
   questions: Array<{ id: string; text: string | null; total: number; correct: number; trap: { text: string | null; count: number } | null }>;
   dates: Metric[]; departments: Metric[]; leaders: Metric[]; lagging: Metric[];
@@ -140,6 +142,7 @@ function AssessmentAnalyticsContent({ base }: { base: string }) {
   const page = Number(search.get('page') ?? 1);
   const columns: Column<Attempt>[] = [
     { key: 'name', label: t('assessmentAnalytics.userId'), priority: 'primary', render: ({ name }) => name },
+    { key: 'department', priority: 'secondary', label: t('assessmentAnalytics.departmentId'), render: ({ department }) => department ?? '—' },
     { key: 'date', priority: 'secondary', label: t('assessmentAnalytics.date'), render: ({ date }) => date },
     { key: 'place', priority: 'secondary', label: t('assessmentAnalytics.place'), render: ({ place }) => t(`assessmentAnalytics.${place}`) },
     { key: 'score', label: t('assessmentAnalytics.score'), priority: 'primary', render: ({ score, maxScore, percentage }) => `${score}/${maxScore} · ${percentage}%` },
@@ -180,8 +183,11 @@ function AssessmentAnalyticsContent({ base }: { base: string }) {
     </div></Card>}
     {id && analytics.state.status === 'loading' && <PageState variant="loading" message={t('assessments.loading')} />}
     {id && analytics.state.status !== 'loaded' && analytics.state.status !== 'loading' && <PageState variant="error" message={analytics.state.message} action={<button type="button" onClick={() => void analytics.reload()}>{t('assessmentAnalytics.retry')}</button>} />}
+    {data && <h2>{data.title}</h2>}
+    {id && <div hidden={!data}>
+      <AssessmentExportControls key={id} path={`${getAssessmentPath(id)}/analytics/exports`} query={query} hasFolder={Boolean(data?.folderId)} />
+    </div>}
     {data && <>
-      <h2>{data.title}</h2>
       <div style={toolbar}>
         {(['all', ...places] as const).map((place) => <button type="button" key={place} className={`ds-button ${(search.get('place') || 'all') === place ? 'ds-button--primary' : 'ds-button--secondary'}`}
           aria-pressed={(search.get('place') || 'all') === place} onClick={() => update('place', place === 'all' ? '' : place)}>

@@ -64,17 +64,21 @@ export class BackgroundJobsService implements OnApplicationBootstrap, OnModuleDe
     });
   }
 
+  async getResult(name: string, id: string) {
+    return await this.backend.getResult?.(name, id) ?? null;
+  }
+
   async onApplicationBootstrap(): Promise<void> {
     if (process.env['BACKGROUND_JOBS_RUN_WORKER'] !== 'true') return;
     await this.backend.start(async (job) => {
       const handler = this.handlers.get(job.name);
       if (!handler) throw new Error(`No handler registered for background job "${job.name}"`);
       const execute = async () => {
-        await handler(job);
+        const result = await handler(job);
         this.logger.debug({ jobId: job.id }, 'Background job completed');
+        return result;
       };
-      if (job.telemetryContext) await runWithTelemetryContext(job.telemetryContext, execute);
-      else await execute();
+      return job.telemetryContext ? runWithTelemetryContext(job.telemetryContext, execute) : execute();
     });
     for (const recurring of this.recurringJobs.values()) {
       await this.backend.upsertRecurring(recurring.name, recurring.data, recurring.options);

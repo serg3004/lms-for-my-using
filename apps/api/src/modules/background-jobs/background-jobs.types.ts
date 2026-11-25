@@ -22,8 +22,14 @@ export type RecurringBackgroundJobOptions = {
   backoffMs?: number;
 };
 
-export type BackgroundJobHandler = (job: BackgroundJob) => Promise<void>;
+export type BackgroundJobHandler = (job: BackgroundJob) => Promise<void | BackgroundJobData>;
 export type EnqueuedBackgroundJob = {
   id: string;
   deduplicated: boolean;
+};
+
+export type BackgroundJobResult = {
+  data: BackgroundJobData;
+  state: 'pending' | 'failed' | 'completed';
+  result?: unknown;
 };

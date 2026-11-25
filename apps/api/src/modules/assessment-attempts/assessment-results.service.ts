@@ -9,7 +9,7 @@ import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service.js';
 import type { UserRole } from '../auth/public.js';
 import { isOrgWideGrant } from '../auth/public.js';
-import { assessmentAnalyticsCards, assessmentAnalyticsSelect, summarizeAssessment, type AssessmentAnalyticsAnswer, type AssessmentAnalyticsQuery } from './assessment-analytics.js';
+import { assessmentAnalyticsCards, assessmentAnalyticsPeriod, assessmentAnalyticsSelect, summarizeAssessment, type AssessmentAnalyticsAnswer, type AssessmentAnalyticsQuery } from './assessment-analytics.js';
 import { attemptScope } from './attempt-scope.js';
 import { ManagerTeamScope, isManagerTeamScoped, normalizeActor } from '../manager-team-scope/public.js';
 import type { TeamScopeActor } from '../manager-team-scope/public.js';
@@ -261,19 +261,15 @@ export class AssessmentResultsService {
     return { cards };
   }
 
-  async getAssessmentAnalytics(assessmentId: string, actor: TeamScopeActor, query: AssessmentAnalyticsQuery) {
+  async getAssessmentAnalytics(assessmentId: string, actor: TeamScopeActor, query: AssessmentAnalyticsQuery, exportView?: 'results' | 'questions' | 'folder') {
     const { organizationId } = actor;
     const assessment = await this.ensureAssessmentExists(assessmentId, organizationId);
-    const period = query.from || query.to ? {
-      gte: query.from ? new Date(query.from) : undefined,
-      lt: query.to ? new Date(Date.parse(query.to) + 86_400_000) : undefined,
-    } : undefined;
     const [attempts, legacyQuestions] = await Promise.all([
       this.prisma.assessmentAttempt.findMany({
         where: {
           assessmentId, organizationId, status: 'completed', countsTowardResults: true, deletedAt: null,
           ...attemptScope(this.teamScope, actor),
-          ...(period ? { OR: [{ completedAt: period }, { completedAt: null, createdAt: period }] } : {}),
+          ...assessmentAnalyticsPeriod(query),
         },
         orderBy: [{ completedAt: 'desc' }, { id: 'asc' }],
         select: {
@@ -287,12 +283,12 @@ export class AssessmentResultsService {
           } },
         },
       }),
-      this.prisma.assessmentQuestion.findMany({
+      exportView && exportView !== 'questions' ? [] : this.prisma.assessmentQuestion.findMany({
         where: { assessmentId, organizationId },
         select: { id: true, title: true, text: true, options: { select: { id: true, text: true, isCorrect: true } } },
       }),
     ]);
-    const summary = await summarizeAssessment(attempts, legacyQuestions, query, (attemptIds) =>
+    const summary = await summarizeAssessment(attempts, legacyQuestions, query, (attemptIds) => exportView && exportView !== 'questions' ? Promise.resolve([]) :
       // Use the filtered and authorized attempt IDs. Aggregate repeated answers before transferring snapshots.
       this.prisma.$queryRaw<AssessmentAnalyticsAnswer[]>`
         SELECT answer.question_id AS "questionId", answer.is_correct AS "isCorrect",
@@ -303,8 +299,8 @@ export class AssessmentResultsService {
         WHERE answer.organization_id = ${organizationId}::uuid AND answer.deleted_at IS NULL
         GROUP BY answer.question_id, answer.is_correct, answer.selected_option_id, answer.selected_option_ids, answer.frozen_question
         ORDER BY MIN(attempt.position), answer.question_id
-      `);
-    return { title: assessment.title, ...summary };
+      `, Boolean(exportView));
+    return { title: assessment.title, folderId: assessment.folderId, ...summary };
   }
 
   async getAssessmentReport(assessmentId: string, actorInput: TeamScopeActor | string) {
@@ -371,6 +367,7 @@ export class AssessmentResultsService {
       select: {
         id: true,
         title: true,
+        folderId: true,
         passingScore: true,
       },
     });

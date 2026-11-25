@@ -197,6 +197,10 @@ export class PdfFontBook {
     });
   }
 
+  wrap(text: string, weight: PdfFontWeight, size: number, width: number): string[] {
+    return this.layout(text, weight, size, width).map(({ segments }) => segments.map(({ text }) => text).join(''));
+  }
+
   inlineWidth(text: string, weight: PdfFontWeight, size: number) {
     return this.segmentsOf(text, weight, size).reduce((width, segment) => width + segment.width, 0);
   }

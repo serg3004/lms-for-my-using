@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Body, Controller, ForbiddenException, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Header, HttpCode, Param, Post, Put, Query, Req, Res, StreamableFile, UseGuards } from '@nestjs/common';
 
 import { AuthGuard } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
@@ -13,10 +13,18 @@ import {
   recordAssessmentAnswerSchema,
   CreateAssessmentAttemptInput,
 } from './assessment-attempts.schemas.js';
+import { assessmentExportInput, AssessmentExportsService } from './assessment-exports.service.js';
+import { exportMime, type ExportFormat } from './assessment-export-file.js';
 import { assessmentAnalyticsQuery } from './assessment-analytics.js';
 import { AssessmentResultsService } from './assessment-results.service.js';
 
 import { AssessmentManualReviewService, reviewQueueQuery, reviewAnswerInput } from './assessment-manual-review.service.js';
+
+const exportId = z.string().regex(/^[a-f0-9]{64}$/);
+
+function exportFile({ file, format }: { file: Buffer; format: ExportFormat }) {
+  return new StreamableFile(file, { type: exportMime[format], disposition: `attachment; filename="assessment.${format}"` });
+}
 
 const placementQuery = z.union([z.guid(), z.literal('standalone').transform(() => null)]).optional();
 
@@ -28,6 +36,7 @@ export class AssessmentAttemptsController {
     private readonly assessmentResultsService: AssessmentResultsService,
     private readonly standalone: StandaloneAssessmentsService,
     private readonly manualReview: AssessmentManualReviewService,
+    private readonly exports: AssessmentExportsService,
   ) {}
 
   @Get('assessment-reviews')
@@ -73,6 +82,39 @@ export class AssessmentAttemptsController {
   @CourseScope('param', 'assessmentId', 'assessment')
   getAssessmentAnalytics(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest, @Query() query: unknown) {
     return this.assessmentResultsService.getAssessmentAnalytics(z.guid().parse(assessmentId), request.currentUser!, assessmentAnalyticsQuery.parse(query));
+  }
+
+  @Post('assessments/:assessmentId/analytics/exports')
+  @HttpCode(200)
+  @Header('Cache-Control', 'private, no-store')
+  @Roles(...rolePolicies.assessmentAttemptsRead)
+  @CourseScope('param', 'assessmentId', 'assessment')
+  async startAnalyticsExport(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest,
+    @Body() body: unknown, @Res({ passthrough: true }) response: { status(code: number): unknown }) {
+    const result = await this.exports.start(z.guid().parse(assessmentId), request.currentUser!, assessmentExportInput.parse(body));
+    if ('file' in result && result.file) return exportFile(result);
+    response.status(202);
+    return { statusUrl: `/assessments/${assessmentId}/analytics/exports/${result.id}` };
+  }
+
+  @Get('assessments/:assessmentId/analytics/exports/:id')
+  @Header('Cache-Control', 'private, no-store')
+  @Roles(...rolePolicies.assessmentAttemptsRead)
+  @CourseScope('param', 'assessmentId', 'assessment')
+  async getAnalyticsExportStatus(@Param('assessmentId') assessmentId: string, @Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    const result = await this.exports.status(z.guid().parse(assessmentId), exportId.parse(id), request.currentUser!);
+    return {
+      ...result,
+      ...(result.state === 'completed' ? { downloadUrl: `/assessments/${assessmentId}/analytics/exports/${id}/file` } : {}),
+    };
+  }
+
+  @Get('assessments/:assessmentId/analytics/exports/:id/file')
+  @Header('Cache-Control', 'private, no-store')
+  @Roles(...rolePolicies.assessmentAttemptsRead)
+  @CourseScope('param', 'assessmentId', 'assessment')
+  async downloadAnalyticsExport(@Param('assessmentId') assessmentId: string, @Param('id') id: string, @Req() request: AuthenticatedRequest) {
+    return exportFile(await this.exports.download(z.guid().parse(assessmentId), exportId.parse(id), request.currentUser!));
   }
 
   @Get('assessments/:assessmentId/report')
