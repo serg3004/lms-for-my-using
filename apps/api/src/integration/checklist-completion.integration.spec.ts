@@ -137,6 +137,7 @@ describe('Checklist completion HTTP contract', () => {
       checklist: {
         findFirstOrThrow: jest.fn(async () => ({ scoringMode: 'sum_points', scaleLevels: null, requiresReview: false, passThreshold: 0 })),
       },
+      checklistVoiceNote: { findMany: jest.fn(async () => []), count: jest.fn(async () => 0) },
       checklistItem: {
         findFirst: jest.fn(async () => ({ id: itemId, points: 10 })),
         findMany: jest.fn(async () => [{ id: itemId, points: 10, isRequired: true, photoRequired: true }]),
