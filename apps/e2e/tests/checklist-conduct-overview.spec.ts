@@ -270,3 +270,86 @@ test.describe('conduct comment formatting (PR 428)', () => {
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   });
 });
+
+// PR 508: dictation into the comment field through the speech recognition of the browser (replaced here by a fake one: the real one needs the internet and a microphone).
+const fakeSpeech = () => {
+  type Handlers = { onresult?: (event: unknown) => void; onerror?: (event: { error: string }) => void; onend?: () => void; lang?: string };
+  const state: { last: Handlers | null } = { last: null };
+  class FakeRecognition implements Handlers {
+    onresult?: Handlers['onresult']; onerror?: Handlers['onerror']; onend?: Handlers['onend']; lang = '';
+    constructor() { state.last = this; }
+    start() {}
+    stop() { this.onend?.(); }
+    abort() {}
+  }
+  Object.assign(window, {
+    SpeechRecognition: FakeRecognition,
+    webkitSpeechRecognition: FakeRecognition,
+    __lang: () => state.last?.lang,
+    __say: (text: string) => {
+      const list = [Object.assign([{ transcript: text }], { isFinal: true, length: 1 })];
+      state.last?.onresult?.({ resultIndex: 0, results: Object.assign(list, { length: 1 }) });
+    },
+    __fail: (error: string) => { state.last?.onerror?.({ error }); state.last?.onend?.(); },
+  });
+};
+const say = (page: Page, text: string) => page.evaluate((value) => (window as unknown as { __say: (text: string) => void }).__say(value), text);
+
+test.describe('dictation into the comment (PR 508)', () => {
+  test('the spoken phrases go into the comment, can be corrected and are saved with the answer', async ({ page }) => {
+    await page.addInitScript(fakeSpeech);
+    const requests = await setup(page);
+    const comment = page.getByLabel('Комментарий', { exact: true });
+    await page.getByRole('button', { name: 'Диктовать' }).click();
+    await expect(page.getByRole('button', { name: 'Остановить' })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('note')).toContainText('Речь обрабатывает ваш браузер');
+    expect(await page.evaluate(() => (window as unknown as { __lang: () => string }).__lang())).toBe('ru-RU');
+    await say(page, 'на кассе порядок');
+    await say(page, 'но чек не выдали');
+    await expect(comment).toHaveText('на кассе порядок но чек не выдали');
+    await page.getByRole('button', { name: 'Остановить' }).click();
+    await expect(page.getByRole('button', { name: 'Диктовать' })).toBeVisible();
+    // The text is an ordinary comment: it can be corrected and it is saved with the answer.
+    await comment.click();
+    await page.keyboard.press('ControlOrMeta+End');
+    await page.keyboard.type(' Исправлено.');
+    await page.getByRole('radio', { name: 'Да', exact: true }).click();
+    await expect.poll(() => requests.calls).toContain('answer');
+    await expect(comment).toHaveText('на кассе порядок но чек не выдали Исправлено.');
+  });
+
+  test('a refused microphone is explained, can be retried, and the language can be changed', async ({ page }) => {
+    await page.addInitScript(fakeSpeech);
+    await setup(page);
+    await page.getByLabel('Язык диктовки').selectOption('kk');
+    await page.getByRole('button', { name: 'Диктовать' }).click();
+    expect(await page.evaluate(() => (window as unknown as { __lang: () => string }).__lang())).toBe('kk-KZ');
+    await page.evaluate(() => (window as unknown as { __fail: (code: string) => void }).__fail('not-allowed'));
+    await expect(page.getByRole('alert').filter({ hasText: 'Нет доступа к микрофону' })).toBeVisible();
+    await page.getByRole('button', { name: 'Повторить' }).click();
+    await expect(page.getByRole('button', { name: 'Остановить' })).toBeVisible();
+    await expect(page.getByRole('alert').filter({ hasText: 'Нет доступа к микрофону' })).toHaveCount(0);
+  });
+
+  test('without speech recognition in the browser the field stays a plain comment field', async ({ page }) => {
+    // Chromium has speech recognition of its own; a browser without it (Firefox) is simulated by removing it.
+    await page.addInitScript(() => { Object.assign(window, { SpeechRecognition: undefined, webkitSpeechRecognition: undefined }); });
+    await setup(page);
+    await expect(page.getByRole('button', { name: 'Диктовать' })).toHaveCount(0);
+    await fillRich(page, page.getByLabel('Комментарий', { exact: true }), 'Typed by hand');
+    await expect(page.getByLabel('Комментарий', { exact: true })).toHaveText('Typed by hand');
+  });
+
+  test('the dictation controls are at least 44 px high on a phone', async ({ page }) => {
+    await page.addInitScript(fakeSpeech);
+    await page.setViewportSize({ width: 320, height: 800 });
+    await setup(page);
+    for (const control of [page.getByRole('button', { name: 'Диктовать' }), page.getByLabel('Язык диктовки')]) {
+      const box = await control.boundingBox();
+      expect(box?.height).toBeGreaterThanOrEqual(44);
+      expect(box?.width).toBeGreaterThanOrEqual(44);
+    }
+    const scroll = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(scroll).toBeLessThanOrEqual(0);
+  });
+});

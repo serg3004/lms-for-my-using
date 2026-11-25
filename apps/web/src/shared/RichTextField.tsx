@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useId, useMemo, useLayoutEffect, useRef, useState } from 'react';
-import type { FocusEventHandler, KeyboardEventHandler } from 'react';
+import type { FocusEventHandler, KeyboardEventHandler, MutableRefObject } from 'react';
 import { type Editor, type JSONContent } from '@tiptap/core';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -35,10 +35,13 @@ function editorValue(editor: Editor, centerDefault = false) {
 
 type RichTextFieldProps = {
   value: string; onChange: (value: string) => void; label: string; id?: string; maxLength?: number; disabled?: boolean; compact?: boolean; hideHint?: boolean; singleLine?: boolean; hideLabel?: boolean; /** PR 455: image captions are centered unless the author chose another alignment. */ defaultAlign?: 'left' | 'center'; onBlur?: FocusEventHandler<HTMLDivElement>; onFocus?: FocusEventHandler<HTMLDivElement>; onKeyDown?: KeyboardEventHandler<HTMLDivElement>; invalid?: boolean; describedBy?: string; className?: string;
+  /** PR 508: filled with a function that adds plain text at the cursor (dictation); false when the text does not fit or the field is read-only. */
+  insertTextRef?: MutableRefObject<((text: string) => boolean) | null>;
 };
 
-const RichTextFieldInner = memo(function RichTextFieldInner({ value, onChange, label, id, maxLength = 2000, disabled = false, compact = false, hideHint = false, singleLine = false, hideLabel = false, defaultAlign = 'left', onBlur, onFocus, onKeyDown, invalid, describedBy, className }: RichTextFieldProps) {
+const RichTextFieldInner = memo(function RichTextFieldInner({ value, onChange, label, id, maxLength = 2000, disabled = false, compact = false, hideHint = false, singleLine = false, hideLabel = false, defaultAlign = 'left', onBlur, onFocus, onKeyDown, invalid, describedBy, className, insertTextRef }: RichTextFieldProps) {
   const { t } = useTranslation(), uid = useId(), labelId = `${uid}-label`, hintId = `${uid}-hint`;
+  const everFocused = useRef(false);
   const [lengthError, setLengthError] = useState(false), [focused, setFocused] = useState(false);
   const formatting = useFormattingWindow(disabled);
   const centerDefault = defaultAlign === 'center';
@@ -78,8 +81,23 @@ const RichTextFieldInner = memo(function RichTextFieldInner({ value, onChange, l
   // field is only re-synchronised with the outside value while it is not focused, and once more when it loses the focus.
   useEffect(() => { if (editor && !focused && editorValue(editor, centerDefault) !== toClean(value)) editor.commands.setContent(toHtml(value), { emitUpdate: false }); }, [editor, value, focused, centerDefault, toClean, toHtml]);
   useEffect(() => { editor?.setEditable(!disabled, false); }, [editor, disabled]);
+  // Dictation: the phrase goes in at the cursor (at the end while the person has not put a cursor in yet), after a space when a word is before it.
+  useEffect(() => {
+    if (!insertTextRef) return undefined;
+    insertTextRef.current = editor ? (text: string) => {
+      const clean = text.replace(/[\r\n]+/g, ' ').trim();
+      if (!clean || disabled) return false;
+      const { from, to } = editor.state.selection;
+      const spaced = everFocused.current ? (from > 1 ? editor.state.doc.textBetween(from - 1, from) : '') : editor.state.doc.textContent.slice(-1);
+      const piece = spaced && !/\s/.test(spaced) ? ` ${clean}` : clean;
+      if (editor.state.doc.textContent.length - (everFocused.current ? to - from : 0) + piece.length > maxLength) { setLengthError(true); return false; }
+      setLengthError(false);
+      return editor.chain().focus(everFocused.current ? null : 'end').insertContent({ type: 'text', text: piece }).run();
+    } : null;
+    return () => { insertTextRef.current = null; };
+  }, [editor, disabled, maxLength, insertTextRef]);
   formatting.editorRef.current = editor;
-  return <div onFocus={(event) => { setFocused(true); onFocus?.(event); }} onKeyDown={onKeyDown} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) { setFocused(false); onBlur?.(event); } }} style={{ minWidth: 0, maxWidth: '100%', width: '100%', display: 'grid', gap: 6 }}>
+  return <div onFocus={(event) => { everFocused.current = true; setFocused(true); onFocus?.(event); }} onKeyDown={onKeyDown} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) { setFocused(false); onBlur?.(event); } }} style={{ minWidth: 0, maxWidth: '100%', width: '100%', display: 'grid', gap: 6 }}>
     <div id={labelId} className={hideLabel ? 'ui-visually-hidden' : undefined}>{descriptionText(label)}</div>
     <p id={hintId} className={compact || hideHint ? 'ui-visually-hidden' : 'admin-form__hint'} style={{ marginBlock: 4, whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{t('richDescription.hint')}</p>
     <div {...formatting.touchProps}>

@@ -1,3 +1,6 @@
+import { useRef } from 'react';
+
+import { DictationButton } from '../shared/DictationButton.js';
 import { RichDescription } from '../shared/RichDescription.js';
 import type { TFunction } from 'i18next';
 
@@ -16,7 +19,7 @@ export function ChecklistItemDescription({ item, t }: { item: Pick<ChecklistItem
 }
 
 /** PR 428: a fill-in text field with the formatting window (stored as sanitized rich text, shown as a rich paragraph). */
-export function RichFillField({ id, label, value, onChange, disabled, hint, required, maxLength = 1000, invalid }: {
+export function RichFillField({ id, label, value, onChange, disabled, hint, required, maxLength = 1000, invalid, dictation = false }: {
   id: string;
   label: string;
   value: string;
@@ -26,11 +29,15 @@ export function RichFillField({ id, label, value, onChange, disabled, hint, requ
   required?: boolean;
   maxLength?: number;
   invalid?: boolean;
+  /** PR 508: a microphone button that dictates into the field (hidden where the browser cannot recognise speech). */
+  dictation?: boolean;
 }) {
   const hintId = hint ? `${id}-fill-hint` : undefined;
+  const insertRef = useRef<((text: string) => boolean) | null>(null);
   return (
     <div style={{ display: 'grid', gap: 4, minWidth: 0 }} aria-required={required || undefined}>
-      <RichTextField id={id} label={label} value={value} onChange={onChange} disabled={disabled} maxLength={maxLength} compact invalid={invalid} describedBy={hintId} />
+      <RichTextField id={id} label={label} value={value} onChange={onChange} disabled={disabled} maxLength={maxLength} compact invalid={invalid} describedBy={hintId} insertTextRef={dictation ? insertRef : undefined} />
+      {dictation && <DictationButton disabled={disabled} id={id} onText={(text) => { insertRef.current?.(text); }} />}
       {hint && <p id={hintId} role="status" className="admin-form__hint" style={{ margin: 0 }}>{hint}</p>}
     </div>
   );
@@ -56,6 +63,7 @@ export function ChecklistNoteField({ id, required, value, disabled, onChange, hi
       onChange={onChange}
       required={required}
       value={value}
+      dictation
     />
   );
 }

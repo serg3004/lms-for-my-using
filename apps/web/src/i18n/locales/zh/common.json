@@ -4207,6 +4207,24 @@
     "requiredFields": "请填写并保存必填的反馈字段。",
     "item": "第{{number}}项"
   },
+  "dictation": {
+    "start": "语音输入",
+    "stop": "停止",
+    "language": "语音输入语言",
+    "listening": "正在录音，请说话",
+    "hint": "语音由您的浏览器（Google 或 Apple）处理，我们不保存声音。",
+    "retry": "重试",
+    "errorDenied": "无法使用麦克风。请在浏览器的网站设置中允许（地址栏旁的锁形图标），然后点击“重试”。",
+    "errorNoMicrophone": "未找到麦克风。请连接后点击“重试”。",
+    "errorNetwork": "语音识别需要联网，但连接失败。请点击“重试”。",
+    "errorLanguage": "浏览器无法识别此语言。请选择其他语言或手动输入。",
+    "errorFailed": "语音输入因错误而停止。请点击“重试”或手动输入。",
+    "silence": "没有听到声音。请检查麦克风并靠近说话。",
+    "lang_ru": "Русский",
+    "lang_en": "English",
+    "lang_kk": "Қазақша",
+    "lang_zh": "中文"
+  },
   "richDescription": {
     "title": "文字格式",
     "hint": "选择文字后，右键单击、长按或按 Shift+F10。Ctrl+B/I/U 更改字形。",

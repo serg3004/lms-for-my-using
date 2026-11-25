@@ -250,7 +250,7 @@ export function createSecurityHeadersMiddleware(): Middleware {
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('X-Frame-Options', 'DENY');
     response.setHeader('Referrer-Policy', 'no-referrer');
-    response.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    response.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=()');
     response.setHeader('Cross-Origin-Resource-Policy', 'same-site');
     response.setHeader('X-XSS-Protection', '0');
 
