@@ -154,6 +154,18 @@ export class UploadService {
     return id;
   }
 
+  async listAssessmentImages(organizationId: string, cursor?: string) {
+    if (!this.s3 || !this.bucket) throw new ServiceUnavailableException('File storage is not configured');
+    const prefix = `organizations/${organizationId}/assessment-images/`;
+    const page = await this.s3.send(new ListObjectsV2Command({
+      Bucket: this.bucket, Prefix: prefix, ContinuationToken: cursor, MaxKeys: 24,
+    }));
+    return {
+      ids: (page.Contents ?? []).flatMap(({ Key }) => Key?.startsWith(prefix) ? [Key.slice(prefix.length)] : []),
+      nextCursor: page.NextContinuationToken ?? null,
+    };
+  }
+
   async uploadChecklistCover(
     file: Express.Multer.File,
     organizationId: string,

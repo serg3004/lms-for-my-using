@@ -4673,6 +4673,7 @@
     "invalid": "Use an HTTPS link or supported embed code.",
     "open": "Open in a new tab",
     "choose": "Choose uploaded image",
+    "moreImages": "Show more images",
     "imageError": "Unable to load or upload an image. JPEG, PNG, GIF and WebP up to 8 MB are accepted."
   }
 }

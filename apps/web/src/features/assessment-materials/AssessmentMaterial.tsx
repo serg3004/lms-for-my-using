@@ -16,7 +16,7 @@ function AssessmentImage({ id, alt }: { id: string; alt: string }) {
     return () => { active = false; };
   }, [id]);
   if (loaded?.id !== id) return null;
-  return loaded.url ? <img src={loaded.url} alt={alt} style={{ maxWidth: '100%', maxHeight: 360 }} />
+  return loaded.url ? <img src={loaded.url} alt={alt} onError={() => setLoaded({ id })} style={{ maxWidth: '100%', maxHeight: 360 }} />
     : <p role="status">{t('assessmentMaterials.imageError')}</p>;
 }
 
@@ -34,6 +34,8 @@ export function AssessmentMaterial({ value }: { value?: string | null }) {
   </div>;
 }
 
+type ImagePage = { ids: string[]; nextCursor: string | null };
+
 export function AssessmentMaterialField({ value, onChange }: {
   value?: string | null;
   onChange: (value: string | null) => void;
@@ -49,7 +51,8 @@ export function AssessmentMaterialField({ value, onChange }: {
   onChangeRef.current = onChange;
   const [imageError, setImageError] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [images, setImages] = useState<string[]>();
+  const [images, setImages] = useState<ImagePage>();
+  const [loadingImages, setLoadingImages] = useState(false);
   const [fileId, setFileId] = useState(material?.kind === 'file' ? material.fileId : '');
 
   function chooseImage(id: string) {
@@ -57,6 +60,20 @@ export function AssessmentMaterialField({ value, onChange }: {
     setUrl('');
     setInvalid(false);
     onChangeRef.current(JSON.stringify({ kind: 'file', fileId: id, caption, alt }));
+  }
+
+  async function listImages(cursor?: string) {
+    setLoadingImages(true);
+    setImageError(false);
+    try {
+      const params = cursor ? '?' + new URLSearchParams({ cursor }) : '';
+      const page = await apiRequest<ImagePage>(`/assessment-images${params}`);
+      setImages((previous) => cursor && previous ? { ...page, ids: [...previous.ids, ...page.ids] } : page);
+    } catch {
+      setImageError(true);
+    } finally {
+      setLoadingImages(false);
+    }
   }
 
   async function upload(file: File) {
@@ -82,21 +99,21 @@ export function AssessmentMaterialField({ value, onChange }: {
   return <details style={{ maxWidth: '100%', minWidth: 0 }}>
     <summary>{t('assessmentMaterials.material')}</summary>
     <label htmlFor={`${id}-upload`}>{t('longreadFiles.uploadImage')}</label>
-    <input id={`${id}-upload`} type="file" style={{ maxWidth: '100%' }} disabled={busy}
+    <input id={`${id}-upload`} type="file" style={{ maxWidth: '100%' }} disabled={busy || loadingImages}
       accept={Object.values(assessmentImageTypes).join(',')} onChange={(event) => {
         const file = event.target.files?.[0];
         event.target.value = '';
         if (file) void upload(file);
       }} />
-    <button type="button" className="admin-btn admin-btn--secondary" disabled={busy} onClick={() => {
-      setImageError(false);
-      void apiRequest<string[]>('/assessment-images').then(setImages, () => setImageError(true));
-    }}>{t('assessmentMaterials.choose')}</button>
+    <button type="button" className="admin-btn admin-btn--secondary" disabled={busy || loadingImages}
+      onClick={() => images ? setImages(undefined) : void listImages()}>{t(images ? 'longread.close' : 'assessmentMaterials.choose')}</button>
     {images && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-      {images.map((image, index) => <button key={image} type="button" disabled={busy} onClick={() => chooseImage(image)}
+      {images.ids.map((image, index) => <button key={image} type="button" disabled={busy} onClick={() => chooseImage(image)}
         aria-label={t('longreadExercises.option', { number: index + 1 })} style={{ width: 90, minHeight: 44 }}>
         <AssessmentImage id={image} alt="" />
       </button>)}
+      {images.nextCursor && <button type="button" className="admin-btn admin-btn--secondary" disabled={busy || loadingImages}
+        onClick={() => void listImages(images.nextCursor!)}>{t('assessmentMaterials.moreImages')}</button>}
     </div>}
     {imageError && <p role="alert">{t('assessmentMaterials.imageError')}</p>}
     <label htmlFor={id}>{t('assessmentMaterials.link')}</label>

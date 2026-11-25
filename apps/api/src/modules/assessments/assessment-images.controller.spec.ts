@@ -9,7 +9,10 @@ const user = (organizationId: string) => ({ currentUser: { organizationId } }) a
 describe('assessment images', () => {
   const uploadAssessmentImage = jest.fn(async () => id);
   const getInlinePresignedUrl = jest.fn(async () => 'https://files.example.org/image');
-  const controller = new AssessmentImagesController({ uploadAssessmentImage, getInlinePresignedUrl } as unknown as UploadService);
+  const listAssessmentImages = jest.fn(async () => ({ ids: [id, 'invalid'], nextCursor: 'next' }));
+  const controller = new AssessmentImagesController({
+    uploadAssessmentImage, getInlinePresignedUrl, listAssessmentImages,
+  } as unknown as UploadService);
 
   beforeEach(() => jest.clearAllMocks());
 
@@ -21,6 +24,11 @@ describe('assessment images', () => {
     expect(uploadAssessmentImage).not.toHaveBeenCalled();
     await expect(controller.upload(file, user('org-a'))).resolves.toEqual({ id });
     expect(uploadAssessmentImage).toHaveBeenCalledWith(file, 'org-a', 'png');
+  });
+
+  it('returns valid image IDs from the authenticated organization page', async () => {
+    await expect(controller.list(user('org-a'), 'current')).resolves.toEqual({ ids: [id], nextCursor: 'next' });
+    expect(listAssessmentImages).toHaveBeenCalledWith('org-a', 'current');
   });
 
   it('signs only within the authenticated organization', async () => {

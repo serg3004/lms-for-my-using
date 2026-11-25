@@ -66,9 +66,10 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
         await question.getByRole('radio', { name: 'Верный' }).check();
         if (index === 0) {
           await question.locator('summary').filter({ hasText: 'Материал' }).first().click();
-          await question.getByLabel('Ссылка HTTPS или код встраивания').fill('https://youtu.be/dQw4w9WgXcQ');
-          await question.getByLabel('Название для экранного диктора').fill('Видео к первому вопросу');
-          await question.getByRole('button', { name: 'Применить источник', exact: true }).click();
+          const material = question.locator('details[open]');
+          await material.getByLabel('Ссылка HTTPS или код встраивания').fill('https://youtu.be/dQw4w9WgXcQ');
+          await material.getByLabel('Название для экранного диктора').fill('Видео к первому вопросу');
+          await material.getByRole('button', { name: 'Применить источник', exact: true }).click();
         }
       }
       await questions.nth(1).getByRole('button', { name: 'Переместить элемент 2 вверх' }).click();

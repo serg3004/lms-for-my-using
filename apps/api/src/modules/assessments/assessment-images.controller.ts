@@ -1,6 +1,7 @@
-import { BadRequestException, Controller, Get, Param, Post, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Param, Post, Query, Req, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
+import { z } from 'zod';
 import { assessmentImageIdSchema, assessmentImageTypes } from '@lms/shared/longread-media';
 
 import { AuthenticatedAccess, AuthGuard, Roles, RolesGuard, rolePolicies, type AuthenticatedRequest } from '../auth/public.js';
@@ -23,11 +24,10 @@ export class AssessmentImagesController {
 
   @Get()
   @Roles(...rolePolicies.assessmentsCreate)
-  async list(@Req() request: AuthenticatedRequest) {
-    const prefix = `organizations/${request.currentUser!.organizationId}/assessment-images/`;
-    const objects = await this.storage.listObjects(prefix);
-    return objects.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime())
-      .slice(0, 50).map(({ key }) => key.slice(prefix.length)).filter((id) => assessmentImageIdSchema.safeParse(id).success);
+  async list(@Req() request: AuthenticatedRequest, @Query('cursor') rawCursor: unknown) {
+    const cursor = z.string().min(1).max(4096).optional().parse(rawCursor);
+    const { ids, nextCursor } = await this.storage.listAssessmentImages(request.currentUser!.organizationId, cursor);
+    return { ids: ids.filter((id) => assessmentImageIdSchema.safeParse(id).success), nextCursor };
   }
 
   @Get(':id')
