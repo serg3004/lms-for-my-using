@@ -13,7 +13,7 @@ const other = '55555555-5555-5555-5555-555555555555';
 const noteId = '66666666-6666-6666-6666-666666666666';
 const uploaded = { objectKey: 'organizations/o/checklist-voice/i/k', mimeType: 'audio/webm', sizeBytes: 100 };
 
-function setup(over: { count?: number; result?: unknown; note?: unknown; instance?: unknown; writable?: () => Promise<void> } = {}) {
+function setup(over: { count?: number; result?: unknown; note?: unknown; instance?: unknown; writable?: () => Promise<void>; organization?: Record<string, unknown> } = {}) {
   const note = over.note === undefined ? { id: noteId, itemId, objectKey: 'old-key', createdBy: author, mimeType: 'audio/webm', createdAt: new Date(5) } : over.note;
   const tx = {
     checklistVoiceNote: {
@@ -28,6 +28,7 @@ function setup(over: { count?: number; result?: unknown; note?: unknown; instanc
     ...tx,
     checklistInstance: { findFirst: jest.fn(async () => (over.instance === undefined ? { id: instanceId, userId: author } : over.instance)) },
     checklistVoiceNote: { ...tx.checklistVoiceNote, findMany: jest.fn(async () => []) },
+    organization: { findFirst: jest.fn(async () => ({ dictationEnabled: true, voiceNotesEnabled: true, voiceNoteMaxSeconds: 120, voiceNotesPerComment: 3, voiceSettingsVersion: 1, ...over.organization })) },
     $transaction: jest.fn(async (run: (client: typeof tx) => unknown) => run(tx)),
   };
   const storage = { deleteObject: jest.fn(async () => undefined), getObjectBytes: jest.fn(async () => Buffer.from('audio')) };
@@ -36,6 +37,44 @@ function setup(over: { count?: number; result?: unknown; note?: unknown; instanc
   const notes = new ChecklistVoiceNotes(prisma as unknown as PrismaService, storage, auditLog as unknown as AuditLogService, assertWritable, 4 * 1024 * 1024);
   return { notes, prisma, tx, storage, auditLog, assertWritable };
 }
+
+describe('ChecklistVoiceNotes: organization and checklist settings (PR 511)', () => {
+  it('refuses a recording when the organization has voice off, before any file is stored', async () => {
+    const { notes } = setup({ organization: { voiceNotesEnabled: false } });
+    await expect(notes.assertHasRoom(instanceId, itemId, org, author, false)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('refuses a recording when the checklist says off even though the organization allows it', async () => {
+    const { notes } = setup({ instance: { id: instanceId, userId: author, checklist: { voiceNotesMode: 'off', dictationMode: 'inherit' } } });
+    await expect(notes.assertHasRoom(instanceId, itemId, org, author, false)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('a checklist saying on does not open what the organization has closed', async () => {
+    const { notes } = setup({ organization: { voiceNotesEnabled: false }, instance: { id: instanceId, userId: author, checklist: { voiceNotesMode: 'on', dictationMode: 'inherit' } } });
+    await expect(notes.assertHasRoom(instanceId, itemId, org, author, false)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('refuses a recording longer than the organization allows and a comment over its limit', async () => {
+    const { notes, tx } = setup({ organization: { voiceNoteMaxSeconds: 30, voiceNotesPerComment: 2 }, count: 2 });
+    await expect(notes.assertHasRoom(instanceId, itemId, org, author, false, undefined, 31_000)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(notes.assertHasRoom(instanceId, itemId, org, author, false, undefined, 30_000)).rejects.toBeInstanceOf(ConflictException);
+    await expect(notes.add(instanceId, itemId, org, author, false, uploaded, 30_000)).rejects.toBeInstanceOf(ConflictException);
+    expect(tx.checklistVoiceNote.create).not.toHaveBeenCalled();
+  });
+
+  it('also refuses at the final write, so a setting changed during the upload is respected', async () => {
+    const { notes, tx } = setup({ organization: { voiceNotesEnabled: false } });
+    await expect(notes.add(instanceId, itemId, org, author, false, uploaded, 1000)).rejects.toBeInstanceOf(ForbiddenException);
+    expect(tx.checklistVoiceNote.create).not.toHaveBeenCalled();
+  });
+
+  it('keeps recordings already made listenable and removable when voice is off', async () => {
+    const { notes, prisma } = setup({ organization: { voiceNotesEnabled: false } });
+    await expect(notes.list(instanceId, org, author, false)).resolves.toEqual([]);
+    await expect(notes.remove(instanceId, noteId, org, author, false)).resolves.toBeUndefined();
+    expect(prisma.checklistVoiceNote.delete).toHaveBeenCalled();
+  });
+});
 
 describe('voiceNoteFieldsSchema', () => {
   it('reads the multipart strings, keeps the default limit of two minutes and rejects the rest', () => {

@@ -3,7 +3,7 @@ import { jest } from '@jest/globals';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { UploadService } from '../upload/upload.service.js';
-import { createOrganizationSchema, registerOrganizationSchema, themeSettingsSchema } from './organizations.schemas.js';
+import { createOrganizationSchema, registerOrganizationSchema, themeSettingsSchema, voicePolicySchema } from './organizations.schemas.js';
 import { OrganizationsService } from './organizations.service.js';
 
 const organizationId = '11111111-1111-1111-1111-111111111111';
@@ -324,5 +324,46 @@ describe('OrganizationsService theme settings', () => {
     ]);
     expect(deleteObject).toHaveBeenCalledWith('organizations/org/branding/old');
     expect(result.themeSettings).toMatchObject({ logoUrl: 'https://files.example.com/new-logo' });
+  });
+});
+
+describe('Organization voice policy (PR 511)', () => {
+  function voiceSetup(updated = 1) {
+    const row = { dictationEnabled: true, voiceNotesEnabled: false, voiceNoteMaxSeconds: 120, voiceNotesPerComment: 3, voiceSettingsVersion: 4 };
+    const prisma = { organization: { findFirst: jest.fn(async () => ({ id: organizationId, ...row })), updateMany: jest.fn(async () => ({ count: updated })) } };
+    const auditLog = { record: jest.fn(async () => undefined) };
+    const service = new OrganizationsService(prisma as unknown as PrismaService, uploadService, auditLog as never);
+    return { service, prisma, auditLog };
+  }
+  const change = { dictationEnabled: true, voiceNotesEnabled: true, maxSeconds: 60, perComment: 2, version: 4 };
+
+  it('defaults to dictation on and voice off', async () => {
+    const { service } = voiceSetup();
+    await expect(service.getVoicePolicy(organizationId)).resolves.toEqual({ dictationEnabled: true, voiceNotesEnabled: false, maxSeconds: 120, perComment: 3, version: 4 });
+  });
+
+  it('saves against the seen version, raises it and audits the change with before and after', async () => {
+    const { service, prisma, auditLog } = voiceSetup();
+    await expect(service.updateVoicePolicy(organizationId, change, 'admin-1')).resolves.toMatchObject({ voiceNotesEnabled: true, maxSeconds: 60, version: 5 });
+    expect(prisma.organization.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: { id: organizationId, voiceSettingsVersion: 4 } }));
+    expect(auditLog.record).toHaveBeenCalledWith(expect.objectContaining({ action: 'organization.voice_policy_updated', actorId: 'admin-1', metadata: expect.objectContaining({ before: expect.objectContaining({ voiceNotesEnabled: false }), after: expect.objectContaining({ voiceNotesEnabled: true }) }) }));
+  });
+
+  it('answers 409 when the settings were changed by someone else, without an audit entry', async () => {
+    const { service, auditLog } = voiceSetup(0);
+    await expect(service.updateVoicePolicy(organizationId, change, 'admin-1')).rejects.toBeInstanceOf(ConflictException);
+    expect(auditLog.record).not.toHaveBeenCalled();
+  });
+
+  it('does not audit a save that changes nothing', async () => {
+    const { service, auditLog } = voiceSetup();
+    await service.updateVoicePolicy(organizationId, { dictationEnabled: true, voiceNotesEnabled: false, maxSeconds: 120, perComment: 3, version: 4 });
+    expect(auditLog.record).not.toHaveBeenCalled();
+  });
+
+  it('validates the limits', () => {
+    expect(() => voicePolicySchema.parse({ ...change, maxSeconds: 121 })).toThrow();
+    expect(() => voicePolicySchema.parse({ ...change, perComment: 4 })).toThrow();
+    expect(() => voicePolicySchema.parse({ ...change, extra: true })).toThrow();
   });
 });

@@ -7,7 +7,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiClientError } from '../shared/apiClient.js';
-import type { ChecklistVoiceNote } from '../shared/api/checklists.js';
+import type { ChecklistVoiceNote, ChecklistVoiceSettings } from '../shared/api/checklists.js';
 import { ChecklistVoiceNotes } from './ChecklistVoiceNotes.js';
 import { VOICE_HINT_KEY, type ChecklistVoiceApi } from './checklistVoice.js';
 
@@ -31,11 +31,11 @@ let host: HTMLElement;
 let api: ChecklistVoiceApi;
 let onChanged: ReturnType<typeof vi.fn>;
 
-async function render(notes: ChecklistVoiceNote[] = [], editable = true) {
+async function render(notes: ChecklistVoiceNote[] = [], editable = true, settings?: ChecklistVoiceSettings) {
   host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
-  await act(async () => { root?.render(<ChecklistVoiceNotes api={api} editable={editable} instanceId="inst" itemId="item-1" notes={notes} onChanged={onChanged as never} t={t} />); });
+  await act(async () => { root?.render(<ChecklistVoiceNotes api={api} editable={editable} instanceId="inst" itemId="item-1" notes={notes} onChanged={onChanged as never} settings={settings} t={t} />); });
 }
 const button = (name: string) => [...host.querySelectorAll('button')].find((b) => b.textContent?.includes(name)) as HTMLButtonElement | undefined;
 const click = async (name: string) => { await act(async () => { button(name)?.click(); }); };
@@ -156,5 +156,33 @@ describe('ChecklistVoiceNotes (PR 510)', () => {
     await render([note('a')], false);
     expect(button('Записать звук')).toBeUndefined();
     expect(button('Удалить')).toBeUndefined();
+  });
+});
+
+describe('ChecklistVoiceNotes: organization and checklist settings (PR 511)', () => {
+  const allowed: ChecklistVoiceSettings = { dictation: true, voiceNotes: true, maxSeconds: 30, perComment: 2 };
+
+  it('draws nothing when recording is off and nothing is saved', async () => {
+    await render([], true, { ...allowed, voiceNotes: false });
+    expect(host.textContent).toBe('');
+  });
+
+  it('keeps saved recordings listenable and removable but offers no recording when it is off', async () => {
+    await render([note('a')], true, { ...allowed, voiceNotes: false });
+    expect(host.querySelectorAll('audio').length).toBeGreaterThan(0);
+    expect(button('Записать звук')).toBeUndefined();
+    expect(button('Удалить')).toBeDefined();
+  });
+
+  it('uses the limit of recordings per comment from the settings', async () => {
+    await render([note('a'), note('b')], true, allowed);
+    expect(button('Записать звук')?.disabled).toBe(true);
+    expect(host.textContent).toContain('уже 2');
+  });
+
+  it('shows the longest length from the settings next to the timer', async () => {
+    await render([], true, allowed);
+    await click('Записать звук');
+    expect(host.textContent).toContain('/ 0:30');
   });
 });

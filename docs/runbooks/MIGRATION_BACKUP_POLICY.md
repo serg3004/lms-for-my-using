@@ -16,6 +16,17 @@ and need no backfill. On application rollback keep the table: the recordings sta
 storage under `organizations/<id>/checklist-voice/` and are simply not shown. Deleting
 rows without deleting the objects leaves orphaned files, so remove both together.
 
+## Checklist dictation and voice settings migration (PR 511)
+
+Deploy `20261125140000_voice_dictation_settings` before the API. It is additive: the enum
+`checklist_input_mode` (`inherit`, `on`, `off`), five columns on `organizations`
+(`dictation_enabled` default true, `voice_notes_enabled` default false,
+`voice_note_max_seconds` default 120, `voice_notes_per_comment` default 3,
+`voice_settings_version` default 1) and two columns on `checklists` (`dictation_mode`,
+`voice_notes_mode`, default `inherit`). No backfill. Voice recording is off for every
+existing organization after the migration until an administrator turns it on; saved
+recordings stay readable. On application rollback keep the columns: the old API ignores them.
+
 ## Assessment analytics layout migration (PR 533)
 
 Deploy `20261125090000_assessment_analytics_layouts` before the API. It adds the

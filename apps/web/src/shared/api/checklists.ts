@@ -502,6 +502,9 @@ export function downloadChecklistInstanceReportPdf(instanceId: string) {
 /** PR 510: voice recordings of a comment. Never carries the storage key; the sound itself comes only through the API. */
 export type ChecklistVoiceNote = { id: string; itemId: string | null; place: 'answer' | 'reviewer_comment' | 'summary'; durationMs: number; sizeBytes: number; createdBy: string; createdAt: string };
 const voiceBase = (instanceId: string) => `/checklist-instances/${encodeURIComponent(instanceId)}/voice-notes`;
+/** PR 511: dictation and voice as one check should offer them (organization policy combined with the checklist's mode). */
+export type ChecklistVoiceSettings = { dictation: boolean; voiceNotes: boolean; maxSeconds: number; perComment: number };
+export const getChecklistVoiceSettings = (instanceId: string) => apiRequest<ChecklistVoiceSettings>(`/checklist-instances/${encodeURIComponent(instanceId)}/voice-settings`);
 export const listChecklistVoiceNotes = (instanceId: string) => apiRequest<ChecklistVoiceNote[]>(voiceBase(instanceId));
 export function uploadChecklistVoiceNote(instanceId: string, itemId: string, blob: Blob, durationMs: number, replaceId?: string) {
   const form = new FormData();

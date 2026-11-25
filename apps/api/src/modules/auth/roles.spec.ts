@@ -102,6 +102,7 @@ describe('rolePolicies', () => {
     loginProtection: ['admin'],
     qrLoginPolicy: ['admin'],
     badgePolicy: ['admin'],
+    voicePolicy: ['admin'],
     badgesManage: ['admin', 'manager'],
     usersRead: ['admin', 'manager'],
     usersCreate: ['admin', 'manager'],

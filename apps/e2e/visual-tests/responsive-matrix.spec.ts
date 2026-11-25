@@ -1242,6 +1242,8 @@ for (const width of widths) {
     test('keeps the voice recording of the comment responsive', async ({ page }) => {
       await page.addInitScript(fakeRecorder);
       await installInstructorConductMocks(page, true);
+      // PR 511: sound recording is on in this organization.
+      await page.route('**/api/v1/checklist-instances/*/voice-settings', (route) => route.fulfill({ json: { dictation: true, voiceNotes: true, maxSeconds: 120, perComment: 3 } }));
       await page.clock.setFixedTime(new Date('2026-02-01T09:10:00.000Z'));
       await page.goto('/instructor/checklists/sessions');
       await page.getByRole('button', { name: /Leo Learner/ }).click();

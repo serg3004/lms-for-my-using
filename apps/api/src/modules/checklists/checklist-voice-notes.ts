@@ -1,10 +1,11 @@
-import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { z } from 'zod';
 
+import { effectiveVoice, loadVoicePolicy, type EffectiveVoice } from '../../common/voice-policy.js';
 import type { PrismaService } from '../../database/prisma.service.js';
 import type { AuditLogService } from '../audit-log/public.js';
 
-/** PR 509: defaults from the owner (2026-11-22); PR 511 makes them a setting of the organization. */
+/** PR 509: defaults from the owner (2026-11-22). PR 511: the organization sets its own values, never above these. */
 export const VOICE_NOTE_MAX_DURATION_MS = 2 * 60 * 1000;
 export const VOICE_NOTE_MIN_DURATION_MS = 300;
 export const VOICE_NOTES_PER_COMMENT = 3;
@@ -49,6 +50,18 @@ export class ChecklistVoiceNotes {
     return instance;
   }
 
+  /** PR 511: what this check may do now. Recordings already made stay listenable and removable whatever the setting says. */
+  private async settings(instanceId: string, organizationId: string): Promise<EffectiveVoice> {
+    const instance = await this.prisma.checklistInstance.findFirst({ where: { id: instanceId, organizationId }, select: { checklist: { select: { voiceNotesMode: true, dictationMode: true } } } });
+    return effectiveVoice(await loadVoicePolicy(this.prisma, organizationId), instance?.checklist ?? {});
+  }
+
+  /** A forbidden mode is refused by the server, whatever the screen shows. */
+  private assertAllowed(settings: EffectiveVoice, durationMs?: number) {
+    if (!settings.voiceNotes) throw new ForbiddenException('Voice recording is turned off for this checklist');
+    if (durationMs !== undefined && durationMs > settings.maxSeconds * 1000) throw new BadRequestException(`A voice recording may last at most ${settings.maxSeconds} seconds`);
+  }
+
   /**
    * PR 510: a recording counts as the explanation of an answer, so it may come before the answer is saved (a required
    * explanation is the reason the answer waits). It only has to belong to a criterion of this very check.
@@ -66,12 +79,14 @@ export class ChecklistVoiceNotes {
   }
 
   /** Called before the file is stored, so a full comment does not leave an object behind. `replaceId` frees one place. */
-  async assertHasRoom(instanceId: string, itemId: string, organizationId: string, requesterId: string, isPrivileged: boolean, replaceId?: string) {
+  async assertHasRoom(instanceId: string, itemId: string, organizationId: string, requesterId: string, isPrivileged: boolean, replaceId?: string, durationMs?: number) {
     await this.requireInstance(instanceId, organizationId);
+    const settings = await this.settings(instanceId, organizationId);
+    this.assertAllowed(settings, durationMs);
     await this.assertWritable(instanceId, organizationId, requesterId, isPrivileged);
     await this.assertItemOfCheck(this.prisma, instanceId, itemId, organizationId);
     const count = await this.prisma.checklistVoiceNote.count({ where: { instanceId, organizationId, itemId, place: 'answer', ...(replaceId ? { id: { not: replaceId } } : {}) } });
-    if (count >= VOICE_NOTES_PER_COMMENT) throw new ConflictException(`At most ${VOICE_NOTES_PER_COMMENT} voice recordings per comment`);
+    if (count >= settings.perComment) throw new ConflictException(`At most ${settings.perComment} voice recordings per comment`);
   }
 
   /** Stores the row for an already uploaded file; with `replaceId` the author's earlier recording is removed in the same step. */
@@ -86,6 +101,8 @@ export class ChecklistVoiceNotes {
     replaceId?: string,
   ) {
     await this.assertWritable(instanceId, organizationId, requesterId, isPrivileged);
+    const settings = await this.settings(instanceId, organizationId);
+    this.assertAllowed(settings, durationMs);
     let replacedKey: string | null = null;
     const created = await this.prisma.$transaction(async (tx) => {
       if (replaceId) {
@@ -97,7 +114,7 @@ export class ChecklistVoiceNotes {
       }
       await this.assertItemOfCheck(tx, instanceId, itemId, organizationId);
       const count = await tx.checklistVoiceNote.count({ where: { instanceId, organizationId, itemId, place: 'answer' } });
-      if (count >= VOICE_NOTES_PER_COMMENT) throw new ConflictException(`At most ${VOICE_NOTES_PER_COMMENT} voice recordings per comment`);
+      if (count >= settings.perComment) throw new ConflictException(`At most ${settings.perComment} voice recordings per comment`);
       return tx.checklistVoiceNote.create({
         data: { organizationId, instanceId, itemId, place: 'answer', objectKey: uploaded.objectKey, mimeType: uploaded.mimeType, durationMs, sizeBytes: uploaded.sizeBytes, createdBy: requesterId },
         select: voiceNoteSelect,

@@ -44,7 +44,7 @@ export function RichFillField({ id, label, value, onChange, disabled, hint, requ
 }
 
 /** PR 415: the explanation field that a criterion's rule offers (stored as the result's comment). */
-export function ChecklistNoteField({ id, required, value, disabled, onChange, hint, t }: {
+export function ChecklistNoteField({ id, required, value, disabled, onChange, hint, t, dictation = true }: {
   id: string;
   required: boolean;
   value: string;
@@ -52,6 +52,8 @@ export function ChecklistNoteField({ id, required, value, disabled, onChange, hi
   onChange: (value: string) => void;
   hint?: string;
   t: TFunction;
+  /** PR 511: false when the organization or the checklist turned dictation off. */
+  dictation?: boolean;
 }) {
   return (
     <RichFillField
@@ -63,7 +65,7 @@ export function ChecklistNoteField({ id, required, value, disabled, onChange, hi
       onChange={onChange}
       required={required}
       value={value}
-      dictation
+      dictation={dictation}
     />
   );
 }

@@ -33,6 +33,7 @@ export type AuditLogAction =
   | 'user.badge_pin_changed'
   | 'user.badge_locked'
   | 'organization.badge_policy_updated'
+  | 'organization.voice_policy_updated'
   | 'organization.employee_card_updated'
   | 'user.card_viewed'
   | 'user.card_checked'

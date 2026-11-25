@@ -19,6 +19,8 @@ export const checklistInstanceStatusSchema = z.enum(['assigned', 'in_progress', 
 export const checklistReviewStatusSchema = z.enum(['pending', 'approved', 'rejected']);
 // Also used below by the PR 296 checklist-level defaultLocationCapturePolicy field, not just the
 // workplace-session settings section further down this file.
+/** PR 511: how one checklist refines what the organization allows. */
+export const checklistInputModeSchema = z.enum(['inherit', 'on', 'off']);
 export const checklistGeolocationPolicySchema = z.enum(['off', 'optional', 'required']);
 
 // ---- PR 296: observation-sheet builder (context fields, item groups, sheet-level settings) ----
@@ -103,6 +105,8 @@ export const createChecklistSchema = z.object({
   preSessionVisibility: checklistPreSessionVisibilitySchema.default('structure_only'),
   allowFinishIncomplete: z.boolean().default(false),
   forbidGalleryPhotos: z.boolean().default(false),
+  dictationMode: checklistInputModeSchema.default('inherit'),
+  voiceNotesMode: checklistInputModeSchema.default('inherit'),
   feedbackEnabled: z.boolean().default(true),
   feedbackRequired: z.boolean().default(false),
   // PR 405: configurable feedback section; absent/null = the classic three text fields.
@@ -174,6 +178,8 @@ export const updateChecklistSchema = z
     preSessionVisibility: checklistPreSessionVisibilitySchema,
     allowFinishIncomplete: z.boolean(),
     forbidGalleryPhotos: z.boolean(),
+    dictationMode: checklistInputModeSchema,
+    voiceNotesMode: checklistInputModeSchema,
     feedbackEnabled: z.boolean(),
     feedbackRequired: z.boolean(),
     feedbackLayout: feedbackLayoutSchema.nullable(),

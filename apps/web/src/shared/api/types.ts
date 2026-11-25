@@ -546,6 +546,9 @@ export type ChecklistSummary = {
   // PR 330 strictness settings -- optional because older payloads never carried them (read as false).
   allowFinishIncomplete?: boolean;
   forbidGalleryPhotos?: boolean;
+  // PR 511 -- how the checklist refines what the organization allows (absent reads as `inherit`).
+  dictationMode?: 'inherit' | 'on' | 'off';
+  voiceNotesMode?: 'inherit' | 'on' | 'off';
   // PR 368 -- optional too: older payloads read as feedback on, optional, no sheet-level skip.
   feedbackEnabled?: boolean;
   feedbackRequired?: boolean;
