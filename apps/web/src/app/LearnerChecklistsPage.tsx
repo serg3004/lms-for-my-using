@@ -359,7 +359,7 @@ export function ChecklistTaking({
   const voiceApi = api.voice;
   const reloadVoice = useCallback(async () => {
     if (!voiceApi) return;
-    try { setVoiceNotes(await voiceApi.list(instance.id)); } catch { /* the recordings are an extra: the check itself keeps working */ }
+    try { const list = await voiceApi.list(instance.id); setVoiceNotes(Array.isArray(list) ? list : []); } catch { /* the recordings are an extra: the check itself keeps working */ }
   }, [voiceApi, instance.id]);
   useEffect(() => { void reloadVoice(); }, [reloadVoice]);
 

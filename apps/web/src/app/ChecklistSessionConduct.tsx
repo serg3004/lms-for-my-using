@@ -246,7 +246,7 @@ export function ConductScreen({
   const [stepIndex, setStepIndex] = useState(0);
   const [voiceNotes, setVoiceNotes] = useState<ChecklistVoiceNote[]>([]);
   const reloadVoice = useCallback(async () => {
-    try { setVoiceNotes(await conductVoiceApi.list(instance.id)); } catch { /* an extra: the conduct itself keeps working */ }
+    try { const list = await conductVoiceApi.list(instance.id); setVoiceNotes(Array.isArray(list) ? list : []); } catch { /* an extra: the conduct itself keeps working */ }
   }, [instance.id]);
   useEffect(() => { void reloadVoice(); }, [reloadVoice]);
   const voiceItemIds = new Set(voiceNotes.filter((note) => note.place === 'answer' && note.itemId).map((note) => note.itemId as string));
