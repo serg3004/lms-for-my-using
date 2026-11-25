@@ -232,14 +232,15 @@ export class AssessmentResultsService {
 
     await this.ensureAttemptResultAccess(attempt.userId, actor.id, organizationId, actor);
 
-    const policy = readAssessmentPolicy(attempt.assessment.policy);
+    const assessment = this.resultAssessment(attempt);
+    const policy = readAssessmentPolicy(assessment.policy);
     const history = !attempt.longreadRevisionId && (policy.attemptPolicy || policy.answerVisibility === 'last')
       ? await this.prisma.assessmentAttempt.findMany({
         where: completedAssessmentAttempts({ assessmentId: attempt.assessmentId, userId: attempt.userId,
           organizationId, placementId: attempt.placementId, longreadRevisionId: null }),
         orderBy: assessmentAttemptOrder, select: { id: true, percentage: true, passed: true },
       }) : [];
-    const effective = policy.attemptPolicy ? effectiveAssessmentResult(policy.attemptPolicy, history, attempt.assessment.passingScore) : undefined;
+    const effective = policy.attemptPolicy ? effectiveAssessmentResult(policy.attemptPolicy, history, assessment.passingScore) : undefined;
     return this.toAttemptResult(attempt, effective, history.length);
   }
 
@@ -399,11 +400,18 @@ export class AssessmentResultsService {
     }
   }
 
+  private resultAssessment(attempt: AttemptResultInput) {
+    const frozen = frozenAnswerQuestionSchema.safeParse(attempt.answers?.[0]?.frozenQuestion);
+    if (!frozen.success || 'blockId' in frozen.data) return attempt.assessment;
+    return { ...attempt.assessment, ...frozen.data.question.assessment, ...frozen.data.resultSettings };
+  }
+
   private toAttemptResult(attempt: AttemptResultInput, effectiveResult?: EffectiveAssessmentResult, attemptsUsed = 0) {
     const context = longreadResultMetadataSchema.safeParse(attempt.longreadMetadata);
-    const policy = context.success || attempt.longreadRevisionId ? {} : readAssessmentPolicy(attempt.assessment.policy);
-    const visibility = policy.answerVisibility ?? (attempt.assessment.showCorrectAnswers ? 'submitted' : 'never');
-    const revealAll = visibility === 'submitted' || (visibility === 'last' && !!attempt.assessment.maxAttempts && attemptsUsed >= attempt.assessment.maxAttempts);
+    const assessment = this.resultAssessment(attempt);
+    const policy = context.success || attempt.longreadRevisionId ? {} : readAssessmentPolicy(assessment.policy);
+    const visibility = policy.answerVisibility ?? (assessment.showCorrectAnswers ? 'submitted' : 'never');
+    const revealAll = visibility === 'submitted' || (visibility === 'last' && !!assessment.maxAttempts && attemptsUsed >= assessment.maxAttempts);
     return {
       id: attempt.id,
       ...(effectiveResult ? { effectiveResult } : {}),
@@ -421,7 +429,7 @@ export class AssessmentResultsService {
       completedAt: attempt.completedAt,
       createdAt: attempt.createdAt,
       updatedAt: attempt.updatedAt,
-      assessment: context.success ? { ...attempt.assessment, title: context.data.title, passingScore: context.data.passingScore } : attempt.assessment,
+      assessment: context.success ? { ...attempt.assessment, title: context.data.title, passingScore: context.data.passingScore } : assessment,
       ...(context.success ? { longread: { lessonId: context.data.lessonId, version: context.data.version } } : {}),
       user: attempt.user,
       answers:

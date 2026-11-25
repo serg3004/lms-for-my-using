@@ -80,7 +80,7 @@ export class AssessmentsController {
   async saveEditor(@Param('id', ParseUUIDPipe) id: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     await this.assertEditorAccess(id, user, ['assessment.author', 'assessment.question.edit', 'assessment.option.edit']);
-    return this.assessmentsService.saveEditor(id, user.organizationId, saveAssessmentEditorSchema.parse(body));
+    return this.assessmentsService.saveEditor(id, user.organizationId, saveAssessmentEditorSchema.parse(body), user.id);
   }
 
   private async assertEditorAccess(id: string, user: NonNullable<AuthenticatedRequest['currentUser']>, actions: PermissionActionKey[]) {

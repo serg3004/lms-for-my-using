@@ -43,15 +43,20 @@ function publicSample(snapshot: unknown, assessmentId: string, organizationId: s
 function freezeGradedAnswers(
   questions: ({ id: string; bankSampleCandidate?: boolean } & Prisma.InputJsonObject)[],
   answers: ReturnType<typeof gradeAssessmentAnswers>,
-  assessment: { id: string; title: string; passingScore: number; maxAttempts: number | null },
+  assessment: { id: string; title: string; passingScore: number; maxAttempts: number | null;
+    passMessage?: string | null; failMessage?: string | null; showCorrectAnswers?: boolean; policy?: Prisma.JsonValue },
 ) {
   const { id, title, passingScore, maxAttempts } = assessment;
+  const resultSettings = {
+    passMessage: assessment.passMessage ?? null, failMessage: assessment.failMessage ?? null,
+    showCorrectAnswers: assessment.showCorrectAnswers ?? false, policy: assessment.policy ?? null,
+  };
   return answers.map((answer, index) => {
     const question = { ...questions[index]! };
     delete question.bankSampleCandidate;
     return {
       ...answer,
-      frozenQuestion: { question: { ...question, assessment: { id, title, passingScore, maxAttempts } }, revealAnswers: false },
+      frozenQuestion: { question: { ...question, assessment: { id, title, passingScore, maxAttempts } }, revealAnswers: false, resultSettings },
     };
   });
 }
@@ -99,7 +104,7 @@ export class AssessmentAttemptsService {
     const actor = normalizeActor(actorInput);
     const organizationId = actor.organizationId;
     const assessment = await this.ensureAssessmentExists(assessmentId, organizationId);
-    await this.finalizeExpiredAttempts(assessmentId, organizationId, assessment.timeLimitMinutes, undefined, assessment.bankSampleSize);
+    await this.finalizeExpiredAttempts(assessmentId, organizationId, assessment.timeLimitMinutes);
 
     const attempts = await this.prisma.assessmentAttempt.findMany({
       where: {
@@ -136,7 +141,7 @@ export class AssessmentAttemptsService {
           orderBy: { createdAt: 'asc' },
           select: attemptAnswerSelect,
         },
-        assessment: { select: { timeLimitMinutes: true, bankSampleSize: true } },
+        assessment: { select: { timeLimitMinutes: true } },
       },
     });
 
@@ -148,7 +153,7 @@ export class AssessmentAttemptsService {
     const attemptFields = publicAttemptContext(stored);
 
     if (attemptFields.status === 'in_progress') {
-      const finalized = await this.finalizeExpiredAttempts(attemptFields.assessmentId, organizationId, assessment.timeLimitMinutes, attemptFields.id, assessment.bankSampleSize, attemptFields.maxScore);
+      const finalized = await this.finalizeExpiredAttempts(attemptFields.assessmentId, organizationId, assessment.timeLimitMinutes, attemptFields.id, attemptFields.maxScore);
       if (finalized) {
         return { ...attemptFields, status: 'completed' as const, passed: false, score: 0, maxScore: finalized.maxScore, percentage: 0, completedAt: finalized.completedAt };
       }
@@ -165,27 +170,28 @@ export class AssessmentAttemptsService {
    * path, which calls getAttempt). Score is 0 since an abandoned attempt never recorded answers —
    * matches the late-submission behavior in createAttempt, which also forces passed: false.
    */
-  private async finalizeExpiredAttempts(assessmentId: string, organizationId: string, timeLimitMinutes: number | null, attemptId?: string, bankSampleSize?: number | null, savedMaxScore = 0): Promise<{ maxScore: number; completedAt: Date } | null> {
-    if (!timeLimitMinutes) {
-      return null;
-    }
+  private async finalizeExpiredAttempts(assessmentId: string, organizationId: string, timeLimitMinutes: number | null, attemptId?: string, savedMaxScore = 0): Promise<{ maxScore: number; completedAt: Date } | null> {
+    if (!timeLimitMinutes) return null;
 
     const cutoff = new Date(Date.now() - timeLimitMinutes * 60_000);
     const where = { assessmentId, organizationId, ...(attemptId ? { id: attemptId } : {}), longreadRevisionId: null, status: 'in_progress' as const, deletedAt: null, startedAt: { lte: cutoff } };
     const expiredCount = await this.prisma.assessmentAttempt.count({ where });
+    if (!expiredCount) return null;
 
-    if (expiredCount === 0) {
-      return null;
+    const completedAt = new Date();
+    const data = { status: 'completed' as const, passed: false, score: 0, percentage: 0, completedAt };
+    if (attemptId && savedMaxScore > 0) {
+      await this.prisma.assessmentAttempt.updateMany({ where, data });
+      return { maxScore: savedMaxScore, completedAt };
     }
 
-    const maxScore = bankSampleSize ? savedMaxScore
-      : (await this.getQuestions(assessmentId, organizationId)).reduce((sum, question) => sum + question.points, 0);
-    const completedAt = new Date();
-
-    await this.prisma.assessmentAttempt.updateMany({
-      where,
-      data: { status: 'completed', passed: false, score: 0, ...(bankSampleSize ? {} : { maxScore }), percentage: 0, completedAt },
-    });
+    const legacyWhere = { ...where, maxScore: 0 };
+    let maxScore = 0;
+    if (attemptId || await this.prisma.assessmentAttempt.count({ where: legacyWhere })) {
+      maxScore = (await this.getQuestions(assessmentId, organizationId)).reduce((sum, question) => sum + question.points, 0);
+      await this.prisma.assessmentAttempt.updateMany({ where: legacyWhere, data: { ...data, maxScore } });
+    }
+    if (!attemptId) await this.prisma.assessmentAttempt.updateMany({ where, data });
 
     return { maxScore, completedAt };
   }
@@ -210,38 +216,37 @@ export class AssessmentAttemptsService {
       return this.submitWithPolicy(assessmentId, userId, organizationId, location, input);
     }
 
-    const inProgress = assessment.timeLimitMinutes
-      ? await this.prisma.assessmentAttempt.findFirst({
-          where: { ...(input.attemptId ? { id: input.attemptId } : {}), assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
-          select: { id: true, startedAt: true },
-        })
-      : null;
-
-    if ((assessment.timeLimitMinutes || input.attemptId) && !inProgress) {
-      throw new BadRequestException('Attempt was not started — call the start endpoint first');
-    }
-
-    if (!inProgress) {
-      await this.ensureAttemptsLimit(assessmentId, userId, organizationId, assessment.maxAttempts, location.placementId);
-    }
-
-    const questions = await this.getQuestions(assessmentId, organizationId);
-    const gradedAnswers = gradeAssessmentAnswers(questions, input.answers);
-    const maxScore = questions.reduce((sum, question) => sum + question.points, 0);
-    const score = gradedAnswers.reduce((sum, answer) => sum + answer.score, 0);
-    const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-    const expired = Boolean(
-      inProgress && assessment.timeLimitMinutes && Date.now() - inProgress.startedAt.getTime() > assessment.timeLimitMinutes * 60_000,
-    );
-    const passed = expired ? false : percentage >= assessment.passingScore;
-    const completedAt = new Date();
-
     const attemptId = await this.prisma.$transaction(async (tx) => {
+      const assessment = await this.lockAssessment(tx, assessmentId, organizationId);
+      const inProgress = assessment.timeLimitMinutes
+        ? await tx.assessmentAttempt.findFirst({
+          where: { assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
+          select: { id: true, startedAt: true, bankQuestionSnapshot: true },
+        })
+        : null;
+      if (assessment.timeLimitMinutes && !inProgress) {
+        throw new BadRequestException('Attempt was not started — call the start endpoint first');
+      }
+      if (!inProgress) {
+        await this.ensureAttemptsLimit(assessmentId, userId, organizationId, assessment.maxAttempts, location.placementId, tx);
+      }
+      const questions = inProgress?.bankQuestionSnapshot
+        ? bankSnapshotSchema.parse(inProgress.bankQuestionSnapshot)
+        : await this.getQuestions(assessmentId, organizationId, tx);
+      const gradedAnswers = gradeAssessmentAnswers(questions, input.answers);
+      const maxScore = questions.reduce((sum, question) => sum + question.points, 0);
+      const score = gradedAnswers.reduce((sum, answer) => sum + answer.score, 0);
+      const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+      const expired = Boolean(
+        inProgress && assessment.timeLimitMinutes && Date.now() - inProgress.startedAt.getTime() > assessment.timeLimitMinutes * 60_000,
+      );
+      const passed = expired ? false : percentage >= assessment.passingScore;
+      const completedAt = new Date();
+
       return recordCompletedAssessment(tx,
         { organizationId, assessmentId, userId, ...location, score, maxScore, percentage, passed, completedAt, status: 'completed', ...(gradedAnswers.some((answer) => answer.reviewPending) ? { reviewPassingScore: expired ? 101 : assessment.passingScore } : {}) },
         freezeGradedAnswers(questions, gradedAnswers, assessment),
         location.courseId, assessment.title, inProgress?.id);
-
     });
 
     return this.getAttempt(attemptId, { id: userId, organizationId, roles: ['learner'] });
@@ -449,7 +454,7 @@ export class AssessmentAttemptsService {
     }
 
     if (draft || assessment.policy || assessment.bankSampleSize) {
-      if (!draft) await this.finalizeExpiredAttempts(assessmentId, organizationId, assessment.timeLimitMinutes, undefined, assessment.bankSampleSize);
+      if (!draft) await this.finalizeExpiredAttempts(assessmentId, organizationId, assessment.timeLimitMinutes);
       const active = await this.prisma.$transaction(async (tx) => {
         const current = await this.lockAssessment(tx, assessmentId, organizationId);
         const policy = readAssessmentPolicy(current.policy);
@@ -459,15 +464,22 @@ export class AssessmentAttemptsService {
           where: { ...scope, status: 'in_progress', deletedAt: null },
           select: { id: true, lockedAnswers: true, bankQuestionSnapshot: true },
         });
-        if (existing) return existing;
+        if (existing?.bankQuestionSnapshot) return existing;
+        if (existing) {
+          const bankQuestionSnapshot = await this.snapshotQuestions(tx, assessmentId, organizationId, userId, current.randomizeOrder);
+          return tx.assessmentAttempt.update({
+            where: { id: existing.id }, data: { bankQuestionSnapshot, maxScore: bankQuestionSnapshot.reduce((sum, question) => sum + question.points, 0) },
+            select: { id: true, lockedAnswers: true, bankQuestionSnapshot: true },
+          });
+        }
         await this.ensureAttemptAllowed(tx, scope, current.maxAttempts, policy);
         const id = current.bankSampleSize ? randomUUID() : undefined;
         const bankQuestionSnapshot = current.bankSampleSize
           ? await this.sampleQuestions(tx, assessmentId, organizationId, userId, id!, current.bankSampleSize, current.randomizeOrder)
-          : undefined;
+          : await this.snapshotQuestions(tx, assessmentId, organizationId, userId, current.randomizeOrder);
         return tx.assessmentAttempt.create({
           data: { ...(id ? { id } : {}), organizationId, assessmentId, userId, ...location, status: 'in_progress', startedAt: new Date(),
-            ...(bankQuestionSnapshot ? { bankQuestionSnapshot, maxScore: bankQuestionSnapshot.reduce((sum, question) => sum + question.points, 0) } : {}),
+            bankQuestionSnapshot, maxScore: bankQuestionSnapshot.reduce((sum, question) => sum + question.points, 0),
           },
           select: { id: true, lockedAnswers: true, bankQuestionSnapshot: true },
         });
@@ -505,8 +517,10 @@ export class AssessmentAttemptsService {
         throw new NotFoundException('Assessment not found');
       }
 
+      const bankQuestionSnapshot = await this.snapshotQuestions(tx, assessmentId, organizationId, userId, assessment.randomizeOrder);
       const attempt = await tx.assessmentAttempt.create({
-        data: { organizationId, assessmentId, userId, ...location, status: 'in_progress', startedAt: new Date() },
+        data: { organizationId, assessmentId, userId, ...location, status: 'in_progress', startedAt: new Date(),
+          bankQuestionSnapshot, maxScore: bankQuestionSnapshot.reduce((sum, question) => sum + question.points, 0) },
         select: { id: true },
       });
 
@@ -545,6 +559,9 @@ export class AssessmentAttemptsService {
         courseId: true,
         status: true,
         passingScore: true,
+        passMessage: true,
+        failMessage: true,
+        showCorrectAnswers: true,
         maxAttempts: true,
         timeLimitMinutes: true,
         randomizeOrder: true,
@@ -632,12 +649,12 @@ export class AssessmentAttemptsService {
     }
   }
 
-  private async ensureAttemptsLimit(assessmentId: string, userId: string, organizationId: string, maxAttempts: number | null, placementId: string | null) {
+  private async ensureAttemptsLimit(assessmentId: string, userId: string, organizationId: string, maxAttempts: number | null, placementId: string | null, db: Prisma.TransactionClient = this.prisma) {
     if (!maxAttempts) {
       return;
     }
 
-    const attemptsCount = await this.prisma.assessmentAttempt.count({
+    const attemptsCount = await db.assessmentAttempt.count({
       where: {
         assessmentId,
         placementId,
@@ -652,6 +669,12 @@ export class AssessmentAttemptsService {
     if (attemptsCount >= maxAttempts) {
       throw new BadRequestException('Assessment attempts limit reached');
     }
+  }
+
+  private async snapshotQuestions(db: Prisma.TransactionClient, assessmentId: string, organizationId: string, userId: string, shuffle: boolean) {
+    const questions = await this.getQuestions(assessmentId, organizationId, db);
+    const ordered = shuffle ? seededShuffle(questions, `${assessmentId}:${userId}`) : questions;
+    return ordered.map((question) => bankSnapshotSchema.element.strip().parse(question));
   }
 
   private async sampleQuestions(db: Prisma.TransactionClient, assessmentId: string, organizationId: string,

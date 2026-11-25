@@ -89,7 +89,7 @@ describe('Assessment attempts validation', () => {
 });
 
 function createBasePrismaMock(status: AssessmentStatus) {
-  return {
+  const prisma = {
     assessmentPlacement: { findFirst: async () => ({ id: assessmentId, courseId }) },
     assessment: {
       findFirst: async () => ({
@@ -142,6 +142,8 @@ function createBasePrismaMock(status: AssessmentStatus) {
     },
     $transaction: async (callback: (tx: AssessmentAttemptTransaction) => Promise<string>) =>
       callback({
+        ...prisma,
+        $queryRaw: async () => [{ id: assessmentId }],
         assessmentAttempt: {
           create: async () => ({ id: 'attempt-id' }),
         },
@@ -155,7 +157,8 @@ function createBasePrismaMock(status: AssessmentStatus) {
           create: async () => ({ id: 'notification-id' }),
         },
       }),
-  } as unknown as PrismaService;
+  };
+  return prisma as unknown as PrismaService;
 }
 
 describe('AssessmentAttemptsService attempt eligibility', () => {
@@ -195,6 +198,8 @@ describe('AssessmentAttemptsService attempt eligibility', () => {
       },
       $transaction: async (callback: (tx: AssessmentAttemptTransaction) => Promise<string>) =>
         callback({
+          ...prisma,
+          $queryRaw: async () => [{ id: assessmentId }],
           assessmentAttempt: { create: async () => ({ id: 'attempt-id' }) },
           assessmentAttemptAnswer: { createMany: async () => ({ count: 1 }) },
           certificate: { upsert: async () => ({ id: 'certificate-id' }) },
@@ -371,6 +376,8 @@ describe('AssessmentAttemptsService multiple_choice scoring modes', () => {
       },
       $transaction: async (callback: (tx: AssessmentAttemptTransaction) => Promise<string>) =>
         callback({
+          ...prisma,
+          $queryRaw: async () => [{ id: assessmentId }],
           assessmentAttempt: { create: async () => ({ id: 'attempt-id' }) },
           assessmentAttemptAnswer: {
             createMany: async (args: { data: { score: number; isCorrect: boolean }[] }) => {
@@ -465,6 +472,11 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
       $transaction: async (callback: (tx: unknown) => Promise<unknown>) =>
         callback({
           $queryRaw: async () => [{ id: assessmentId }],
+          assessmentQuestion: { findMany: async () => [{
+            id: questionId, type: 'single_choice', title: 'Original question', text: null, imageUrl: null,
+            order: 0, points: 1, scoringMode: 'all_or_nothing', definition: null,
+            options: [{ id: optionId, order: 0, text: 'Original answer', imageUrl: null, isCorrect: true }],
+          }] },
           assessmentAttempt: { create },
         }),
     } as unknown as PrismaService;
@@ -475,7 +487,10 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
     expect(result).toMatchObject({ id: 'attempt-id', status: 'in_progress' });
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ status: 'in_progress', startedAt: expect.any(Date) }),
+        data: expect.objectContaining({
+          status: 'in_progress', startedAt: expect.any(Date),
+          bankQuestionSnapshot: [expect.objectContaining({ id: questionId, title: 'Original question' })],
+        }),
       }),
     );
   });
@@ -555,6 +570,8 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
       assessment: { findFirst: async () => buildAssessment() },
       user: { findFirst: async () => ({ id: userId }) },
       assessmentAttempt: { findFirst: async () => null },
+      $queryRaw: async () => [{ id: assessmentId }],
+      $transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback(prisma),
     } as unknown as PrismaService;
     const service = new AssessmentAttemptsService(prisma);
 
@@ -589,7 +606,9 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
       },
       $transaction: async (callback: (tx: AssessmentAttemptTransaction) => Promise<string>) =>
         callback({
-          assessmentAttempt: { create: async () => ({ id: 'attempt-id' }), update },
+          ...prisma,
+          $queryRaw: async () => [{ id: assessmentId }],
+          assessmentAttempt: { ...prisma.assessmentAttempt, create: async () => ({ id: 'attempt-id' }), update },
           assessmentAttemptAnswer: { createMany: async () => ({ count: 1 }) },
           certificate: { upsert: async () => ({ id: 'certificate-id' }) },
           notification: { create: async () => ({ id: 'notification-id' }) },

@@ -1,5 +1,5 @@
 import { assertAssessmentWindow, readAssessmentPolicy } from '../../common/assessment-policy.js';
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { validateQuestionDefinition, publicQuestionDefinition } from '../../common/assessment-question-definition.js';
 
@@ -67,6 +67,17 @@ const learnerAssessmentQuestionSelect = {
   definition: true,
   options: learnerQuizOptionsSelect,
 } as const;
+
+const publishedEditSelect = {
+  status: true,
+  attempts: { where: { deletedAt: null }, take: 1, select: { id: true } },
+} as const satisfies Prisma.AssessmentSelect;
+
+function requireEditorForPublishedChanges(assessment?: { status?: string; attempts?: { id: string }[] } | null) {
+  if (assessment?.status === 'published' && assessment.attempts?.length) {
+    throw new ConflictException('Confirm changes to the published assessment in the editor');
+  }
+}
 
 @Injectable()
 export class AssessmentQuestionsService {
@@ -141,7 +152,7 @@ export class AssessmentQuestionsService {
   }
 
   async createQuestion(assessmentId: string, input: CreateAssessmentQuestionInput) {
-    await this.ensureAssessmentExists(assessmentId, input.organizationId);
+    requireEditorForPublishedChanges(await this.ensureAssessmentExists(assessmentId, input.organizationId, true));
 
     const definition = validateQuestionDefinition(input.type, input.definition);
     return this.prisma.assessmentQuestion.create({
@@ -155,7 +166,8 @@ export class AssessmentQuestionsService {
   }
 
   async updateQuestion(questionId: string, organizationId: string, input: UpdateAssessmentQuestionInput) {
-    const current = await this.ensureQuestionExists(questionId, organizationId);
+    const current = await this.ensureQuestionExists(questionId, organizationId, true);
+    requireEditorForPublishedChanges(current.assessment);
     if (current.bankEntryId) throw new BadRequestException('Edit the bank question or detach it first');
     const definitionChanged = input.type !== undefined || input.definition !== undefined;
     const type = input.type ?? current.type;
@@ -168,7 +180,8 @@ export class AssessmentQuestionsService {
   }
 
   async deleteQuestion(questionId: string, organizationId: string) {
-    await this.ensureQuestionExists(questionId, organizationId);
+    const question = await this.ensureQuestionExists(questionId, organizationId, true);
+    requireEditorForPublishedChanges(question.assessment);
 
     await this.prisma.assessmentQuestion.update({
       where: { id: questionId, organizationId },
@@ -194,7 +207,8 @@ export class AssessmentQuestionsService {
   }
 
   async createAnswerOption(questionId: string, input: CreateAssessmentAnswerOptionInput) {
-    const question = await this.ensureQuestionExists(questionId, input.organizationId);
+    const question = await this.ensureQuestionExists(questionId, input.organizationId, true);
+    requireEditorForPublishedChanges(question.assessment);
     if (question.bankEntryId) throw new BadRequestException('Edit the bank question or detach it first');
     if (question.definition || ['matching', 'ordering', 'fill_blank', 'short_answer'].includes(question.type)) throw new BadRequestException('Defined questions do not use answer options');
 
@@ -210,13 +224,14 @@ export class AssessmentQuestionsService {
   async updateAnswerOption(optionId: string, organizationId: string, input: UpdateAssessmentAnswerOptionInput) {
     const option = await this.prisma.assessmentAnswerOption.findFirst({
       where: { id: optionId, organizationId, deletedAt: null },
-      select: { id: true, text: true, imageUrl: true, question: { select: { type: true, definition: true, bankEntryId: true } } },
+      select: { id: true, text: true, imageUrl: true, question: { select: { type: true, definition: true, bankEntryId: true, assessment: { select: publishedEditSelect } } } },
     });
 
     if (!option) {
       throw new NotFoundException('Assessment answer option not found');
     }
 
+    requireEditorForPublishedChanges(option.question?.assessment);
     if (option.question?.bankEntryId) throw new BadRequestException('Edit the bank question or detach it first');
     if (option.question && (option.question.definition || ['matching', 'ordering', 'fill_blank', 'short_answer'].includes(option.question.type))) throw new BadRequestException('Defined questions do not use answer options');
     const nextText = input.text !== undefined ? input.text : option.text;
@@ -236,13 +251,14 @@ export class AssessmentQuestionsService {
   async deleteAnswerOption(optionId: string, organizationId: string) {
     const option = await this.prisma.assessmentAnswerOption.findFirst({
       where: { id: optionId, organizationId, deletedAt: null },
-      select: { id: true, question: { select: { type: true, definition: true, bankEntryId: true } } },
+      select: { id: true, question: { select: { type: true, definition: true, bankEntryId: true, assessment: { select: publishedEditSelect } } } },
     });
 
     if (!option) {
       throw new NotFoundException('Assessment answer option not found');
     }
 
+    requireEditorForPublishedChanges(option.question?.assessment);
     if (option.question?.bankEntryId) throw new BadRequestException('Edit the bank question or detach it first');
     if (option.question && (option.question.definition || ['matching', 'ordering', 'fill_blank', 'short_answer'].includes(option.question.type))) throw new BadRequestException('Defined questions do not use answer options');
     await this.prisma.assessmentAnswerOption.update({
@@ -252,29 +268,30 @@ export class AssessmentQuestionsService {
     });
   }
 
-  private async ensureAssessmentExists(assessmentId: string, organizationId: string) {
+  private async ensureAssessmentExists(assessmentId: string, organizationId: string, forEdit = false) {
     const assessment = await this.prisma.assessment.findFirst({
       where: {
         id: assessmentId,
         organizationId,
         deletedAt: null,
       },
-      select: { id: true },
+      select: { id: true, ...(forEdit ? publishedEditSelect : {}) },
     });
 
     if (!assessment) {
       throw new NotFoundException('Assessment not found');
     }
+    return assessment;
   }
 
-  private async ensureQuestionExists(questionId: string, organizationId: string) {
+  private async ensureQuestionExists(questionId: string, organizationId: string, forEdit = false) {
     const question = await this.prisma.assessmentQuestion.findFirst({
       where: {
         id: questionId,
         organizationId,
         deletedAt: null,
       },
-      select: { id: true, type: true, definition: true, bankEntryId: true },
+      select: { id: true, type: true, definition: true, bankEntryId: true, ...(forEdit ? { assessment: { select: publishedEditSelect } } : {}) },
     });
 
     if (!question) {

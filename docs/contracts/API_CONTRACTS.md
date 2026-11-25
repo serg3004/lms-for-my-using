@@ -2645,7 +2645,8 @@ exercises are regular tests without a longread lesson binding.
 ### Assessment editor (PR 527)
 
 `GET /assessments/:id/editor` returns the assessment, its canonical questions,
-a saved editor draft when present, placements and standalone assignments.
+a saved editor draft when present, placements, standalone assignments and
+`hasAttempts` for the editor confirmation.
 The route requires assessment author access and permission to read questions
 and answer options at the applicable course scope.
 
@@ -2657,6 +2658,20 @@ test, `save` stores an author draft. `publish` validates the submitted
 questions and applies their order and settings in one transaction. Updates to a
 published test require confirmation. The `draft` action applies the content and
 returns the test to draft status. A stale revision returns HTTP 409.
+
+Publishing archives omitted questions and updates all course placements of the
+test. Published longread exercises receive a new version, while reading sessions
+already bound to a version stay on that version. The organization audit log
+records the editor, changed setting names and added, modified or archived questions.
+For published tests with attempts, direct question and option writes return 409
+and changes must go through the editor confirmation.
+Active attempts with a snapshot may finish against their saved questions while a
+question-only edit is published. Changing assessment settings during an active
+attempt, or publishing while a legacy active attempt lacks a snapshot, returns 409.
+
+The learner draft start endpoint returns the questions from the attempt snapshot
+without answer keys. Grading uses the same snapshot. Completed result detail
+uses frozen questions, answers and result display settings where available.
 
 `POST /assessments/:id/editor/preview` accepts editor content, question IDs and
 answers and returns grades without recording an attempt. It requires author and

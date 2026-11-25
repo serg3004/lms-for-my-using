@@ -1,6 +1,6 @@
 /// <reference types="jest" />
 import { AssessmentsService } from '../modules/assessments/assessments.service.js';
-import { createAssessmentSchema } from '../modules/assessments/assessments.schemas.js';
+import { assessmentEditorContentSchema, createAssessmentSchema } from '../modules/assessments/assessments.schemas.js';
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException, UnprocessableEntityException, type ExecutionContext } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -134,8 +134,44 @@ describe('longread versioned exercises (PR 389) — database', () => {
     });
     expect(await attempts.createAttempt(shared.id, learner.id, org, { placementId: secondPlacement.id, answers: [answer] }))
       .toMatchObject({ placementId: secondPlacement.id, courseId: secondCourse.id });
+    const active = await attempts.startAttempt(shared.id, second.id, org, first.id, true);
+    expect(active).toMatchObject({ questions: [{ id: question.id, title: 'Shared question' }] });
+    expect(JSON.stringify(active)).not.toContain('correctAnswer');
+    const editor = await papers.getEditor(shared.id, org);
+    expect(editor.hasAttempts).toBe(true);
+    const content = assessmentEditorContentSchema.parse({
+      settings: { ...editor.assessment, policy: editor.assessment.policy ?? undefined },
+      questions: editor.questions.map((item) => ({
+        ...item, title: 'Revised question', definition: { type: 'true_false', correctAnswer: false },
+      })),
+    });
+    await papers.saveEditor(shared.id, org, {
+      revision: editor.assessment.updatedAt.toISOString(), action: 'publish', confirmPublished: true, content,
+    }, admin.id);
+    expect(await prisma.auditLog.findFirst({ where: { organizationId: org, action: 'assessment.editor.publish', targetId: shared.id } }))
+      .toMatchObject({ actorId: admin.id, metadata: { modified: [{ id: question.id, title: 'Revised question' }] } });
+    expect(await attempts.createAttempt(shared.id, second.id, org, { placementId: first.id, attemptId: active.id, answers: [answer] }))
+      .toMatchObject({ passed: true, score: 1 });
+    expect(await results.getAttemptResult(located.id, learner)).toMatchObject({
+      passed: true, answers: [{ question: { title: 'Shared question' }, isCorrect: true }],
+    });
+    expect(await attempts.createAttempt(shared.id, second.id, org, { placementId: secondPlacement.id, answers: [answer] }))
+      .toMatchObject({ passed: false, score: 0 });
+    expect(await reader.read(lessonId, learner)).toMatchObject({ version: 2 });
+    expect(await reader.read(lessonId, second)).toMatchObject({ version: 3 });
+    expect((await submit(0, 1, answer, second, 3)).exercises[0]?.lastResult).toMatchObject({ isCorrect: false });
+    const revised = await papers.getEditor(shared.id, org);
+    await papers.saveEditor(shared.id, org, {
+      revision: revised.assessment.updatedAt.toISOString(), action: 'publish', confirmPublished: true,
+      content: { ...content, questions: [{ ...content.questions[0]!, id: randomUUID() }] },
+    }, admin.id);
+    expect(await prisma.assessmentQuestion.findUnique({ where: { id: question.id } }))
+      .toMatchObject({ deletedAt: expect.any(Date) });
+    expect(await results.getAttemptResult(located.id, learner)).toMatchObject({
+      passed: true, answers: [{ question: { title: 'Shared question' }, isCorrect: true }],
+    });
     await papers.detachPlacement(shared.id, first.id, org);
-    expect(await attempts.listAttempts(shared.id, admin, first.id)).toMatchObject([{ id: located.id }]);
+    expect(await attempts.listAttempts(shared.id, admin, first.id)).toMatchObject([{ id: active.id }, { id: located.id }]);
     await expect(attempts.createAttempt(shared.id, learner.id, org, { placementId: first.id, answers: [answer] })).rejects.toThrow(NotFoundException);
   });
 
