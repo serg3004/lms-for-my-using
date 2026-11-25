@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
-import { frozenAssessmentQuestionSchema } from '../../common/assessment-frozen.js';
+import { refreshPublishedAssessmentExercises } from '../longreads/public.js';
 import { validateQuestionDefinition } from '../../common/assessment-question-definition.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { createAssessmentQuestionSchema } from './assessment-questions.schemas.js';
@@ -160,48 +160,22 @@ export class QuestionBankService {
         });
         updatedOptions.set(placement.id, updated.options);
       }
-      await this.refreshLongreads(tx, organizationId, usage.longreads.map(({ id }) => id), content, updatedOptions, actorId);
+      await refreshPublishedAssessmentExercises(tx, organizationId, usage.longreads.map(({ id }) => id), (old) => {
+        const options = updatedOptions.get(old.id);
+        return options ? {
+          ...old, title: content.title, type: content.type, text: content.text ?? null, imageUrl: content.imageUrl ?? null,
+          definition: content.definition ?? null, scoringMode: content.scoringMode, options,
+        } : old;
+      }, actorId);
+      for (const assessment of affected) {
+        await tx.auditLog.create({ data: {
+          organizationId, actorId, action: 'assessment.question-bank.update', targetType: 'assessment',
+          targetId: assessment.id, summary: 'Updated a linked bank question', metadata: { bankEntryId: id, revision: entry.revision },
+        } });
+      }
       await tx.assessment.updateMany({ where: { id: { in: placements.map((item) => item.assessmentId) }, organizationId }, data: { updatedAt: new Date() } });
       return entry;
     });
-  }
-
-  private async refreshLongreads(tx: Prisma.TransactionClient, organizationId: string, lessonIds: string[],
-    content: BankContent, optionsByQuestion: ReadonlyMap<string, readonly Prisma.InputJsonObject[]>, actorId?: string) {
-    if (!lessonIds.length) return;
-    const documents = await tx.$queryRaw<{ id: string }[]>`
-      SELECT id FROM longread_documents WHERE organization_id = ${organizationId}::uuid
-        AND lesson_id IN (${Prisma.join(lessonIds.map((id) => Prisma.sql`${id}::uuid`))})
-      ORDER BY id FOR UPDATE
-    `;
-    const snapshotSchema = z.array(z.looseObject({ blocks: z.array(z.looseObject({ question: z.unknown().optional() })) }));
-    for (const { id } of documents) {
-      const document = await tx.longreadDocument.findUniqueOrThrow({ where: { id }, include: { publishedRevision: true } });
-      const revision = document.publishedRevision;
-      if (!revision) continue;
-      let changed = false;
-      const snapshot = snapshotSchema.parse(revision.snapshot).map((chapter) => ({
-        ...chapter,
-        blocks: chapter.blocks.map((block) => {
-          const old = frozenAssessmentQuestionSchema.safeParse(block.question);
-          const options = old.success ? optionsByQuestion.get(old.data.id) : undefined;
-          if (!old.success || !options) return block;
-          changed = true;
-          return { ...block, question: {
-            ...old.data, title: content.title, type: content.type, text: content.text ?? null, imageUrl: content.imageUrl ?? null,
-            definition: content.definition ?? null, scoringMode: content.scoringMode, options,
-          } };
-        }),
-      }));
-      if (!changed) continue;
-      const next = await tx.longreadRevision.create({ data: {
-        documentId: id, organizationId, number: document.lastRevisionNumber + 1,
-        schemaVersion: revision.schemaVersion, sourceDraftRevision: revision.sourceDraftRevision,
-        settings: revision.settings ?? Prisma.JsonNull, snapshot: snapshot as Prisma.InputJsonValue,
-        createdById: actorId,
-      } });
-      await tx.longreadDocument.update({ where: { id }, data: { publishedRevisionId: next.id, lastRevisionNumber: next.number } });
-    }
   }
 
   async link(organizationId: string, assessmentId: string, id: string) {

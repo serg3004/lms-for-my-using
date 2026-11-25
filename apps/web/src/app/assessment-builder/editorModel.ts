@@ -35,6 +35,7 @@ export type EditorDocument = {
   assessment: AssessmentSummary & { randomizeOrder: boolean };
   questions: EditorQuestion[];
   draft: EditorContent | null;
+  hasAttempts?: boolean;
   placements: { id: string; longreadBlockId: string | null; course: { title: string } | null; lesson: { title: string } | null }[];
   assignments: { userId: string; dueAt: string; user: { firstName: string; lastName: string } }[];
 };

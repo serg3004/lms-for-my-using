@@ -47,6 +47,13 @@ Keep the columns during application rollback. The earlier API ignores the new po
 and cannot continue an untimed attempt with locked answers.
 
 
+## Assessment review settings migration (PR 535)
+
+`20261125130000_freeze_assessment_review_settings` extends existing assessment
+answer snapshots with the review settings available at migration time. It preserves
+existing question snapshots, scores, responses and timestamps. Apply it before
+deploying the updated API and retain the snapshots on rollback.
+
 ## Assessment editor draft migration (PR 527)
 
 `20261124140000_assessment_editor_draft` adds a nullable JSONB column, `assessments.editor_draft`.

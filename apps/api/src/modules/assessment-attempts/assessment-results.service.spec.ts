@@ -69,6 +69,36 @@ function createAttempt(userIdOverride = userId, showCorrectAnswers = false) {
 }
 
 describe('AssessmentResultsService', () => {
+  it('reviews the saved question and answer key after the published test changes', async () => {
+    const attempt = createAttempt();
+    const answer = attempt.answers[0]!;
+    const frozenQuestion = {
+      revealAnswers: false,
+      resultSettings: { showCorrectAnswers: true, passMessage: 'Original message', failMessage: null, policy: null },
+      question: {
+        ...answer.question, title: 'Original question', text: null, imageUrl: null, definition: null,
+        scoringMode: 'all_or_nothing',
+        assessment: { id: assessmentId, title: 'Original test', passingScore: 60, maxAttempts: null },
+        options: [{ ...answer.selectedOption, text: 'Original answer', order: 0, isCorrect: true }],
+      },
+    };
+    const service = new AssessmentResultsService({
+      assessmentAttempt: { findFirst: async () => ({ ...attempt, answers: [{ ...answer, frozenQuestion }] }) },
+    } as unknown as PrismaService);
+
+    const result = await service.getAttemptResult(attemptId, { id: userId, organizationId, roles: ['learner'] });
+
+    expect(result).toMatchObject({
+      score: 8, percentage: 80, passed: true,
+      assessment: { title: 'Original test', passingScore: 60, passMessage: 'Original message' },
+      answers: [{
+        question: { title: 'Original question' },
+        selectedOption: { text: 'Original answer' },
+        correctOptions: [{ text: 'Original answer' }],
+      }],
+    });
+  });
+
   it('splits result attempts by place and calculates analytics within the selected place', async () => {
     const user = { firstName: 'Learner', lastName: 'User', departmentMemberships: [], groupMemberships: [] };
     const base = {

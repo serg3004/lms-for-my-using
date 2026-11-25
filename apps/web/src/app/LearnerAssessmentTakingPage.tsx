@@ -19,7 +19,6 @@ import {
   issueCertificate,
   startAssessmentAttempt,
 } from '../shared/apiClient.js';
-import { apiRequest } from '../shared/apiClient.js';
 import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 import {
@@ -36,7 +35,7 @@ import {
   type SelectedAnswers,
 } from './assessment-taking/model.js';
 
-type LearnerAssessmentTakingData = { assessment: AssessmentSummary; questions: QuestionWithOptions[]; sampledAttempt?: Awaited<ReturnType<typeof startAssessmentAttempt<QuestionWithOptions>>> };
+type LearnerAssessmentTakingData = { assessment: AssessmentSummary; questions: QuestionWithOptions[]; startedAttempt?: Awaited<ReturnType<typeof startAssessmentAttempt<QuestionWithOptions>>> };
 
 const EMPTY_QUESTIONS: QuestionWithOptions[] = [];
 const touchTarget = { minHeight: 44 };
@@ -75,17 +74,11 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
     async () => {
       if (preview) return { assessment: preview.assessment, questions: preview.questions };
       const assessment = await getAssessment(assessmentId);
-      if (assessment.bankSampleSize) {
-        const sampledAttempt = await startAssessmentAttempt<QuestionWithOptions>(assessmentId, token, true);
-        if (!sampledAttempt.questions) throw new Error('Missing attempt questions');
-        return { assessment, questions: sampledAttempt.questions, sampledAttempt };
-      }
-      const questionsWithOptions = await apiRequest<QuestionWithOptions[]>(
-        `/assessments/${encodeURIComponent(assessmentId)}/quiz${assessmentTokenQuery(token)}`,
-      );
-      return { assessment, questions: questionsWithOptions };
+      const startedAttempt = await startAssessmentAttempt<QuestionWithOptions>(assessmentId, token, true);
+      if (!startedAttempt.questions) throw new Error('Missing attempt questions');
+      return { assessment, questions: startedAttempt.questions, startedAttempt };
     },
-    [assessmentId, t, token, preview],
+    [assessmentId, t, token, preview, startRetry],
     { unauthenticated: t('assessments.sessionExpired'), error: t('assessments.loadError') },
   );
 
@@ -97,7 +90,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
   const restoreDraft = useRef(draft.restore);
   useEffect(() => {
     if (!draftQuestions?.length || draftQuestions.some((question) => !supportsTakingQuestion(question)) || loadState.status !== 'loaded') return;
-    const { assessment, sampledAttempt } = loadState.data;
+    const { assessment, startedAttempt } = loadState.data;
     const limit = assessment.timeLimitMinutes;
     if (preview) {
       setSecondsLeft(limit ? limit * 60 : null);
@@ -109,7 +102,8 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
 
     void (async () => {
       try {
-        const attempt = sampledAttempt ?? await startAssessmentAttempt(assessmentId, token, true);
+        const attempt = startedAttempt;
+        if (!attempt) return;
         if (cancelled) return;
         setAttemptId(attempt.id);
         const serverNow = attempt.serverNow ? Date.parse(attempt.serverNow) : Date.now();

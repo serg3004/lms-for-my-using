@@ -293,7 +293,7 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
     </fieldset>
     {feedback.length > 0 && <ul role="alert" className="admin-form__error">{feedback.map((message, index) => <li key={index}>{message}</li>)}</ul>}
     <ConfirmDialog open={pending !== null} title={label('confirmTitle')}
-      message={pending && <div><p>{label('confirmText')}</p><Usage document={pending.document} /></div>}
+      message={pending && <div><p>{label(pending.document.hasAttempts ? 'confirmWithAttempts' : 'confirmText')}</p><Usage document={pending.document} /></div>}
       confirmLabel={label('confirm')} cancelLabel={t('admin.assessmentBuilder.cancel')}
       onCancel={() => setPending(null)} onConfirm={() => {
         if (!pending) return;
