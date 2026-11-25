@@ -43,8 +43,9 @@ const dictate = async () => { await act(async () => { (host.querySelector('#note
 const say = async (text: string) => { await act(async () => { FakeRecognition.last?.say(text); }); };
 
 // jsdom has no layout; the editor asks the caret's node or range for rectangles when it scrolls it into view.
-for (const proto of [Range.prototype, Text.prototype] as { getClientRects?: () => unknown }[]) {
+for (const proto of [Range.prototype, Text.prototype] as { getClientRects?: () => unknown; getBoundingClientRect?: () => unknown }[]) {
   if (!proto.getClientRects) proto.getClientRects = () => [];
+  if (!proto.getBoundingClientRect) proto.getBoundingClientRect = () => ({ top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, x: 0, y: 0 });
 }
 
 beforeEach(async () => {
