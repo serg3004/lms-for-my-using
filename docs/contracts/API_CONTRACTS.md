@@ -2166,6 +2166,26 @@ counted under longread even when the revision belongs to a course.
 unique `{ id, enabled }` entries and returns `{ cards }`. Both routes use the same
 assessment-attempt read policy. The layout is scoped by user and organization.
 
+## Assessment analytics exports (PR 534)
+
+`POST /assessments/:assessmentId/analytics/exports` accepts `{ format, view, locale, filters }`.
+Formats are `xlsx` and `pdf`. Views are `results`, `questions`, and `folder`.
+Locales are `en`, `ru`, `kk`, and `zh`. Use the analytics filters above in the
+`filters` object. The export includes every matching row regardless of `page`.
+The folder view covers assessments directly in the selected assessment's folder and
+returns 404 if the assessment has no active folder.
+
+A synchronous response is a `200` attachment with the requested file's media type.
+A queued response is `202` with `{ statusUrl }`. Poll that URL with `GET` to
+receive `{ state }`, where state is `pending`, `failed`, or `completed`. A completed
+response includes `downloadUrl`. An authenticated `GET` to that URL returns the
+attachment. Job URLs are relative to the API base and are available for up to 24 hours.
+
+All three routes use the assessment-attempt read policy and the analytics course and
+team scopes. Only the requesting user can read the job in its organization. The file
+route rechecks access to the exported assessments and attempts and returns 404 if the
+file is unavailable or the caller can no longer read its contents.
+
 ## Standalone assessment assignments (PR 523)
 
 Administrators use `POST /assessments/:id/standalone/assignments` for a published assessment
