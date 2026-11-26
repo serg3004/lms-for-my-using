@@ -1832,6 +1832,8 @@
         "notScoredAllSkipped": "Не оценивается (все пропущены)",
         "feedbackTitle": "Обратная связь",
         "feedbackComment": "Комментарий",
+        "voiceReviewer": "Запись проверяющего",
+        "feedbackVoiceTitle": "Звуковые записи к обратной связи",
         "groupsTitle": "Результаты по группам критериев",
         "groupNotScored": "Без оценки",
         "groupScore": "{{percent}}% — {{earned}} из {{max}}",

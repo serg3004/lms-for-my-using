@@ -1832,6 +1832,8 @@
         "notScoredAllSkipped": "Not scored (all skipped)",
         "feedbackTitle": "Feedback",
         "feedbackComment": "Comment",
+        "voiceReviewer": "Reviewer’s recording",
+        "feedbackVoiceTitle": "Voice recordings of the feedback",
         "groupsTitle": "Results by criteria group",
         "groupNotScored": "Not scored",
         "groupScore": "{{percent}}% — {{earned}} of {{max}}",

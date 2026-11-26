@@ -204,4 +204,32 @@ describe('checklist voice notes — database', () => {
     await prisma.organization.update({ where: { id: organizationId }, data: { voiceNotesEnabled: true } });
     await expect(service.updateChecklist(checklistId, organizationId, { voiceNotesMode: 'on' })).resolves.toMatchObject({ voiceNotesMode: 'on' });
   });
+
+  // PR 512: the reviewer's comment and the session's closing texts.
+  it('lets a reviewer record a comment only while the check waits for review, and keeps it apart from the answer', async () => {
+    const id = await instance('in_progress');
+    const kind = { place: 'reviewer_comment' as const };
+    await expect(service.assertVoiceNoteRoom(id, itemId, organizationId, observerId, true, undefined, 3000, kind)).rejects.toThrow('not awaiting review');
+    await prisma.checklistInstance.update({ where: { id }, data: { status: 'submitted' } });
+    await expect(service.assertVoiceNoteRoom(id, itemId, organizationId, learnerId, false, undefined, 3000, kind)).rejects.toThrow();
+    const note = await service.addVoiceNote(id, itemId, organizationId, observerId, true, file(), 3000, undefined, kind);
+    expect(note).toMatchObject({ place: 'reviewer_comment', itemId });
+    await service.addVoiceNote(id, itemId, organizationId, observerId, true, file(), 3000, undefined, kind);
+    await service.addVoiceNote(id, itemId, organizationId, observerId, true, file(), 3000, undefined, kind);
+    await expect(service.addVoiceNote(id, itemId, organizationId, observerId, true, file(), 3000, undefined, kind)).rejects.toThrow('At most 3');
+    expect(await prisma.checklistVoiceNote.count({ where: { instanceId: id, place: 'answer' } })).toBe(0);
+    await expect(service.getVoiceNoteFile(id, note.id, organizationId, learnerId, false)).resolves.toBeDefined();
+  });
+
+  it('keeps summary recordings per field, without a criterion', async () => {
+    const id = await instance();
+    await session(id);
+    const strengths = { place: 'summary' as const, field: 'strengths' as const };
+    await expect(service.assertVoiceNoteRoom(id, itemId, organizationId, observerId, true, undefined, 3000, strengths)).rejects.toThrow('field and no criterion');
+    const note = await service.addVoiceNote(id, null, organizationId, observerId, true, file(), 3000, undefined, strengths);
+    expect(note).toMatchObject({ place: 'summary', field: 'strengths', itemId: null });
+    await service.addVoiceNote(id, null, organizationId, observerId, true, file(), 3000, undefined, { place: 'summary', field: 'nextSteps' });
+    expect(await prisma.checklistVoiceNote.count({ where: { instanceId: id, place: 'summary', field: 'strengths' } })).toBe(1);
+    expect(await service.listVoiceNotes(id, organizationId, learnerId, false)).toHaveLength(2);
+  });
 });

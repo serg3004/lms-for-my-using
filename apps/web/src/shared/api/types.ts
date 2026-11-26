@@ -837,6 +837,7 @@ export type ChecklistReportPerson = {
   department: { id: string; name: string } | null;
 };
 
+export type ChecklistReportVoiceStat = { count: number; seconds: number };
 export type ChecklistSessionReport = {
   pointsVisible?: boolean;
   sessionId: string;
@@ -877,9 +878,12 @@ export type ChecklistSessionReport = {
     score: number | null; maxScore: number | null; levelLabel: string | null; comment: string | null;
     description?: string; levelDescription?: string;
     photo: { fileName: string | null } | null; reviewStatus: string | null; color: ChecklistReportHighlight | null;
+    /** PR 512: how many voice recordings the comment has and how long (null: none). */
+    voice?: { answer: ChecklistReportVoiceStat | null; reviewer: ChecklistReportVoiceStat | null } | null;
   }>;
   feedbackForm?: (FeedbackConfig & { answers: FeedbackAnswers }) | null;
   feedback: null | { strengths: string | null; developmentAreas: string | null; comment: string | null };
+  feedbackVoice?: null | { strengths: ChecklistReportVoiceStat | null; developmentAreas: ChecklistReportVoiceStat | null; nextSteps: ChecklistReportVoiceStat | null };
   location: { policy: ChecklistGeolocationPolicy; captures: Array<{ capturePoint: string; status: string; capturedAt: string }> };
 };
 

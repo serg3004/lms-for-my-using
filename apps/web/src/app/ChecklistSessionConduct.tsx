@@ -44,7 +44,7 @@ import { conductCriteria, nextConductStep } from './checklistConductOverview.js'
 import { localizeChecklistScaleError, checklistResultToAnswer, getRequiredChecklistProgress, isChecklistAnswerComplete } from './checklistCompletion.js';
 
 import { RichFillField } from './ChecklistItemNote.js';
-import { ContextFields, CriterionHeading, FeedbackFields, type FeedbackDraft } from './ChecklistConductFields.js';
+import { ContextFields, CriterionHeading, FeedbackFields, type FeedbackDraft, type FeedbackVoice } from './ChecklistConductFields.js';
 
 const COLORS = {
   surface: 'var(--color-surface)',
@@ -481,6 +481,8 @@ export function ConductScreen({
                   onBusyChange={setCardBusy}
                   onSaved={(updatedSession) => onMutate((current) => ({ ...current, session: { ...current.session, ...updatedSession } }))}
                   onConflict={() => setConflict(true)}
+                  dictation={voiceSettings.dictation}
+                  voice={{ api: conductVoiceApi, instanceId: instance.id, notes: voiceNotes, settings: voiceSettings, editable: !busy, onChanged: () => void reloadVoice() }}
                   t={t}
                 />
               ) : (() => {
@@ -600,6 +602,8 @@ export function ConductScreen({
           onBusyChange={setCardBusy}
           onSaved={(updatedSession) => onMutate((current) => ({ ...current, session: { ...current.session, ...updatedSession } }))}
           onConflict={() => setConflict(true)}
+          dictation={voiceSettings.dictation}
+          voice={{ api: conductVoiceApi, instanceId: instance.id, notes: voiceNotes, settings: voiceSettings, editable: false, onChanged: () => void reloadVoice() }}
           t={t}
         />
       )}
@@ -952,9 +956,13 @@ function StructuredFeedback({
   onBusyChange,
   onSaved,
   onConflict,
+  dictation = false,
+  voice,
   t,
 }: {
   appearance?: Appearance | null;
+  dictation?: boolean;
+  voice?: FeedbackVoice;
   session: ChecklistSessionSummary;
   busy: boolean;
   draft: FeedbackDraft;
@@ -1005,7 +1013,7 @@ function StructuredFeedback({
         </p>
       )}
       <div style={{ display: 'grid', gap: 10 }}>
-        <FeedbackFields config={session.feedback} draft={draft} disabled={busy || saving} onDraftChange={onDraftChange} t={t} />
+        <FeedbackFields config={session.feedback} draft={draft} disabled={busy || saving} dictation={dictation} voice={voice} onDraftChange={onDraftChange} t={t} />
         <Button type="button" size="sm" disabled={busy || saving || !dirty} onClick={() => void save()} style={{ minHeight: 44 }}>
           {t('checklistSessions.conduct.saveFeedback', 'Save feedback')}
         </Button>

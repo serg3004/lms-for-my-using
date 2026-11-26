@@ -69,7 +69,8 @@ describe('export tables (PR 463)', () => {
       ['Настроение', 'Выбор', 4, 3, 1, 'Хорошее', 2],
       ['Сильные стороны', 'Текст', 4, 2, 2, '', ''],
     ]);
-    expect(notesExportRows([{ itemText: 'Каски', comment: 'Без ремня', reviewComment: null, at: '2026-10-20T09:00:00.000Z', employee: 'Иванов Иван', observer: null }], 'en')[1]).toEqual(['2026-10-20', 'Каски', 'Без ремня', '', 'Иванов Иван', '']);
+    expect(notesExportRows([{ itemText: 'Каски', comment: 'Без ремня', reviewComment: null, at: '2026-10-20T09:00:00.000Z', employee: 'Иванов Иван', observer: null }], 'en')[1]).toEqual(['2026-10-20', 'Каски', 'Без ремня', '', 'Иванов Иван', '', '']);
+    expect(notesExportRows([{ itemText: 'Каски', comment: null, reviewComment: null, voiceSeconds: 12, at: null, employee: 'Иванов Иван', observer: null }], 'ru')[1]![6]).toBe('есть звуковая запись, 12 сек.');
   });
   it('has no level block for a table without scales', () => {
     expect(levelRows([], 'ru')).toEqual([]);

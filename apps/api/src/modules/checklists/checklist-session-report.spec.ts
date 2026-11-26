@@ -141,4 +141,20 @@ describe('buildSessionReport (PR 370)', () => {
     expect(result.groups[0]).toMatchObject({ number: '', title: 'Sort' });
   });
 
+
+  it('counts voice recordings per criterion and per closing text (PR 512), and shows none to a viewer without the result', () => {
+    const voiceNotes = [
+      { itemId: 'c1', place: 'answer', field: null, durationMs: 4200 },
+      { itemId: 'c1', place: 'answer', field: null, durationMs: 1000 },
+      { itemId: 'c1', place: 'reviewer_comment', field: null, durationMs: 9000 },
+      { itemId: null, place: 'summary', field: 'strengths', durationMs: 20_000 },
+    ];
+    const report = buildSessionReport(input(sample5s(), { voiceNotes }));
+    if (!report.visible) throw new Error('visible expected');
+    expect(report.criteria[0]!.voice).toEqual({ answer: { count: 2, seconds: 5 }, reviewer: { count: 1, seconds: 9 } });
+    expect(report.criteria[1]!.voice).toBeNull();
+    expect(report.feedbackVoice).toEqual({ strengths: { count: 1, seconds: 20 }, developmentAreas: null, nextSteps: null });
+    const hidden = buildSessionReport(input(sample5s(), { voiceNotes, visible: false }));
+    expect(hidden.feedbackVoice).toBeNull();
+  });
 });

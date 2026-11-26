@@ -1859,6 +1859,8 @@ model ChecklistVoiceNote {
   instanceId     String                  @map("instance_id") @db.Uuid
   itemId         String?                 @map("item_id") @db.Uuid
   place          ChecklistVoiceNotePlace @default(answer)
+  /// PR 512: which of the session's closing texts a `summary` recording belongs to (strengths, developmentAreas, nextSteps).
+  field          String?
   objectKey      String                  @map("object_key")
   mimeType       String                  @map("mime_type")
   durationMs     Int                     @map("duration_ms")
@@ -1869,7 +1871,7 @@ model ChecklistVoiceNote {
   instance       ChecklistInstance       @relation(fields: [instanceId], references: [id], onDelete: Cascade)
   author         User?                   @relation("ChecklistVoiceNoteAuthor", fields: [createdBy], references: [id], onDelete: SetNull)
 
-  @@index([instanceId, itemId, place, createdAt])
+  @@index([instanceId, itemId, place, field, createdAt])
   @@index([organizationId])
   @@map("checklist_voice_notes")
 }

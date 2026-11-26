@@ -13,7 +13,7 @@ const other = '55555555-5555-5555-5555-555555555555';
 const noteId = '66666666-6666-6666-6666-666666666666';
 const uploaded = { objectKey: 'organizations/o/checklist-voice/i/k', mimeType: 'audio/webm', sizeBytes: 100 };
 
-function setup(over: { count?: number; result?: unknown; note?: unknown; instance?: unknown; writable?: () => Promise<void>; organization?: Record<string, unknown> } = {}) {
+function setup(over: { count?: number; result?: unknown; note?: unknown; instance?: unknown; writable?: () => Promise<void>; reviewable?: () => Promise<void>; organization?: Record<string, unknown> } = {}) {
   const note = over.note === undefined ? { id: noteId, itemId, objectKey: 'old-key', createdBy: author, mimeType: 'audio/webm', createdAt: new Date(5) } : over.note;
   const tx = {
     checklistVoiceNote: {
@@ -34,8 +34,9 @@ function setup(over: { count?: number; result?: unknown; note?: unknown; instanc
   const storage = { deleteObject: jest.fn(async () => undefined), getObjectBytes: jest.fn(async () => Buffer.from('audio')) };
   const auditLog = { record: jest.fn(async () => undefined) };
   const assertWritable = jest.fn(over.writable ?? (async () => undefined));
-  const notes = new ChecklistVoiceNotes(prisma as unknown as PrismaService, storage, auditLog as unknown as AuditLogService, assertWritable, 4 * 1024 * 1024);
-  return { notes, prisma, tx, storage, auditLog, assertWritable };
+  const assertReviewable = jest.fn(over.reviewable ?? (async () => undefined));
+  const notes = new ChecklistVoiceNotes(prisma as unknown as PrismaService, storage, auditLog as unknown as AuditLogService, assertWritable, 4 * 1024 * 1024, assertReviewable);
+  return { notes, prisma, tx, storage, auditLog, assertWritable, assertReviewable };
 }
 
 describe('ChecklistVoiceNotes: organization and checklist settings (PR 511)', () => {
@@ -78,7 +79,7 @@ describe('ChecklistVoiceNotes: organization and checklist settings (PR 511)', ()
 
 describe('voiceNoteFieldsSchema', () => {
   it('reads the multipart strings, keeps the default limit of two minutes and rejects the rest', () => {
-    expect(voiceNoteFieldsSchema.parse({ durationMs: '1500' })).toEqual({ durationMs: 1500 });
+    expect(voiceNoteFieldsSchema.parse({ durationMs: '1500' })).toEqual({ durationMs: 1500, place: 'answer' });
     expect(voiceNoteFieldsSchema.parse({ durationMs: String(VOICE_NOTE_MAX_DURATION_MS) }).durationMs).toBe(120000);
     expect(() => voiceNoteFieldsSchema.parse({ durationMs: String(VOICE_NOTE_MAX_DURATION_MS + 1) })).toThrow();
     expect(() => voiceNoteFieldsSchema.parse({ durationMs: '0' })).toThrow();
@@ -171,5 +172,41 @@ describe('ChecklistVoiceNotes reading', () => {
     await expect(gone.notes.getFile(instanceId, noteId, org, author, false)).rejects.toBeInstanceOf(NotFoundException);
     await expect(setup().notes.list(instanceId, org, other, false)).rejects.toBeInstanceOf(ForbiddenException);
     await expect(setup().notes.list(instanceId, org, author, false)).resolves.toEqual([]);
+  });
+});
+
+describe('ChecklistVoiceNotes: reviewer comment and session summary (PR 512)', () => {
+  it('lets only a reviewer record a review comment, and only while the check waits for review', async () => {
+    const kind = { place: 'reviewer_comment' as const };
+    const { notes, assertReviewable, assertWritable } = setup();
+    await expect(notes.assertHasRoom(instanceId, itemId, org, author, false, undefined, 1000, kind)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(notes.assertHasRoom(instanceId, itemId, org, author, true, undefined, 1000, kind)).resolves.toBeUndefined();
+    expect(assertReviewable).toHaveBeenCalledWith(instanceId, org);
+    expect(assertWritable).not.toHaveBeenCalled();
+    const closed = setup({ reviewable: async () => { throw new BadRequestException('This checklist assignment is not awaiting review'); } });
+    await expect(closed.notes.add(instanceId, itemId, org, author, true, uploaded, 1000, undefined, kind)).rejects.toBeInstanceOf(BadRequestException);
+    expect(closed.tx.checklistVoiceNote.create).not.toHaveBeenCalled();
+  });
+
+  it('saves a summary recording with its field and no criterion, and counts recordings per field', async () => {
+    const { notes, tx } = setup();
+    await notes.add(instanceId, null, org, author, false, uploaded, 1000, undefined, { place: 'summary', field: 'nextSteps' });
+    expect(tx.checklistVoiceNote.count).toHaveBeenCalledWith({ where: expect.objectContaining({ itemId: null, place: 'summary', field: 'nextSteps' }) });
+    expect(tx.checklistVoiceNote.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ itemId: null, place: 'summary', field: 'nextSteps' }) }));
+  });
+
+  it('rejects a summary recording without a field or with a criterion, and an answer recording with a field', async () => {
+    const { notes } = setup();
+    await expect(notes.assertHasRoom(instanceId, null, org, author, false, undefined, 1000, { place: 'summary' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(notes.assertHasRoom(instanceId, itemId, org, author, false, undefined, 1000, { place: 'summary', field: 'strengths' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(notes.assertHasRoom(instanceId, itemId, org, author, false, undefined, 1000, { place: 'answer', field: 'strengths' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(notes.assertHasRoom(instanceId, null, org, author, false, undefined, 1000)).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('removes a review comment recording only through the review rules', async () => {
+    const { notes, assertReviewable } = setup({ note: { id: noteId, itemId, place: 'reviewer_comment', objectKey: 'k', createdBy: author, mimeType: 'audio/webm', createdAt: new Date(5) } });
+    await expect(notes.remove(instanceId, noteId, org, author, false)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(notes.remove(instanceId, noteId, org, author, true)).resolves.toBeUndefined();
+    expect(assertReviewable).toHaveBeenCalled();
   });
 });

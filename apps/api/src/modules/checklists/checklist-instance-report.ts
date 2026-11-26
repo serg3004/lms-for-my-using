@@ -72,11 +72,12 @@ export class ChecklistInstanceReport {
 
     const finished = row.status === 'completed';
     const frozen = readFrozenReportSettings(row.reportSettings);
-    const [breakdown, effective, revision, transfers] = await Promise.all([
+    const [breakdown, effective, revision, transfers, voiceNotes] = await Promise.all([
       this.deps.breakdown(instanceId, organizationId),
       frozen ? Promise.resolve(null) : loadEffectiveSettings(prisma, organizationId, row.checklistId),
       prisma.checklistScoreRevision.findFirst({ where: { organizationId, instanceId }, orderBy: { createdAt: 'desc' }, select: { formula: true } }),
       this.deps.history(instanceId, organizationId),
+      prisma.checklistVoiceNote.findMany({ where: { instanceId, organizationId }, select: { itemId: true, place: true, field: true, durationMs: true } }),
     ]);
     const executor: ReportPerson = {
       id: row.user.id, firstName: row.user.firstName, lastName: row.user.lastName, email: row.user.email,
@@ -101,10 +102,11 @@ export class ChecklistInstanceReport {
       settings: frozen ?? freezeReportSettings(effective!),
       visible: true,
       pointsVisible,
+      voiceNotes,
       locationCaptures: [],
     });
 
-    const withoutSession = { ...built, sessionId: null, header: { ...built.header, observer: null }, transfers: toReportTransfers(transfers), feedback: null, feedbackForm: null, location: { policy: 'off', captures: [] } };
+    const withoutSession = { ...built, sessionId: null, header: { ...built.header, observer: null }, transfers: toReportTransfers(transfers), feedback: null, feedbackVoice: null, feedbackForm: null, location: { policy: 'off', captures: [] } };
     if (!built.visible) throw new ForbiddenException('The report is not available');
     const report = (finished
       ? withoutSession
