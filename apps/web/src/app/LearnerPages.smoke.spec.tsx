@@ -723,8 +723,8 @@ describe('learner page smoke rendering', () => {
     };
 
     useStateAtCalls({
-      8: 900, // secondsLeft
-      15: loadedAssessment, // useAsyncData loadState
+      9: 900, // secondsLeft
+      16: loadedAssessment, // useAsyncData loadState
     });
 
     const html = renderToStaticMarkup(<LearnerAssessmentTakingPage assessmentId="assessment-1" />);
