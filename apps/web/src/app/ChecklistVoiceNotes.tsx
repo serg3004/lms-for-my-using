@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 
-import type { ChecklistVoiceNote, ChecklistVoiceSettings } from '../shared/api/checklists.js';
+import type { ChecklistVoiceKind, ChecklistVoiceNote, ChecklistVoiceSettings } from '../shared/api/checklists.js';
 import { ApiClientError } from '../shared/apiClient.js';
 import { readStored, writeStored } from '../shared/dictation.js';
 import { useProtectedImage } from '../shared/useProtectedImage.js';
@@ -73,10 +73,12 @@ function uploadProblem(error: unknown, t: TFunction, max: number): string {
  * listen before sending (and record again), then stores it through `api`. A recording counts as the explanation of an answer.
  * Not drawn where the browser cannot record; the comment stays a plain text field.
  */
-export function ChecklistVoiceNotes({ api, instanceId, itemId, notes, editable, onChanged, t, settings }: {
-  api: ChecklistVoiceApi; instanceId: string; itemId: string; notes: ChecklistVoiceNote[]; editable: boolean; onChanged: () => void; t: TFunction;
+export function ChecklistVoiceNotes({ api, instanceId, itemId, notes, editable, onChanged, t, settings, kind }: {
+  api: ChecklistVoiceApi; instanceId: string; itemId: string | null; notes: ChecklistVoiceNote[]; editable: boolean; onChanged: () => void; t: TFunction;
   /** PR 511: what the organization and the checklist allow. Without it the limits of the server apply and recording is offered. */
   settings?: ChecklistVoiceSettings;
+  /** PR 512: the comment of an answer (default), a reviewer's comment or one of the session's closing texts (no criterion). */
+  kind?: ChecklistVoiceKind;
 }) {
   const maxMs = settings ? Math.min(settings.maxSeconds * 1000, VOICE_MAX_MS) : VOICE_MAX_MS;
   const perComment = settings ? Math.min(settings.perComment, VOICE_PER_COMMENT) : VOICE_PER_COMMENT;
@@ -137,7 +139,7 @@ export function ChecklistVoiceNotes({ api, instanceId, itemId, notes, editable, 
     setProblem(null);
     setPhase({ kind: 'uploading', recording: current.recording, url: current.url });
     try {
-      await api.upload(instanceId, itemId, current.recording.blob, Math.min(current.recording.durationMs, maxMs));
+      await api.upload(instanceId, itemId, current.recording.blob, Math.min(current.recording.durationMs, maxMs), undefined, kind);
       setPhase({ kind: 'idle' });
       setHint(false);
       onChanged();
@@ -182,7 +184,7 @@ export function ChecklistVoiceNotes({ api, instanceId, itemId, notes, editable, 
             aria-pressed={recording}
             className={`ds-button ${recording ? 'ds-button--primary' : 'ds-button--secondary'} ds-button--sm`}
             disabled={busy || (!recording && full)}
-            id={`voice-${itemId}`}
+            id={`voice-${kind?.field ?? kind?.place ?? 'answer'}-${itemId ?? 'summary'}`}
             onClick={() => (recording ? session.current?.stop() : void start())}
             style={{ minHeight: 44, minWidth: 44 }}
             type="button"

@@ -374,6 +374,8 @@ class ReportPainter {
         level ? { value: level, weight: 700 as PdfFontWeight, rich: false } : null,
         // PR 428: the comment keeps its formatting; plain legacy comments keep their line breaks.
         criterion.comment?.trim() ? { value: criterion.comment, weight: 400 as PdfFontWeight, rich: true } : null,
+        criterion.voice?.answer ? { value: this.labels.voice(criterion.voice.answer.seconds, false), weight: 400 as PdfFontWeight, rich: false } : null,
+        criterion.voice?.reviewer ? { value: this.labels.voice(criterion.voice.reviewer.seconds, true), weight: 400 as PdfFontWeight, rich: false } : null,
         photoLine ? { value: photoLine, weight: 400 as PdfFontWeight, rich: false } : null,
       ].filter((part): part is { value: string; weight: PdfFontWeight; rich: boolean } => part !== null);
       const textHeight = detailParts.reduce((sum, part) => sum + this.measure(part.value, widths.detail, { weight: part.weight, size: 9, rich: part.rich }) + 2, 0);
@@ -476,17 +478,19 @@ class ReportPainter {
     }
     if (!this.report.feedback) return;
     const { strengths, developmentAreas, comment } = this.report.feedback;
-    const blocks: Array<[string, string | null]> = [
-      [this.labels.strengths, strengths], [this.labels.developmentAreas, developmentAreas], [this.labels.nextSteps, comment],
+    const voice = this.report.feedbackVoice;
+    const blocks: Array<[string, string | null, { seconds: number } | null]> = [
+      [this.labels.strengths, strengths, voice?.strengths ?? null], [this.labels.developmentAreas, developmentAreas, voice?.developmentAreas ?? null], [this.labels.nextSteps, comment, voice?.nextSteps ?? null],
     ];
-    if (blocks.every(([, value]) => !value)) return;
+    if (blocks.every(([, value, recording]) => !value && !recording)) return;
     this.section(this.labels.feedback);
-    for (const [label, value] of blocks) {
-      if (!value) continue;
+    for (const [label, value, recording] of blocks) {
+      if (!value && !recording) continue;
       this.ensureSpace(24);
       this.text(label, PAGE.margin, CONTENT_WIDTH, { weight: 700, size: 9, color: MUTED });
       this.y += 13;
-      this.paragraph(value, { rich: true, size: 10 });
+      if (value) this.paragraph(value, { rich: true, size: 10 });
+      if (recording) this.paragraph(this.labels.voice(recording.seconds, false), { size: 9, color: MUTED });
     }
   }
 

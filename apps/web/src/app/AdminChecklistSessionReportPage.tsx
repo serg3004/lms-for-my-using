@@ -43,6 +43,9 @@ import { hasChecklistPhotoEvidence } from './checklistPhotoEvidence.js';
 import { ChecklistReviewPhotoEvidence } from './ChecklistReviewPhotoEvidence.js';
 import { DeleteResultDialog } from '../features/admin-checklist-sessions/ChecklistResultDeletion.js';
 import { ReportCriteria, ReportSummary } from '../features/admin-checklist-sessions/SessionReportView.js';
+import { DictationButton } from '../shared/DictationButton.js';
+import { appendDictation } from '../shared/dictation.js';
+import { useOrgDictation } from '../shared/useOrgDictation.js';
 
 type Tab = 'summary' | 'participants' | 'criteria' | 'files' | 'history';
 
@@ -72,6 +75,7 @@ export function RecalculateForm({ sessionId, onDone, t }: { sessionId: string; o
   const [error, setError] = useState<string | null>(null);
   const [formula, setFormula] = useState<ChecklistScoreFormula>('snapshot');
   const [result, setResult] = useState<RecalculateChecklistScoreResult | null>(null);
+  const dictation = useOrgDictation();
   const retry = useRef<{ reason: string; formula: ChecklistScoreFormula; key: string } | null>(null);
 
   async function submit(event: FormEvent) {
@@ -114,6 +118,7 @@ export function RecalculateForm({ sessionId, onDone, t }: { sessionId: string; o
         {t('admin.checklists.report.recalculateReason', 'Reason for recalculation')}
         <textarea className="admin-input" disabled={status === 'saving'} maxLength={500} onChange={(event) => setReason(event.target.value)} required rows={2} value={reason} />
       </label>
+      {dictation && <DictationButton disabled={status === 'saving'} id="recalculate-reason" onText={(text) => setReason((current) => appendDictation(current, text, 500))} />}
       {error && <p role="alert" style={{ color: 'var(--color-danger)', margin: 0 }}>{error}</p>}
       <button className="admin-btn admin-btn--secondary" disabled={status === 'saving' || reason.trim().length === 0} type="submit">
         {status === 'saving' ? t('admin.checklists.report.recalculating', 'Recalculating...') : t('admin.checklists.report.recalculate', 'Recalculate score')}
@@ -147,6 +152,7 @@ export function LocationOverrideForm({
   const [latitude, setLatitude] = useState('');
   const [longitude, setLongitude] = useState('');
   const [reason, setReason] = useState('');
+  const dictation = useOrgDictation();
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'error'>('idle');
   const [error, setError] = useState<string | null>(null);
 
@@ -211,8 +217,9 @@ export function LocationOverrideForm({
       )}
       <label style={{ display: 'grid', gap: 6, fontWeight: 600 }}>
         {t('admin.checklists.report.locationOverrideReason', 'Reason for recording this on their behalf')}
-        <textarea className="admin-input" onChange={(event) => setReason(event.target.value)} required rows={2} value={reason} />
+        <textarea className="admin-input" maxLength={500} onChange={(event) => setReason(event.target.value)} required rows={2} value={reason} />
       </label>
+      {dictation && <DictationButton id="location-override-reason" onText={(text) => setReason((current) => appendDictation(current, text, 500))} />}
       {error && <p role="alert" style={{ color: 'var(--color-danger)', margin: 0 }}>{error}</p>}
       <button className="admin-btn admin-btn--secondary" disabled={saveState === 'saving' || reason.trim().length === 0} type="submit">
         {saveState === 'saving' ? t('admin.checklists.report.locationOverrideSaving', 'Saving...') : t('admin.checklists.report.locationOverrideSubmit', 'Record location')}

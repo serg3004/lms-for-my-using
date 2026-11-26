@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 
-import type { ChecklistVoiceNote, ChecklistVoiceSettings } from '../shared/api/checklists.js';
+import type { ChecklistVoiceKind, ChecklistVoiceNote, ChecklistVoiceSettings } from '../shared/api/checklists.js';
 
 /** PR 510: what the taking screen needs from the server for recordings; the guest page supplies its own pass-key version. */
 export type ChecklistVoiceApi = {
   list: (instanceId: string) => Promise<ChecklistVoiceNote[]>;
-  upload: (instanceId: string, itemId: string, blob: Blob, durationMs: number, replaceId?: string) => Promise<ChecklistVoiceNote>;
+  upload: (instanceId: string, itemId: string | null, blob: Blob, durationMs: number, replaceId?: string, kind?: ChecklistVoiceKind) => Promise<ChecklistVoiceNote>;
   blob: (instanceId: string, noteId: string) => Promise<Blob>;
   remove: (instanceId: string, noteId: string) => Promise<unknown>;
   /** PR 511: what the organization and the checklist allow; without it the defaults below apply. */

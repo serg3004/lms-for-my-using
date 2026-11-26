@@ -145,3 +145,11 @@ export function useDictation({ language, onText }: { language: DictationLanguage
   const stop = useCallback(() => { recognition.current?.stop(); }, []);
   return { supported, listening, seconds, interim, problem, start, stop };
 }
+
+/** PR 512: adds dictated text to the end of a plain text field (a space between), within the field's length limit. */
+export function appendDictation(current: string, text: string, maxLength?: number): string {
+  const spoken = text.trim();
+  if (!spoken) return current;
+  const joined = current && !/\s$/.test(current) ? `${current} ${spoken}` : `${current}${spoken}`;
+  return maxLength !== undefined && joined.length > maxLength ? current : joined;
+}

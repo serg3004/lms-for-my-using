@@ -17,6 +17,7 @@ function setup(options: { status?: string; session?: { id: string } | null; gues
   const prisma = {
     checklistInstance: { findFirst: jest.fn(async () => (options.missing ? null : row)) },
     checklistScoreRevision: { findFirst: jest.fn(async () => null) },
+    checklistVoiceNote: { findMany: jest.fn(async () => []) },
   };
   const breakdown = jest.fn(async () => ({
     checklist: { title: '5S', scoringMode: options.scoringMode ?? 'sum_points', passThreshold: 70, scaleLevels: null, feedbackEnabled: true, showPointsToLearner: options.showPoints ?? false, itemGroups: [] },

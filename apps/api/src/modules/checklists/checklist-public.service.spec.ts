@@ -225,6 +225,7 @@ describe('ChecklistPublicService (PR 465)', () => {
     await expect(service.uploadVoiceNote(TOKEN, pass.instanceId, itemId, pass.passKey, undefined, { durationMs: '3000' })).rejects.toBeInstanceOf(BadRequestException);
     await expect(service.uploadVoiceNote(TOKEN, pass.instanceId, itemId, pass.passKey, { mimetype: 'audio/mpeg', buffer: Buffer.alloc(8), size: 8 } as never, { durationMs: '3000' })).rejects.toBeInstanceOf(BadRequestException);
     await expect(service.uploadVoiceNote(TOKEN, pass.instanceId, itemId, pass.passKey, webm, { durationMs: '999999' })).rejects.toThrow();
+    await expect(service.uploadVoiceNote(TOKEN, pass.instanceId, itemId, pass.passKey, webm, { durationMs: '3000', place: 'reviewer_comment' })).rejects.toBeInstanceOf(BadRequestException);
     expect(upload.uploadChecklistVoiceNote).not.toHaveBeenCalled();
 
     await expect(service.uploadVoiceNote(TOKEN, pass.instanceId, itemId, pass.passKey, webm, { durationMs: '3000' })).resolves.toEqual({ id: 'note' });

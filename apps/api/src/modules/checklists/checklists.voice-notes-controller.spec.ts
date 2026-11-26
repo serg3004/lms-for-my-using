@@ -66,9 +66,9 @@ describe('ChecklistsController voice recordings', () => {
       uploadService: { uploadChecklistVoiceNote: upload as never },
     });
     await expect(controller.uploadVoiceNote(instanceId, itemId, webmFile(), fields, makeRequest(learnerId, ['learner']))).resolves.toEqual({ id: 'note' });
-    expect(assertVoiceNoteRoom).toHaveBeenCalledWith(instanceId, itemId, organizationId, learnerId, false, undefined, 4200);
+    expect(assertVoiceNoteRoom).toHaveBeenCalledWith(instanceId, itemId, organizationId, learnerId, false, undefined, 4200, { place: 'answer', field: null });
     expect(upload).toHaveBeenCalledWith(expect.anything(), 'audio/webm', organizationId, instanceId);
-    expect(addVoiceNote).toHaveBeenCalledWith(instanceId, itemId, organizationId, learnerId, false, uploaded, 4200, undefined);
+    expect(addVoiceNote).toHaveBeenCalledWith(instanceId, itemId, organizationId, learnerId, false, uploaded, 4200, undefined, { place: 'answer', field: null });
   });
 
   it('does not store anything when there is no room or the check is closed', async () => {
@@ -95,7 +95,7 @@ describe('ChecklistsController voice recordings', () => {
     const assertReviewerCanAccess = jest.fn(async () => undefined);
     const controller = makeController({
       reviewAccess: { assertReviewerCanAccess: assertReviewerCanAccess as never },
-      checklistsService: { removeVoiceNote: jest.fn(async () => undefined) as never },
+      checklistsService: { removeVoiceNote: jest.fn(async () => undefined) as never, getVoiceNotePlace: jest.fn(async () => 'answer') as never },
     });
     await expect(controller.removeVoiceNote(instanceId, noteId, makeRequest(learnerId, ['mentor']))).rejects.toThrow(NotFoundException);
     await controller.removeVoiceNote(instanceId, noteId, makeRequest(learnerId, ['manager']));
@@ -118,5 +118,33 @@ describe('ChecklistsController voice recordings', () => {
   it('keeps the check closed to another employee (the service refuses)', async () => {
     const controller = makeController({ checklistsService: { getVoiceNoteFile: jest.fn(async () => { throw new ForbiddenException('You can only view your own checklist assignment'); }) as never } });
     await expect(controller.getVoiceNoteFile(instanceId, noteId, undefined, makeRequest('77777777-7777-7777-7777-777777777777', ['learner']), {} as never)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('lets a reviewer with access record the comment on an answer and refuses a role without review rights', async () => {
+    const assertReviewerCanAccess = jest.fn(async () => undefined);
+    const assertVoiceNoteRoom = jest.fn(async () => undefined);
+    const controller = makeController({
+      reviewAccess: { assertReviewerCanAccess: assertReviewerCanAccess as never },
+      checklistsService: { assertVoiceNoteRoom: assertVoiceNoteRoom as never, addVoiceNote: jest.fn(async () => ({ id: 'n' })) as never },
+      uploadService: { uploadChecklistVoiceNote: jest.fn(async () => ({ objectKey: 'k', fileName: 'v', mimeType: 'audio/webm', sizeBytes: 7 })) as never },
+    });
+    const reviewerFields = { durationMs: '4200', place: 'reviewer_comment' };
+    await expect(controller.uploadVoiceNote(instanceId, itemId, webmFile(), reviewerFields, makeRequest(learnerId, ['learner']))).rejects.toThrow(NotFoundException);
+    await controller.uploadVoiceNote(instanceId, itemId, webmFile(), reviewerFields, makeRequest(learnerId, ['instructor']));
+    expect(assertReviewerCanAccess).toHaveBeenCalledTimes(1);
+    expect(assertVoiceNoteRoom).toHaveBeenCalledWith(instanceId, itemId, organizationId, learnerId, true, undefined, 4200, { place: 'reviewer_comment', field: null });
+  });
+
+  it('stores the session summary recording on its own route and keeps the criterion route away from it', async () => {
+    const addVoiceNote = jest.fn(async () => ({ id: 'n' }));
+    const controller = makeController({
+      checklistsService: { assertVoiceNoteRoom: jest.fn(async () => undefined) as never, addVoiceNote: addVoiceNote as never },
+      uploadService: { uploadChecklistVoiceNote: jest.fn(async () => ({ objectKey: 'k', fileName: 'v', mimeType: 'audio/webm', sizeBytes: 7 })) as never },
+    });
+    const request = makeRequest(learnerId, ['instructor']);
+    await controller.uploadSummaryVoiceNote(instanceId, webmFile(), { durationMs: '4200', place: 'summary', field: 'strengths' }, request);
+    expect(addVoiceNote).toHaveBeenCalledWith(instanceId, null, organizationId, learnerId, expect.any(Boolean), expect.anything(), 4200, undefined, { place: 'summary', field: 'strengths' });
+    await expect(controller.uploadSummaryVoiceNote(instanceId, webmFile(), { durationMs: '4200' }, request)).rejects.toThrow(BadRequestException);
+    await expect(controller.uploadVoiceNote(instanceId, itemId, webmFile(), { durationMs: '4200', place: 'summary', field: 'strengths' }, request)).rejects.toThrow(BadRequestException);
   });
 });

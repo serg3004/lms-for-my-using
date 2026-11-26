@@ -8,6 +8,9 @@ import { CHECKLIST_SESSION_STATUS_BADGE_VARIANT } from '../shared/checklistStatu
 import { formatDate } from '../shared/formatDate.js';
 import { Badge, Button, Dialog, InlineFeedback, PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
+import { DictationButton } from '../shared/DictationButton.js';
+import { appendDictation } from '../shared/dictation.js';
+import { useOrgDictation } from '../shared/useOrgDictation.js';
 
 const COLORS = {
   surface: 'var(--color-surface)',
@@ -159,6 +162,7 @@ function SessionCard({ session, onOpen, onMarkUnavailable, t }: { session: Check
 
 function MarkUnavailableDialog({ session, onClose, onMarked, t }: { session: ChecklistSessionSummary | null; onClose: () => void; onMarked: () => void; t: TFunction }) {
   const [reason, setReason] = useState('');
+  const dictation = useOrgDictation();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const titleId = useId();
@@ -196,6 +200,7 @@ function MarkUnavailableDialog({ session, onClose, onMarked, t }: { session: Che
         {t('checklistSessions.conduct.markUnavailableReason', 'Reason')}
         <textarea onChange={(e) => setReason(e.target.value)} rows={3} style={{ width: '100%' }} value={reason} />
       </label>
+      {dictation && <DictationButton id="mark-unavailable-reason" onText={(text) => setReason((current) => appendDictation(current, text))} />}
       <div className="ds-dialog__actions">
         <button className="ds-button ds-button--secondary ds-button--md" disabled={busy} onClick={onClose} type="button">
           {t('checklistSessions.conduct.markUnavailableCancel', 'Cancel')}

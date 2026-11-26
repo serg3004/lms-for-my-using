@@ -1,7 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { apiRequest } from '../shared/apiClient.js';
+import { DictationButton } from '../shared/DictationButton.js';
+import { appendDictation } from '../shared/dictation.js';
+import { useOrgDictation } from '../shared/useOrgDictation.js';
 
 type ReviewAnswer = {
   id: string;
@@ -22,6 +25,8 @@ export function AssessmentReviewQueuePage() {
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const dictation = useOrgDictation();
+  const commentRef = useRef<HTMLTextAreaElement>(null);
   const answerId = params.get('answerId');
   const query = params.toString();
   const filters = new URLSearchParams(params);
@@ -103,7 +108,8 @@ export function AssessmentReviewQueuePage() {
         <p style={{ whiteSpace: 'pre-wrap' }}>{answer.response}</p>
         {answer.canReview && <form onSubmit={(event) => void review(event, answer)}>
           <p><label>{t('assessmentReview.score', { max: answer.maxScore })} <input name="score" type="number" min={0} max={answer.maxScore} step={1} required /></label></p>
-          <p><label>{t('assessmentReview.comment')} <textarea name="comment" maxLength={4000} rows={4} style={{ maxWidth: '100%' }} /></label></p>
+          <p><label>{t('assessmentReview.comment')} <textarea name="comment" maxLength={4000} ref={commentRef} rows={4} style={{ maxWidth: '100%' }} /></label></p>
+          {dictation && <p><DictationButton id="assessment-review-comment" onText={(text) => { if (commentRef.current) commentRef.current.value = appendDictation(commentRef.current.value, text, 4000); }} /></p>}
           <button className="learner-btn learner-btn--primary" type="submit" disabled={saving}>{t('assessmentReview.save')}</button>
         </form>}
       </article>;

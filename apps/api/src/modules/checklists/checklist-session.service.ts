@@ -751,9 +751,12 @@ export class ChecklistSessionService {
       memberships: Array<{ department: { id: string; name: string } }>,
     ): ReportPerson => ({ ...person, department: memberships[0]?.department ?? null });
 
-    const [breakdown, captures] = await Promise.all([
+    const [breakdown, captures, voiceNotes] = await Promise.all([
       this.checklistsService.getScoreBreakdown(masked.instanceId, organizationId, formula),
       masked.result.visible && options.includeLocation !== false ? this.listLocationCaptures(sessionId, organizationId, scope, actor.id, actor.isAdmin) : Promise.resolve([]),
+      masked.result.visible
+        ? this.prisma.checklistVoiceNote.findMany({ where: { instanceId: masked.instanceId, organizationId }, select: { itemId: true, place: true, field: true, durationMs: true } })
+        : Promise.resolve([]),
     ]);
 
     return buildSessionReport({
@@ -779,6 +782,7 @@ export class ChecklistSessionService {
       visible: masked.result.visible,
       pointsVisible: !viewer.isLearnerOnly || masked.observerId === actor.id || breakdown.checklist.showPointsToLearner === true,
       feedbackConfig: masked.feedback,
+      voiceNotes,
       locationCaptures: captures as Array<{ capturePoint: string; status: string; capturedAt: Date; latitude?: number | null; longitude?: number | null; accuracyMeters?: number | null }>,
     });
   }

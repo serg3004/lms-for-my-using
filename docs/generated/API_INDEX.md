@@ -134,6 +134,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/checklist-instances/{instanceId}/transfer` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-instances/{instanceId}/transfer-candidates` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-instances/{instanceId}/voice-notes` | `Checklists` | `bearer` |
+| `POST` | `/api/v1/checklist-instances/{instanceId}/voice-notes` | `Checklists` | `bearer` |
 | `DELETE` | `/api/v1/checklist-instances/{instanceId}/voice-notes/{noteId}` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-instances/{instanceId}/voice-notes/{noteId}/file` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-instances/{instanceId}/voice-settings` | `Checklists` | `bearer` |

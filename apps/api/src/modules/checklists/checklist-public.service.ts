@@ -236,6 +236,7 @@ export class ChecklistPublicService {
     if (!file) throw new BadRequestException('No file provided');
     const mimeType = validateVoiceNoteFile(file);
     const fields = voiceNoteFieldsSchema.parse(body ?? {});
+    if (fields.place !== 'answer') throw new BadRequestException('A guest can only record the comment of an answer');
     await this.checklists.assertVoiceNoteRoom(instanceId, itemId, sheet.organizationId, guestUserId, false, fields.replaceId, fields.durationMs);
     const uploaded = await this.uploadService.uploadChecklistVoiceNote(file, mimeType, sheet.organizationId, instanceId);
     try {

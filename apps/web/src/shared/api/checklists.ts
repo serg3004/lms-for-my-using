@@ -500,18 +500,22 @@ export function downloadChecklistInstanceReportPdf(instanceId: string) {
 }
 
 /** PR 510: voice recordings of a comment. Never carries the storage key; the sound itself comes only through the API. */
-export type ChecklistVoiceNote = { id: string; itemId: string | null; place: 'answer' | 'reviewer_comment' | 'summary'; durationMs: number; sizeBytes: number; createdBy: string; createdAt: string };
+/** PR 512: where a recording belongs; `field` names the closing text of a session summary. */
+export type ChecklistVoiceKind = { place: 'answer' | 'reviewer_comment' | 'summary'; field?: 'strengths' | 'developmentAreas' | 'nextSteps' };
+export type ChecklistVoiceNote = { id: string; itemId: string | null; place: 'answer' | 'reviewer_comment' | 'summary'; field?: string | null; durationMs: number; sizeBytes: number; createdBy: string; createdAt: string };
 const voiceBase = (instanceId: string) => `/checklist-instances/${encodeURIComponent(instanceId)}/voice-notes`;
 /** PR 511: dictation and voice as one check should offer them (organization policy combined with the checklist's mode). */
 export type ChecklistVoiceSettings = { dictation: boolean; voiceNotes: boolean; maxSeconds: number; perComment: number };
 export const getChecklistVoiceSettings = (instanceId: string) => apiRequest<ChecklistVoiceSettings>(`/checklist-instances/${encodeURIComponent(instanceId)}/voice-settings`);
 export const listChecklistVoiceNotes = (instanceId: string) => apiRequest<ChecklistVoiceNote[]>(voiceBase(instanceId));
-export function uploadChecklistVoiceNote(instanceId: string, itemId: string, blob: Blob, durationMs: number, replaceId?: string) {
+export function uploadChecklistVoiceNote(instanceId: string, itemId: string | null, blob: Blob, durationMs: number, replaceId?: string, kind?: ChecklistVoiceKind) {
   const form = new FormData();
   form.append('durationMs', String(Math.round(durationMs)));
   if (replaceId) form.append('replaceId', replaceId);
+  if (kind) { form.append('place', kind.place); if (kind.field) form.append('field', kind.field); }
   form.append('file', blob, 'voice');
-  return apiRequest<ChecklistVoiceNote>(`/checklist-instances/${encodeURIComponent(instanceId)}/items/${encodeURIComponent(itemId)}/voice-notes`, { method: 'POST', body: form });
+  const base = `/checklist-instances/${encodeURIComponent(instanceId)}`;
+  return apiRequest<ChecklistVoiceNote>(itemId ? `${base}/items/${encodeURIComponent(itemId)}/voice-notes` : `${base}/voice-notes`, { method: 'POST', body: form });
 }
 export async function getChecklistVoiceNoteBlob(instanceId: string, noteId: string) {
   return (await apiDownloadRequest(`${voiceBase(instanceId)}/${encodeURIComponent(noteId)}/file`)).blob;

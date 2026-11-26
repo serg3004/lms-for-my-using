@@ -1832,6 +1832,8 @@
         "notScoredAllSkipped": "Бағаланбайды (барлығы өткізілді)",
         "feedbackTitle": "Кері байланыс",
         "feedbackComment": "Пікір",
+        "voiceReviewer": "Тексерушінің жазбасы",
+        "feedbackVoiceTitle": "Кері байланыстың дыбыс жазбалары",
         "groupsTitle": "Өлшемшелер топтары бойынша нәтижелер",
         "groupNotScored": "Бағаланбаған",
         "groupScore": "{{percent}}% — {{max}} баллдан {{earned}}",

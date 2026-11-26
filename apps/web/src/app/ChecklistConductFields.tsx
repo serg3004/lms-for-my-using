@@ -7,6 +7,9 @@ import type { TFunction } from 'i18next';
 import type { ContextField } from '../shared/api/types.js';
 import { RichFillField } from './ChecklistItemNote.js';
 import { RichTextField } from '../shared/RichTextField.js';
+import type { ChecklistVoiceNote, ChecklistVoiceSettings } from '../shared/api/checklists.js';
+import { ChecklistVoiceNotes } from './ChecklistVoiceNotes.js';
+import type { ChecklistVoiceApi } from './checklistVoice.js';
 
 export type FeedbackDraft = { answers?: FeedbackAnswers; strengths: string; developmentAreas: string; nextSteps: string };
 
@@ -78,14 +81,27 @@ export function CriterionHeading({ text, number, required, t }: { number?: strin
   </>;
 }
 
-export function FeedbackFields({ draft, disabled = false, onDraftChange, t, config }: {
+/** PR 512: dictation for the closing texts and, where the session is conducted, voice recordings under each of the three. */
+export type FeedbackVoice = { api: ChecklistVoiceApi; instanceId: string; notes: ChecklistVoiceNote[]; settings: ChecklistVoiceSettings; editable: boolean; onChanged: () => void };
+type SummaryField = 'strengths' | 'developmentAreas' | 'nextSteps';
+
+export function FeedbackFields({ draft, disabled = false, onDraftChange, t, config, dictation = false, voice }: {
   config?: FeedbackConfig | null;
   draft: FeedbackDraft; disabled?: boolean; onDraftChange: (draft: FeedbackDraft) => void; t: TFunction;
+  dictation?: boolean; voice?: FeedbackVoice;
 }) {
-  if (config && isCustomFeedback(config.layout)) return <ConfiguredFeedbackFields config={config} answers={draft.answers ?? {}} disabled={disabled} onChange={(answers) => onDraftChange({ ...draft, answers })} t={t} />;
+  const recordings = (field: SummaryField) => voice && (
+    <ChecklistVoiceNotes api={voice.api} editable={voice.editable && !disabled} instanceId={voice.instanceId} itemId={null} kind={{ place: 'summary', field }} notes={voice.notes.filter((note) => note.place === 'summary' && note.field === field)} onChanged={voice.onChanged} settings={voice.settings} t={t} />
+  );
+  if (config && isCustomFeedback(config.layout)) {
+    return <ConfiguredFeedbackFields config={config} answers={draft.answers ?? {}} disabled={disabled} dictation={dictation} extra={(field) => (field.builtin ? recordings(field.builtin as SummaryField) : null)} onChange={(answers) => onDraftChange({ ...draft, answers })} t={t} />;
+  }
   return <>
-        <RichFillField id="conduct-strengths" label={t('checklistSessions.conduct.strengths', 'Strengths')} value={draft.strengths} disabled={disabled} maxLength={4000} onChange={(value) => onDraftChange({ ...draft, strengths: value })} />
-        <RichFillField id="conduct-developmentAreas" label={t('checklistSessions.conduct.developmentAreas', 'Development areas')} value={draft.developmentAreas} disabled={disabled} maxLength={4000} onChange={(value) => onDraftChange({ ...draft, developmentAreas: value })} />
-        <RichFillField id="conduct-nextSteps" label={t('checklistSessions.conduct.nextSteps', 'Next steps')} value={draft.nextSteps} disabled={disabled} maxLength={4000} onChange={(value) => onDraftChange({ ...draft, nextSteps: value })} />
+        <RichFillField id="conduct-strengths" label={t('checklistSessions.conduct.strengths', 'Strengths')} value={draft.strengths} disabled={disabled} maxLength={4000} dictation={dictation} onChange={(value) => onDraftChange({ ...draft, strengths: value })} />
+        {recordings('strengths')}
+        <RichFillField id="conduct-developmentAreas" label={t('checklistSessions.conduct.developmentAreas', 'Development areas')} value={draft.developmentAreas} disabled={disabled} maxLength={4000} dictation={dictation} onChange={(value) => onDraftChange({ ...draft, developmentAreas: value })} />
+        {recordings('developmentAreas')}
+        <RichFillField id="conduct-nextSteps" label={t('checklistSessions.conduct.nextSteps', 'Next steps')} value={draft.nextSteps} disabled={disabled} maxLength={4000} dictation={dictation} onChange={(value) => onDraftChange({ ...draft, nextSteps: value })} />
+        {recordings('nextSteps')}
   </>;
 }

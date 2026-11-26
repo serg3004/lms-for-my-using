@@ -15,7 +15,7 @@ import { ChecklistSessionService } from './checklist-session.service.js';
 import type { ChecklistSessionAction, ChecklistSessionViewerContext } from './checklist-session.service.js';
 import { ChecklistWorkplaceSettingsService } from './checklist-workplace-settings.service.js';
 import { listTemplates } from './checklist-templates.js';
-import { voiceNoteFieldsSchema } from './checklist-voice-notes.js';
+import { voiceNoteFieldsSchema, type VoiceKind } from './checklist-voice-notes.js';
 import { reorderSheetPhotosSchema, sheetPhotoCaptionSchema, updateSheetPhotoSchema } from './checklist-sheet-photos.js';
 import { ChecklistsService } from './checklists.service.js';
 import {
@@ -1073,6 +1073,16 @@ export class ChecklistsController {
     return this.checklistsService.getVoiceSettings(instanceId, user.organizationId, user.id, await this.voiceActor(user, instanceId, false));
   }
 
+  /** PR 512: a reviewer's voice comment follows the review: the reviewer roles, access to this check, and the check waits for review. */
+  private async reviewerVoiceActor(user: NonNullable<AuthenticatedRequest['currentUser']>, instanceId: string) {
+    if (!rolePolicies.checklistReviewWrite.some((role) => user.roles.includes(role))) throw new NotFoundException('Checklist assignment not found');
+    await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
+    return true;
+  }
+  private voiceWriteActor(user: NonNullable<AuthenticatedRequest['currentUser']>, instanceId: string, place: VoiceKind['place']) {
+    return place === 'reviewer_comment' ? this.reviewerVoiceActor(user, instanceId) : this.voiceActor(user, instanceId, true);
+  }
+
   @Get('checklist-instances/:instanceId/voice-notes')
   @Roles(...rolePolicies.checklistInstancesRead)
   async listVoiceNotes(@Param('instanceId', ParseUUIDPipe) instanceId: string, @Req() request: AuthenticatedRequest) {
@@ -1080,7 +1090,7 @@ export class ChecklistsController {
     return this.checklistsService.listVoiceNotes(instanceId, user.organizationId, user.id, await this.voiceActor(user, instanceId, false));
   }
   @Post('checklist-instances/:instanceId/items/:itemId/voice-notes')
-  @Roles(...rolePolicies.checklistItemResultsWrite, ...rolePolicies.checklistSessionsRunOwn)
+  @Roles(...rolePolicies.checklistItemResultsWrite, ...rolePolicies.checklistSessionsRunOwn, ...rolePolicies.checklistReviewWrite)
   @UseInterceptors(
     FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_BUFFERED_UPLOAD_SIZE_BYTES } }),
   )
@@ -1091,15 +1101,44 @@ export class ChecklistsController {
     @Body() body: unknown,
     @Req() request: AuthenticatedRequest,
   ) {
+    const fields = voiceNoteFieldsSchema.parse(body ?? {});
+    if (fields.place === 'summary') throw new BadRequestException('A summary recording has no criterion');
+    return this.storeVoiceNote(instanceId, itemId, file, fields, request);
+  }
+
+  /** PR 512: the session's closing texts (strengths, development areas, next steps) have no criterion. */
+  @Post('checklist-instances/:instanceId/voice-notes')
+  @Roles(...rolePolicies.checklistItemResultsWrite, ...rolePolicies.checklistSessionsRunOwn)
+  @UseInterceptors(
+    FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_BUFFERED_UPLOAD_SIZE_BYTES } }),
+  )
+  async uploadSummaryVoiceNote(
+    @Param('instanceId', ParseUUIDPipe) instanceId: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const fields = voiceNoteFieldsSchema.parse(body ?? {});
+    if (fields.place !== 'summary') throw new BadRequestException('Use the criterion route for this recording');
+    return this.storeVoiceNote(instanceId, null, file, fields, request);
+  }
+
+  private async storeVoiceNote(
+    instanceId: string,
+    itemId: string | null,
+    file: Express.Multer.File | undefined,
+    fields: ReturnType<typeof voiceNoteFieldsSchema.parse>,
+    request: AuthenticatedRequest,
+  ) {
     if (!file) throw new BadRequestException('No file provided');
     const mimeType = validateVoiceNoteFile(file);
-    const fields = voiceNoteFieldsSchema.parse(body ?? {});
     const user = request.currentUser!;
-    const isPrivileged = await this.voiceActor(user, instanceId, true);
-    await this.checklistsService.assertVoiceNoteRoom(instanceId, itemId, user.organizationId, user.id, isPrivileged, fields.replaceId, fields.durationMs);
+    const kind: VoiceKind = { place: fields.place, field: fields.field ?? null };
+    const isPrivileged = await this.voiceWriteActor(user, instanceId, fields.place);
+    await this.checklistsService.assertVoiceNoteRoom(instanceId, itemId, user.organizationId, user.id, isPrivileged, fields.replaceId, fields.durationMs, kind);
     const uploaded = await this.uploadService.uploadChecklistVoiceNote(file, mimeType, user.organizationId, instanceId);
     try {
-      return await this.checklistsService.addVoiceNote(instanceId, itemId, user.organizationId, user.id, isPrivileged, uploaded, fields.durationMs, fields.replaceId);
+      return await this.checklistsService.addVoiceNote(instanceId, itemId, user.organizationId, user.id, isPrivileged, uploaded, fields.durationMs, fields.replaceId, kind);
     } catch (error) {
       await this.uploadService.deleteObject(uploaded.objectKey).catch(() => undefined);
       throw error;
@@ -1118,10 +1157,11 @@ export class ChecklistsController {
     sendPrivateImage(ifNoneMatch, response, await this.checklistsService.getVoiceNoteFile(instanceId, noteId, user.organizationId, user.id, await this.voiceActor(user, instanceId, false)));
   }
   @Delete('checklist-instances/:instanceId/voice-notes/:noteId')
-  @Roles(...rolePolicies.checklistItemResultsWrite, ...rolePolicies.checklistSessionsRunOwn)
+  @Roles(...rolePolicies.checklistItemResultsWrite, ...rolePolicies.checklistSessionsRunOwn, ...rolePolicies.checklistReviewWrite)
   async removeVoiceNote(@Param('instanceId', ParseUUIDPipe) instanceId: string, @Param('noteId', ParseUUIDPipe) noteId: string, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
-    await this.checklistsService.removeVoiceNote(instanceId, noteId, user.organizationId, user.id, await this.voiceActor(user, instanceId, true));
+    const place = await this.checklistsService.getVoiceNotePlace(instanceId, noteId, user.organizationId);
+    await this.checklistsService.removeVoiceNote(instanceId, noteId, user.organizationId, user.id, await this.voiceWriteActor(user, instanceId, place));
   }
   @Post('checklist-instances/:instanceId/items/:itemId/review')
   @Roles(...rolePolicies.checklistReviewWrite)

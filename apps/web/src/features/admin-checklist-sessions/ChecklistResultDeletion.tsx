@@ -9,6 +9,9 @@ import { formatDate } from '../../shared/formatDate.js';
 import { useAsyncData } from '../../shared/useAsyncData.js';
 import { Button, Dialog } from '../../shared/ui.js';
 import { formatParticipantName } from './domain.js';
+import { DictationButton } from '../../shared/DictationButton.js';
+import { appendDictation } from '../../shared/dictation.js';
+import { useOrgDictation } from '../../shared/useOrgDictation.js';
 
 /** PR 367: an administrator deletes a finished result with a reason. The server keeps it restorable for 30 days. */
 export function DeleteResultDialog({ open, instanceId, onClose, onDeleted, t }: {
@@ -28,6 +31,7 @@ function DeleteResultForm({ instanceId, onClose, onDeleted, closeRef, t }: {
   instanceId: string; onClose: () => void; onDeleted: () => void; closeRef: React.RefObject<HTMLButtonElement | null>; t: TFunction;
 }) {
   const [reason, setReason] = useState('');
+  const dictation = useOrgDictation();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const trimmed = reason.trim();
@@ -53,6 +57,7 @@ function DeleteResultForm({ instanceId, onClose, onDeleted, closeRef, t }: {
         {t('admin.checklists.resultDelete.reason', 'Reason')}
         <textarea className="admin-input" disabled={busy} maxLength={500} onChange={(event) => setReason(event.target.value)} required rows={3} value={reason} />
       </label>
+      {dictation && <DictationButton disabled={busy} id="result-delete-reason" onText={(text) => setReason((current) => appendDictation(current, text, 500))} />}
       {error && <p className="learner-quiz__submit-error" role="alert">{error}</p>}
       <div className="ds-dialog__actions">
         <button className="ds-button ds-button--secondary ds-button--md" disabled={busy} onClick={onClose} ref={closeRef} type="button">{t('admin.checklists.close', 'Close')}</button>

@@ -186,6 +186,8 @@ Existing instance detail and photo reads admit the assigned observer. Item answe
 check the linked session's observer in the service for every role; mentor gains these operations
 only on assigned observed instances. Reviewer and standalone-assignment rules remain separate.
 
+PR 512: `POST .../items/:itemId/voice-notes` and `DELETE .../voice-notes/:noteId` also accept `checklistReviewWrite` roles, but only for the `reviewer_comment` place and only with reviewer access to the check (`ChecklistReviewAccessService`); the closing-text route `POST /checklist-instances/:instanceId/voice-notes` uses the roles of item answer writes plus the own-session roles. Reading recordings is unchanged (`checklistInstancesRead`), so the report player hears exactly what the report shows.
+
 PR 509: voice recordings of a comment (`POST` and `DELETE .../voice-notes`) use the roles of item answer writes (`checklistItemResultsWrite` plus the own-session roles) and the same object rule as the answer photo; `GET .../voice-notes` and `.../file` use `checklistInstancesRead`. Only the author removes a recording; another employee's check is 403, another organization's 404. Guests use the pass key.
 
 Dictation and voice settings (PR 511): `GET`/`PATCH /organizations/:id/voice` use `rolePolicies.voicePolicy` (`admin` only, own organization). `GET /checklists/input-policy` uses `checklistsRead` (the builder reads what the organization allows). `GET /checklist-instances/:instanceId/voice-settings` uses `checklistInstancesRead` with the object rule of the recordings list; guests use `GET /public/checklists/:token/passes/:instanceId/voice-settings` with the pass key. `dictationMode` and `voiceNotesMode` are written with the checklist's own create and update rights.
