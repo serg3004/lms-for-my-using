@@ -1,3 +1,4 @@
+import { assessmentMaterialSchema } from '@lms/shared/longread-media';
 import { createHash, randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
@@ -9,12 +10,12 @@ import { createAssessmentQuestionSchema } from './assessment-questions.schemas.j
 
 export const bankContentSchema = createAssessmentQuestionSchema.omit({ organizationId: true, order: true }).extend({
   text: z.string().max(4000).nullable().optional(),
-  imageUrl: z.string().max(2000).nullable().optional(),
+  imageUrl: z.string().max(2000).nullable().optional(), material: assessmentMaterialSchema.nullable().optional(),
   options: z.array(z.object({
     text: z.string().trim().min(1).max(2000).nullable(),
-    imageUrl: z.string().trim().min(1).max(2000).nullable(),
+    imageUrl: z.string().trim().min(1).max(2000).nullable(), material: assessmentMaterialSchema.nullable().optional(),
     isCorrect: z.boolean(),
-  }).refine((option) => option.text || option.imageUrl)).max(100),
+  }).refine((option) => option.text || option.imageUrl || option.material)).max(100),
   correctFeedback: z.string().max(2000).nullable().optional(),
   incorrectFeedback: z.string().max(2000).nullable().optional(),
 });
@@ -32,7 +33,7 @@ function validateContent(input: unknown) {
 
 function placementData(content: BankContent) {
   return {
-    title: content.title, type: content.type, text: content.text ?? null, imageUrl: content.imageUrl ?? null,
+    title: content.title, type: content.type, text: content.text ?? null, imageUrl: content.imageUrl ?? null, material: content.material ?? null,
     scoringMode: content.scoringMode, definition: content.definition ?? Prisma.DbNull,
     correctFeedback: content.correctFeedback ?? null, incorrectFeedback: content.incorrectFeedback ?? null,
   };
@@ -142,7 +143,7 @@ export class QuestionBankService {
         where: { organizationId, bankEntryId: id, deletedAt: null, assessment: { deletedAt: null } },
         select: { id: true, assessmentId: true },
       });
-      const updatedOptions = new Map<string, { id: string; text: string | null; imageUrl: string | null; order: number; isCorrect: boolean }[]>();
+      const updatedOptions = new Map<string, { id: string; text: string | null; imageUrl: string | null; material: string | null; order: number; isCorrect: boolean }[]>();
       for (const placement of placements) {
         const updated = await tx.assessmentQuestion.update({
           where: { id: placement.id },
@@ -155,7 +156,7 @@ export class QuestionBankService {
           },
           select: { options: {
             where: { deletedAt: null }, orderBy: { order: 'asc' },
-            select: { id: true, text: true, imageUrl: true, order: true, isCorrect: true },
+            select: { id: true, text: true, imageUrl: true, material: true, order: true, isCorrect: true },
           } },
         });
         updatedOptions.set(placement.id, updated.options);
@@ -163,7 +164,7 @@ export class QuestionBankService {
       await refreshPublishedAssessmentExercises(tx, organizationId, usage.longreads.map(({ id }) => id), (old) => {
         const options = updatedOptions.get(old.id);
         return options ? {
-          ...old, title: content.title, type: content.type, text: content.text ?? null, imageUrl: content.imageUrl ?? null,
+          ...old, title: content.title, type: content.type, text: content.text ?? null, imageUrl: content.imageUrl ?? null, material: content.material ?? null,
           definition: content.definition ?? null, scoringMode: content.scoringMode, options,
         } : old;
       }, actorId);
@@ -192,10 +193,10 @@ export class QuestionBankService {
       const draft = z.looseObject({ questions: z.array(z.unknown()) }).safeParse(assessment.editorDraft);
       const data: Prisma.AssessmentUncheckedUpdateInput = { updatedAt: new Date() };
       if (draft.success) {
-        const { id: questionId, title, type, text, imageUrl, points, scoringMode, correctFeedback, incorrectFeedback, definition, options } = linked;
+        const { id: questionId, title, type, text, imageUrl, material, points, scoringMode, correctFeedback, incorrectFeedback, definition, options } = linked;
         data.editorDraft = {
           ...draft.data,
-          questions: [...draft.data.questions, { id: questionId, title, type, text, imageUrl, points, scoringMode,
+          questions: [...draft.data.questions, { id: questionId, title, type, text, imageUrl, material, points, scoringMode,
             correctFeedback, incorrectFeedback, definition, options }],
         } as Prisma.InputJsonValue;
       }
@@ -275,7 +276,7 @@ export class QuestionBankService {
         points: content.points, order: (order._max.order ?? -1) + 1,
         options: { create: placementOptions(content, organizationId) },
       },
-      include: { options: { orderBy: { order: 'asc' }, select: { id: true, text: true, imageUrl: true, isCorrect: true } } },
+      include: { options: { orderBy: { order: 'asc' }, select: { id: true, text: true, imageUrl: true, material: true, isCorrect: true } } },
     });
   }
 

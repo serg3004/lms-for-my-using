@@ -1,3 +1,4 @@
+import { AssessmentMaterial } from '../features/assessment-materials/AssessmentMaterial.js';
 import { useTranslation } from 'react-i18next';
 import { RichText, plainText } from '../shared/RichText.js';
 
@@ -111,6 +112,7 @@ export function LearnerAssessmentDetailPage({ assessmentId }: { assessmentId: st
           <p style={{ margin: '10px 0 0', color: COLORS.muted, lineHeight: 1.6, maxWidth: '760px' }}>
             {plainText(assessment.description ?? '') ? <RichText value={assessment.description ?? ''} /> : t('assessments.detailSubtitle', { course: courseTitle })}
           </p>
+          <AssessmentMaterial value={assessment.material} />
         </div>
         <div style={{ display: 'inline-flex', padding: '9px 12px', borderRadius: '999px', background: COLORS.warningSoft, color: COLORS.warning, fontWeight: 800, fontSize: '13px', whiteSpace: 'nowrap' }}>
           {unavailable ? t(unavailable) : isAvailable ? t('assessments.statusAvailable') : assessment.status}

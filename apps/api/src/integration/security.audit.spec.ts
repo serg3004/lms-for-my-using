@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import {
   CanActivate,
   Controller,
@@ -184,6 +185,15 @@ describe('Security audit', () => {
   });
 
   describe('Security headers', () => {
+    it('limits assessment iframe origins in the nginx CSP', () => {
+      const config = readFileSync(new URL('../../../../infra/nginx/security-headers.conf', import.meta.url), 'utf8');
+      const frameSources = config.match(/\bframe-src ([^;]+);/)?.[1]?.split(/\s+/);
+      expect(frameSources).toEqual([
+        'https://www.youtube-nocookie.com', 'https://player.vimeo.com', 'https://drive.google.com',
+        'https://onedrive.live.com', 'https://*.sharepoint.com',
+      ]);
+    });
+
     it('sets X-Content-Type-Options: nosniff', async () => {
       const response = await makeRequest(`${getAppUrl(app)}/api/v1/health`);
 

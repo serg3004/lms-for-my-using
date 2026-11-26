@@ -1,3 +1,4 @@
+import { AssessmentMaterial } from '../features/assessment-materials/AssessmentMaterial.js';
 import { useTranslation } from 'react-i18next';
 import { RichText, plainText } from '../shared/RichText.js';
 
@@ -80,6 +81,8 @@ export function LearnerAssessmentReviewPage({ attemptId }: { attemptId: string }
                   <div className="learner-quiz__breakdown-icon">{answer.isCorrect ? '✓' : '✗'}</div>
                   <div className="learner-quiz__breakdown-body">
                     <p className="learner-quiz__breakdown-question">{answer.question.title}</p>
+                    <AssessmentMaterial value={answer.question.material} />
+                    {(answer.question.options ?? []).map((option) => <AssessmentMaterial key={option.id} value={option.material} />)}
                     <p className="learner-quiz__breakdown-answer">
                       <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultYourAnswer')}:</span>{' '}
                       {ownAnswerText(answer, t)}

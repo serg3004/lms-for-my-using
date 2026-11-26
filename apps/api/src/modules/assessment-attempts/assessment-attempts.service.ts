@@ -27,13 +27,13 @@ import { recordCompletedAssessment } from '../../common/assessment-recording.js'
 const bankSnapshotSchema = z.array(frozenAssessmentQuestionSchema.omit({ assessment: true }));
 
 function publicSample(snapshot: unknown, assessmentId: string, organizationId: string, userId: string, shuffle: boolean) {
-  return bankSnapshotSchema.parse(snapshot).map(({ id, type, title, text, imageUrl, order, points, scoringMode, definition, options }) => {
+  return bankSnapshotSchema.parse(snapshot).map(({ id, type, title, text, imageUrl, material, order, points, scoringMode, definition, options }) => {
     const key = `${assessmentId}:${userId}:${id}`;
     const publicOptions = options.map((option) => ({
-      id: option.id, text: option.text, imageUrl: option.imageUrl, order: option.order, questionId: id,
+      id: option.id, text: option.text, imageUrl: option.imageUrl, material: option.material, order: option.order, questionId: id,
     }));
     return {
-      id, type, title, text, imageUrl, order, points, scoringMode, assessmentId, organizationId,
+      id, type, title, text, imageUrl, material, order, points, scoringMode, assessmentId, organizationId,
       options: definition ? [] : shuffle ? seededShuffle(publicOptions, key) : publicOptions,
       ...(definition ? { definition: publicQuestionDefinition(definition, key) } : {}),
     };
@@ -701,7 +701,7 @@ export class AssessmentAttemptsService {
         bankSampleCandidate: true,
         title: true,
         text: true,
-        imageUrl: true,
+        imageUrl: true, material: true,
         order: true,
         type: true,
         points: true,
@@ -717,7 +717,7 @@ export class AssessmentAttemptsService {
             order: true,
             isCorrect: true,
             text: true,
-            imageUrl: true,
+            imageUrl: true, material: true,
           },
         },
       },

@@ -22,10 +22,10 @@ function write<T>(path: string, body: unknown, method = 'POST') {
 }
 
 function questionContent(question: EditorQuestion): Content {
-  const { title, type, text, imageUrl, points, definition, scoringMode, options, correctFeedback, incorrectFeedback } = question;
+  const { title, type, text, imageUrl, material, points, definition, scoringMode, options, correctFeedback, incorrectFeedback } = question;
   return {
-    title, type, text, imageUrl, points, definition, scoringMode, correctFeedback, incorrectFeedback,
-    options: options.map(({ text, imageUrl, isCorrect }) => ({ text, imageUrl, isCorrect })),
+    title, type, text, imageUrl, material, points, definition, scoringMode, correctFeedback, incorrectFeedback,
+    options: options.map(({ text, imageUrl, material, isCorrect }) => ({ text, imageUrl, material, isCorrect })),
   };
 }
 

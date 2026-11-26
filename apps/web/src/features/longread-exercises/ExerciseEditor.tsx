@@ -1,3 +1,4 @@
+import { AssessmentMaterialField } from '../assessment-materials/AssessmentMaterial.js';
 import { useEffect, useId, useState } from 'react';
 import { RichTextField } from '../../shared/RichTextField.js';
 import { useTranslation } from 'react-i18next';
@@ -55,16 +56,17 @@ export function ExerciseEditor({ lessonId, content, onChange, ready, revision, a
       {linked && <button type="button" className="admin-btn admin-btn--secondary" disabled={!ready || linked.options.some((o) => o.imageUrl)} onClick={() => {
         let definition = linked.definition;
         if (definition?.type === 'matching') { const d = definition; definition = { ...d, right: d.left.map((left) => d.right.find((right) => right.id === d.correctPairs.find((p) => p.leftId === left.id)!.rightId)!) }; }
-        setForm({ questionId: linked.id, assessmentId: parent!.id, updatedAt: linked.updatedAt, type: linked.type, title: linked.title, text: linked.text ?? '', definition, scoringMode: linked.scoringMode,
-          options: linked.options.map((o) => ({ id: o.id, text: o.text ?? '', isCorrect: o.isCorrect })), assessmentPassingScore: parent!.passingScore, assessmentMaxAttempts: parent!.maxAttempts });
+        setForm({ questionId: linked.id, assessmentId: parent!.id, updatedAt: linked.updatedAt, type: linked.type, title: linked.title, text: linked.text ?? '', material: linked.material, definition, scoringMode: linked.scoringMode,
+          options: linked.options.map((o) => ({ id: o.id, text: o.text ?? '', material: o.material, isCorrect: o.isCorrect })), assessmentPassingScore: parent!.passingScore, assessmentMaxAttempts: parent!.maxAttempts });
       }}>{t('longreadExercises.editQuestion')}</button>}
     </div>
     {linked?.options.some((o) => o.imageUrl) && <p>{t('longreadExercises.imageOptionsHelp')}</p>}
     {!ready && <p role="status">{t('longreadExercises.waitSaved')}</p>}
     {form && <section style={{ border: '1px solid var(--color-border)', borderRadius: 8, padding: 12 }} aria-label={t('longreadExercises.questionForm')}>
-      <label htmlFor={`${id}-type`}>{t('longreadExercises.questionType')}</label><select id={`${id}-type`} value={form.type} onChange={(e) => setForm({ ...emptyQuestion(e.target.value as QuestionType), ...(form.questionId ? { questionId: form.questionId, updatedAt: form.updatedAt } : {}), ...(form.assessmentId ? { assessmentId: form.assessmentId } : {}), title: form.title, text: form.text, assessmentPassingScore: form.assessmentPassingScore, assessmentMaxAttempts: form.assessmentMaxAttempts })}>{questionTypeSchema.options.map((type) => <option value={type} key={type}>{t(`longreadExercises.types.${type}`)}</option>)}</select>
+      <label htmlFor={`${id}-type`}>{t('longreadExercises.questionType')}</label><select id={`${id}-type`} value={form.type} onChange={(e) => setForm({ ...emptyQuestion(e.target.value as QuestionType), ...(form.questionId ? { questionId: form.questionId, updatedAt: form.updatedAt } : {}), ...(form.assessmentId ? { assessmentId: form.assessmentId } : {}), title: form.title, text: form.text, material: form.material, assessmentPassingScore: form.assessmentPassingScore, assessmentMaxAttempts: form.assessmentMaxAttempts })}>{questionTypeSchema.options.map((type) => <option value={type} key={type}>{t(`longreadExercises.types.${type}`)}</option>)}</select>
       <label style={{ display: 'block' }}>{t('longreadExercises.title')}<input value={form.title} maxLength={200} onChange={(e) => setForm({ ...form, title: e.target.value })} /></label>
       <RichTextField id={`${id}-text`} label={t('longreadExercises.text')} value={form.text} maxLength={4000} onChange={(next) => setForm({ ...form, text: next })} />
+      <AssessmentMaterialField key={form.questionId ?? 'new'} value={form.material} onChange={(material) => setForm((current) => current && { ...current, material })} />
       <QuestionAuthorFields value={form} onChange={setForm} />
       <label style={{ display: 'block' }}>{t('longreadExercises.scoringMode')}<select value={form.scoringMode} onChange={(e) => setForm({ ...form, scoringMode: e.target.value as WriteLongreadQuestion['scoringMode'] })}><option value="all_or_nothing">{t('longreadExercises.allOrNothing')}</option><option value="proportional">{t('longreadExercises.partialScoring')}</option><option value="proportional_with_penalty">{t('longreadExercises.penaltyScoring')}</option><option value="per_option">{t('longreadExercises.perOptionScoring')}</option></select></label>
       <label style={{ display: 'block' }}>{t('longreadExercises.testPassingScore')}<input type="number" min={0} max={100} value={form.assessmentPassingScore} onChange={(e) => setForm({ ...form, assessmentPassingScore: e.target.valueAsNumber })} /></label>

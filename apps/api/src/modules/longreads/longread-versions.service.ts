@@ -222,9 +222,9 @@ export class LongreadVersionsService {
                 assessmentId = assessment.id; restoredAssessments.set(frozen.assessment.id, assessmentId);
               }
               const question = await tx.assessmentQuestion.create({ data: { organizationId, assessmentId, type: frozen.type,
-                title: frozen.title, text: frozen.text, imageUrl: frozen.imageUrl, points: frozen.points, order: frozen.order,
+                title: frozen.title, text: frozen.text, imageUrl: frozen.imageUrl, material: frozen.material, points: frozen.points, order: frozen.order,
                 scoringMode: frozen.scoringMode, definition: frozen.definition ?? Prisma.DbNull } });
-              await tx.assessmentAnswerOption.createMany({ data: frozen.options.map((option) => ({ text: option.text, imageUrl: option.imageUrl, isCorrect: option.isCorrect, order: option.order, questionId: question.id, organizationId })) });
+              await tx.assessmentAnswerOption.createMany({ data: frozen.options.map((option) => ({ text: option.text, imageUrl: option.imageUrl, material: option.material, isCorrect: option.isCorrect, order: option.order, questionId: question.id, organizationId })) });
               questionId = question.id; restoredQuestions.set(frozen.id, questionId);
             }
             content = { ...content, questionId };

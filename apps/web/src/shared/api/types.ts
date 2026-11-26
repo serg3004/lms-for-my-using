@@ -204,6 +204,7 @@ export type AssignmentSummary = {
 };
 
 export type AssessmentSummary = {
+  material?: string | null;
   bankSampleSize?: number | null;
   policy?: AssessmentPolicy | null;
   id: string;
@@ -288,10 +289,10 @@ export type AttemptAnswerResult = {
   selectedOptionIds: unknown;
   isCorrect: boolean;
   score: number;
-  question: { id: string; title: string; type: string; points: number; order: number; definition?: PublicQuestionDefinition; options?: { id: string; text: string | null; imageUrl: string | null }[] };
-  selectedOption: { id: string; text: string | null; imageUrl: string | null } | null;
+  question: { id: string; title: string; type: string; points: number; order: number; material?: string | null; definition?: PublicQuestionDefinition; options?: { id: string; text: string | null; imageUrl: string | null; material?: string | null }[] };
+  selectedOption: { id: string; text: string | null; imageUrl: string | null; material?: string | null } | null;
   /** Only present when the assessment author enabled showCorrectAnswers. */
-  correctOptions?: { id: string; text: string | null; imageUrl: string | null }[];
+  correctOptions?: { id: string; text: string | null; imageUrl: string | null; material?: string | null }[];
 };
 
 export type AssessmentQuestionSummary = {

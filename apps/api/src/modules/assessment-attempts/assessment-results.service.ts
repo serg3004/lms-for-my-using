@@ -87,7 +87,7 @@ const attemptResultDetailSelect = {
           order: true,
           options: {
             where: { deletedAt: null, isCorrect: true },
-            select: { id: true, text: true, imageUrl: true },
+            select: { id: true, text: true, imageUrl: true, material: true },
           },
         },
       },
@@ -95,7 +95,7 @@ const attemptResultDetailSelect = {
         select: {
           id: true,
           text: true,
-          imageUrl: true,
+          imageUrl: true, material: true,
         },
       },
     },
@@ -155,16 +155,18 @@ type AttemptResultInput = {
       title: string;
       type: string;
       definition?: unknown;
+      material?: string | null;
       correctFeedback?: string | null;
       incorrectFeedback?: string | null;
       points: number;
       order: number;
-      options: { id: string; text: string | null; imageUrl: string | null }[];
+      options: { id: string; text: string | null; imageUrl: string | null; material?: string | null }[];
     };
     selectedOption: {
       id: string;
       text: string | null;
       imageUrl: string | null;
+      material?: string | null;
     } | null;
   }[];
 };
@@ -438,7 +440,7 @@ export class AssessmentResultsService {
           const frozen = snapshot.success && context.success === ('blockId' in snapshot.data) ? snapshot.data : null;
           const question = frozen ? frozen.question : answer.question;
           const reveal = attempt.status === 'completed' && (context.success ? frozen && frozen.revealAnswers : revealAll || (!answer.isCorrect && policy.incorrectAnswer === 'review'));
-          const correctOptions = frozen ? frozen.question.options.filter((option) => option.isCorrect).map(({ id, text, imageUrl }) => ({ id, text, imageUrl })) : answer.question.options;
+          const correctOptions = frozen ? frozen.question.options.filter((option) => option.isCorrect).map(({ id, text, imageUrl, material }) => ({ id, text, imageUrl, material })) : answer.question.options;
           const definition = questionDefinitionSchema.safeParse(question.definition);
           const selected = frozen ? frozen.question.options.find((option) => option.id === answer.selectedOptionId) : null;
           const feedbackKey = answer.isCorrect ? 'correctFeedback' : 'incorrectFeedback';
@@ -447,11 +449,11 @@ export class AssessmentResultsService {
             id: answer.id, questionId: answer.questionId, selectedOptionId: answer.selectedOptionId, selectedOptionIds: answer.selectedOptionIds,
             ...(answer.response ? { response: answer.response } : {}), isCorrect: answer.isCorrect, score: answer.score,
             ...(answer.reviewPending ? { reviewPending: true } : {}), ...(answer.reviewComment ? { reviewComment: answer.reviewComment } : {}), createdAt: answer.createdAt, updatedAt: answer.updatedAt,
-            question: { id: question.id, title: question.title, type: question.type, points: question.points, order: question.order,
-              ...(frozen ? { options: frozen.question.options.map(({ id, text, imageUrl }) => ({ id, text, imageUrl })) } : {}),
+            question: { id: question.id, title: question.title, type: question.type, points: question.points, material: question.material, order: question.order,
+              ...(frozen ? { options: frozen.question.options.map(({ id, text, imageUrl, material }) => ({ id, text, imageUrl, material })) } : {}),
               ...(definition.success && definition.data.type === question.type ? { definition: publicQuestionDefinition(definition.data, `result:${answer.id}`) } : {}) },
             ...(attempt.status === 'completed' && policy.showFeedback ? { feedback } : {}),
-            selectedOption: frozen ? selected ? { id: selected.id, text: selected.text, imageUrl: selected.imageUrl } : null : answer.selectedOption,
+            selectedOption: frozen ? selected ? { id: selected.id, text: selected.text, imageUrl: selected.imageUrl, material: selected.material } : null : answer.selectedOption,
             ...(reveal && question.definition && !(definition.success && definition.data.type === 'short_answer' && definition.data.manualReview) ? { correctDefinition: question.definition } : {}),
             correctOptions: reveal ? correctOptions : undefined,
           };

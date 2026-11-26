@@ -1,3 +1,4 @@
+import { AssessmentMaterial } from '../features/assessment-materials/AssessmentMaterial.js';
 import { useAssessmentDraft } from './assessment-taking/draft.js';
 import { requiresLockedAnswers } from '@lms/shared/assessment-policy';
 import { recordAssessmentAnswer } from '../shared/api/assessments.js';
@@ -372,6 +373,8 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                       <div className="learner-quiz__breakdown-icon">{outcomeIcon}</div>
                       <div className="learner-quiz__breakdown-body">
                         <p className="learner-quiz__breakdown-question">{answer.question.title}</p>
+                        <AssessmentMaterial value={answer.question.material} />
+                        {(answer.question.options ?? []).map((option) => <AssessmentMaterial key={option.id} value={option.material} />)}
                         <p className="learner-quiz__breakdown-answer">
                           <span className="learner-quiz__breakdown-answer-label">{t('assessments.resultYourAnswer')}:</span>{' '}
                           {ownAnswerText(answer, t)}
@@ -437,6 +440,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
           <p style={{ margin: '8px 0 0', color: 'var(--color-text-muted)', fontSize: '14px' }}>
             {t('assessments.subtitleTaking', { current: currentIndex + 1, total: questions.length, score: assessment.passingScore })}
           </p>
+          <AssessmentMaterial value={assessment.material} />
         </div>
       </section>
 
@@ -482,6 +486,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
 
                     {!noBack && <button className="learner-btn learner-btn--secondary" style={touchTarget} type="button"
                       aria-pressed={marked.includes(question.id)} onClick={() => toggleMarked(question.id)}>{t('assessments.markForReturn')}</button>}
+                    <AssessmentMaterial value={question.material} />
                     {question.imageUrl && <img src={question.imageUrl} alt={question.title} style={{ maxWidth: '100%', maxHeight: 360 }} />}
                     <fieldset disabled={checking || !!checkedAnswer || !sessionReady || secondsLeft === 0} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
                     {question.definition ? <QuestionResponseFields question={question}
@@ -503,8 +508,9 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                                   checked={checked}
                                   onChange={(e) => selectMultiple(question.id, option.id, e.target.checked)}
                                 />
-                                <span>{label}</span>
+                                <span>{option.material && !option.imageUrl && !option.text ? t('longreadExercises.option', { number: index + 1 }) : label}</span>
                               </label>
+                              <AssessmentMaterial value={option.material} />
                             </li>
                           );
                         }
@@ -518,8 +524,9 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                                 checked={checked}
                                 onChange={() => selectSingle(question.id, option.id)}
                               />
-                              <span>{label}</span>
+                              <span>{option.material && !option.imageUrl && !option.text ? t('longreadExercises.option', { number: index + 1 }) : label}</span>
                             </label>
+                            <AssessmentMaterial value={option.material} />
                           </li>
                         );
                       })}

@@ -7,6 +7,7 @@ export type EditorOption = {
   id: string;
   text: string | null;
   imageUrl: string | null;
+  material?: string | null;
   isCorrect: boolean;
 };
 
@@ -17,6 +18,7 @@ export type EditorQuestion = {
   title: string;
   text: string | null;
   imageUrl: string | null;
+  material?: string | null;
   points: number;
   definition: QuestionDefinition | null;
   scoringMode: QuestionScoringMode;
@@ -27,6 +29,7 @@ export type EditorQuestion = {
 
 export type EditorSettings = Omit<ValidAssessmentForm, 'slug' | 'status' | 'timeLimitMinutes'> & {
   timeLimitMinutes: number | null;
+  material?: string | null;
   policy?: AssessmentPolicy;
 };
 

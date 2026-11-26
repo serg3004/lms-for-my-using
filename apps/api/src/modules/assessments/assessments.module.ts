@@ -1,3 +1,5 @@
+import { UploadModule } from '../upload/upload.module.js';
+import { AssessmentImagesController } from './assessment-images.controller.js';
 import { Module } from '@nestjs/common';
 
 import { DatabaseModule } from '../../database/database.module.js';
@@ -13,8 +15,8 @@ import { AssessmentFoldersController } from './assessment-folders.controller.js'
 import { AssessmentFoldersService } from './assessment-folders.service.js';
 
 @Module({
-  imports: [AuthModule, DatabaseModule, BackgroundJobsModule],
-  controllers: [AssessmentFoldersController, StandaloneAssessmentsController, AssessmentsController],
+  imports: [AuthModule, DatabaseModule, BackgroundJobsModule, UploadModule],
+  controllers: [AssessmentImagesController, AssessmentFoldersController, StandaloneAssessmentsController, AssessmentsController],
   providers: [AssessmentFoldersService, AssessmentsService, StandaloneAssessmentsService],
   exports: [StandaloneAssessmentsService],
 })

@@ -1,3 +1,4 @@
+import { assessmentMaterialSchema } from './longread-media.js';
 import { z } from 'zod';
 import { richTextSchema } from './rich-text.js';
 import { assessmentAnswerSchema, questionTypeSchema, questionDefinitionSchema, scoringModeSchema, publicQuestionDefinitionSchema } from './assessment-question-types.js';
@@ -27,19 +28,20 @@ export const writeLongreadQuestionSchema = z.object({
   type: questionTypeSchema,
   title: z.string().trim().min(1).max(200),
   text: richTextSchema(4000).default(''),
+  material: assessmentMaterialSchema.nullable().optional(),
   definition: questionDefinitionSchema.nullable().default(null),
   scoringMode: scoringModeSchema.default('all_or_nothing'),
-  options: z.array(z.object({ id: z.guid().optional(), text: z.string().trim().min(1).max(2000), isCorrect: z.boolean() }).strict()).max(50).default([]),
+  options: z.array(z.object({ id: z.guid().optional(), text: z.string().trim().max(2000), material: assessmentMaterialSchema.nullable().optional(), isCorrect: z.boolean() }).strict().refine((option) => option.text || option.material)).max(50).default([]),
   assessmentPassingScore: z.number().int().min(0).max(100).default(70),
   assessmentMaxAttempts: z.number().int().min(1).max(100).nullable().default(null),
 }).strict();
 export type WriteLongreadQuestion = z.infer<typeof writeLongreadQuestionSchema>;
 
 export const publicExerciseQuestionSchema = z.object({
-  id: z.guid(), type: questionTypeSchema, title: z.string(), text: z.string().nullable(), imageUrl: z.string().nullable(),
+  id: z.guid(), type: questionTypeSchema, title: z.string(), text: z.string().nullable(), imageUrl: z.string().nullable(), material: z.string().nullable().optional(),
   points: z.number().int().min(1), scoringMode: scoringModeSchema,
   definition: publicQuestionDefinitionSchema.optional(),
-  options: z.array(z.object({ id: z.guid(), text: z.string().nullable(), imageUrl: z.string().nullable() }).strict()),
+  options: z.array(z.object({ id: z.guid(), text: z.string().nullable(), imageUrl: z.string().nullable(), material: z.string().nullable().optional() }).strict()),
   assessment: z.object({ id: z.guid(), title: z.string(), passingScore: z.number().int(), maxAttempts: z.number().int().nullable() }).strict(),
 }).strict();
 export type PublicExerciseQuestion = z.infer<typeof publicExerciseQuestionSchema>;

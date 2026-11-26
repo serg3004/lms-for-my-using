@@ -1197,6 +1197,7 @@ model Assessment {
   title                          String
   slug                           String
   description                    String?
+  material                       String?
   status                         AssessmentStatus     @default(draft)
   passingScore                   Int                  @default(70) @map("passing_score")
   maxAttempts                    Int?                 @map("max_attempts")
@@ -1358,6 +1359,7 @@ model AssessmentQuestion {
   title          String
   text           String?
   imageUrl       String?                       @map("image_url")
+  material       String?
   points         Int                           @default(1)
   order          Int                           @default(0)
   definition     Json?
@@ -1387,6 +1389,7 @@ model AssessmentAnswerOption {
   questionId     String                    @map("question_id") @db.Uuid
   text           String?
   imageUrl       String?                   @map("image_url")
+  material       String?
   isCorrect      Boolean                   @default(false) @map("is_correct")
   order          Int                       @default(0)
   createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamptz

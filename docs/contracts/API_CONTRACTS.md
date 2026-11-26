@@ -2782,3 +2782,13 @@ The client submits using the attempt ID. Repeating a completed submission
 returns the same attempt. At the time limit the client looks up the same
 attempt with `draft=true&resume=<attemptId>`, which finalizes an expired
 attempt on the server. The lookup is scoped to the caller and placement.
+
+### Assessment materials (PR 537)
+
+The assessment description, question and answer option accept an optional nullable `material` field in the editor API. The question and option fields also apply to question bank and longread exercise writes. The field contains a JSON-encoded record. A `link` write accepts `url` (an HTTPS address or one iframe), `caption` and `alt`. The server stores a canonical URL, provider and identifier. An image uses `kind: "file"` and an opaque `fileId`, with the same optional text fields. A null clears the attachment. Legacy image URLs remain supported. Question and option materials are copied into attempt and longread snapshots.
+
+The learner browser embeds YouTube, Vimeo, Google Drive file previews, OneDrive embed URLs with a resource ID and SharePoint `embed.aspx` URLs with a file identifier. Other HTTPS addresses, including provider share links without a usable embed ID, open in a new tab. Private files require the provider's own sharing permissions or sign-in. Every embedded link also has a new-tab action. The server does not fetch author-supplied URLs.
+
+Authors can send multipart `file` data to `POST /api/v1/assessment-images` or list organization images with `GET /api/v1/assessment-images` using the returned `nextCursor` for the next page. Upload requires a validated JPEG, PNG, GIF or WebP up to 8 MiB. `GET /api/v1/assessment-images/:id` issues a short-lived read URL for a known image ID in the authenticated user's organization. Image IDs belong to the organization's reusable library.
+
+Local audio and video uploads remain disabled. Enabling them requires reviewing the API and nginx limits (currently 8 MiB and 9 MB), object storage and streaming delivery, MIME and signature checks, `media-src`, storage capacity and the file renderer.

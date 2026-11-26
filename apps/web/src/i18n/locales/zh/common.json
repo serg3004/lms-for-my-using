@@ -4689,5 +4689,15 @@
     "exporting": "正在准备文件…",
     "exportError": "无法导出文件，请重试。",
     "exportTooLarge": "行数过多，无法导出（上限 5000）。请缩小时间范围或选择课程。"
+  },
+  "assessmentMaterials": {
+    "material": "材料",
+    "link": "HTTPS 链接或嵌入代码",
+    "alt": "无障碍标题",
+    "invalid": "请输入 HTTPS 链接或受支持的嵌入代码。",
+    "open": "在新标签页中打开",
+    "choose": "选择已上传的图片",
+    "moreImages": "显示更多图片",
+    "imageError": "无法打开或上传图片。支持最大 8 MB 的 JPEG、PNG、GIF 和 WebP。"
   }
 }

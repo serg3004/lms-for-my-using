@@ -991,3 +991,7 @@ attempt status and review fields. Existing answers keep their recorded scores.
 Deploy the API and web client together. Once attempts enter the review queue,
 resolve them before rolling back to a version that cannot process them. Keep
 the additive database migration in place during the rollback.
+
+### Assessment materials (PR 537)
+
+Migration `20261125140000_assessment_materials` adds nullable `material` columns to `assessments`, `assessment_questions` and `assessment_answer_options`. Existing rows keep their image URLs and require no backfill. Apply the migration before starting the new API. Back up the database and the organization's `assessment-images/` objects together so that file references and frozen attempts remain usable after a restore. An application rollback can leave the additive columns and stored objects in place.

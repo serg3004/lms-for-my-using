@@ -1,4 +1,5 @@
-import { useId } from 'react';
+import { AssessmentMaterial } from '../assessment-materials/AssessmentMaterial.js';
+import { Fragment, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AssessmentAnswer, QuestionResponse } from '@lms/shared/assessment-question-types';
 import type { PublicExerciseQuestion } from '@lms/shared/longread-exercises';
@@ -22,12 +23,12 @@ export function QuestionResponseFields({ question, answer, onChange, disabled = 
   const set = (value: QuestionResponse) => onChange({ questionId: question.id, response: value });
   return <fieldset disabled={disabled} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
     <legend>{t('longreadExercises.yourAnswer')}</legend>
-    {!definition && <div style={{ display: 'grid', gap: 8 }}>{question.options.map((option, index) => <label key={option.id} style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 44, overflowWrap: 'anywhere' }}>
+    {!definition && <div style={{ display: 'grid', gap: 8 }}>{question.options.map((option, index) => <Fragment key={option.id}><label style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 44, overflowWrap: 'anywhere' }}>
       <input type={question.type === 'multiple_choice' ? 'checkbox' : 'radio'} name={`${id}-choice`} style={{ width: 'auto' }}
         checked={question.type === 'multiple_choice' ? answer?.selectedOptionIds?.includes(option.id) ?? false : answer?.selectedOptionId === option.id}
         onChange={(event) => question.type === 'multiple_choice' ? onChange({ questionId: question.id, selectedOptionIds: event.target.checked ? [...(answer?.selectedOptionIds ?? []), option.id] : (answer?.selectedOptionIds ?? []).filter((value) => value !== option.id) }) : onChange({ questionId: question.id, selectedOptionId: option.id })} />
       <span style={{ minWidth: 0 }}>{option.imageUrl && <img src={option.imageUrl} alt={option.text ?? t('longreadExercises.option', { number: index + 1 })} style={{ maxWidth: '100%', maxHeight: 240 }} />}{option.text ?? t('longreadExercises.option', { number: index + 1 })}</span>
-    </label>)}</div>}
+    </label><AssessmentMaterial value={option.material} /></Fragment>)}</div>}
     {definition?.type === 'true_false' && <div>{[true, false].map((value) => <label key={String(value)} style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 44 }}>
       <input type="radio" name={`${id}-boolean`} style={{ width: 'auto' }} checked={response?.type === 'true_false' && response.value === value} onChange={() => set({ type: 'true_false', value })} />{t(value ? 'longreadExercises.true' : 'longreadExercises.false')}
     </label>)}</div>}

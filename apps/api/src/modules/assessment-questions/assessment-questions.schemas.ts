@@ -1,3 +1,4 @@
+import { assessmentMaterialSchema } from '@lms/shared/longread-media';
 import { z } from 'zod';
 
 import { questionTypeSchema, scoringModeSchema, questionDefinitionSchema } from '@lms/shared/assessment-question-types';
@@ -11,7 +12,7 @@ export const createAssessmentQuestionSchema = z.object({
   type: assessmentQuestionTypeSchema.default('single_choice'),
   title: z.string().trim().min(1).max(200),
   text: z.string().trim().max(4000).optional(),
-  imageUrl: z.string().trim().min(1).max(2000).optional(),
+  imageUrl: z.string().trim().min(1).max(2000).optional(), material: assessmentMaterialSchema.nullable().optional(),
   points: z.number().int().min(1).default(1),
   order: z.number().int().min(0).default(0),
   scoringMode: assessmentQuestionScoringModeSchema.default('all_or_nothing'),
@@ -21,11 +22,11 @@ export const createAssessmentAnswerOptionSchema = z
   .object({
     organizationId: z.guid(),
     text: z.string().trim().min(1).max(2000).optional(),
-    imageUrl: z.string().trim().min(1).max(2000).optional(),
+    imageUrl: z.string().trim().min(1).max(2000).optional(), material: assessmentMaterialSchema.nullable().optional(),
     isCorrect: z.boolean().default(false),
     order: z.number().int().min(0).default(0),
   })
-  .refine((input) => input.text || input.imageUrl, {
+  .refine((input) => input.text || input.imageUrl || input.material, {
     message: 'Answer option requires text or imageUrl',
   });
 
@@ -35,7 +36,7 @@ export const updateAssessmentQuestionSchema = z
     type: assessmentQuestionTypeSchema,
     title: z.string().trim().min(1).max(200),
     text: z.string().trim().max(4000).nullable(),
-    imageUrl: z.string().trim().min(1).max(2000).nullable(),
+    imageUrl: z.string().trim().min(1).max(2000).nullable(), material: assessmentMaterialSchema.nullable().optional(),
     points: z.number().int().min(1),
     order: z.number().int().min(0),
     scoringMode: assessmentQuestionScoringModeSchema,
@@ -45,7 +46,7 @@ export const updateAssessmentQuestionSchema = z
 export const updateAssessmentAnswerOptionSchema = z
   .object({
     text: z.string().trim().min(1).max(2000).nullable(),
-    imageUrl: z.string().trim().min(1).max(2000).nullable(),
+    imageUrl: z.string().trim().min(1).max(2000).nullable(), material: assessmentMaterialSchema.nullable().optional(),
     isCorrect: z.boolean(),
     order: z.number().int().min(0),
   })
