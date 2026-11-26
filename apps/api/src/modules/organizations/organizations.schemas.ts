@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { voicePerCommentRange, voiceSecondsRange } from '../../common/voice-policy.js';
 import { badgeIdleMinutesRange } from '../../common/badge.js';
 import { qrLoginRoleValues, qrLoginSessionHoursRange } from '../../common/qr-login.js';
 import { loginFailureWindowRange, loginLockRange, loginLogRetentionRange, loginMaxFailuresRange } from '../../common/login-protection.js';
@@ -92,6 +93,16 @@ export const badgePolicySchema = z.object({
   idleMinutes: z.number().int().min(badgeIdleMinutesRange.min).max(badgeIdleMinutesRange.max),
 }).strict();
 export type BadgePolicyInput = z.infer<typeof badgePolicySchema>;
+
+/** PR 511: what the organization allows in checklist comments. `version` is the one the administrator saw (409 when it is stale). */
+export const voicePolicySchema = z.object({
+  dictationEnabled: z.boolean(),
+  voiceNotesEnabled: z.boolean(),
+  maxSeconds: z.number().int().min(voiceSecondsRange.min).max(voiceSecondsRange.max),
+  perComment: z.number().int().min(voicePerCommentRange.min).max(voicePerCommentRange.max),
+  version: z.number().int().min(1),
+}).strict();
+export type VoicePolicyInput = z.infer<typeof voicePolicySchema>;
 
 /** PR 381: organization feature switches; each one defaults to off and is changed only by an admin. */
 export const organizationFeaturesSchema = z.object({

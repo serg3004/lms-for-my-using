@@ -149,6 +149,13 @@ export class ChecklistsController {
     return this.checklistsService.listChecklists(request.currentUser!.organizationId, status, request.currentUser!, search);
   }
 
+  /** PR 511: what the organization allows, for the builder: a checklist cannot switch on what is off here. */
+  @Get('checklists/input-policy')
+  @Roles(...rolePolicies.checklistsRead)
+  getInputPolicy(@Req() request: AuthenticatedRequest) {
+    return this.checklistsService.getInputPolicy(request.currentUser!.organizationId);
+  }
+
   @Get('checklists/analytics')
   @Roles(...rolePolicies.checklistReviewWrite)
   async getAnalytics(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
@@ -1057,6 +1064,15 @@ export class ChecklistsController {
     if (isPrivileged && !isObserver) await this.reviewAccess.assertReviewerCanAccess(user, instanceId);
     return isPrivileged;
   }
+
+  /** PR 511: dictation and voice as this check should offer them (organization policy combined with the checklist's mode). */
+  @Get('checklist-instances/:instanceId/voice-settings')
+  @Roles(...rolePolicies.checklistInstancesRead)
+  async getVoiceSettings(@Param('instanceId', ParseUUIDPipe) instanceId: string, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.checklistsService.getVoiceSettings(instanceId, user.organizationId, user.id, await this.voiceActor(user, instanceId, false));
+  }
+
   @Get('checklist-instances/:instanceId/voice-notes')
   @Roles(...rolePolicies.checklistInstancesRead)
   async listVoiceNotes(@Param('instanceId', ParseUUIDPipe) instanceId: string, @Req() request: AuthenticatedRequest) {
@@ -1080,7 +1096,7 @@ export class ChecklistsController {
     const fields = voiceNoteFieldsSchema.parse(body ?? {});
     const user = request.currentUser!;
     const isPrivileged = await this.voiceActor(user, instanceId, true);
-    await this.checklistsService.assertVoiceNoteRoom(instanceId, itemId, user.organizationId, user.id, isPrivileged, fields.replaceId);
+    await this.checklistsService.assertVoiceNoteRoom(instanceId, itemId, user.organizationId, user.id, isPrivileged, fields.replaceId, fields.durationMs);
     const uploaded = await this.uploadService.uploadChecklistVoiceNote(file, mimeType, user.organizationId, instanceId);
     try {
       return await this.checklistsService.addVoiceNote(instanceId, itemId, user.organizationId, user.id, isPrivileged, uploaded, fields.durationMs, fields.replaceId);

@@ -113,6 +113,7 @@ Permissions owner: `apps/api/src/modules/auth/roles.ts` (`rolePolicies`). Role e
 | `usersRead` | `admin`, `manager` |
 | `usersResetPassword` | `admin`, `manager` |
 | `usersUpdate` | `admin`, `manager` |
+| `voicePolicy` | `admin` |
 
 ## Permission catalog (custom roles)
 
@@ -120,12 +121,12 @@ Owner: `packages/shared/src/permission-catalog.ts`; the route table is `apps/api
 
 | Action | Group | Scopes | Delegable | Requires | Policy | Built-in roles | Routes |
 |---|---|---|---|---|---|---|---|
-| `checklist.library.read` | checklists | `organization` | yes | - | `checklistsRead` | `admin`, `manager`, `instructor`, `mentor` | 11 |
+| `checklist.library.read` | checklists | `organization` | yes | - | `checklistsRead` | `admin`, `manager`, `instructor`, `mentor` | 12 |
 | `checklist.author` | checklists | `organization` | yes | `checklist.library.read` | `checklistsCreate` | `admin`, `manager`, `instructor`, `mentor` | 39 |
 | `checklist.template.manage` | checklists | `organization` | yes | `checklist.library.read` | `checklistTemplatesManage` | `admin` | 3 |
 | `checklist.free.start` | checklists | `own` | yes | - | `checklistsStartFree` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 3 |
 | `checklist.assign` | checklists | `team`, `department`, `organization` | yes | `checklist.instance.read` | `checklistInstancesCreate` | `admin`, `manager`, `instructor` | 2 |
-| `checklist.instance.read` | checklists | `own`, `team`, `department`, `organization` | yes | - | `checklistInstancesRead` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 14 |
+| `checklist.instance.read` | checklists | `own`, `team`, `department`, `organization` | yes | - | `checklistInstancesRead` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 15 |
 | `checklist.answer.write` | checklists | `own`, `team`, `department`, `organization` | yes | `checklist.instance.read` | `checklistItemResultsWrite` | `admin`, `manager`, `instructor`, `learner` | 10 |
 | `checklist.session.read` | checklists | `own`, `assigned`, `team`, `department`, `organization` | yes | - | `checklistSessionsRead` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 8 |
 | `checklist.session.manage` | checklists | `assigned`, `team`, `department`, `organization` | yes | `checklist.session.read` | `checklistSessionsManage` | `admin`, `manager`, `instructor`, `mentor` | 9 |

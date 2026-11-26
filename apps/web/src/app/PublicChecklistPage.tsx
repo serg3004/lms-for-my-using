@@ -14,6 +14,7 @@ import {
   finishPublicChecklist,
   getPublicCaptcha,
   getPublicVoiceNoteBlob,
+  getPublicVoiceSettings,
   listPublicVoiceNotes,
   removePublicVoiceNote,
   uploadPublicVoiceNote,
@@ -311,6 +312,7 @@ function PassScreen({ front, token, pass, instance, onInstance, onRestart, t }: 
       upload: (_instanceId, itemId, blob, durationMs, replaceId) => uploadPublicVoiceNote(token, pass.instanceId, itemId, pass.passKey, blob, durationMs, replaceId),
       blob: (_instanceId, noteId) => getPublicVoiceNoteBlob(token, pass.instanceId, noteId, pass.passKey),
       remove: (_instanceId, noteId) => removePublicVoiceNote(token, pass.instanceId, noteId, pass.passKey),
+      settings: () => getPublicVoiceSettings(token, pass.instanceId, pass.passKey),
     },
     removePhoto: () => Promise.reject(new ApiClientError(t('publicChecklist.photoNoRemove', 'A photo cannot be removed here; attach another one instead.'), 400)),
     finish: async () => {

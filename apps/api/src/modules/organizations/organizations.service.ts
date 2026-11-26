@@ -5,11 +5,12 @@ import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { loadLoginProtection, type LoginProtection } from '../../common/login-protection.js';
 import { loadBadgePolicy, type BadgePolicy } from '../../common/badge.js';
+import { loadVoicePolicy, type VoicePolicy } from '../../common/voice-policy.js';
 import { loadQrLoginPolicy, type QrLoginPolicy } from '../../common/qr-login.js';
 import { assertPasswordPolicy, defaultPasswordPolicy } from '../../common/password-policy.js';
 import { hashPassword } from '../auth/public.js';
 import { UploadService } from '../upload/public.js';
-import { BadgePolicyInput, CreateOrganizationInput, LoginProtectionInput, OrganizationFeaturesInput, PasswordPolicyInput, QrLoginPolicyInput, RegisterOrganizationInput, ThemeSettingsInput } from './organizations.schemas.js';
+import { BadgePolicyInput, CreateOrganizationInput, LoginProtectionInput, OrganizationFeaturesInput, PasswordPolicyInput, QrLoginPolicyInput, RegisterOrganizationInput, ThemeSettingsInput, VoicePolicyInput } from './organizations.schemas.js';
 
 type StoredThemeSettings = Partial<ThemeSettingsInput> & { logoObjectKey?: string; logoMimeType?: string };
 
@@ -265,6 +266,42 @@ export class OrganizationsService {
         organizationId, actorId, action: 'organization.badge_policy_updated', targetType: 'organization', targetId: organizationId,
         summary: `Badge sign-in: PIN ${updated.pinRequired ? 'required' : 'not required'}, idle ${updated.idleMinutes} min`,
         metadata: { before: existing, after: updated },
+      });
+    }
+    return updated;
+  }
+
+  async getVoicePolicy(organizationId: string) {
+    const organization = await this.prisma.organization.findFirst({ where: { id: organizationId }, select: { id: true } });
+    if (!organization) throw new NotFoundException('Organization not found');
+    return loadVoicePolicy(this.prisma, organizationId);
+  }
+
+  /**
+   * PR 511: applies to the next recording; saved recordings stay. The write only succeeds against the version the
+   * administrator saw, so two administrators cannot overwrite each other unnoticed (409).
+   */
+  async updateVoicePolicy(organizationId: string, input: VoicePolicyInput, actorId: string | null = null) {
+    const existing = await this.getVoicePolicy(organizationId);
+    const changed = await this.prisma.organization.updateMany({
+      where: { id: organizationId, voiceSettingsVersion: input.version },
+      data: {
+        dictationEnabled: input.dictationEnabled,
+        voiceNotesEnabled: input.voiceNotesEnabled,
+        voiceNoteMaxSeconds: input.maxSeconds,
+        voiceNotesPerComment: input.perComment,
+        voiceSettingsVersion: { increment: 1 },
+      },
+    });
+    if (changed.count === 0) throw new ConflictException('The settings were changed by someone else; reload and try again');
+    const updated: VoicePolicy = { dictationEnabled: input.dictationEnabled, voiceNotesEnabled: input.voiceNotesEnabled, maxSeconds: input.maxSeconds, perComment: input.perComment, version: input.version + 1 };
+    const before = { dictationEnabled: existing.dictationEnabled, voiceNotesEnabled: existing.voiceNotesEnabled, maxSeconds: existing.maxSeconds, perComment: existing.perComment };
+    const after = { dictationEnabled: updated.dictationEnabled, voiceNotesEnabled: updated.voiceNotesEnabled, maxSeconds: updated.maxSeconds, perComment: updated.perComment };
+    if (JSON.stringify(before) !== JSON.stringify(after)) {
+      await this.auditLog.record({
+        organizationId, actorId, action: 'organization.voice_policy_updated', targetType: 'organization', targetId: organizationId,
+        summary: `Checklist comments: dictation ${updated.dictationEnabled ? 'on' : 'off'}, voice ${updated.voiceNotesEnabled ? 'on' : 'off'}, ${updated.maxSeconds} s, ${updated.perComment} per comment`,
+        metadata: { before, after },
       });
     }
     return updated;

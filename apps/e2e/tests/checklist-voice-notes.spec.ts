@@ -73,3 +73,38 @@ test.describe('voice recording in the comment (PR 510)', () => {
     await expect(page.getByRole('button', { name: 'Записать звук' })).toHaveCount(0);
   });
 });
+
+// PR 511: the organization and the checklist decide what is offered; the screen follows what the server says.
+test.describe('what is available in the comment (PR 511)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(fakeRecorder);
+    // The speech recognition of the browser is a fake that exists, so "Диктовать" is drawn whenever the settings allow it.
+    await page.addInitScript(() => { Object.assign(window, { webkitSpeechRecognition: class { start() {} stop() {} abort() {} } }); });
+  });
+
+  test('recording off: no "Record sound", dictation stays; saved recordings can still be heard and deleted', async ({ page }) => {
+    await openVoiceConduct(page, { notes: 1, settings: { voiceNotes: false } });
+    await expect(page.getByLabel(/Запись голоса 1/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Удалить запись 1' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Записать звук' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Диктовать' })).toBeVisible();
+  });
+
+  test('dictation off: no dictation button, the comment field and recording stay', async ({ page }) => {
+    await openVoiceConduct(page, { settings: { dictation: false } });
+    await expect(page.getByRole('button', { name: 'Диктовать' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Записать звук' })).toBeVisible();
+  });
+
+  test('the organization limit of recordings per comment is respected', async ({ page }) => {
+    await openVoiceConduct(page, { notes: 1, settings: { perComment: 1 } });
+    await expect(page.getByRole('button', { name: 'Записать звук' })).toBeDisabled();
+    await expect(page.getByText(/Здесь уже 1 записи/).first()).toBeVisible();
+  });
+
+  test('when the settings cannot be read, dictation is offered and recording is not', async ({ page }) => {
+    await openVoiceConduct(page, { settingsStatus: 403 });
+    await expect(page.getByRole('button', { name: 'Записать звук' })).toHaveCount(0);
+  });
+});
+

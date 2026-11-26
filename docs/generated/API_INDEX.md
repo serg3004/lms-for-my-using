@@ -133,6 +133,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/checklist-instances/{instanceId}/voice-notes` | `Checklists` | `bearer` |
 | `DELETE` | `/api/v1/checklist-instances/{instanceId}/voice-notes/{noteId}` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklist-instances/{instanceId}/voice-notes/{noteId}/file` | `Checklists` | `bearer` |
+| `GET` | `/api/v1/checklist-instances/{instanceId}/voice-settings` | `Checklists` | `bearer` |
 | `PATCH` | `/api/v1/checklist-item-groups/{id}` | `Checklists` | `bearer` |
 | `DELETE` | `/api/v1/checklist-item-groups/{id}` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklist-item-groups/{id}/copy` | `Checklists` | `bearer` |
@@ -198,6 +199,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/checklists/free` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklists/from-org-template` | `Checklists` | `bearer` |
 | `POST` | `/api/v1/checklists/from-template` | `Checklists` | `bearer` |
+| `GET` | `/api/v1/checklists/input-policy` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklists/manager-analytics` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklists/manager-analytics/export` | `Checklists` | `bearer` |
 | `GET` | `/api/v1/checklists/workplace-settings` | `Checklists` | `bearer` |
@@ -382,6 +384,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/organizations/{id}/theme` | `Organizations` | `bearer` |
 | `PATCH` | `/api/v1/organizations/{id}/theme` | `Organizations` | `bearer` |
 | `DELETE` | `/api/v1/organizations/{id}/theme` | `Organizations` | `bearer` |
+| `GET` | `/api/v1/organizations/{id}/voice` | `Organizations` | `bearer` |
+| `PATCH` | `/api/v1/organizations/{id}/voice` | `Organizations` | `bearer` |
 | `GET` | `/api/v1/position-courses` | `PositionCourses` | `bearer` |
 | `POST` | `/api/v1/position-courses` | `PositionCourses` | `bearer` |
 | `GET` | `/api/v1/position-courses/{id}` | `PositionCourses` | `bearer` |
@@ -410,6 +414,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/public/checklists/{token}/passes/{instanceId}/voice-notes` | `ChecklistPublic` | `bearer` |
 | `DELETE` | `/api/v1/public/checklists/{token}/passes/{instanceId}/voice-notes/{noteId}` | `ChecklistPublic` | `bearer` |
 | `GET` | `/api/v1/public/checklists/{token}/passes/{instanceId}/voice-notes/{noteId}/file` | `ChecklistPublic` | `bearer` |
+| `GET` | `/api/v1/public/checklists/{token}/passes/{instanceId}/voice-settings` | `ChecklistPublic` | `bearer` |
 | `POST` | `/api/v1/public/checklists/{token}/start` | `ChecklistPublic` | `bearer` |
 | `POST` | `/api/v1/public/checklists/{token}/start-signed-in` | `ChecklistPublic` | `bearer` |
 | `GET` | `/api/v1/question-bank` | `AssessmentQuestions` | `bearer` |

@@ -66,7 +66,7 @@ describe('ChecklistsController voice recordings', () => {
       uploadService: { uploadChecklistVoiceNote: upload as never },
     });
     await expect(controller.uploadVoiceNote(instanceId, itemId, webmFile(), fields, makeRequest(learnerId, ['learner']))).resolves.toEqual({ id: 'note' });
-    expect(assertVoiceNoteRoom).toHaveBeenCalledWith(instanceId, itemId, organizationId, learnerId, false, undefined);
+    expect(assertVoiceNoteRoom).toHaveBeenCalledWith(instanceId, itemId, organizationId, learnerId, false, undefined, 4200);
     expect(upload).toHaveBeenCalledWith(expect.anything(), 'audio/webm', organizationId, instanceId);
     expect(addVoiceNote).toHaveBeenCalledWith(instanceId, itemId, organizationId, learnerId, false, uploaded, 4200, undefined);
   });

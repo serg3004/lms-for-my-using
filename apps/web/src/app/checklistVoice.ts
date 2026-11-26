@@ -1,4 +1,6 @@
-import type { ChecklistVoiceNote } from '../shared/api/checklists.js';
+import { useEffect, useState } from 'react';
+
+import type { ChecklistVoiceNote, ChecklistVoiceSettings } from '../shared/api/checklists.js';
 
 /** PR 510: what the taking screen needs from the server for recordings; the guest page supplies its own pass-key version. */
 export type ChecklistVoiceApi = {
@@ -6,9 +8,30 @@ export type ChecklistVoiceApi = {
   upload: (instanceId: string, itemId: string, blob: Blob, durationMs: number, replaceId?: string) => Promise<ChecklistVoiceNote>;
   blob: (instanceId: string, noteId: string) => Promise<Blob>;
   remove: (instanceId: string, noteId: string) => Promise<unknown>;
+  /** PR 511: what the organization and the checklist allow; without it the defaults below apply. */
+  settings?: (instanceId: string) => Promise<ChecklistVoiceSettings>;
 };
 
-/** The limits the server enforces until PR 511 makes them settings (kept in step with the API constants). */
+/** PR 511: until the server answers (or when it cannot), dictation is offered and recording is not. */
+export const DEFAULT_VOICE_SETTINGS: ChecklistVoiceSettings = { dictation: true, voiceNotes: false, maxSeconds: 120, perComment: 3 };
+
+export function useVoiceSettings(api: Pick<ChecklistVoiceApi, 'settings'> | undefined, instanceId: string): ChecklistVoiceSettings {
+  const [settings, setSettings] = useState<ChecklistVoiceSettings>(DEFAULT_VOICE_SETTINGS);
+  const load = api?.settings;
+  useEffect(() => {
+    let active = true;
+    setSettings(DEFAULT_VOICE_SETTINGS);
+    if (!load) return undefined;
+    Promise.resolve()
+      .then(() => load(instanceId))
+      .then((next) => { if (active && next && typeof next.voiceNotes === 'boolean') setSettings({ ...DEFAULT_VOICE_SETTINGS, ...next }); })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, [load, instanceId]);
+  return settings;
+}
+
+/** The upper limits of the server; PR 511 lets an organization choose lower values (the screen reads them from the settings). */
 export const VOICE_MAX_MS = 2 * 60 * 1000;
 export const VOICE_MIN_MS = 300;
 export const VOICE_WARN_MS = 15 * 1000;
