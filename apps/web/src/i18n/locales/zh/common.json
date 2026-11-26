@@ -1832,6 +1832,8 @@
         "notScoredAllSkipped": "不评分（全部跳过）",
         "feedbackTitle": "反馈",
         "feedbackComment": "评语",
+        "voiceReviewer": "审核人的录音",
+        "feedbackVoiceTitle": "反馈的录音",
         "groupsTitle": "各标准组结果",
         "groupNotScored": "未评分",
         "groupScore": "{{percent}}% — {{max}} 分中得 {{earned}} 分",

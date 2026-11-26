@@ -7,7 +7,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiClientError } from '../shared/apiClient.js';
-import type { ChecklistVoiceNote, ChecklistVoiceSettings } from '../shared/api/checklists.js';
+import type { ChecklistVoiceKind, ChecklistVoiceNote, ChecklistVoiceSettings } from '../shared/api/checklists.js';
 import { ChecklistVoiceNotes } from './ChecklistVoiceNotes.js';
 import { VOICE_HINT_KEY, type ChecklistVoiceApi } from './checklistVoice.js';
 
@@ -31,11 +31,11 @@ let host: HTMLElement;
 let api: ChecklistVoiceApi;
 let onChanged: ReturnType<typeof vi.fn>;
 
-async function render(notes: ChecklistVoiceNote[] = [], editable = true, settings?: ChecklistVoiceSettings) {
+async function render(notes: ChecklistVoiceNote[] = [], editable = true, settings?: ChecklistVoiceSettings, extra: { itemId?: string | null; kind?: ChecklistVoiceKind } = {}) {
   host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
-  await act(async () => { root?.render(<ChecklistVoiceNotes api={api} editable={editable} instanceId="inst" itemId="item-1" notes={notes} onChanged={onChanged as never} settings={settings} t={t} />); });
+  await act(async () => { root?.render(<ChecklistVoiceNotes api={api} editable={editable} instanceId="inst" itemId={extra.itemId === undefined ? 'item-1' : extra.itemId} kind={extra.kind} notes={notes} onChanged={onChanged as never} settings={settings} t={t} />); });
 }
 const button = (name: string) => [...host.querySelectorAll('button')].find((b) => b.textContent?.includes(name)) as HTMLButtonElement | undefined;
 const click = async (name: string) => { await act(async () => { button(name)?.click(); }); };
@@ -184,5 +184,19 @@ describe('ChecklistVoiceNotes: organization and checklist settings (PR 511)', ()
     await render([], true, allowed);
     await click('Записать звук');
     expect(host.textContent).toContain('/ 0:30');
+  });
+
+  it('sends where the recording belongs: a reviewer comment, or a closing text without a criterion (PR 512)', async () => {
+    await render([], true, undefined, { kind: { place: 'reviewer_comment' } });
+    await record();
+    await click('Отправить');
+    expect(api.upload).toHaveBeenCalledWith('inst', 'item-1', expect.any(Blob), expect.any(Number), undefined, { place: 'reviewer_comment' });
+    await act(async () => { root?.unmount(); });
+    host.remove();
+    await render([], true, undefined, { itemId: null, kind: { place: 'summary', field: 'strengths' } });
+    await record();
+    await click('Отправить');
+    expect(api.upload).toHaveBeenLastCalledWith('inst', null, expect.any(Blob), expect.any(Number), undefined, { place: 'summary', field: 'strengths' });
+    expect(host.querySelector('#voice-strengths-summary')).not.toBeNull();
   });
 });

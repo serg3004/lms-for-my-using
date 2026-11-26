@@ -11,6 +11,7 @@ import { getChecklistItemPhotoBlob } from '../../shared/api/checklists.js';
 import type { ChecklistInstanceReport, ChecklistReportHighlight, ChecklistReportPerson, ChecklistSessionReport } from '../../shared/api/types.js';
 import { formatDate } from '../../shared/formatDate.js';
 import { formatParticipantName } from './domain.js';
+import { ReportVoicePlayer, ReportVoiceProvider } from './ReportVoice.js';
 
 /**
  * PR 371: the summary and criteria tabs of the session report. Everything shown here comes from the
@@ -172,6 +173,29 @@ export function ReportTotal({ summary, t }: { summary: NonNullable<Report['summa
   );
 }
 
+/** PR 512: the recordings of the three closing texts, under the feedback. */
+function ReportFeedbackVoice({ report, t }: { report: Report; t: TFunction }) {
+  const voice = report.feedbackVoice;
+  if (!voice || !(voice.strengths || voice.developmentAreas || voice.nextSteps)) return null;
+  const fields: Array<['strengths' | 'developmentAreas' | 'nextSteps', string]> = [
+    ['strengths', t('checklistSessions.conduct.strengths', 'Strengths')],
+    ['developmentAreas', t('checklistSessions.conduct.developmentAreas', 'Development areas')],
+    ['nextSteps', t('checklistSessions.conduct.nextSteps', 'Next steps')],
+  ];
+  return (
+    <ReportVoiceProvider active instanceId={report.instanceId}>
+      <Card title={t('admin.checklists.report.feedbackVoiceTitle', 'Voice recordings of the feedback')}>
+        {fields.filter(([field]) => voice[field]).map(([field, label]) => (
+          <div key={field}>
+            <strong style={muted}>{label}</strong>
+            <ReportVoicePlayer field={field} instanceId={report.instanceId} itemId={null} place="summary" t={t} />
+          </div>
+        ))}
+      </Card>
+    </ReportVoiceProvider>
+  );
+}
+
 function ReportFeedback({ feedback, t }: { feedback: NonNullable<Report['feedback']>; t: TFunction }) {
   const entries: Array<[string, string | null]> = [
     [t('checklistSessions.conduct.strengths', 'Strengths'), feedback.strengths],
@@ -245,6 +269,7 @@ export function ReportSummary({ report, t }: { report: Report; t: TFunction }) {
           {report.checklist.description && <p><RichDescription value={report.checklist.description} /></p>}
           <ReportTotal summary={report.summary} t={t} />
           {report.feedbackForm && isCustomFeedback(report.feedbackForm.layout) ? <div className="admin-card"><FeedbackReadOnly config={report.feedbackForm} answers={report.feedbackForm.answers} t={t} /></div> : report.feedback && <ReportFeedback feedback={report.feedback} t={t} />}
+          <ReportFeedbackVoice report={report} t={t} />
           {report.summary?.scoringMode !== 'none' && <ReportGroups groups={report.groups} showNumbering={report.checklist.showNumbering} t={t} />}
         </>
       )}
@@ -312,7 +337,9 @@ export function ReportCriteria({ report, t }: { report: Report; t: TFunction }) 
         </td>
         <td style={cell}>{criterion.levelLabel ?? '—'}{criterion.levelDescription && <p><RichDescription value={criterion.levelDescription} /></p>}</td>
         <td style={cell}>
-          {criterion.comment ? <RichText value={criterion.comment} /> : '—'}
+          {criterion.comment ? <RichText value={criterion.comment} /> : criterion.voice ? null : '—'}
+          <ReportVoicePlayer instanceId={report.instanceId} itemId={criterion.id} place="answer" t={t} />
+          <ReportVoicePlayer instanceId={report.instanceId} itemId={criterion.id} place="reviewer_comment" t={t} />
           {criterion.photo && (
             <div style={{ marginTop: 6 }}>
               <CriterionPhoto fileName={criterion.photo.fileName} instanceId={report.instanceId} itemId={criterion.id} t={t} />
@@ -324,6 +351,7 @@ export function ReportCriteria({ report, t }: { report: Report; t: TFunction }) 
   }
 
   return (
+    <ReportVoiceProvider active={report.criteria.some((criterion) => criterion.voice)} instanceId={report.instanceId}>
     <div style={{ overflowX: 'auto' }}>
       <table style={{ borderCollapse: 'separate', borderSpacing: '0 6px', width: '100%' }}>
         <thead>
@@ -337,5 +365,6 @@ export function ReportCriteria({ report, t }: { report: Report; t: TFunction }) 
         <tbody>{rows}</tbody>
       </table>
     </div>
+    </ReportVoiceProvider>
   );
 }

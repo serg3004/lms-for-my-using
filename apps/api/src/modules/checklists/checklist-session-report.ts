@@ -45,7 +45,18 @@ export type SessionReportInput = {
   locationCaptures: ReportLocationCapture[];
   /** PR 405: the feedback section frozen with the instance; null/absent = switched off. */
   feedbackConfig?: { layout: FeedbackLayout; answerSets: Record<string, FeedbackAnswerSetSnapshot> } | null;
+  /** PR 512: the voice recordings of the check; the report shows how many there are and how long, the player fetches the audio itself. */
+  voiceNotes?: ReportVoiceNote[];
 };
+
+/** PR 512: one voice recording as the report needs it (no storage fields, only the length). */
+export type ReportVoiceNote = { itemId: string | null; place: string; field: string | null; durationMs: number };
+export type ReportVoiceStat = { count: number; seconds: number };
+
+function voiceStat(notes: ReportVoiceNote[]): ReportVoiceStat | null {
+  if (notes.length === 0) return null;
+  return { count: notes.length, seconds: Math.max(1, Math.round(notes.reduce((sum, note) => sum + note.durationMs, 0) / 1000)) };
+}
 
 const round2 = (value: number) => Math.round(value * 100) / 100;
 const percentOf = (earned: number, max: number) => (max > 0 ? Math.round((earned / max) * 100) : null);
@@ -100,7 +111,7 @@ export function buildSessionReport(input: SessionReportInput) {
 
   if (!input.visible) {
     return {
-      ...base, visible: false as const, generalInfo: [], summary: null, groups: [], criteria: [], feedback: null,
+      ...base, visible: false as const, generalInfo: [], summary: null, groups: [], criteria: [], feedback: null, feedbackVoice: null,
       location: { policy: session.locationCapturePolicy, captures: [] },
     };
   }
@@ -113,6 +124,7 @@ export function buildSessionReport(input: SessionReportInput) {
   // PR 416: a sheet without points reports answers only -- no score, maximum, percentage or verdict anywhere.
   const withoutPoints = breakdown.checklist.scoringMode === 'none';
 
+  const voiceNotes = input.voiceNotes ?? [];
   const criteria = breakdown.rows.map(({ item, result, state, earned, max }) => {
     const groupId = item.groupId && groupById.has(item.groupId) ? item.groupId : null;
     const number = breakdown.checklist.showNumbering === false ? '' : itemNumbers.get(item.id)!;
@@ -143,6 +155,12 @@ export function buildSessionReport(input: SessionReportInput) {
       maxScore: state === 'skipped' || withoutPoints ? null : round2(max),
       levelLabel: level ? level.label : null,
       comment: result?.comment ?? null,
+      voice: (() => {
+        const own = voiceNotes.filter((note) => note.itemId === item.id);
+        const answer = voiceStat(own.filter((note) => note.place === 'answer'));
+        const reviewer = voiceStat(own.filter((note) => note.place === 'reviewer_comment'));
+        return answer || reviewer ? { answer, reviewer } : null;
+      })(),
       photo: result?.photoObjectKey ? { fileName: result.photoFileName ?? null } : null,
       reviewStatus: result?.reviewStatus ?? null,
       color: color ? highlightStyle(color) : null,
@@ -186,6 +204,14 @@ export function buildSessionReport(input: SessionReportInput) {
     criteria,
     feedback: breakdown.checklist.feedbackEnabled
       ? { strengths: session.strengths, developmentAreas: session.developmentAreas, comment: session.nextSteps }
+      : null,
+    // PR 512: recordings of the three closing texts, by field.
+    feedbackVoice: breakdown.checklist.feedbackEnabled
+      ? {
+        strengths: voiceStat(voiceNotes.filter((note) => note.place === 'summary' && note.field === 'strengths')),
+        developmentAreas: voiceStat(voiceNotes.filter((note) => note.place === 'summary' && note.field === 'developmentAreas')),
+        nextSteps: voiceStat(voiceNotes.filter((note) => note.place === 'summary' && note.field === 'nextSteps')),
+      }
       : null,
     // PR 405: layout + answers by field id; the legacy `feedback` above stays for older readers.
     feedbackForm: breakdown.checklist.feedbackEnabled && input.feedbackConfig

@@ -30,6 +30,7 @@ type ItemRow = CriterionRow | GroupRow;
 const T = {
   total: { ru: 'Итого', en: 'Total', kk: 'Жиыны', zh: '合计' },
   guests: { ru: 'Гости (по ссылке или QR)', en: 'Guests (by link or QR)', kk: 'Қонақтар (сілтеме немесе QR арқылы)', zh: '访客（通过链接或二维码）' },
+  voiceMark: { ru: 'есть звуковая запись, {n} сек.', en: 'has a voice recording, {n} s', kk: 'дыбыс жазбасы бар, {n} сек.', zh: '有录音，{n} 秒' },
   noGroup: { ru: 'Без группы', en: 'Without a group', kk: 'Топсыз', zh: '未分组' },
   yes: { ru: 'Да', en: 'Yes', kk: 'Иә', zh: '是' },
   no: { ru: 'Нет', en: 'No', kk: 'Жоқ', zh: '否' },
@@ -69,10 +70,10 @@ const HEADERS = {
     zh: ['字段', '类型', '场次', '已填写', '未填写', '选项', '回答数'],
   },
   notes: {
-    ru: ['Дата (UTC)', 'Критерий', 'Примечание', 'Примечание проверяющего', 'Сотрудник', 'Наблюдатель'],
-    en: ['Date (UTC)', 'Criterion', 'Note', 'Reviewer note', 'Employee', 'Observer'],
-    kk: ['Күні (UTC)', 'Өлшемшарт', 'Ескертпе', 'Тексерушінің ескертпесі', 'Қызметкер', 'Бақылаушы'],
-    zh: ['日期 (UTC)', '标准', '备注', '审核人备注', '员工', '观察员'],
+    ru: ['Дата (UTC)', 'Критерий', 'Примечание', 'Примечание проверяющего', 'Сотрудник', 'Наблюдатель', 'Звук'],
+    en: ['Date (UTC)', 'Criterion', 'Note', 'Reviewer note', 'Employee', 'Observer', 'Audio'],
+    kk: ['Күні (UTC)', 'Өлшемшарт', 'Ескертпе', 'Тексерушінің ескертпесі', 'Қызметкер', 'Бақылаушы', 'Дыбыс'],
+    zh: ['日期 (UTC)', '标准', '备注', '审核人备注', '员工', '观察员', '录音'],
   },
   levels: {
     ru: ['Шкала', 'Уровень', 'Ответов', 'Доля, %'],
@@ -210,12 +211,12 @@ export function feedbackExportRows(fields: readonly FeedbackField[], locale: Loc
   return rows;
 }
 
-type NoteItem = { itemText: string; comment: string | null; reviewComment: string | null; at: string | null; employee: string; observer: string | null };
+type NoteItem = { itemText: string; comment: string | null; reviewComment: string | null; voiceSeconds?: number | null; at: string | null; employee: string; observer: string | null };
 
 export function notesExportRows(notes: readonly NoteItem[], locale: Locale): ReportCell[][] {
   return [
     [...HEADERS.notes[locale]],
-    ...notes.map((note) => [note.at ? note.at.slice(0, 10) : '', plainText(note.itemText), note.comment ?? '', note.reviewComment ?? '', note.employee, note.observer ?? '']),
+    ...notes.map((note) => [note.at ? note.at.slice(0, 10) : '', plainText(note.itemText), note.comment ?? '', note.reviewComment ?? '', note.employee, note.observer ?? '', note.voiceSeconds ? t('voiceMark', locale).replace('{n}', String(note.voiceSeconds)) : '']),
   ];
 }
 

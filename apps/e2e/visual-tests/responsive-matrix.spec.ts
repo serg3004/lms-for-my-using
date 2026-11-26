@@ -1,4 +1,5 @@
 import { fakeRecorder } from '../fixtures/checklist-voice.js';
+import { fakeRecognition, openReviewVoice } from '../fixtures/checklist-review-voice.js';
 import { answerSetServer, openFeedbackBuilder, openFeedbackConduct } from '../fixtures/checklist-feedback.js';
 import { scaleLibraryServer } from '../fixtures/scale-library.js';
 import { progressReaderServer, continueEditorServer, openProgressReport } from '../fixtures/longread-progress.js';
@@ -1255,6 +1256,19 @@ for (const width of widths) {
       await expectNoPageOverflow(page);
       if (width <= 375) await expectTouchTargets(page);
       await expectVisualMatch(page, `voice-recording-${width}`, false, { mask: [page.locator('audio')] });
+    });
+
+    // PR 512: the reviewer's comment with dictation and sound, and the learner's recording above it (the native player is masked).
+    test('keeps the reviewer comment with dictation and sound responsive', async ({ page }) => {
+      await page.addInitScript(fakeRecorder);
+      await page.addInitScript(fakeRecognition);
+      await page.clock.setFixedTime(new Date('2026-02-01T09:10:00.000Z'));
+      await openReviewVoice(page);
+      await expect(page.getByLabel(/Запись голоса 1/)).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Записать звук' })).toBeVisible();
+      await expectNoPageOverflow(page);
+      if (width <= 375) await expectTouchTargets(page);
+      await expectVisualMatch(page, `review-voice-${width}`, false, { mask: [page.locator('audio')] });
     });
 
     for (const role of ['learner', 'manager'] as const) {

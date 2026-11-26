@@ -10,15 +10,23 @@ export const VOICE_NOTE_MAX_DURATION_MS = 2 * 60 * 1000;
 export const VOICE_NOTE_MIN_DURATION_MS = 300;
 export const VOICE_NOTES_PER_COMMENT = 3;
 
+/** PR 512: where in a check the comment lives. `summary` is the session's closing text, one of three fields. */
+export const voiceNotePlaces = ['answer', 'reviewer_comment', 'summary'] as const;
+export const voiceSummaryFields = ['strengths', 'developmentAreas', 'nextSteps'] as const;
+export type VoiceKind = { place: (typeof voiceNotePlaces)[number]; field?: (typeof voiceSummaryFields)[number] | null };
+
 const uuid = z.guid();
 /** Multipart fields arrive as strings; `place` is only `answer` until PR 512 connects the other comment places. */
 export const voiceNoteFieldsSchema = z.object({
   durationMs: z.coerce.number().int().min(VOICE_NOTE_MIN_DURATION_MS).max(VOICE_NOTE_MAX_DURATION_MS),
   replaceId: uuid.optional(),
+  /** PR 512: the comment of an answer by default; a reviewer's comment or a summary field are the other places. */
+  place: z.enum(voiceNotePlaces).default('answer'),
+  field: z.enum(voiceSummaryFields).optional(),
 });
 
 /** What the API shows of a recording: never the storage key or the MIME type. */
-export const voiceNoteSelect = { id: true, itemId: true, place: true, durationMs: true, sizeBytes: true, createdBy: true, createdAt: true } as const;
+export const voiceNoteSelect = { id: true, itemId: true, place: true, field: true, durationMs: true, sizeBytes: true, createdBy: true, createdAt: true } as const;
 
 type Storage = {
   deleteObject(key: string): Promise<void>;
@@ -42,6 +50,8 @@ export class ChecklistVoiceNotes {
     private readonly auditLog: AuditLogService,
     private readonly assertWritable: WritableCheck,
     private readonly maxBytes: number,
+    /** PR 512: a reviewer's comment can only be changed while the check waits for review (the rule of the review itself). */
+    private readonly assertReviewable: (instanceId: string, organizationId: string) => Promise<void> = async () => undefined,
   ) {}
 
   private async requireInstance(instanceId: string, organizationId: string) {
@@ -71,6 +81,34 @@ export class ChecklistVoiceNotes {
     if (!item) throw new NotFoundException('Checklist item not found');
   }
 
+  /** PR 512: the place a recording belongs to; a summary has no criterion, an answer or a reviewer's comment always has one. */
+  private target(itemId: string | null, kind?: VoiceKind) {
+    const place = kind?.place ?? 'answer';
+    if (place === 'summary') {
+      if (itemId || !kind?.field) throw new BadRequestException('A summary recording needs a field and no criterion');
+      return { place, itemId: null, field: kind.field };
+    }
+    if (!itemId || kind?.field) throw new BadRequestException('A recording belongs to one criterion');
+    return { place, itemId, field: null };
+  }
+
+  /** Who may write: a reviewer's comment follows the review (a reviewer, the check waits for it); the rest follows the answer. */
+  private async assertWriteAccess(place: VoiceKind['place'], instanceId: string, organizationId: string, requesterId: string, isPrivileged: boolean) {
+    if (place === 'reviewer_comment') {
+      if (!isPrivileged) throw new ForbiddenException('Only a reviewer can leave a voice comment on a review');
+      await this.assertReviewable(instanceId, organizationId);
+      return;
+    }
+    await this.assertWritable(instanceId, organizationId, requesterId, isPrivileged);
+  }
+
+  /** Which place a recording is in, so the caller can pick the right kind of actor before it deletes it. */
+  async placeOf(instanceId: string, noteId: string, organizationId: string) {
+    const note = await this.prisma.checklistVoiceNote.findFirst({ where: { id: noteId, instanceId, organizationId }, select: { place: true } });
+    if (!note) throw new NotFoundException('Voice recording not found');
+    return note.place;
+  }
+
   /** The recordings of a check, without storage keys. The check's executor and reviewers see them. */
   async list(instanceId: string, organizationId: string, requesterId: string, isPrivileged: boolean) {
     const instance = await this.requireInstance(instanceId, organizationId);
@@ -79,51 +117,54 @@ export class ChecklistVoiceNotes {
   }
 
   /** Called before the file is stored, so a full comment does not leave an object behind. `replaceId` frees one place. */
-  async assertHasRoom(instanceId: string, itemId: string, organizationId: string, requesterId: string, isPrivileged: boolean, replaceId?: string, durationMs?: number) {
+  async assertHasRoom(instanceId: string, itemId: string | null, organizationId: string, requesterId: string, isPrivileged: boolean, replaceId?: string, durationMs?: number, kind?: VoiceKind) {
+    const target = this.target(itemId, kind);
     await this.requireInstance(instanceId, organizationId);
     const settings = await this.settings(instanceId, organizationId);
     this.assertAllowed(settings, durationMs);
-    await this.assertWritable(instanceId, organizationId, requesterId, isPrivileged);
-    await this.assertItemOfCheck(this.prisma, instanceId, itemId, organizationId);
-    const count = await this.prisma.checklistVoiceNote.count({ where: { instanceId, organizationId, itemId, place: 'answer', ...(replaceId ? { id: { not: replaceId } } : {}) } });
+    await this.assertWriteAccess(target.place, instanceId, organizationId, requesterId, isPrivileged);
+    if (target.itemId) await this.assertItemOfCheck(this.prisma, instanceId, target.itemId, organizationId);
+    const count = await this.prisma.checklistVoiceNote.count({ where: { instanceId, organizationId, itemId: target.itemId, place: target.place, field: target.field, ...(replaceId ? { id: { not: replaceId } } : {}) } });
     if (count >= settings.perComment) throw new ConflictException(`At most ${settings.perComment} voice recordings per comment`);
   }
 
   /** Stores the row for an already uploaded file; with `replaceId` the author's earlier recording is removed in the same step. */
   async add(
     instanceId: string,
-    itemId: string,
+    itemId: string | null,
     organizationId: string,
     requesterId: string,
     isPrivileged: boolean,
     uploaded: { objectKey: string; mimeType: string; sizeBytes: number },
     durationMs: number,
     replaceId?: string,
+    kind?: VoiceKind,
   ) {
-    await this.assertWritable(instanceId, organizationId, requesterId, isPrivileged);
+    const target = this.target(itemId, kind);
+    await this.assertWriteAccess(target.place, instanceId, organizationId, requesterId, isPrivileged);
     const settings = await this.settings(instanceId, organizationId);
     this.assertAllowed(settings, durationMs);
     let replacedKey: string | null = null;
     const created = await this.prisma.$transaction(async (tx) => {
       if (replaceId) {
-        const old = await tx.checklistVoiceNote.findFirst({ where: { id: replaceId, instanceId, organizationId, itemId, place: 'answer' }, select: { id: true, objectKey: true, createdBy: true } });
+        const old = await tx.checklistVoiceNote.findFirst({ where: { id: replaceId, instanceId, organizationId, itemId: target.itemId, place: target.place, field: target.field }, select: { id: true, objectKey: true, createdBy: true } });
         if (!old) throw new NotFoundException('Voice recording not found');
         if (old.createdBy !== requesterId) throw new ForbiddenException('Only the author can replace a voice recording');
         await tx.checklistVoiceNote.delete({ where: { id: old.id } });
         replacedKey = old.objectKey;
       }
-      await this.assertItemOfCheck(tx, instanceId, itemId, organizationId);
-      const count = await tx.checklistVoiceNote.count({ where: { instanceId, organizationId, itemId, place: 'answer' } });
+      if (target.itemId) await this.assertItemOfCheck(tx, instanceId, target.itemId, organizationId);
+      const count = await tx.checklistVoiceNote.count({ where: { instanceId, organizationId, itemId: target.itemId, place: target.place, field: target.field } });
       if (count >= settings.perComment) throw new ConflictException(`At most ${settings.perComment} voice recordings per comment`);
       return tx.checklistVoiceNote.create({
-        data: { organizationId, instanceId, itemId, place: 'answer', objectKey: uploaded.objectKey, mimeType: uploaded.mimeType, durationMs, sizeBytes: uploaded.sizeBytes, createdBy: requesterId },
+        data: { organizationId, instanceId, itemId: target.itemId, place: target.place, field: target.field, objectKey: uploaded.objectKey, mimeType: uploaded.mimeType, durationMs, sizeBytes: uploaded.sizeBytes, createdBy: requesterId },
         select: voiceNoteSelect,
       });
     });
     if (replacedKey) await this.storage.deleteObject(replacedKey).catch(() => undefined);
     await this.auditLog.record({
       organizationId, actorId: requesterId, action: 'checklist_voice_note.added', targetType: 'checklist_instance', targetId: instanceId,
-      summary: 'Added a voice recording to a checklist comment', metadata: { itemId, voiceNoteId: created.id, durationMs },
+      summary: 'Added a voice recording to a checklist comment', metadata: { itemId: target.itemId, place: target.place, field: target.field, voiceNoteId: created.id, durationMs },
     });
     return created;
   }
@@ -131,9 +172,9 @@ export class ChecklistVoiceNotes {
   /** Only the author removes a recording, and only while the check can still be edited. */
   async remove(instanceId: string, noteId: string, organizationId: string, requesterId: string, isPrivileged: boolean) {
     await this.requireInstance(instanceId, organizationId);
-    await this.assertWritable(instanceId, organizationId, requesterId, isPrivileged);
-    const note = await this.prisma.checklistVoiceNote.findFirst({ where: { id: noteId, instanceId, organizationId }, select: { id: true, itemId: true, objectKey: true, createdBy: true } });
+    const note = await this.prisma.checklistVoiceNote.findFirst({ where: { id: noteId, instanceId, organizationId }, select: { id: true, itemId: true, place: true, objectKey: true, createdBy: true } });
     if (!note) throw new NotFoundException('Voice recording not found');
+    await this.assertWriteAccess(note.place, instanceId, organizationId, requesterId, isPrivileged);
     if (note.createdBy !== requesterId) throw new ForbiddenException('Only the author can remove a voice recording');
     await this.prisma.checklistVoiceNote.delete({ where: { id: note.id } });
     await this.storage.deleteObject(note.objectKey).catch(() => undefined);

@@ -33,6 +33,8 @@ export type ItemAnalyticsRow = {
   employee: string;
   observer: string | null;
   results: ReadonlyArray<{ itemId: string; answerState: string; scaleLevel: number | null; checked: boolean; points: number; comment: string | null; reviewComment: string | null }>;
+  /** PR 512: recordings of the criteria's comments (answer and reviewer), only their length. */
+  voice?: ReadonlyArray<{ itemId: string | null; durationMs: number }>;
 };
 
 type LevelCount = { value: number; label: string | null; labelKey: 'yes' | 'no' | null; color: string | null; count: number };
@@ -158,13 +160,14 @@ export const NOTES_PAGE_SIZE = 20;
 /** Notes: the per-criterion counts come from the criteria cut, the list is every note, newest first, paged. */
 function buildNotes(rows: readonly ItemAnalyticsRow[], sheetId: string, page: number, itemId?: string, pageSize = NOTES_PAGE_SIZE) {
   const { criteria } = buildCriteriaAndGroups(rows, sheetId);
-  const list: Array<{ sessionId: string | null; itemId: string; itemText: string; comment: string | null; reviewComment: string | null; at: string | null; employee: string; observer: string | null }> = [];
+  const list: Array<{ sessionId: string | null; itemId: string; itemText: string; comment: string | null; reviewComment: string | null; voiceSeconds: number | null; at: string | null; employee: string; observer: string | null }> = [];
   for (const row of rows) {
     const texts = new Map((row.snapshot?.checklist?.items ?? []).map((item) => [item.id, item.text ?? '']));
     for (const result of row.results) {
       if (itemId && result.itemId !== itemId) continue;
-      if (!hasText(result.comment) && !hasText(result.reviewComment)) continue;
-      list.push({ sessionId: row.sessionId, itemId: result.itemId, itemText: texts.get(result.itemId) ?? '', comment: hasText(result.comment) ? result.comment : null, reviewComment: hasText(result.reviewComment) ? result.reviewComment : null, at: row.finishedAt ? row.finishedAt.toISOString() : null, employee: row.employee, observer: row.observer });
+      const voiceMs = (row.voice ?? []).filter((note) => note.itemId === result.itemId).reduce((sum, note) => sum + note.durationMs, 0);
+      if (!hasText(result.comment) && !hasText(result.reviewComment) && voiceMs === 0) continue;
+      list.push({ sessionId: row.sessionId, itemId: result.itemId, itemText: texts.get(result.itemId) ?? '', comment: hasText(result.comment) ? result.comment : null, reviewComment: hasText(result.reviewComment) ? result.reviewComment : null, voiceSeconds: voiceMs > 0 ? Math.max(1, Math.round(voiceMs / 1000)) : null, at: row.finishedAt ? row.finishedAt.toISOString() : null, employee: row.employee, observer: row.observer });
     }
   }
   list.sort((a, b) => (b.at ?? '').localeCompare(a.at ?? ''));
@@ -204,6 +207,7 @@ export class ChecklistItemAnalytics {
     const person = { select: { firstName: true, lastName: true } } as const;
     const instanceSelect = {
       completedAt: true, templateSnapshot: true, user: person,
+      voiceNotes: { where: { place: { not: 'summary' } }, select: { itemId: true, durationMs: true } },
       results: { select: { itemId: true, answerState: true, scaleLevel: true, checked: true, points: true, comment: true, reviewComment: true } },
     } as const;
     const [sessions, selfDone] = await Promise.all([
@@ -220,11 +224,11 @@ export class ChecklistItemAnalytics {
     const rows: ItemAnalyticsRow[] = [
       ...sessions.map((session) => ({
         sessionId: session.id, finishedAt: session.instance.completedAt ?? session.scheduledAt, snapshot: (session.instance.templateSnapshot ?? null) as Snapshot,
-        feedbackAnswers: readFeedbackAnswers(session), employee: personName(session.instance.user) ?? '', observer: personName(session.observer), results: session.instance.results,
+        feedbackAnswers: readFeedbackAnswers(session), employee: personName(session.instance.user) ?? '', observer: personName(session.observer), results: session.instance.results, voice: session.instance.voiceNotes,
       })),
       ...selfDone.map((instance) => ({
         sessionId: null, finishedAt: instance.completedAt, snapshot: (instance.templateSnapshot ?? null) as Snapshot,
-        feedbackAnswers: {}, employee: personName(instance.user) ?? '', observer: null, results: instance.results,
+        feedbackAnswers: {}, employee: personName(instance.user) ?? '', observer: null, results: instance.results, voice: instance.voiceNotes,
       })),
     ];
     // Newest first, so the latest frozen text of a criterion wins.

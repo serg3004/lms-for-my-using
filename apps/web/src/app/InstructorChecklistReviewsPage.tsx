@@ -1,5 +1,5 @@
 import { RichText, plainText } from '../shared/RichText.js';
-import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -7,6 +7,12 @@ import { ApiClientError, getCurrentUser } from '../shared/apiClient.js';
 import {
   assignChecklistReviewer,
   getChecklistAnalytics,
+  getChecklistVoiceNoteBlob,
+  getChecklistVoiceSettings,
+  listChecklistVoiceNotes,
+  removeChecklistVoiceNote,
+  uploadChecklistVoiceNote,
+  type ChecklistVoiceNote,
   listChecklistInstanceEvents,
   reviewChecklistItemResult,
   searchChecklistReviewQueue,
@@ -22,7 +28,11 @@ import { InstructorPageLayout } from '../shared/instructorLayout.js';
 import { Button, PageState, Pagination, StatCard, StatsGrid, Toolbar } from '../shared/ui.js';
 import { guestLabel } from '../shared/guestLabel.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
+import { DictationButton } from '../shared/DictationButton.js';
+import { appendDictation } from '../shared/dictation.js';
 import { ChecklistDeadlineMeta } from './ChecklistDeadlineMeta.js';
+import { ChecklistVoiceNotes } from './ChecklistVoiceNotes.js';
+import { useVoiceSettings, type ChecklistVoiceApi } from './checklistVoice.js';
 import { ChecklistReviewPhotoEvidence } from './ChecklistReviewPhotoEvidence.js';
 import { hasChecklistPhotoEvidence } from './checklistPhotoEvidence.js';
 type ChecklistReviewsLayout = ComponentType<{ children: ReactNode; firstName?: string; lastName?: string }>;
@@ -31,6 +41,14 @@ type QueueTab = 'mine' | 'unassigned' | 'all';
 export function isReviewFlagged(item: ChecklistItemSummary, result: ChecklistItemResultSummary) {
   return item.photoRequired && !hasChecklistPhotoEvidence(result);
 }
+/** PR 512: the reviewer hears the learner's recordings and records their own comment. */
+const reviewVoiceApi: ChecklistVoiceApi = {
+  list: (instanceId) => listChecklistVoiceNotes(instanceId),
+  upload: (instanceId, itemId, blob, durationMs, replaceId, kind) => uploadChecklistVoiceNote(instanceId, itemId, blob, durationMs, replaceId, kind),
+  blob: (instanceId, noteId) => getChecklistVoiceNoteBlob(instanceId, noteId),
+  remove: (instanceId, noteId) => removeChecklistVoiceNote(instanceId, noteId),
+  settings: (instanceId) => getChecklistVoiceSettings(instanceId),
+};
 const COLORS = {
   surface: 'var(--color-surface)',
   soft: 'var(--color-surface-muted)',
@@ -234,6 +252,12 @@ function ReviewDetail({
   const [reviewerPending, setReviewerPending] = useState(false);
   const [events, setEvents] = useState<ChecklistInstanceEvent[] | null>(null);
   const checklist = instance.checklist;
+  const [voiceNotes, setVoiceNotes] = useState<ChecklistVoiceNote[]>([]);
+  const voiceSettings = useVoiceSettings(reviewVoiceApi, instance.id);
+  const reloadVoice = useCallback(async () => {
+    try { const list = await reviewVoiceApi.list(instance.id); setVoiceNotes(Array.isArray(list) ? list : []); } catch { /* an extra: the review itself keeps working */ }
+  }, [instance.id]);
+  useEffect(() => { void reloadVoice(); }, [reloadVoice]);
 
   function refreshEvents() {
     listChecklistInstanceEvents(instance.id)
@@ -392,12 +416,32 @@ function ReviewDetail({
               {result.comment && <p style={{ color: COLORS.text, fontSize: 12.5 }}>{t('checklistReview.learnerComment', 'Learner comment')}: <RichText value={result.comment} /></p>}
               {result.reviewComment && <p style={{ color: COLORS.muted, fontSize: 12.5 }}>{t('checklistReview.previousReviewComment', 'Review comment')}: {result.reviewComment}</p>}
               {hasEvidence && <ChecklistReviewPhotoEvidence instanceId={instance.id} itemId={item.id} result={result} t={t} />}
+              {voiceNotes.some((note) => note.place === 'answer' && note.itemId === item.id) && (
+                <ChecklistVoiceNotes api={reviewVoiceApi} editable={false} instanceId={instance.id} itemId={item.id} notes={voiceNotes.filter((note) => note.place === 'answer' && note.itemId === item.id)} onChanged={() => void reloadVoice()} settings={voiceSettings} t={t} />
+              )}
               {result.reviewStatus === 'pending' && (
-                <input
-                  placeholder={t('checklistReview.commentPlaceholder', 'Comment (optional)')}
-                  value={comment[item.id] ?? ''}
-                  onChange={(e) => setComment((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                  style={{ marginTop: 10, width: '100%', border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5 }}
+                <>
+                  <input
+                    aria-label={t('checklistReview.commentPlaceholder', 'Comment (optional)')}
+                    placeholder={t('checklistReview.commentPlaceholder', 'Comment (optional)')}
+                    value={comment[item.id] ?? ''}
+                    onChange={(e) => setComment((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                    style={{ marginTop: 10, width: '100%', border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: '7px 10px', fontSize: 12.5 }}
+                  />
+                  {voiceSettings.dictation && <DictationButton id={`review-${item.id}`} onText={(text) => setComment((prev) => ({ ...prev, [item.id]: appendDictation(prev[item.id] ?? '', text, 1000) }))} />}
+                </>
+              )}
+              {(result.reviewStatus === 'pending' || voiceNotes.some((note) => note.place === 'reviewer_comment' && note.itemId === item.id)) && (
+                <ChecklistVoiceNotes
+                  api={reviewVoiceApi}
+                  editable={result.reviewStatus === 'pending' && pending !== item.id}
+                  instanceId={instance.id}
+                  itemId={item.id}
+                  kind={{ place: 'reviewer_comment' }}
+                  notes={voiceNotes.filter((note) => note.place === 'reviewer_comment' && note.itemId === item.id)}
+                  onChanged={() => void reloadVoice()}
+                  settings={voiceSettings}
+                  t={t}
                 />
               )}
             </div>

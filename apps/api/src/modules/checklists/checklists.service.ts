@@ -22,7 +22,7 @@ import { ChecklistAnalyticsExport } from './checklist-analytics-export.js';
 import { ChecklistItemAnalytics } from './checklist-item-analytics.js';
 import { ChecklistSheetPhotos, sheetPhotosInclude } from './checklist-sheet-photos.js';
 import { effectiveVoice, loadVoicePolicy, type ChecklistInputMode, type EffectiveVoice } from '../../common/voice-policy.js';
-import { ChecklistVoiceNotes } from './checklist-voice-notes.js';
+import { ChecklistVoiceNotes, type VoiceKind } from './checklist-voice-notes.js';
 import { assertObserversBelongToOrganization, freezeReportSettings, loadEffectiveSettings, overridesToColumns, presentOverrides, presentStaffChecklist, SHEET_OVERRIDES_SELECT } from './checklist-settings-overrides.js';
 import { ChecklistBulkActions, type ChecklistBulkAction } from './checklist-bulk-actions.js';
 import { ChecklistPublicAccess, markGuestPassesDisabled, publicAccessOffData } from './checklist-public-access.js';
@@ -387,6 +387,7 @@ export class ChecklistsService {
       auditLog,
       (instanceId, organizationId, requesterId, isPrivileged) => this.assertInstanceWritable(instanceId, organizationId, requesterId, isPrivileged),
       MAX_VOICE_NOTE_BYTES,
+      (instanceId, organizationId) => this.assertAwaitingReview(instanceId, organizationId),
     );
     this.instanceTransfer = new ChecklistInstanceTransfer(prisma, auditLog);
     this.instanceReport = new ChecklistInstanceReport({
@@ -551,8 +552,15 @@ export class ChecklistsService {
   /** PR 421: extra pictures of a sheet. */
   // PR 509: voice recordings of the comment of an answer.
   listVoiceNotes(instanceId: string, organizationId: string, requesterId: string, isPrivileged: boolean) { return this.voiceNotes.list(instanceId, organizationId, requesterId, isPrivileged); }
-  assertVoiceNoteRoom(instanceId: string, itemId: string, organizationId: string, requesterId: string, isPrivileged: boolean, replaceId?: string, durationMs?: number) { return this.voiceNotes.assertHasRoom(instanceId, itemId, organizationId, requesterId, isPrivileged, replaceId, durationMs); }
-  addVoiceNote(instanceId: string, itemId: string, organizationId: string, requesterId: string, isPrivileged: boolean, uploaded: { objectKey: string; mimeType: string; sizeBytes: number }, durationMs: number, replaceId?: string) { return this.voiceNotes.add(instanceId, itemId, organizationId, requesterId, isPrivileged, uploaded, durationMs, replaceId); }
+  assertVoiceNoteRoom(instanceId: string, itemId: string | null, organizationId: string, requesterId: string, isPrivileged: boolean, replaceId?: string, durationMs?: number, kind?: VoiceKind) { return this.voiceNotes.assertHasRoom(instanceId, itemId, organizationId, requesterId, isPrivileged, replaceId, durationMs, kind); }
+  /** PR 512: the same condition as the review of an answer. */
+  private async assertAwaitingReview(instanceId: string, organizationId: string) {
+    const instance = await this.prisma.checklistInstance.findFirst({ where: { id: instanceId, organizationId, deletedAt: null }, select: { status: true } });
+    if (!instance) throw new NotFoundException('Checklist assignment not found');
+    if (instance.status !== 'submitted') throw new BadRequestException('This checklist assignment is not awaiting review');
+  }
+  getVoiceNotePlace(instanceId: string, noteId: string, organizationId: string) { return this.voiceNotes.placeOf(instanceId, noteId, organizationId); }
+  addVoiceNote(instanceId: string, itemId: string | null, organizationId: string, requesterId: string, isPrivileged: boolean, uploaded: { objectKey: string; mimeType: string; sizeBytes: number }, durationMs: number, replaceId?: string, kind?: VoiceKind) { return this.voiceNotes.add(instanceId, itemId, organizationId, requesterId, isPrivileged, uploaded, durationMs, replaceId, kind); }
   removeVoiceNote(instanceId: string, noteId: string, organizationId: string, requesterId: string, isPrivileged: boolean) { return this.voiceNotes.remove(instanceId, noteId, organizationId, requesterId, isPrivileged); }
   getVoiceNoteFile(instanceId: string, noteId: string, organizationId: string, requesterId: string, isPrivileged: boolean) { return this.voiceNotes.getFile(instanceId, noteId, organizationId, requesterId, isPrivileged); }
   assertSheetPhotoRoom(checklistId: string, organizationId: string) { return this.sheetPhotos.assertHasRoom(checklistId, organizationId); }

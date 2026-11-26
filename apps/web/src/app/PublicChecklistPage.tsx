@@ -309,7 +309,7 @@ function PassScreen({ front, token, pass, instance, onInstance, onRestart, t }: 
     uploadPhoto: (_instanceId, itemId, file) => attachPublicPhoto(token, pass.instanceId, itemId, pass.passKey, file),
     voice: {
       list: () => listPublicVoiceNotes(token, pass.instanceId, pass.passKey),
-      upload: (_instanceId, itemId, blob, durationMs, replaceId) => uploadPublicVoiceNote(token, pass.instanceId, itemId, pass.passKey, blob, durationMs, replaceId),
+      upload: (_instanceId, itemId, blob, durationMs, replaceId) => uploadPublicVoiceNote(token, pass.instanceId, itemId ?? '', pass.passKey, blob, durationMs, replaceId),
       blob: (_instanceId, noteId) => getPublicVoiceNoteBlob(token, pass.instanceId, noteId, pass.passKey),
       remove: (_instanceId, noteId) => removePublicVoiceNote(token, pass.instanceId, noteId, pass.passKey),
       settings: () => getPublicVoiceSettings(token, pass.instanceId, pass.passKey),

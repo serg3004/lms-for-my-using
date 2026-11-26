@@ -27,6 +27,14 @@ Deploy `20261125140000_voice_dictation_settings` before the API. It is additive:
 existing organization after the migration until an administrator turns it on; saved
 recordings stay readable. On application rollback keep the columns: the old API ignores them.
 
+## Checklist voice recordings by place migration (PR 512)
+
+Deploy `20261126160000_voice_note_field` before the API. It adds the nullable column
+`checklist_voice_notes.field` (which closing text a `summary` recording belongs to) and
+replaces the lookup index with one that includes it. Existing recordings keep `field` null
+and stay valid (`answer`). No backfill. On application rollback keep the column: the old
+API ignores it.
+
 ## Assessment analytics layout migration (PR 533)
 
 Deploy `20261125090000_assessment_analytics_layouts` before the API. It adds the

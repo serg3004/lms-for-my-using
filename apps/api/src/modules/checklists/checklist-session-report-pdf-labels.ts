@@ -8,6 +8,8 @@ export type PdfLabels = {
   answered: string; skipped: string; unanswered: string; formula: { snapshot: string; criteria: string };
   groups: string; criteria: string; number: string; criterion: string; score: string; level: string; comment: string;
   skippedCriterion: string; photos: string; photoFile: string; photosOmitted: (count: number) => string; photoUnavailable: string;
+  /** PR 512: a mark instead of the audio (a PDF cannot play it); `reviewer` is the reviewer's own recording. */
+  voice: (seconds: number, reviewer: boolean) => string;
   feedback: string; strengths: string; developmentAreas: string; nextSteps: string;
   finished: string; ofCriteria: (answered: number, total: number) => string;
   hidden: string; page: (page: number, pages: number) => string; empty: string;
@@ -24,6 +26,7 @@ export const PDF_LABELS: Record<PdfLocale, PdfLabels> = {
     answered: 'Оценено', skipped: 'Пропущено', unanswered: 'Без ответа', formula: { snapshot: 'Формула: по снимку чек-листа', criteria: 'Формула: по критериям' },
     groups: 'Группы', criteria: 'Критерии', number: '№', criterion: 'Критерий', score: 'Баллы', level: 'Уровень', comment: 'Комментарий',
     skippedCriterion: 'Пропущен', photos: 'Фотографии', photoFile: 'Фото', photosOmitted: (count) => `Ещё фотографий не включено в файл: ${count}`, photoUnavailable: 'Фото недоступно',
+    voice: (n, r) => `${r ? 'Проверяющий: ' : ''}есть звуковая запись, ${n} сек.`,
     feedback: 'Обратная связь', strengths: 'Сильные стороны', developmentAreas: 'Зоны роста', nextSteps: 'Комментарий',
     finished: 'Завершено', ofCriteria: (a, t) => `${a} из ${t} критериев`,
     hidden: 'Результат пока скрыт от сотрудника.', page: (page, pages) => `Стр. ${page} из ${pages}`, empty: 'нет данных',
@@ -38,6 +41,7 @@ export const PDF_LABELS: Record<PdfLocale, PdfLabels> = {
     answered: 'Scored', skipped: 'Skipped', unanswered: 'Unanswered', formula: { snapshot: 'Formula: checklist snapshot', criteria: 'Formula: by criteria' },
     groups: 'Groups', criteria: 'Criteria', number: '#', criterion: 'Criterion', score: 'Points', level: 'Level', comment: 'Comment',
     skippedCriterion: 'Skipped', photos: 'Photos', photoFile: 'Photo', photosOmitted: (count) => `Photos not included in the file: ${count}`, photoUnavailable: 'Photo unavailable',
+    voice: (n, r) => `${r ? 'Reviewer: ' : ''}has a voice recording, ${n} s`,
     feedback: 'Feedback', strengths: 'Strengths', developmentAreas: 'Development areas', nextSteps: 'Comment',
     finished: 'Completed', ofCriteria: (a, t) => `${a} of ${t} criteria`,
     hidden: 'The result is still hidden from the employee.', page: (page, pages) => `Page ${page} of ${pages}`, empty: 'no data',
@@ -52,6 +56,7 @@ export const PDF_LABELS: Record<PdfLocale, PdfLabels> = {
     answered: 'Бағаланды', skipped: 'Өткізілді', unanswered: 'Жауапсыз', formula: { snapshot: 'Формула: чек-листтің көшірмесі бойынша', criteria: 'Формула: өлшемдер бойынша' },
     groups: 'Топтар', criteria: 'Өлшемдер', number: '№', criterion: 'Өлшем', score: 'Балл', level: 'Деңгей', comment: 'Пікір',
     skippedCriterion: 'Өткізілді', photos: 'Фотолар', photoFile: 'Фото', photosOmitted: (count) => `Файлға енгізілмеген фотолар: ${count}`, photoUnavailable: 'Фото қолжетімсіз',
+    voice: (n, r) => `${r ? 'Тексеруші: ' : ''}дыбыс жазбасы бар, ${n} сек.`,
     feedback: 'Кері байланыс', strengths: 'Күшті жақтары', developmentAreas: 'Даму аймақтары', nextSteps: 'Пікір',
     finished: 'Аяқталды', ofCriteria: (a, t) => `${t} өлшемнің ${a}-і`,
     hidden: 'Нәтиже қызметкерден әзірге жасырылған.', page: (page, pages) => `${page} / ${pages} бет`, empty: 'дерек жоқ',
@@ -66,6 +71,7 @@ export const PDF_LABELS: Record<PdfLocale, PdfLabels> = {
     answered: '已评分', skipped: '已跳过', unanswered: '未回答', formula: { snapshot: '公式：清单快照', criteria: '公式：按标准' },
     groups: '分组', criteria: '评分标准', number: '序号', criterion: '标准', score: '得分', level: '等级', comment: '备注',
     skippedCriterion: '已跳过', photos: '照片', photoFile: '照片', photosOmitted: (count) => `未包含在文件中的照片：${count}`, photoUnavailable: '照片不可用',
+    voice: (n, r) => `${r ? '审核人：' : ''}有录音，${n} 秒`,
     feedback: '反馈', strengths: '优势', developmentAreas: '改进方向', nextSteps: '备注',
     finished: '已完成', ofCriteria: (a, t) => `${t} 项标准中的 ${a} 项`,
     hidden: '结果暂未向员工公开。', page: (page, pages) => `第 ${page} 页，共 ${pages} 页`, empty: '无数据',
