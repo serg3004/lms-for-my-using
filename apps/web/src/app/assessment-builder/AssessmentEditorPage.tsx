@@ -1,3 +1,5 @@
+import { assessmentPresentationSchema, type AssessmentPresentation } from '@lms/shared/assessment-presentation';
+import { AssessmentPresentationFields } from './AssessmentPresentationFields.js';
 import { AssessmentMaterialField } from '../../features/assessment-materials/AssessmentMaterial.js';
 import { AssessmentQuestionBank } from './AssessmentQuestionBank.js';
 import { assessmentPolicySchema, type AssessmentPolicy } from '@lms/shared/assessment-policy';
@@ -69,7 +71,10 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
   const [questions, setQuestions] = useState(initial?.draft?.questions ?? initial?.questions ?? []);
   const [policy, setPolicy] = useState<AssessmentPolicy>(initial?.draft?.settings.policy ?? initial?.assessment.policy ?? {});
   const [material, setMaterial] = useState(initial?.draft?.settings.material === undefined ? initial?.assessment.material : initial.draft.settings.material);
-  const [baseline, setBaseline] = useState(() => JSON.stringify({ form, questions, policy, material }));
+  const [presentation, setPresentation] = useState<AssessmentPresentation | undefined>(
+    initial ? initial.draft?.settings.presentation ?? initial.assessment.presentation ?? undefined : { titleScreen: true },
+  );
+  const [baseline, setBaseline] = useState(() => JSON.stringify({ form, questions, policy, material, presentation }));
   const [revision, setRevision] = useState(initial?.assessment.updatedAt);
   const [status, setStatus] = useState(initial?.assessment.status ?? 'draft');
   const [unpublished, setUnpublished] = useState(Boolean(initial?.draft));
@@ -83,19 +88,19 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
   const [placementDirty, setPlacementDirty] = useState(false);
   const [copying, setCopying] = useState(false);
   const bypassGuard = useRef(false);
-  const snapshot = JSON.stringify({ form, questions, policy, material });
+  const snapshot = JSON.stringify({ form, questions, policy, material, presentation });
   const dirty = snapshot !== baseline || placementDirty;
   const values = mapAssessmentForm(form, initial?.assessment.slug ?? 'assessment');
   let content: EditorContent | null = null;
   const parsedPolicy = assessmentPolicySchema.safeParse(policy);
   const previousLimits = initial?.draft?.settings ?? initial?.assessment;
-  if (values && parsedPolicy.success
+  if (values && parsedPolicy.success && assessmentPresentationSchema.optional().safeParse(presentation).success
     && (values.maxAttempts == null || values.maxAttempts <= 10 || values.maxAttempts === previousLimits?.maxAttempts)
     && (values.timeLimitMinutes == null || values.timeLimitMinutes <= 600 || values.timeLimitMinutes === previousLimits?.timeLimitMinutes)) {
     const { title, description, passingScore, maxAttempts, timeLimitMinutes, availableAfterCourseCompletion,
       passMessage, failMessage, showCorrectAnswers, randomizeOrder } = values;
     content = {
-      settings: { title, description, material, passingScore, maxAttempts, timeLimitMinutes: timeLimitMinutes ?? null,
+      settings: { title, description, material, presentation, passingScore, maxAttempts, timeLimitMinutes: timeLimitMinutes ?? null,
         availableAfterCourseCompletion, passMessage, failMessage, showCorrectAnswers, randomizeOrder,
         ...(Object.keys(parsedPolicy.data).length ? { policy: parsedPolicy.data } : {}) },
       questions,
@@ -242,7 +247,7 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
           onClick={() => setTab(item)}>{label(item)}</Button>)}
     </nav>
     <fieldset disabled={busy || copying || pending !== null} className={`admin-theme-settings__fieldset admin-form ${tab === 'questions' ? '' : 'assessment-editor-panel'}`}>
-      {!initial && <div hidden={tab !== 'main'}><CreationPlacement onChange={() => setPlacementDirty(true)} form={form} policy={policy} onCreated={(id) => {
+      {!initial && <div hidden={tab !== 'main'}><CreationPlacement onChange={() => setPlacementDirty(true)} form={form} policy={policy} presentation={presentation} material={material} onCreated={(id) => {
           const params = new URLSearchParams({ tab: 'questions' });
           if (listLink.includes('?')) params.set('list', listLink.split('?')[1]);
           navigate(`${listPath}/${id}/edit?${params}`, { replace: true });
@@ -252,12 +257,16 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
           <input id="assessment-editor-title" value={form.title} maxLength={200} onChange={(event) => change('title', event.target.value)} />
         </FormField>
         <FormField id="timeLimitMinutes" label={label('timeLimit')} hint={label('timeHint')}>
-          <input id="timeLimitMinutes" type="number" min={1} max={Math.max(600, previousLimits?.timeLimitMinutes ?? 0)} value={form.timeLimitMinutes}
+          <input id="timeLimitMinutes" type="number" min={1} max={Math.max(600, previousLimits?.timeLimitMinutes ?? 0)} value={form.timeLimitMinutes} disabled={presentation?.titleScreen === false}
             onChange={(event) => change('timeLimitMinutes', event.target.value)} />
         </FormField>
         <RichTextField id="assessment-editor-description" label={t('admin.assessmentBuilder.description')}
           value={form.description} maxLength={2000} onChange={(value) => change('description', value)} />
         <AssessmentMaterialField value={material} onChange={setMaterial} />
+        <AssessmentPresentationFields value={presentation ?? {}} onChange={(value) => {
+          if (value.titleScreen === false) change('timeLimitMinutes', '');
+          setPresentation(value);
+        }} />
       </>}
       {tab === 'settings' && <>
         <AssessmentPolicyFields policy={policy} onChange={setPolicy} legacyReveal={form.showCorrectAnswers} />
@@ -272,7 +281,7 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
             <input type="checkbox" checked={form[field]} onChange={(event) => change(field, event.target.checked)} />
             {t(`admin.assessmentBuilder.${field === 'availableAfterCourseCompletion' ? 'availableAfterCompletion' : field}`)}
           </label>)}
-        {(['passMessage', 'failMessage'] as const).map((field) => <RichTextField key={field} id={field}
+        {(presentation?.finalScreen ?? 'results') === 'results' && (['passMessage', 'failMessage'] as const).map((field) => <RichTextField key={field} id={field}
           label={t(`admin.assessmentBuilder.${field}`)} value={form[field]} maxLength={2000} onChange={(value) => change(field, value)} />)}
       </>}
       {tab === 'questions' && <>
@@ -306,10 +315,12 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
   </>;
 }
 
-function CreationPlacement({ onChange, form, policy, onCreated, onError }: {
+function CreationPlacement({ onChange, form, policy, presentation, material, onCreated, onError }: {
   onChange: () => void;
   form: ReturnType<typeof emptyAssessmentForm>;
   policy: AssessmentPolicy;
+  presentation?: AssessmentPresentation;
+  material?: string | null;
   onCreated: (id: string) => void;
   onError: (errors: string[]) => void;
 }) {
@@ -325,7 +336,7 @@ function CreationPlacement({ onChange, form, policy, onCreated, onError }: {
     if (saving || loadState.status !== 'loaded') return;
     const values = mapAssessmentForm(form, `assessment-${crypto.randomUUID()}`);
     const parsed = assessmentPolicySchema.safeParse(policy);
-    if (!values || !parsed.success || (values.maxAttempts ?? 0) > 10 || (values.timeLimitMinutes ?? 0) > 600) {
+    if (!values || !parsed.success || !assessmentPresentationSchema.optional().safeParse(presentation).success || (values.maxAttempts ?? 0) > 10 || (values.timeLimitMinutes ?? 0) > 600) {
       onError([t('assessments.policy.invalidSettings')]);
       return;
     }
@@ -336,7 +347,7 @@ function CreationPlacement({ onChange, form, policy, onCreated, onError }: {
       const result = await apiRequest<{ id: string }>('/assessments', {
         method: 'POST',
         body: JSON.stringify({
-          ...values, ...(Object.keys(parsed.data).length ? { policy: parsed.data } : {}), organizationId, status: 'draft', description: values.description ?? undefined,
+          ...values, presentation, material, ...(Object.keys(parsed.data).length ? { policy: parsed.data } : {}), organizationId, status: 'draft', description: values.description ?? undefined,
           maxAttempts: values.maxAttempts ?? undefined, passMessage: values.passMessage ?? undefined, failMessage: values.failMessage ?? undefined,
           courseId: independent ? undefined : selectedCourseId, lessonId: independent ? undefined : selectedLessonId || undefined,
         }),

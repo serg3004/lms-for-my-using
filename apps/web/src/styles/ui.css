@@ -318,6 +318,17 @@
   max-width: 760px;
 }
 
+.learner-quiz :is(h1, h2, h3) { font-family: var(--assessment-heading-font, inherit); overflow-wrap: anywhere; }
+
+.learner-quiz .learner-btn--primary {
+  background: var(--assessment-accent, var(--color-primary));
+  color: var(--assessment-on-accent, var(--color-on-primary));
+}
+
+.learner-quiz .learner-btn--primary:hover:not(:disabled) {
+  background: var(--assessment-accent, var(--color-primary-hover));
+}
+
 .learner-quiz__empty {
   color: var(--color-text-muted);
 }

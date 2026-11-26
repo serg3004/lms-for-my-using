@@ -1,3 +1,4 @@
+import { assessmentThemeSchema } from '@lms/shared/assessment-presentation';
 import { Body, Controller, ForbiddenException, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 
 import type { PermissionActionKey } from '@lms/shared/permission-catalog';
@@ -46,6 +47,12 @@ export class AssessmentsController {
   listLibrary(@Query() query: unknown, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
     return this.assessmentsService.listLibrary(user.organizationId, user.id, isInstructorCourseScoped(user), assessmentLibrarySchema.parse(query));
+  }
+
+  @Patch('default-theme')
+  @Roles('admin')
+  setDefaultTheme(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.assessmentsService.setDefaultTheme(request.currentUser!.organizationId, assessmentThemeSchema.parse(body));
   }
 
   @Get(':id')

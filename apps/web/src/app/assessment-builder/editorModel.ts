@@ -31,6 +31,7 @@ export type EditorSettings = Omit<ValidAssessmentForm, 'slug' | 'status' | 'time
   timeLimitMinutes: number | null;
   material?: string | null;
   policy?: AssessmentPolicy;
+  presentation?: NonNullable<AssessmentSummary['presentation']>;
 };
 
 export type EditorContent = { settings: EditorSettings; questions: EditorQuestion[] };

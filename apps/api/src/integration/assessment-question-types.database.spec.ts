@@ -14,7 +14,7 @@ import { AssessmentManualReviewService } from '../modules/assessment-attempts/as
 import { ManagerTeamScope } from '../modules/manager-team-scope/public.js';
 import { AssessmentResultsService } from '../modules/assessment-attempts/assessment-results.service.js';
 import { createAssessmentAttemptSchema, type CreateAssessmentAttemptInput } from '../modules/assessment-attempts/assessment-attempts.schemas.js';
-import { assessmentEditorContentSchema, type SaveAssessmentEditorInput } from '../modules/assessments/assessments.schemas.js';
+import { assessmentEditorContentSchema, createAssessmentSchema, type SaveAssessmentEditorInput } from '../modules/assessments/assessments.schemas.js';
 import { AssessmentsService } from '../modules/assessments/assessments.service.js';
 import { EffectivePermissionsLookup, RolesGuard, type CurrentUser, type AuthenticatedRequest } from '../modules/auth/public.js';
 import { CourseAccessGuard, CourseAccessPolicy } from '../modules/course-access/public.js';
@@ -328,6 +328,28 @@ describe('seven assessment question types and legacy grading — database', () =
     expect(await prisma.progress.count({ where: { organizationId: org } })).toBe(0);
     expect(await prisma.certificate.count({ where: { organizationId: org } })).toBe(0);
     expect(await results.listAssessmentResults(paper.id, { ...instructor, roles: ['manager'] }, null)).toMatchObject([{ id: own.id }]);
+  });
+
+  it('inherits the organization theme and records completion without a final screen', async () => {
+    const theme = { accent: '#ffff00', headingFont: 'georgia' } as const;
+    const presentation = { titleScreen: false, finalScreen: 'none' } as const;
+    const input = { organizationId: org, courseId, title: 'Themed test', slug: 'themed', presentation,
+      availableAfterCourseCompletion: false };
+    await papers.setDefaultTheme(org, theme);
+    await expect(papers.createAssessment(createAssessmentSchema.parse({ ...input, timeLimitMinutes: 10 })))
+      .rejects.toThrow('A timed assessment requires a title screen');
+    const assessment = await papers.createAssessment(createAssessmentSchema.parse(input));
+    expect(assessment.presentation).toEqual({ ...presentation, theme });
+    expect((await papers.getAssessment(assessmentId, org)).presentation).toBeNull();
+
+    assessmentId = assessment.id;
+    const { question, options } = await createChoice('single_choice');
+    await papers.updateAssessmentStatus(assessmentId, org, 'published');
+    const attempt = await submit({ answers: [{ questionId: question.id, selectedOptionId: options[0]!.id }] });
+    expect(attempt).toMatchObject({ status: 'completed', passed: true, courseId });
+    expect(await prisma.certificate.findFirst({ where: { assessmentAttemptId: attempt.id } }))
+      .toMatchObject({ status: 'issued', courseId });
+    expect((await results.getAttemptResult(attempt.id, learner)).assessment.presentation).toEqual({ ...presentation, theme });
   });
 
   it('round-trips all seven types, grades on the server, records answers, report and certificate; author preview writes nothing', async () => {

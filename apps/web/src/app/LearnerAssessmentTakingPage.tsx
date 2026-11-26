@@ -1,3 +1,5 @@
+import { assessmentAccentContrast, assessmentFonts } from '@lms/shared/assessment-presentation';
+import { Navigate } from 'react-router-dom';
 import { AssessmentMaterial } from '../features/assessment-materials/AssessmentMaterial.js';
 import { useAssessmentDraft } from './assessment-taking/draft.js';
 import { requiresLockedAnswers } from '@lms/shared/assessment-policy';
@@ -5,7 +7,7 @@ import { recordAssessmentAnswer } from '../shared/api/assessments.js';
 import type { RecordedAssessmentAnswer } from '../shared/api/types.js';
 import { correctAnswerText } from '../features/longread-exercises/answer-text.js';
 import { assessmentTokenQuery } from '../shared/api/assessments.js';
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type CSSProperties, type FormEvent, useEffect, useRef, useState } from 'react';
 import { QuestionResponseFields } from '../features/longread-exercises/QuestionResponseFields.js';
 import { ownAnswerText, reviewedCorrectText } from '../features/longread-exercises/answer-text.js';
 import { RichText, plainText } from '../shared/RichText.js';
@@ -57,6 +59,7 @@ type SubmitState =
 
 export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { assessmentId: string; token?: string; preview?: TakingPreview }) {
   const { t } = useTranslation();
+  const [titleAccepted, setTitleAccepted] = useState(false);
   const [recorded, setRecorded] = useState<Record<string, RecordedAssessmentAnswer>>({});
   const [checking, setChecking] = useState(false);
   const [attemptId, setAttemptId] = useState<string>();
@@ -76,6 +79,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
     async () => {
       if (preview) return { assessment: preview.assessment, questions: preview.questions };
       const assessment = await getAssessment(assessmentId);
+      if (assessment.presentation?.titleScreen && !titleAccepted) return { assessment, questions: EMPTY_QUESTIONS };
       if (!assessment.bankSampleSize) {
         // Check compatibility before starting the timer or persisting an attempt.
         const questions = await apiRequest<QuestionWithOptions[]>(
@@ -87,7 +91,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
       if (!startedAttempt.questions) throw new Error('Missing attempt questions');
       return { assessment, questions: startedAttempt.questions, startedAttempt };
     },
-    [assessmentId, t, token, preview, startRetry],
+    [assessmentId, t, token, preview, startRetry, titleAccepted],
     { unauthenticated: t('assessments.sessionExpired'), error: t('assessments.loadError') },
   );
 
@@ -102,6 +106,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
     const { assessment, startedAttempt } = loadState.data;
     const limit = assessment.timeLimitMinutes;
     if (preview) {
+      if (assessment.presentation?.titleScreen && !titleAccepted && !preview.startIndex) return;
       setSecondsLeft(limit ? limit * 60 : null);
       setSessionReady(true);
       return;
@@ -146,7 +151,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
     })();
 
     return () => { cancelled = true; };
-  }, [loadState, draftQuestions, draftLocked, assessmentId, token, preview, t, startRetry]);
+  }, [loadState, draftQuestions, draftLocked, assessmentId, token, preview, t, startRetry, titleAccepted]);
 
   useEffect(() => {
     if (!deadline) return;
@@ -305,9 +310,6 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
     );
   }
 
-  if (expired) return <PageState title={t('assessments.timerExpired')} message={t('assessments.timeEnded')}
-    action={<a href={`/learn/attempts/${attemptId}`}>{t('assessments.attemptsHistoryReview')}</a>} />;
-
   if (timerError) {
     return <PageState title={t('assessments.takeTitle')} message={timerError} variant="error"
       action={<button type="button" className="learner-btn learner-btn--secondary" onClick={() => {
@@ -318,6 +320,43 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
   }
 
   const { assessment, questions } = loadState.data;
+  const presentation = assessment.presentation;
+  const theme = presentation?.theme;
+  const themeStyle = theme ? {
+    '--assessment-accent': theme.accent,
+    '--assessment-on-accent': theme.accent ? assessmentAccentContrast(theme.accent).foreground : undefined,
+    '--assessment-heading-font': theme.headingFont ? assessmentFonts[theme.headingFont] : undefined,
+    fontFamily: theme.bodyFont ? assessmentFonts[theme.bodyFont] : undefined,
+  } as CSSProperties : undefined;
+  const finalPresentation = submitState.status === 'done' ? submitState.result.assessment.presentation : presentation;
+  const finalMode = finalPresentation?.finalScreen ?? 'results';
+  const showTitle = presentation?.titleScreen && !titleAccepted && !preview?.startIndex;
+
+  if (showTitle) return <div className="learner-quiz" style={themeStyle}>
+    <h1>{assessment.title}</h1>
+    {assessment.description && <RichText value={assessment.description} />}
+    <AssessmentMaterial value={assessment.material} />
+    <button type="button" className="learner-btn learner-btn--primary" style={touchTarget} onClick={() => setTitleAccepted(true)}>
+      {t('assessments.startBtn')}
+    </button>
+  </div>;
+
+  if ((expired || submitState.status === 'done') && finalMode === 'none') {
+    return preview ? null : <Navigate to={backLink} replace />;
+  }
+
+  if ((expired || submitState.status === 'done') && finalMode === 'message') {
+    const message = finalPresentation?.completionMessage;
+    return <div className="learner-quiz" style={themeStyle}>
+      <h1>{t('assessments.presentation.completed')}</h1>
+      {message && <RichText value={message} />}
+      {!preview && <a className="learner-btn learner-btn--primary" href={backLink}>{t('assessments.backToAssessment')}</a>}
+    </div>;
+  }
+
+  if (expired) return <PageState title={t('assessments.timerExpired')} message={t('assessments.timeEnded')}
+    action={<a href={`/learn/attempts/${attemptId}`}>{t('assessments.attemptsHistoryReview')}</a>} />;
+
   const locked = requiresLockedAnswers(assessment.policy);
   const noBack = assessment.policy?.preventBacktracking;
   const allQuestions = assessment.policy?.oneQuestion === false && !locked;
@@ -328,12 +367,12 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
 
   if (submitState.status === 'done') {
     const { result, certificateId } = submitState;
-    if (result.status === 'pending_review') return <div className="learner-quiz">
+    if (result.status === 'pending_review') return <div className="learner-quiz" style={themeStyle}>
       <p role="status">{t('assessmentReview.pending')}</p>
       {result.id && <a href={`/learn/attempts/${result.id}`}>{t('assessments.attemptsHistoryReview')}</a>}
     </div>;
     return (
-      <div className="learner-quiz">
+      <div className="learner-quiz" style={themeStyle}>
         {!preview && <nav className="learner-breadcrumb">
           <a href="/learn/assessments">{t('assessments.navLink')}</a>
           <span>›</span>
@@ -422,7 +461,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
 
 
   return (
-    <div className="learner-quiz">
+    <div className="learner-quiz" style={themeStyle}>
       {!preview && <nav className="learner-breadcrumb">
         <a href="/learn/assessments">{t('assessments.navLink')}</a>
         <span>›</span>
@@ -440,7 +479,7 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
           <p style={{ margin: '8px 0 0', color: 'var(--color-text-muted)', fontSize: '14px' }}>
             {t('assessments.subtitleTaking', { current: currentIndex + 1, total: questions.length, score: assessment.passingScore })}
           </p>
-          <AssessmentMaterial value={assessment.material} />
+          {presentation?.titleScreen === undefined && <AssessmentMaterial value={assessment.material} />}
         </div>
       </section>
 
@@ -606,8 +645,8 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
                       }}
                       style={{
                         border: `1px solid ${isCurrent ? 'var(--color-primary)' : isDone ? '#b7ead6' : 'var(--color-border)'}`,
-                        background: isCurrent ? 'var(--color-primary)' : isDone ? 'var(--color-success-bg)' : 'var(--color-surface)',
-                        color: isCurrent ? 'var(--color-on-primary)' : isDone ? 'var(--color-success)' : 'var(--color-text)',
+                        background: isCurrent ? 'var(--assessment-accent, var(--color-primary))' : isDone ? 'var(--color-success-bg)' : 'var(--color-surface)',
+                        color: isCurrent ? 'var(--assessment-on-accent, var(--color-on-primary))' : isDone ? 'var(--color-success)' : 'var(--color-text)',
                         borderRadius: '10px',
                         minHeight: '44px',
                         fontWeight: 700,

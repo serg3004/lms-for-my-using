@@ -1,3 +1,4 @@
+import { assessmentPresentationSchema, assessmentThemeSchema, type AssessmentTheme } from '@lms/shared/assessment-presentation';
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
@@ -33,7 +34,7 @@ const assessmentSelect = {
   isLongreadExercise: true,
   title: true,
   slug: true,
-  description: true, material: true,
+  description: true, material: true, presentation: true,
   status: true,
   passingScore: true,
   maxAttempts: true,
@@ -102,8 +103,14 @@ export class AssessmentsService {
       await this.ensureLessonBelongsToCourse(input.lessonId, input.courseId, input.organizationId);
     }
 
+    this.validatePresentationTimer(input.presentation, input.timeLimitMinutes);
+    const organization = await this.prisma.organization.findUnique({
+      where: { id: input.organizationId }, select: { assessmentTheme: true },
+    });
+    const theme = assessmentThemeSchema.safeParse(organization?.assessmentTheme);
+    const presentation = theme.success ? { theme: theme.data, ...input.presentation } : input.presentation;
     return this.prisma.assessment.create({
-      data: { ...input, ...(createdBy ? { createdBy } : {}) },
+      data: { ...input, presentation, ...(createdBy ? { createdBy } : {}) },
       select: assessmentSelect,
     });
   }
@@ -138,6 +145,7 @@ export class AssessmentsService {
           courseId, folderId, title, description, material, passingScore, maxAttempts, timeLimitMinutes,
           availableAfterCourseCompletion, passMessage, failMessage, showCorrectAnswers, randomizeOrder,
           policy: source.policy ?? Prisma.DbNull,
+          presentation: source.presentation ?? Prisma.DbNull,
           ...draft?.settings,
           organizationId, createdBy, slug: `copy-${randomUUID()}`, status: 'draft',
           // A copy is an independent assessment, even when the source came from a longread.
@@ -218,6 +226,7 @@ export class AssessmentsService {
       if (current.status === 'published' && !confirmPublished) throw new ConflictException('Confirm changes to the published assessment');
 
       this.validateLimits(content.settings, current);
+      this.validatePresentationTimer(content.settings.presentation ?? current.presentation, content.settings.timeLimitMinutes);
       const updatedAt = new Date(Math.max(Date.now(), current.updatedAt.getTime() + 1));
       if (current.status === 'published' && (action === 'save' || action === 'archive')) {
         const result = await tx.assessment.update({
@@ -330,6 +339,17 @@ export class AssessmentsService {
     }, { timeout: 15000 });
   }
 
+  async setDefaultTheme(organizationId: string, theme: AssessmentTheme) {
+    await this.prisma.organization.update({ where: { id: organizationId }, data: { assessmentTheme: theme } });
+    return theme;
+  }
+
+  private validatePresentationTimer(presentation: unknown, timeLimitMinutes?: number | null) {
+    if (timeLimitMinutes && assessmentPresentationSchema.safeParse(presentation).data?.titleScreen === false) {
+      throw new BadRequestException('A timed assessment requires a title screen');
+    }
+  }
+
   private validateLimits(input: UpdateAssessmentInput, current: { maxAttempts: number | null; timeLimitMinutes: number | null }) {
     if (input.maxAttempts != null && input.maxAttempts > 10 && input.maxAttempts !== current.maxAttempts) {
       throw new BadRequestException('Attempt limit must be between 1 and 10');
@@ -426,7 +446,7 @@ export class AssessmentsService {
   async updateAssessment(assessmentId: string, organizationId: string, input: UpdateAssessmentInput) {
     const assessment = await this.prisma.assessment.findFirst({
       where: { id: assessmentId, organizationId, deletedAt: null },
-      select: { id: true, maxAttempts: true, timeLimitMinutes: true },
+      select: { id: true, maxAttempts: true, timeLimitMinutes: true, presentation: true },
     });
 
     if (!assessment) {
@@ -434,6 +454,7 @@ export class AssessmentsService {
     }
 
     this.validateLimits(input, assessment);
+    this.validatePresentationTimer(assessment.presentation, input.timeLimitMinutes);
     if (input.status === 'published') await this.ensureQuestionsHaveCorrectOption(assessmentId, organizationId);
     return this.prisma.assessment.update({
       where: { id: assessmentId, organizationId },

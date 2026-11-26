@@ -1,3 +1,4 @@
+import type { AssessmentPresentation } from '@lms/shared/assessment-presentation';
 import type { AssessmentPolicy, EffectiveAssessmentResult } from '@lms/shared/assessment-policy';
 import type { Appearance } from '@lms/shared/checklist-appearance';
 import type { FeedbackLayout, FeedbackConfig, FeedbackAnswers, FeedbackAnswersPatch, FeedbackAnswerOption } from '@lms/shared/checklist-feedback';
@@ -204,6 +205,7 @@ export type AssignmentSummary = {
 };
 
 export type AssessmentSummary = {
+  presentation?: AssessmentPresentation | null;
   material?: string | null;
   bankSampleSize?: number | null;
   policy?: AssessmentPolicy | null;
@@ -346,7 +348,7 @@ export type AssessmentAttemptResult = {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  assessment: { id: string; title: string; slug: string; passingScore: number; passMessage: string | null; failMessage: string | null };
+  assessment: { id: string; title: string; slug: string; passingScore: number; passMessage: string | null; failMessage: string | null; presentation?: AssessmentPresentation | null };
   user: { id: string; email: string; firstName: string; lastName: string };
   answers: AttemptAnswerResult[];
 };

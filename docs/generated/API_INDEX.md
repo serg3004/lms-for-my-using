@@ -21,6 +21,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/assessment-reviews/{id}` | `AssessmentAttempts` | `bearer` |
 | `GET` | `/api/v1/assessments` | `Assessments` | `bearer` |
 | `POST` | `/api/v1/assessments` | `Assessments` | `bearer` |
+| `PATCH` | `/api/v1/assessments/default-theme` | `Assessments` | `bearer` |
 | `GET` | `/api/v1/assessments/library` | `Assessments` | `bearer` |
 | `GET` | `/api/v1/assessments/standalone/mine` | `StandaloneAssessments` | `bearer` |
 | `GET` | `/api/v1/assessments/{assessmentId}/analytics` | `AssessmentAttempts` | `bearer` |
