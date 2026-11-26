@@ -44,7 +44,7 @@ describe('checklist voice notes — database', () => {
   afterAll(async () => { await prisma.$disconnect(); });
   beforeEach(async () => {
     const run = randomUUID();
-    organizationId = (await prisma.organization.create({ data: { name: `Voice ${run}`, slug: `voice-${run}` } })).id;
+    organizationId = (await prisma.organization.create({ data: { name: `Voice ${run}`, slug: `voice-${run}`, voiceNotesEnabled: true } })).id;
     secondOrganizationId = (await prisma.organization.create({ data: { name: `Voice two ${run}`, slug: `voice-two-${run}` } })).id;
     const mk = (label: string) => prisma.user.create({ data: { organizationId, email: `${label}-${run}@example.test`, passwordHash: 'unused', firstName: label, lastName: 'User' } });
     learnerId = (await mk('learner')).id;
@@ -168,5 +168,40 @@ describe('checklist voice notes — database', () => {
     await expect(service.getVoiceNoteFile(id, note.id, organizationId, learnerId, true)).rejects.toThrow('not found');
     await prisma.checklistInstance.delete({ where: { id } });
     expect(await prisma.checklistVoiceNote.count({ where: { id: note.id } })).toBe(0);
+  });
+
+  // PR 511: the organization decides what is available; a checklist can only narrow it.
+  it('refuses a recording when the organization has voice off, but keeps listening and removing', async () => {
+    const id = await instance();
+    const created = await service.addVoiceNote(id, itemId, organizationId, learnerId, false, file(), 3000);
+    await prisma.organization.update({ where: { id: organizationId }, data: { voiceNotesEnabled: false } });
+    await expect(service.assertVoiceNoteRoom(id, itemId, organizationId, learnerId, false, undefined, 3000)).rejects.toThrow('turned off');
+    await expect(service.addVoiceNote(id, itemId, organizationId, learnerId, false, file(), 3000)).rejects.toThrow('turned off');
+    expect(await service.listVoiceNotes(id, organizationId, learnerId, false)).toHaveLength(1);
+    await expect(service.removeVoiceNote(id, created.id, organizationId, learnerId, false)).resolves.toBeUndefined();
+  });
+
+  it('refuses a recording when the checklist turns voice off, and reports the effective settings', async () => {
+    const id = await instance();
+    await prisma.checklist.update({ where: { id: checklistId }, data: { voiceNotesMode: 'off' } });
+    await expect(service.addVoiceNote(id, itemId, organizationId, learnerId, false, file(), 3000)).rejects.toThrow('turned off');
+    expect(await service.getVoiceSettings(id, organizationId, learnerId, false)).toEqual({ dictation: true, voiceNotes: false, maxSeconds: 120, perComment: 3 });
+  });
+
+  it('uses the organization’s duration and count limits', async () => {
+    const id = await instance();
+    await prisma.organization.update({ where: { id: organizationId }, data: { voiceNoteMaxSeconds: 10, voiceNotesPerComment: 1 } });
+    await expect(service.addVoiceNote(id, itemId, organizationId, learnerId, false, file(), 11_000)).rejects.toThrow('at most 10 seconds');
+    await service.addVoiceNote(id, itemId, organizationId, learnerId, false, file(), 9000);
+    await expect(service.addVoiceNote(id, itemId, organizationId, learnerId, false, file(), 2000)).rejects.toThrow('At most 1');
+  });
+
+  it('does not let a checklist switch on what the organization has switched off', async () => {
+    await prisma.organization.update({ where: { id: organizationId }, data: { voiceNotesEnabled: false, dictationEnabled: false } });
+    await expect(service.updateChecklist(checklistId, organizationId, { voiceNotesMode: 'on' })).rejects.toThrow('Voice recording is turned off');
+    await expect(service.updateChecklist(checklistId, organizationId, { dictationMode: 'on' })).rejects.toThrow('Dictation is turned off');
+    await expect(service.updateChecklist(checklistId, organizationId, { voiceNotesMode: 'off', dictationMode: 'off' })).resolves.toMatchObject({ voiceNotesMode: 'off', dictationMode: 'off' });
+    await prisma.organization.update({ where: { id: organizationId }, data: { voiceNotesEnabled: true } });
+    await expect(service.updateChecklist(checklistId, organizationId, { voiceNotesMode: 'on' })).resolves.toMatchObject({ voiceNotesMode: 'on' });
   });
 });

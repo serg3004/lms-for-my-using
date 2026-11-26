@@ -21,6 +21,7 @@ import { ChecklistSheetAnalytics } from './checklist-sheet-analytics.js';
 import { ChecklistAnalyticsExport } from './checklist-analytics-export.js';
 import { ChecklistItemAnalytics } from './checklist-item-analytics.js';
 import { ChecklistSheetPhotos, sheetPhotosInclude } from './checklist-sheet-photos.js';
+import { effectiveVoice, loadVoicePolicy, type ChecklistInputMode, type EffectiveVoice } from '../../common/voice-policy.js';
 import { ChecklistVoiceNotes } from './checklist-voice-notes.js';
 import { assertObserversBelongToOrganization, freezeReportSettings, loadEffectiveSettings, overridesToColumns, presentOverrides, presentStaffChecklist, SHEET_OVERRIDES_SELECT } from './checklist-settings-overrides.js';
 import { ChecklistBulkActions, type ChecklistBulkAction } from './checklist-bulk-actions.js';
@@ -140,6 +141,8 @@ const checklistSelect = {
   preSessionVisibility: true,
   allowFinishIncomplete: true,
   forbidGalleryPhotos: true,
+  dictationMode: true,
+  voiceNotesMode: true,
   feedbackEnabled: true,
   feedbackRequired: true,
   feedbackLayout: true,
@@ -548,7 +551,7 @@ export class ChecklistsService {
   /** PR 421: extra pictures of a sheet. */
   // PR 509: voice recordings of the comment of an answer.
   listVoiceNotes(instanceId: string, organizationId: string, requesterId: string, isPrivileged: boolean) { return this.voiceNotes.list(instanceId, organizationId, requesterId, isPrivileged); }
-  assertVoiceNoteRoom(instanceId: string, itemId: string, organizationId: string, requesterId: string, isPrivileged: boolean, replaceId?: string) { return this.voiceNotes.assertHasRoom(instanceId, itemId, organizationId, requesterId, isPrivileged, replaceId); }
+  assertVoiceNoteRoom(instanceId: string, itemId: string, organizationId: string, requesterId: string, isPrivileged: boolean, replaceId?: string, durationMs?: number) { return this.voiceNotes.assertHasRoom(instanceId, itemId, organizationId, requesterId, isPrivileged, replaceId, durationMs); }
   addVoiceNote(instanceId: string, itemId: string, organizationId: string, requesterId: string, isPrivileged: boolean, uploaded: { objectKey: string; mimeType: string; sizeBytes: number }, durationMs: number, replaceId?: string) { return this.voiceNotes.add(instanceId, itemId, organizationId, requesterId, isPrivileged, uploaded, durationMs, replaceId); }
   removeVoiceNote(instanceId: string, noteId: string, organizationId: string, requesterId: string, isPrivileged: boolean) { return this.voiceNotes.remove(instanceId, noteId, organizationId, requesterId, isPrivileged); }
   getVoiceNoteFile(instanceId: string, noteId: string, organizationId: string, requesterId: string, isPrivileged: boolean) { return this.voiceNotes.getFile(instanceId, noteId, organizationId, requesterId, isPrivileged); }
@@ -722,6 +725,7 @@ export class ChecklistsService {
     await this.assertCreationFolder(input.folderId, input.organizationId, createdBy);
     assertFeedbackSettingsConsistent(input.feedbackEnabled ?? true, input.feedbackRequired ?? false);
     const { feedbackLayout, appearance, ...rest } = input;
+    await this.assertInputModesAllowed(input.organizationId, input);
     await this.answerSetService.assertLayoutReferences(input.organizationId, feedbackLayout ?? null, null);
     const created = await this.prisma.checklist.create({
       data: { ...rest, ...(feedbackLayout ? { feedbackLayout } : {}), ...(appearance ? { appearance: appearance as unknown as Prisma.InputJsonValue } : {}), createdBy },
@@ -740,15 +744,49 @@ export class ChecklistsService {
     return created;
   }
 
+  /**
+   * PR 511: a checklist cannot switch on what the organization has switched off. Only a change is checked, so a checklist that
+   * already says `on` can still be saved after the administrator turned the mode off (it is simply not available then).
+   */
+  private async assertInputModesAllowed(
+    organizationId: string,
+    input: { dictationMode?: ChecklistInputMode; voiceNotesMode?: ChecklistInputMode },
+    current?: { dictationMode: ChecklistInputMode; voiceNotesMode: ChecklistInputMode },
+  ) {
+    const wantsDictation = input.dictationMode === 'on' && current?.dictationMode !== 'on';
+    const wantsVoice = input.voiceNotesMode === 'on' && current?.voiceNotesMode !== 'on';
+    if (!wantsDictation && !wantsVoice) return;
+    const policy = await loadVoicePolicy(this.prisma, organizationId);
+    if (wantsDictation && !policy.dictationEnabled) throw new BadRequestException('Dictation is turned off for the organization');
+    if (wantsVoice && !policy.voiceNotesEnabled) throw new BadRequestException('Voice recording is turned off for the organization');
+  }
+
+  async getInputPolicy(organizationId: string) {
+    const { dictationEnabled, voiceNotesEnabled, maxSeconds, perComment } = await loadVoicePolicy(this.prisma, organizationId);
+    return { dictationEnabled, voiceNotesEnabled, maxSeconds, perComment };
+  }
+
+  /** PR 511: dictation and voice recording as one check's screen should offer them (organization policy combined with the checklist's mode). */
+  async getVoiceSettings(instanceId: string, organizationId: string, requesterId: string, isPrivileged: boolean): Promise<EffectiveVoice> {
+    const instance = await this.prisma.checklistInstance.findFirst({
+      where: { id: instanceId, organizationId, deletedAt: null },
+      select: { userId: true, checklist: { select: { dictationMode: true, voiceNotesMode: true } } },
+    });
+    if (!instance) throw new NotFoundException('Checklist assignment not found');
+    if (instance.userId !== requesterId && !isPrivileged) throw new ForbiddenException('You can only view your own checklist assignment');
+    return effectiveVoice(await loadVoicePolicy(this.prisma, organizationId), instance.checklist);
+  }
+
   async updateChecklist(checklistId: string, organizationId: string, input: UpdateChecklistInput, actorId: string | null = null) {
     const checklist = await this.prisma.checklist.findFirst({
       where: { id: checklistId, organizationId, deletedAt: null },
-      select: { id: true, scoringMode: true, scaleLevels: true, accessMode: true, status: true, pinned: true, publicAccess: true, feedbackEnabled: true, feedbackRequired: true, feedbackLayout: true },
+      select: { id: true, scoringMode: true, scaleLevels: true, accessMode: true, status: true, pinned: true, publicAccess: true, feedbackEnabled: true, feedbackRequired: true, feedbackLayout: true, dictationMode: true, voiceNotesMode: true },
     });
 
     if (!checklist) {
       throw new NotFoundException('Checklist not found');
     }
+    await this.assertInputModesAllowed(organizationId, input, checklist);
 
     assertFeedbackSettingsConsistent(input.feedbackEnabled ?? checklist.feedbackEnabled ?? true, input.feedbackRequired ?? checklist.feedbackRequired ?? false);
     const pinned = this.resolvePinned(checklist, input);
@@ -882,6 +920,8 @@ export class ChecklistsService {
           preSessionVisibility: source.preSessionVisibility,
           allowFinishIncomplete: source.allowFinishIncomplete,
           forbidGalleryPhotos: source.forbidGalleryPhotos,
+          dictationMode: source.dictationMode,
+          voiceNotesMode: source.voiceNotesMode,
           feedbackEnabled: source.feedbackEnabled,
           feedbackRequired: source.feedbackRequired,
           feedbackLayout: source.feedbackLayout ?? undefined,

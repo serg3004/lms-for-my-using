@@ -236,7 +236,7 @@ export class ChecklistPublicService {
     if (!file) throw new BadRequestException('No file provided');
     const mimeType = validateVoiceNoteFile(file);
     const fields = voiceNoteFieldsSchema.parse(body ?? {});
-    await this.checklists.assertVoiceNoteRoom(instanceId, itemId, sheet.organizationId, guestUserId, false, fields.replaceId);
+    await this.checklists.assertVoiceNoteRoom(instanceId, itemId, sheet.organizationId, guestUserId, false, fields.replaceId, fields.durationMs);
     const uploaded = await this.uploadService.uploadChecklistVoiceNote(file, mimeType, sheet.organizationId, instanceId);
     try {
       return await this.checklists.addVoiceNote(instanceId, itemId, sheet.organizationId, guestUserId, false, uploaded, fields.durationMs, fields.replaceId);
@@ -244,6 +244,12 @@ export class ChecklistPublicService {
       await this.uploadService.deleteObject(uploaded.objectKey).catch(() => undefined);
       throw error;
     }
+  }
+
+  /** PR 511: what the guest's screen may offer; the same rules as for a signed-in user, from the organization and the sheet. */
+  async getVoiceSettings(token: string, instanceId: string, passKey: string | undefined) {
+    const { sheet, guestUserId } = await this.authorizePass(token, instanceId, passKey);
+    return this.checklists.getVoiceSettings(instanceId, sheet.organizationId, guestUserId, false);
   }
 
   async listVoiceNotes(token: string, instanceId: string, passKey: string | undefined) {

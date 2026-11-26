@@ -1,6 +1,6 @@
 import { apiDownloadRequest, apiRequest } from '../apiClient.js';
 import type { ChecklistInstanceSummary } from './types.js';
-import type { ChecklistVoiceNote } from './checklists.js';
+import type { ChecklistVoiceNote, ChecklistVoiceSettings } from './checklists.js';
 
 /** PR 467: the guest side of a checklist link. No session; the token names the sheet and the pass key names one pass. */
 export type PublicChecklistFront = {
@@ -38,6 +38,7 @@ export const finishPublicChecklist = (token: string, instanceId: string, passKey
 
 /** PR 510: the guest's voice recordings, by the pass key like the photo. */
 const voiceBase = (token: string, instanceId: string) => `${passBase(token, instanceId)}/voice-notes`;
+export const getPublicVoiceSettings = (token: string, instanceId: string, passKey: string) => apiRequest<ChecklistVoiceSettings>(`${passBase(token, instanceId)}/voice-settings`, withKey(passKey));
 export const listPublicVoiceNotes = (token: string, instanceId: string, passKey: string) => apiRequest<ChecklistVoiceNote[]>(voiceBase(token, instanceId), withKey(passKey));
 export function uploadPublicVoiceNote(token: string, instanceId: string, itemId: string, passKey: string, blob: Blob, durationMs: number, replaceId?: string) {
   const form = new FormData();

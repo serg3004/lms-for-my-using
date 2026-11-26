@@ -383,6 +383,13 @@ model Organization {
   /// PR 507: the blocks of the employee card that every signed-in user of the organization sees; the rest needs rights.
   employeeCardBlocks         String[]                    @default(["courses", "certificates", "checklists", "clearance"]) @map("employee_card_blocks")
   badgeIdleMinutes           Int                         @default(30) @map("badge_idle_minutes")
+  /// PR 511: what the organization allows in checklist comments. Dictation is on by default, voice recording is off.
+  dictationEnabled           Boolean                     @default(true) @map("dictation_enabled")
+  voiceNotesEnabled          Boolean                     @default(false) @map("voice_notes_enabled")
+  voiceNoteMaxSeconds        Int                         @default(120) @map("voice_note_max_seconds")
+  voiceNotesPerComment       Int                         @default(3) @map("voice_notes_per_comment")
+  /// Grows with every change, so two administrators cannot overwrite each other unnoticed.
+  voiceSettingsVersion       Int                         @default(1) @map("voice_settings_version")
   /// PR 488: password policy of the organization, set by an administrator.
   passwordMinLength          Int                         @default(10) @map("password_min_length")
   passwordHistoryCount       Int                         @default(3) @map("password_history_count")
@@ -1517,6 +1524,14 @@ model Certificate {
   @@map("certificates")
 }
 
+enum ChecklistInputMode {
+  inherit
+  on
+  off
+
+  @@map("checklist_input_mode")
+}
+
 model Checklist {
   id                           String                        @id @default(uuid()) @db.Uuid
   organizationId               String                        @map("organization_id") @db.Uuid
@@ -1539,6 +1554,9 @@ model Checklist {
   // the instance snapshot on assignment like the other builder settings.
   allowFinishIncomplete        Boolean                       @default(false) @map("allow_finish_incomplete")
   forbidGalleryPhotos          Boolean                       @default(false) @map("forbid_gallery_photos")
+  /// PR 511: `inherit` follows the organization; `off` turns the mode off for this checklist; `on` needs the organization to allow it.
+  dictationMode                ChecklistInputMode            @default(inherit) @map("dictation_mode")
+  voiceNotesMode               ChecklistInputMode            @default(inherit) @map("voice_notes_mode")
   // PR 368: observation-sheet settings block. feedbackEnabled shows the structured feedback step,
   // feedbackRequired (only with feedbackEnabled) needs strengths and development areas before a
   // session completes, allowSkipAll lets every criterion be skipped. Frozen into the instance

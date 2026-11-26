@@ -9,10 +9,10 @@ import type { TFunction } from 'i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { uploadChecklistItemPhotoWithProgress } from '../shared/apiClient.js';
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint, validateChecklistPhoto } from '../shared/checklistPhoto.js';
-import { clearChecklistItemAnswer, getChecklistInstance, getChecklistVoiceNoteBlob, listChecklistVoiceNotes, removeChecklistItemPhoto, removeChecklistVoiceNote, skipChecklistItem, submitChecklistItemResult, uploadChecklistVoiceNote } from '../shared/api/checklists.js';
-import type { ChecklistVoiceNote } from '../shared/api/checklists.js';
+import { clearChecklistItemAnswer, getChecklistInstance, getChecklistVoiceNoteBlob, getChecklistVoiceSettings, listChecklistVoiceNotes, removeChecklistItemPhoto, removeChecklistVoiceNote, skipChecklistItem, submitChecklistItemResult, uploadChecklistVoiceNote } from '../shared/api/checklists.js';
+import type { ChecklistVoiceNote, ChecklistVoiceSettings } from '../shared/api/checklists.js';
 import { ChecklistVoiceNotes } from './ChecklistVoiceNotes.js';
-import type { ChecklistVoiceApi } from './checklistVoice.js';
+import { useVoiceSettings, type ChecklistVoiceApi } from './checklistVoice.js';
 import { ChecklistPhotoProof } from './ChecklistPhotoProof.js';
 import {
   captureChecklistSessionLocation,
@@ -226,6 +226,7 @@ const conductVoiceApi: ChecklistVoiceApi = {
   upload: (instanceId, itemId, blob, durationMs, replaceId) => uploadChecklistVoiceNote(instanceId, itemId, blob, durationMs, replaceId),
   blob: (instanceId, noteId) => getChecklistVoiceNoteBlob(instanceId, noteId),
   remove: (instanceId, noteId) => removeChecklistVoiceNote(instanceId, noteId),
+  settings: (instanceId) => getChecklistVoiceSettings(instanceId),
 };
 
 export function ConductScreen({
@@ -245,6 +246,7 @@ export function ConductScreen({
   const checklist = instance.checklist;
   const [stepIndex, setStepIndex] = useState(0);
   const [voiceNotes, setVoiceNotes] = useState<ChecklistVoiceNote[]>([]);
+  const voiceSettings = useVoiceSettings(conductVoiceApi, instance.id);
   const reloadVoice = useCallback(async () => {
     try { const list = await conductVoiceApi.list(instance.id); setVoiceNotes(Array.isArray(list) ? list : []); } catch { /* an extra: the conduct itself keeps working */ }
   }, [instance.id]);
@@ -507,6 +509,7 @@ export function ConductScreen({
                       key={currentItem.id}
                       instanceId={instance.id}
                       voiceNotes={voiceNotes.filter((note) => note.place === 'answer' && note.itemId === currentItem.id)}
+                      voiceSettings={voiceSettings}
                       onVoiceChanged={() => void reloadVoice()}
                       item={currentItem}
                       number={checklist.showNumbering === false ? '' : checklistNumbers(items, checklist.itemGroups ?? []).itemNumbers.get(currentItem.id)}
@@ -676,6 +679,7 @@ function CriterionCard({
   number,
   instanceId,
   voiceNotes,
+  voiceSettings,
   onVoiceChanged,
   item,
   result,
@@ -692,6 +696,7 @@ function CriterionCard({
 }: {
   instanceId: string;
   voiceNotes: ChecklistVoiceNote[];
+  voiceSettings: ChecklistVoiceSettings;
   onVoiceChanged: () => void;
   item: ChecklistItemSummary;
   number?: string;
@@ -789,7 +794,7 @@ function CriterionCard({
           disabled={!editable}
           onChange={onCommentChange}
           maxLength={1000}
-          dictation
+          dictation={voiceSettings.dictation}
         />
         <Button
           type="button"
@@ -805,7 +810,7 @@ function CriterionCard({
         >
           {noteRequired ? t('checklists.noteSave', 'Save explanation') : t('checklistSessions.conduct.saveComment', 'Save comment')}
         </Button>
-        <ChecklistVoiceNotes api={conductVoiceApi} editable={canAct} instanceId={instanceId} itemId={item.id} notes={voiceNotes} onChanged={onVoiceChanged} t={t} />
+        <ChecklistVoiceNotes api={conductVoiceApi} editable={canAct} instanceId={instanceId} itemId={item.id} notes={voiceNotes} onChanged={onVoiceChanged} settings={voiceSettings} t={t} />
       </div>
 
       {item.photoRequired && (

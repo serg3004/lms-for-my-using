@@ -86,6 +86,12 @@ export class ChecklistPublicController {
   }
 
   // PR 509: voice recordings of a guest's comments (same pass key as every save; the file is read by the server, never a public link).
+  @Get(':token/passes/:instanceId/voice-settings')
+  @PublicAccess()
+  getVoiceSettings(@Param('token') token: string, @Param('instanceId') instanceId: string, @Headers('x-guest-pass') passKey: string | undefined) {
+    return this.publicChecklists.getVoiceSettings(token, instanceId, passKey);
+  }
+
   @Get(':token/passes/:instanceId/voice-notes')
   @PublicAccess()
   listVoiceNotes(@Param('token') token: string, @Param('instanceId') instanceId: string, @Headers('x-guest-pass') passKey: string | undefined) {

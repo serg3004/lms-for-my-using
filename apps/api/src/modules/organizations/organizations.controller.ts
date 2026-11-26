@@ -17,6 +17,7 @@ import {
   loginProtectionSchema,
   qrLoginPolicySchema,
   badgePolicySchema,
+  voicePolicySchema,
   PasswordPolicyInput,
   passwordPolicySchema,
   organizationFeaturesSchema,
@@ -173,6 +174,22 @@ export class OrganizationsController {
   @OrganizationScope('param', 'id')
   updateBadgePolicy(@Param('id') organizationId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
     return this.organizationsService.updateBadgePolicy(organizationId, badgePolicySchema.parse(body), request.currentUser?.id ?? null);
+  }
+
+  @Get(':id/voice')
+  @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
+  @Roles(...rolePolicies.voicePolicy)
+  @OrganizationScope('param', 'id')
+  getVoicePolicy(@Param('id') organizationId: string) {
+    return this.organizationsService.getVoicePolicy(organizationId);
+  }
+
+  @Patch(':id/voice')
+  @UseGuards(AuthGuard, RolesGuard, OrganizationScopeGuard)
+  @Roles(...rolePolicies.voicePolicy)
+  @OrganizationScope('param', 'id')
+  updateVoicePolicy(@Param('id') organizationId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    return this.organizationsService.updateVoicePolicy(organizationId, voicePolicySchema.parse(body), request.currentUser?.id ?? null);
   }
 
   @Post(':id/logo')

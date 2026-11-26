@@ -22,7 +22,7 @@ export const fakeRecorder = () => {
 type Note = { id: string; itemId: string; place: 'answer'; durationMs: number; sizeBytes: number; createdBy: string; createdAt: string };
 
 /** The observer's conduct screen with one required criterion whose explanation is required, and a fake voice API. */
-export async function openVoiceConduct(page: Page, options: { notes?: number; failUpload?: 'offline' | 'closed' } = {}) {
+export async function openVoiceConduct(page: Page, options: { notes?: number; failUpload?: 'offline' | 'closed'; settings?: Partial<{ dictation: boolean; voiceNotes: boolean; maxSeconds: number; perComment: number }>; settingsStatus?: number } = {}) {
   const notes: Note[] = Array.from({ length: options.notes ?? 0 }, (_, i) => ({ id: `n${i + 1}`, itemId: 'item-1', place: 'answer', durationMs: 5000, sizeBytes: 400, createdBy: 'observer', createdAt: `2026-10-01T12:0${i}:00Z` }));
   const calls: string[] = [];
   let failUpload = options.failUpload;
@@ -44,6 +44,11 @@ export async function openVoiceConduct(page: Page, options: { notes?: number; fa
     if (path.endsWith('/theme')) return route.fulfill({ json: { themeSettings: {} } });
     if (path === '/checklist-sessions/session/conduct') return route.fulfill({ json: session });
     if (path === '/checklist-instances/instance') return route.fulfill({ json: instance });
+    // PR 511: what the organization and the checklist allow; recording is on here unless a test says otherwise.
+    if (path === '/checklist-instances/instance/voice-settings') {
+      if (options.settingsStatus) return route.fulfill({ status: options.settingsStatus, json: { message: 'no' } });
+      return route.fulfill({ json: { dictation: true, voiceNotes: true, maxSeconds: 120, perComment: 3, ...options.settings } });
+    }
     if (path === '/checklist-instances/instance/voice-notes' && method === 'GET') return route.fulfill({ json: notes });
     if (path === '/checklist-instances/instance/items/item-1/voice-notes' && method === 'POST') {
       calls.push('upload');

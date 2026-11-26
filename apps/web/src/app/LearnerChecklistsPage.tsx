@@ -11,10 +11,10 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { ApiClientError } from '../shared/apiClient.js';
 import { CHECKLIST_PHOTO_ACCEPT, checklistPhotoErrorMessage, checklistPhotoHint, validateChecklistPhoto } from '../shared/checklistPhoto.js';
-import { finishChecklistInstance, getChecklistVoiceNoteBlob, listChecklistVoiceNotes, listChecklistsTransferredFromMe, removeChecklistVoiceNote, uploadChecklistVoiceNote, listFreeChecklists, listMyChecklistInstances, removeChecklistItemPhoto, startFreeChecklist, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
+import { finishChecklistInstance, getChecklistVoiceNoteBlob, getChecklistVoiceSettings, listChecklistVoiceNotes, listChecklistsTransferredFromMe, removeChecklistVoiceNote, uploadChecklistVoiceNote, listFreeChecklists, listMyChecklistInstances, removeChecklistItemPhoto, startFreeChecklist, submitChecklistItemResult, uploadChecklistItemPhoto } from '../shared/api/checklists.js';
 import type { ChecklistVoiceNote } from '../shared/api/checklists.js';
 import { ChecklistVoiceNotes } from './ChecklistVoiceNotes.js';
-import type { ChecklistVoiceApi } from './checklistVoice.js';
+import { useVoiceSettings, type ChecklistVoiceApi } from './checklistVoice.js';
 import type { ChecklistInstanceSummary, ChecklistItemResultSummary, ChecklistItemSummary, ChecklistTransferredAway, FreeChecklistSummary } from '../shared/api/types.js';
 import { ChecklistCover } from '../shared/ChecklistCover.js';
 import { ChecklistPhotoStrip } from '../shared/ChecklistPhotoStrip.js';
@@ -319,6 +319,7 @@ const signedInTakingApi: ChecklistTakingApi = {
     upload: (instanceId, itemId, blob, durationMs, replaceId) => uploadChecklistVoiceNote(instanceId, itemId, blob, durationMs, replaceId),
     blob: (instanceId, noteId) => getChecklistVoiceNoteBlob(instanceId, noteId),
     remove: (instanceId, noteId) => removeChecklistVoiceNote(instanceId, noteId),
+    settings: (instanceId) => getChecklistVoiceSettings(instanceId),
   },
 };
 
@@ -357,6 +358,7 @@ export function ChecklistTaking({
   // PR 510: the voice recordings of this check; a recording counts as the explanation of its criterion.
   const [voiceNotes, setVoiceNotes] = useState<ChecklistVoiceNote[]>([]);
   const voiceApi = api.voice;
+  const voiceSettings = useVoiceSettings(voiceApi, instance.id);
   const reloadVoice = useCallback(async () => {
     if (!voiceApi) return;
     try { const list = await voiceApi.list(instance.id); setVoiceNotes(Array.isArray(list) ? list : []); } catch { /* the recordings are an extra: the check itself keeps working */ }
@@ -517,6 +519,7 @@ export function ChecklistTaking({
                       required={required}
                       t={t}
                       value={text}
+                      dictation={voiceSettings.dictation}
                     />
                     <Button
                       disabled={!editable || submitting === item.id || text === (result?.comment ?? '') && !held || (required && !text.trim() && !voiceItemIds.has(item.id))}
@@ -536,6 +539,7 @@ export function ChecklistTaking({
                         itemId={item.id}
                         notes={voiceNotes.filter((note) => note.place === 'answer' && note.itemId === item.id)}
                         onChanged={() => void reloadVoice()}
+                        settings={voiceSettings}
                         t={t}
                       />
                     )}

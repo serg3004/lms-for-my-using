@@ -74,6 +74,9 @@ export function buildChecklistSettingsPayload(form: {
   preSessionVisibility: ChecklistPreSessionVisibility;
   allowFinishIncomplete: boolean;
   forbidGalleryPhotos: boolean;
+  /** PR 511 -- optional so older callers keep `inherit`. */
+  dictationMode?: 'inherit' | 'on' | 'off';
+  voiceNotesMode?: 'inherit' | 'on' | 'off';
   /** PR 368 -- optional so older callers keep the defaults (feedback on, optional, no sheet-level skip). */
   feedbackEnabled?: boolean;
   feedbackRequired?: boolean;
@@ -102,6 +105,8 @@ export function buildChecklistSettingsPayload(form: {
     preSessionVisibility: form.preSessionVisibility,
     allowFinishIncomplete: form.allowFinishIncomplete,
     forbidGalleryPhotos: form.forbidGalleryPhotos,
+    dictationMode: form.dictationMode ?? 'inherit',
+    voiceNotesMode: form.voiceNotesMode ?? 'inherit',
     feedbackEnabled: form.feedbackEnabled ?? true,
     ...(form.feedbackLayout !== undefined ? { feedbackLayout: form.feedbackLayout } : {}),
     ...(form.appearance !== undefined ? { appearance: form.appearance } : {}),

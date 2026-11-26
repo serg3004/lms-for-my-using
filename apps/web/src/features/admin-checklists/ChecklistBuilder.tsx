@@ -11,6 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useOptionalSession } from '../../shared/session.js';
+import { getChecklistInputPolicy, type ChecklistInputMode, type ChecklistInputPolicy } from '../../shared/api/voicePolicy.js';
 import type { TFunction } from 'i18next';
 import { ApiClientError } from '../../shared/apiClient.js';
 import { apiErrorText, describeDetails } from '../../shared/apiValidationMessage.js';
@@ -130,6 +131,11 @@ export function ChecklistBuilder({
   const [requiresReview, setRequiresReview] = useState(checklist.requiresReview);
   const [allowFinishIncomplete, setAllowFinishIncomplete] = useState(checklist.allowFinishIncomplete ?? false);
   const [forbidGalleryPhotos, setForbidGalleryPhotos] = useState(checklist.forbidGalleryPhotos ?? false);
+  const [dictationMode, setDictationMode] = useState<ChecklistInputMode>(checklist.dictationMode ?? 'inherit');
+  const [voiceNotesMode, setVoiceNotesMode] = useState<ChecklistInputMode>(checklist.voiceNotesMode ?? 'inherit');
+  // PR 511: what the organization allows; until it is known a mode is not forbidden here (the server decides).
+  const [inputPolicy, setInputPolicy] = useState<ChecklistInputPolicy | null>(null);
+  useEffect(() => { getChecklistInputPolicy().then(setInputPolicy).catch(() => setInputPolicy(null)); }, []);
   const [feedbackLayout, setFeedbackLayout] = useState<FeedbackLayout | null>(checklist.feedbackLayout ?? null);
   const [appearance, setAppearance] = useState<Appearance | null>(() => sanitizeAppearance(checklist.appearance));
   // PR 431: the block whose "Settings" window is open (none: the window does not exist and the sheet uses the full width).
@@ -209,7 +215,7 @@ export function ChecklistBuilder({
   const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(buildChecklistSettingsPayload({
     title: checklist.title, description: checklist.description ?? '', scoringMode: checklist.scoringMode, passThreshold: checklist.passThreshold,
     requiresReview: checklist.requiresReview, scaleLevels: checklist.scaleLevels ?? createDefaultScale(t), defaultLocationCapturePolicy: checklist.defaultLocationCapturePolicy ?? '',
-    preSessionVisibility: checklist.preSessionVisibility ?? 'structure_only', allowFinishIncomplete: checklist.allowFinishIncomplete ?? false, forbidGalleryPhotos: checklist.forbidGalleryPhotos ?? false,
+    preSessionVisibility: checklist.preSessionVisibility ?? 'structure_only', allowFinishIncomplete: checklist.allowFinishIncomplete ?? false, forbidGalleryPhotos: checklist.forbidGalleryPhotos ?? false, dictationMode: checklist.dictationMode ?? 'inherit', voiceNotesMode: checklist.voiceNotesMode ?? 'inherit',
     feedbackLayout: checklist.feedbackLayout ?? null, appearance: sanitizeAppearance(checklist.appearance), feedbackEnabled: checklist.feedbackEnabled ?? true, feedbackRequired: checklist.feedbackRequired ?? false, allowSkipAll: checklist.allowSkipAll ?? false, showNumbering: checklist.showNumbering ?? true, showSheetPhotos: checklist.showSheetPhotos ?? true, showPointsToLearner: checklist.showPointsToLearner ?? false,
     accessMode: checklist.accessMode ?? 'assigned', pinned: (checklist.accessMode ?? 'assigned') === 'free' && (checklist.pinned ?? false),
     allowEditByAll: canManageEditAccess ? (checklist.allowEditByAll ?? true) : undefined,
@@ -251,7 +257,7 @@ export function ChecklistBuilder({
     listChecklistItemGroups(checklist.id).then(setItemGroups).catch(() => setItemGroups([]));
     listChecklistScales().then(setScales).catch(() => setScales([]));
   }, [checklist.id]);
-  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, feedbackLayout, appearance, feedbackEnabled, feedbackRequired, allowSkipAll, showNumbering, showSheetPhotos, showPointsToLearner, accessMode, pinned, allowEditByAll: canManageEditAccess ? allowEditByAll : undefined, moduleSettings });
+  const settingsPayload = buildChecklistSettingsPayload({ title, description, scoringMode, passThreshold, requiresReview, scaleLevels, defaultLocationCapturePolicy, preSessionVisibility, allowFinishIncomplete, forbidGalleryPhotos, dictationMode, voiceNotesMode, feedbackLayout, appearance, feedbackEnabled, feedbackRequired, allowSkipAll, showNumbering, showSheetPhotos, showPointsToLearner, accessMode, pinned, allowEditByAll: canManageEditAccess ? allowEditByAll : undefined, moduleSettings });
   const hasUnsavedChanges = JSON.stringify(settingsPayload) !== savedSnapshot;
   function settingsErrorMessage(error: unknown) {
     return error instanceof ApiClientError && error.status === 409
@@ -305,6 +311,8 @@ export function ChecklistBuilder({
     setRequiresReview(checklist.requiresReview);
     setAllowFinishIncomplete(checklist.allowFinishIncomplete ?? false);
     setForbidGalleryPhotos(checklist.forbidGalleryPhotos ?? false);
+    setDictationMode(checklist.dictationMode ?? 'inherit');
+    setVoiceNotesMode(checklist.voiceNotesMode ?? 'inherit');
     setFeedbackLayout(checklist.feedbackLayout ?? null);
     setAppearance(sanitizeAppearance(checklist.appearance));
     setFeedbackEnabled(checklist.feedbackEnabled ?? true);
@@ -1154,6 +1162,20 @@ export function ChecklistBuilder({
                 <option value="full">{t('admin.checklists.preSessionVisibility.full', 'Structure and past feedback')}</option>
                 <option value="structure_only">{t('admin.checklists.preSessionVisibility.structure_only', 'Structure only')}</option>
                 <option value="none">{t('admin.checklists.preSessionVisibility.none', 'Nothing')}</option>
+              </select>
+            </FormField>
+                      <FormField id="checklist-dictation-mode" label={t('admin.checklists.field.dictationMode', 'Dictation in comments')} hint={inputPolicy && !inputPolicy.dictationEnabled ? t('admin.checklists.inputOffInOrg', 'Turned off for the whole organization by an administrator.') : t('admin.checklists.dictationModeHint', 'The microphone button that turns speech into text. Applies to sessions already assigned too.')}>
+              <select id="checklist-dictation-mode" value={dictationMode} disabled={!canEdit} onChange={(e) => setDictationMode(e.target.value as ChecklistInputMode)}>
+                <option value="inherit">{t('admin.checklists.inputMode.inherit', 'As in the organization')}</option>
+                <option value="on" disabled={inputPolicy?.dictationEnabled === false}>{t('admin.checklists.inputMode.on', 'On')}</option>
+                <option value="off">{t('admin.checklists.inputMode.off', 'Off')}</option>
+              </select>
+            </FormField>
+                      <FormField id="checklist-voice-mode" label={t('admin.checklists.field.voiceNotesMode', 'Sound recording in comments')} hint={inputPolicy && !inputPolicy.voiceNotesEnabled ? t('admin.checklists.inputOffInOrg', 'Turned off for the whole organization by an administrator.') : t('admin.checklists.voiceModeHint', 'The reviewer can listen to the recording. Applies to sessions already assigned too.')}>
+              <select id="checklist-voice-mode" value={voiceNotesMode} disabled={!canEdit} onChange={(e) => setVoiceNotesMode(e.target.value as ChecklistInputMode)}>
+                <option value="inherit">{t('admin.checklists.inputMode.inherit', 'As in the organization')}</option>
+                <option value="on" disabled={inputPolicy?.voiceNotesEnabled === false}>{t('admin.checklists.inputMode.on', 'On')}</option>
+                <option value="off">{t('admin.checklists.inputMode.off', 'Off')}</option>
               </select>
             </FormField>
                       <ChecklistCheckboxOption

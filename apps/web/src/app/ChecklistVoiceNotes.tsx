@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 
-import type { ChecklistVoiceNote } from '../shared/api/checklists.js';
+import type { ChecklistVoiceNote, ChecklistVoiceSettings } from '../shared/api/checklists.js';
 import { ApiClientError } from '../shared/apiClient.js';
 import { readStored, writeStored } from '../shared/dictation.js';
 import { useProtectedImage } from '../shared/useProtectedImage.js';
@@ -59,11 +59,11 @@ function SavedVoiceNote({ api, instanceId, note, index, editable, busy, onRemove
 const isOffline = (error: unknown) => !(error instanceof ApiClientError) || error.status === 0 || error.status === 408;
 
 /** What went wrong with the server call, in words the person can act on. */
-function uploadProblem(error: unknown, t: TFunction): string {
+function uploadProblem(error: unknown, t: TFunction, max: number): string {
   if (isOffline(error)) return t('voiceNote.errorOffline', 'No connection. Your recording is kept: check the internet and press "Send" again.');
   if (error instanceof ApiClientError) {
-    if (error.status === 409) return t('voiceNote.errorLimit', 'There are already {{max}} recordings here. Delete one to add another.', { max: VOICE_PER_COMMENT });
-    if (error.status === 400 || error.status === 403) return t('voiceNote.errorClosed', 'This check can no longer be changed, so the recording was not saved.');
+    if (error.status === 409) return t('voiceNote.errorLimit', 'There are already {{max}} recordings here. Delete one to add another.', { max });
+    if (error.status === 400 || error.status === 403) return t('voiceNote.errorClosed', 'The recording was not saved: the check can no longer be changed, or recording sound was turned off.');
   }
   return t('voiceNote.errorUpload', 'The recording was not sent. It is kept: press "Send" to try again.');
 }
@@ -73,9 +73,14 @@ function uploadProblem(error: unknown, t: TFunction): string {
  * listen before sending (and record again), then stores it through `api`. A recording counts as the explanation of an answer.
  * Not drawn where the browser cannot record; the comment stays a plain text field.
  */
-export function ChecklistVoiceNotes({ api, instanceId, itemId, notes, editable, onChanged, t }: {
+export function ChecklistVoiceNotes({ api, instanceId, itemId, notes, editable, onChanged, t, settings }: {
   api: ChecklistVoiceApi; instanceId: string; itemId: string; notes: ChecklistVoiceNote[]; editable: boolean; onChanged: () => void; t: TFunction;
+  /** PR 511: what the organization and the checklist allow. Without it the limits of the server apply and recording is offered. */
+  settings?: ChecklistVoiceSettings;
 }) {
+  const maxMs = settings ? Math.min(settings.maxSeconds * 1000, VOICE_MAX_MS) : VOICE_MAX_MS;
+  const perComment = settings ? Math.min(settings.perComment, VOICE_PER_COMMENT) : VOICE_PER_COMMENT;
+  const mayRecord = settings ? settings.voiceNotes : true;
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const [elapsed, setElapsed] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
@@ -91,16 +96,16 @@ export function ChecklistVoiceNotes({ api, instanceId, itemId, notes, editable, 
     const timer = window.setInterval(() => {
       const ms = Date.now() - startedAt;
       setElapsed(ms);
-      if (ms >= VOICE_MAX_MS) session.current?.stop();
+      if (ms >= maxMs) session.current?.stop();
     }, 250);
     return () => window.clearInterval(timer);
-  }, [phase.kind]);
+  }, [phase.kind, maxMs]);
   // Leaving the screen releases the microphone and the preview.
   useEffect(() => () => { session.current?.cancel(); }, []);
   const previewUrl = phase.kind === 'preview' || phase.kind === 'uploading' ? phase.url : null;
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
-  const full = notes.length >= VOICE_PER_COMMENT;
+  const full = notes.length >= perComment;
   const start = useCallback(async () => {
     setProblem(null);
     setElapsed(0);
@@ -132,12 +137,12 @@ export function ChecklistVoiceNotes({ api, instanceId, itemId, notes, editable, 
     setProblem(null);
     setPhase({ kind: 'uploading', recording: current.recording, url: current.url });
     try {
-      await api.upload(instanceId, itemId, current.recording.blob, Math.min(current.recording.durationMs, VOICE_MAX_MS));
+      await api.upload(instanceId, itemId, current.recording.blob, Math.min(current.recording.durationMs, maxMs));
       setPhase({ kind: 'idle' });
       setHint(false);
       onChanged();
     } catch (error) {
-      setProblem(uploadProblem(error, t));
+      setProblem(uploadProblem(error, t, perComment));
       setPhase({ kind: 'preview', recording: current.recording, url: current.url });
     }
   }
@@ -156,9 +161,9 @@ export function ChecklistVoiceNotes({ api, instanceId, itemId, notes, editable, 
     }
   }
 
-  if (!supported && notes.length === 0) return null;
+  if ((!supported || !mayRecord) && notes.length === 0) return null;
   const recording = phase.kind === 'recording';
-  const left = VOICE_MAX_MS - elapsed;
+  const left = maxMs - elapsed;
   const warning = recording && left <= VOICE_WARN_MS;
   const busy = phase.kind === 'starting' || phase.kind === 'uploading';
 
@@ -171,7 +176,7 @@ export function ChecklistVoiceNotes({ api, instanceId, itemId, notes, editable, 
           ))}
         </ul>
       )}
-      {editable && supported && (phase.kind === 'idle' || recording || phase.kind === 'starting') && (
+      {editable && supported && mayRecord && (phase.kind === 'idle' || recording || phase.kind === 'starting') && (
         <div style={{ alignItems: 'center', display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           <button
             aria-pressed={recording}
@@ -186,14 +191,14 @@ export function ChecklistVoiceNotes({ api, instanceId, itemId, notes, editable, 
             {recording ? t('voiceNote.stop', 'Stop recording') : t('voiceNote.start', 'Record sound')}
           </button>
           {recording && (
-            <span aria-hidden="true" style={{ color: 'var(--color-danger)', fontVariantNumeric: 'tabular-nums' }}>● {formatVoiceClock(elapsed)} / {formatVoiceClock(VOICE_MAX_MS)}</span>
+            <span aria-hidden="true" style={{ color: 'var(--color-danger)', fontVariantNumeric: 'tabular-nums' }}>● {formatVoiceClock(elapsed)} / {formatVoiceClock(maxMs)}</span>
           )}
-          {!recording && full && <span>{t('voiceNote.full', 'There are already {{max}} recordings here. Delete one to add another.', { max: VOICE_PER_COMMENT })}</span>}
+          {!recording && full && <span>{t('voiceNote.full', 'There are already {{max}} recordings here. Delete one to add another.', { max: perComment })}</span>}
         </div>
       )}
       <span className="ui-visually-hidden" role="status">{recording ? t('voiceNote.recording', 'Recording is on, speak') : ''}</span>
       {warning && <p role="alert" style={{ color: 'var(--color-warning, var(--color-danger))', margin: 0 }}>{t('voiceNote.warning', 'The recording stops in {{seconds}} s.', { seconds: Math.max(0, Math.ceil(left / 1000)) })}</p>}
-      {(phase.kind === 'preview' || phase.kind === 'uploading') && (
+      {mayRecord && (phase.kind === 'preview' || phase.kind === 'uploading') && (
         <div style={{ display: 'grid', gap: 8 }}>
           <p style={{ margin: 0 }}>{t('voiceNote.previewTitle', 'Listen before sending ({{time}})', { time: formatVoiceClock(phase.recording.durationMs) })}</p>
           <audio aria-label={t('voiceNote.previewLabel', 'New recording, not sent yet')} controls src={phase.url} style={{ maxWidth: '100%', minWidth: 0 }} />
