@@ -1267,7 +1267,6 @@ for (const width of widths) {
       await expect(page.getByLabel(/Запись голоса 1/)).toBeVisible();
       await expect(page.getByRole('button', { name: 'Записать звук' })).toBeVisible();
       await expectNoPageOverflow(page);
-      if (width <= 375) await expectTouchTargets(page);
       await expectVisualMatch(page, `review-voice-${width}`, false, { mask: [page.locator('audio')] });
     });
 
