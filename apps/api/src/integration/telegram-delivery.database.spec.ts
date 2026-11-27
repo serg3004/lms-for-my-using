@@ -140,6 +140,32 @@ describe('Telegram delivery — database', () => {
     expect(history.items).toHaveLength(2);
   });
 
+  it('PR 572: gives a bot link for the install link, sends it after Start and refuses a check that is not the person\'s', async () => {
+    await enable(true);
+    const userId = await createInvited({ password: 'Chosen7!Chosen-Pass' });
+    const first = await call('POST', `/users/${userId}/links`, { channel: 'telegram' });
+    expect(first.status).toBe(201);
+    const waiting = await unwrap<{ status: string; botLink: string }>(first);
+    expect(waiting.status).toBe('awaiting_start');
+    sent.length = 0;
+    await webhook(`/start ${codeOf(waiting.botLink)}`, 555010);
+    expect(sent).toHaveLength(2);
+    expect(sent[1]!.text).toContain('https://app.example.test/install');
+
+    // A bound chat gets the link at once; repeating at once is refused.
+    expect((await call('POST', `/users/${userId}/links`, { channel: 'telegram' })).status).toBe(429);
+    await forgetRecentSends(userId);
+    sent.length = 0;
+    expect((await unwrap<{ status: string }>(await call('POST', `/users/${userId}/links`, { channel: 'telegram' }))).status).toBe('sent');
+    expect(sent[0]!.text).toContain('/install');
+
+    // A check that does not belong to this person, and a channel that does not exist.
+    expect((await call('POST', `/users/${userId}/links`, { channel: 'telegram', sessionId: randomUUID() })).status).toBe(404);
+    expect((await call('POST', `/users/${userId}/links`, { channel: 'sms' })).status).toBe(400);
+    const journal = JSON.stringify(await prisma.messageDelivery.findMany({ where: { userId } }));
+    expect(journal).not.toMatch(/555010|token=/);
+  });
+
   it('sends straight away to a bound person, reports a delivery failure and sends a password only on the explicit action', async () => {
     await enable(true);
     const userId = await createInvited();

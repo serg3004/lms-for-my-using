@@ -1593,6 +1593,7 @@
         "removeFilter": "Remove filter: {{filter}}",
         "resetFilters": "Reset filters",
         "searchLabel": "Search",
+        "sendLink": "Send the link to the observer",
         "edit": {
           "open": "Edit time or observer",
           "title": "Edit session",

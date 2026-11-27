@@ -17,6 +17,8 @@ export const listUsersQuerySchema = paginationQuerySchema.extend({
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;
 
 export const invitationUserIdSchema = z.guid().toLowerCase();
+/** PR 572: a link by e-mail or Telegram: the install page, or one check when `sessionId` is given. */
+export const sendLinkSchema = z.object({ channel: z.enum(['email', 'telegram']), sessionId: invitationUserIdSchema.optional() }).strict();
 export const sharedActivationQrSchema = z.object({ departmentId: invitationUserIdSchema.optional() }).strict();
 export const resendInvitationsSchema = z.object({
   userIds: z.array(invitationUserIdSchema).min(1).max(20).transform((ids) => [...new Set(ids)]),

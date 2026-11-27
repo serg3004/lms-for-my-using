@@ -49,3 +49,25 @@ export async function runInstall(): Promise<'accepted' | 'dismissed' | 'unavaila
   await offer.prompt();
   return (await offer.userChoice).outcome;
 }
+
+export type InstallPlatform = 'android' | 'ios' | 'desktop';
+
+/** PR 572: which instruction the public install page shows. */
+export function detectPlatform(userAgent: string = typeof navigator === 'undefined' ? '' : navigator.userAgent, touchPoints: number = typeof navigator === 'undefined' ? 0 : navigator.maxTouchPoints): InstallPlatform {
+  if (isIosBrowser(userAgent, touchPoints)) return 'ios';
+  return /android/i.test(userAgent) ? 'android' : 'desktop';
+}
+
+/**
+ * PR 572: a browser built into another app (Telegram, a mail app, social networks, WeChat, any Android WebView) cannot
+ * install a site; the link must be opened in the phone's own browser. On iOS such a view has no "Safari/" token.
+ */
+export function isInAppBrowser(userAgent: string = typeof navigator === 'undefined' ? '' : navigator.userAgent): boolean {
+  if (/Telegram|Instagram|FBAN|FBAV|FB_IAB|Line\/|MicroMessenger|Snapchat|VKontakte|OKApp|GSA\/|; wv\)/i.test(userAgent)) return true;
+  return /iphone|ipad|ipod/i.test(userAgent) && !/Safari\//.test(userAgent);
+}
+
+/** Only Safari itself offers "Add to Home Screen" on an iPhone; Chrome and Firefox there are other skins of the same engine without it. */
+export function isSafariOnIos(userAgent: string = typeof navigator === 'undefined' ? '' : navigator.userAgent): boolean {
+  return /Safari\//.test(userAgent) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(userAgent);
+}

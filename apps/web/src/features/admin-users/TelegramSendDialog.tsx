@@ -9,7 +9,7 @@ import { Dialog } from '../../shared/ui.js';
 export type TelegramTarget = { id: string; firstName: string; lastName: string; middleName?: string | null; status: string };
 
 type Channel = { configured: boolean; enabled: boolean; botUsername: string | null };
-type Delivery = { id: string; kind: 'invitation' | 'temporary_password'; status: 'sent' | 'failed' | 'awaiting_start'; errorCode: string | null; createdAt: string };
+type Delivery = { id: string; kind: 'invitation' | 'temporary_password' | 'install_link' | 'session_link'; status: 'sent' | 'failed' | 'awaiting_start'; errorCode: string | null; createdAt: string };
 type History = { linked: boolean; linkedAt: string | null; items: Delivery[] };
 type Outcome = { status: 'sent' } | { status: 'failed'; reason: string } | { status: 'awaiting_start'; botLink: string; expiresAt: string };
 type Loaded = { channel: Channel; history: History };

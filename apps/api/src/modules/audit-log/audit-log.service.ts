@@ -40,6 +40,8 @@ export type AuditLogAction =
   | 'user.inspector_revoked'
   | 'user.telegram_linked'
   | 'user.telegram_sent'
+  | 'user.link_sent'
+  | 'user.link_failed'
   | 'user.telegram_failed'
   | 'user.telegram_awaiting_start'
   | 'organization.login_protection_updated'

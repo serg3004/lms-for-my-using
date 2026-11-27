@@ -18,6 +18,7 @@ import {
   listUsersQuerySchema,
   invitationUserIdSchema,
   resendInvitationsSchema,
+  sendLinkSchema,
   sharedActivationQrSchema,
   updateUserSchema,
   UpdateUserInput,
@@ -158,6 +159,13 @@ export class UsersController {
   @Roles(...rolePolicies.usersResetPassword)
   sendTemporaryPasswordToTelegram(@Req() request: AuthenticatedRequest, @Param('id') id: string) {
     return this.usersService.sendToTelegram(request.currentUser!, invitationUserIdSchema.parse(id), 'temporary_password');
+  }
+
+  @Post(':id/links')
+  @UseGuards(AuthGuard, RolesGuard)
+  @Roles(...rolePolicies.usersCreate)
+  sendLink(@Req() request: AuthenticatedRequest, @Param('id') id: string, @Body() body: unknown) {
+    return this.usersService.sendLink(request.currentUser!, invitationUserIdSchema.parse(id), sendLinkSchema.parse(body));
   }
 
   @Post(':id/invitation/resend')
