@@ -32,6 +32,8 @@ These are architecture decisions. Current versions, wiring and implementation de
 | Web localization | `apps/web/src/i18n/` |
 | Web styling | `apps/web/src/styles/` |
 
+Folders of courses and assignments (PR 581) live in one `library-folders` module keyed by a `scope`; other sections with folders (checklists, tests) keep their own modules and share only the folder rules in `apps/api/src/common/`.
+
 The generated module inventory is deterministic and CI-checked; it is not a new authority over `AppModule`.
 
 ## API boundaries
