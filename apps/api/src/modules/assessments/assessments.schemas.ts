@@ -113,7 +113,12 @@ const editorQuestionSchema = z.object({
 });
 
 export const assessmentEditorContentSchema = z.object({
-  settings: updateAssessmentSchema.omit({ status: true }).required().extend({ material: assessmentMaterialSchema.nullable().optional(), policy: assessmentPolicySchema.optional(), presentation: assessmentPresentationSchema.optional() }),
+  settings: updateAssessmentSchema.omit({ status: true }).required().extend({
+    material: assessmentMaterialSchema.nullable().optional(),
+    policy: assessmentPolicySchema.optional(),
+    // Legacy assessments have no presentation settings in their editor response.
+    presentation: assessmentPresentationSchema.nullish().transform((value) => value ?? undefined),
+  }),
   questions: z.array(editorQuestionSchema),
 }).refine(({ questions }) => {
   const ids = questions.flatMap((question) => [question.id, ...question.options.map((option) => option.id)]);

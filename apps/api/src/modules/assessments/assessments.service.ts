@@ -240,7 +240,7 @@ export class AssessmentsService {
       }
 
       const changedSettings = Object.entries(content.settings).filter(([key, value]) =>
-        stableJson(value) !== stableJson(current[key as keyof typeof content.settings]),
+        value !== undefined && stableJson(value) !== stableJson(current[key as keyof typeof content.settings]),
       ).map(([key]) => key);
       if (current.status === 'published' || action === 'publish') {
         const active = await tx.assessmentAttempt.findFirst({

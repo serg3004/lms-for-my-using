@@ -2797,6 +2797,6 @@ Local audio and video uploads remain disabled. Enabling them requires reviewing 
 
 ### Assessment presentation (PR 538)
 
-`POST /assessments` and the editor's `content.settings` accept an optional `presentation` object with `titleScreen`, `finalScreen` (`results`, `message`, or `none`), `completionMessage`, and `theme`. Explicitly disabling the title screen requires a null or omitted time limit. The final mode controls the screen after submission. The attempt and its score still feed progress and reports.
+`POST /assessments` and the editor's `content.settings` accept an optional `presentation` object with `titleScreen`, `finalScreen` (`results`, `message`, or `none`), `completionMessage`, and `theme`. Explicitly disabling the title screen requires a null or omitted time limit. The final mode controls the screen after submission. The attempt and its score still feed progress and reports. When an older editor response carries `presentation: null`, saving it treats that value as omitted.
 
 `PATCH /assessments/default-theme` lets an administrator save the default theme for new tests in their organization. The theme accepts an optional six-digit hexadecimal `accent` and optional `headingFont` and `bodyFont` values from `system`, `arial`, `georgia`, and `verdana`.
