@@ -2421,4 +2421,6 @@
   line-height: 1.4;
   text-align: center;
   color: var(--color-text-muted);
+  /* The empty-area context menu of the checklist library runs its padding under this line: clicks pass through. */
+  pointer-events: none;
 }
