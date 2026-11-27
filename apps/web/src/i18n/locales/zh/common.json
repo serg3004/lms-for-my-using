@@ -281,6 +281,7 @@
       }
     },
     "courses": {
+      "createMenu": { "course": "课程" },
       "eyebrow": "学习内容",
       "title": "课程",
       "builder": "构建器",
@@ -724,6 +725,7 @@
       }
     },
     "assignments": {
+      "createMenu": { "assignment": "任务" },
       "eyebrow": "必修学习",
       "sessionExpired": "会话已过期。请重新登录。",
       "loadError": "无法加载任务管理数据。",
@@ -4736,5 +4738,31 @@
     "choose": "选择已上传的图片",
     "moreImages": "显示更多图片",
     "imageError": "无法打开或上传图片。支持最大 8 MB 的 JPEG、PNG、GIF 和 WebP。"
+  },
+  "libraryFolders": {
+    "settings": "文件夹设置",
+    "forbidden": "没有管理文件夹的权限。",
+    "loading": "正在加载文件夹…",
+    "loadError": "无法加载文件夹。",
+    "retry": "重试",
+    "deleteFolders": "将删除文件夹：{{count}} 个。",
+    "expand": "展开文件夹“{{name}}”",
+    "collapse": "折叠文件夹“{{name}}”",
+    "course": {
+      "root": "全部课程",
+      "tree": "课程文件夹",
+      "contents": "文件夹：{{folders}}，课程：{{items}}",
+      "unfile": "课程不会被删除，而是移到根目录：{{count}} 个（{{names}}）。",
+      "selectAll": "选择所有课程和文件夹",
+      "selectItem": "选择课程“{{title}}”"
+    },
+    "assignment": {
+      "root": "全部任务",
+      "tree": "任务文件夹",
+      "contents": "文件夹：{{folders}}，任务：{{items}}",
+      "unfile": "任务不会被删除，而是移到根目录：{{count}} 个（{{names}}）。",
+      "selectAll": "选择所有任务和文件夹",
+      "selectItem": "选择任务“{{title}}”"
+    }
   }
 }

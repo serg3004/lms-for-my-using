@@ -22,6 +22,7 @@ import { EmployeeCardController } from '../modules/employee-card/employee-card.c
 import { GroupsController } from '../modules/groups/groups.controller.js';
 import { HealthController } from '../modules/health/health.controller.js';
 import { LearnerDashboardController } from '../modules/learner-dashboard/learner-dashboard.controller.js';
+import { LibraryFoldersController } from '../modules/library-folders/library-folders.controller.js';
 import { LessonsController } from '../modules/lessons/lessons.controller.js';
 import { LongreadFilesController } from '../modules/longreads/longread-files.controller.js';
 import { LongreadsController } from '../modules/longreads/longreads.controller.js';
@@ -51,6 +52,7 @@ export const controllerEntries: ControllerEntry[] = [
   { file: 'assessment-attempts/assessment-attempts.controller.ts', Controller: AssessmentAttemptsController },
   { file: 'assessment-questions/assessment-questions.controller.ts', Controller: AssessmentQuestionsController },
   { file: 'assessments/assessment-folders.controller.ts', Controller: AssessmentFoldersController },
+  { file: 'library-folders/library-folders.controller.ts', Controller: LibraryFoldersController },
   { file: 'assessments/assessment-images.controller.ts', Controller: AssessmentImagesController },
   { file: 'assessments/assessments.controller.ts', Controller: AssessmentsController },
   { file: 'assessments/standalone-assessments.controller.ts', Controller: StandaloneAssessmentsController },

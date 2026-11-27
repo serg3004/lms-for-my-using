@@ -118,12 +118,12 @@ const lesson = { id: 'lesson-1', title: 'Fire Safety Basics', slug: 'fire-safety
 describe('admin page smoke rendering', () => {
   it('renders courses loading and loaded table states', () => {
     useLoadingState();
-    expect(renderToStaticMarkup(<AdminCoursesPage />)).toContain('role="status"');
+    expect(renderToStaticMarkup(<MemoryRouter><AdminCoursesPage /></MemoryRouter>)).toContain('role="status"');
 
-    // useState call order in AdminCoursesPage: 14 form/dialog states, then
-    // useAsyncData's internal state as call #15.
+    // useState call order in AdminCoursesPage: 12 form/dialog states, the 2 of useLibraryFolders (PR 581),
+    // then the instructor dialog states and useAsyncData's internal state as call #17.
     useStateAtCalls({
-      15: {
+      17: {
         status: 'loaded',
         data: {
           currentUser, total: 1, pageSize: 20,
@@ -131,7 +131,7 @@ describe('admin page smoke rendering', () => {
         },
       },
     });
-    expect(renderToStaticMarkup(<AdminCoursesPage />)).toContain('Workplace Safety');
+    expect(renderToStaticMarkup(<MemoryRouter><AdminCoursesPage /></MemoryRouter>)).toContain('Workplace Safety');
   });
 
   it('renders groups loading and populated states', () => {
@@ -698,16 +698,16 @@ describe('admin page smoke rendering', () => {
   it('renders assignment completion loading state without crashing', () => {
     useLoadingState();
 
-    const html = renderToStaticMarkup(<AdminAssignmentCompletionPage />);
+    const html = renderToStaticMarkup(<MemoryRouter><AdminAssignmentCompletionPage /></MemoryRouter>);
 
     expect(html).toContain('role="status"');
   });
 
   it('renders assignment completion happy path without crashing', () => {
     // useState call order in AdminAssignmentCompletionPage: 11 form/dialog states (PR 277 added
-    // departmentId/includeDescendants), then useAsyncData's internal loadState useState is call 12.
+    // departmentId/includeDescendants), the 2 of useLibraryFolders (PR 581), then useAsyncData's internal loadState useState is call 14.
     useStateAtCalls({
-      12: {
+      14: {
         status: 'loaded',
         data: {
           courses: [{ id: 'course-1', organizationId: 'org-1', title: 'Workplace Safety', status: 'published' }],
@@ -738,7 +738,7 @@ describe('admin page smoke rendering', () => {
       },
     });
 
-    const html = renderToStaticMarkup(<AdminAssignmentCompletionPage />);
+    const html = renderToStaticMarkup(<MemoryRouter><AdminAssignmentCompletionPage /></MemoryRouter>);
 
     expect(html).toContain('Workplace Safety');
   });

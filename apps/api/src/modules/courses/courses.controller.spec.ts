@@ -38,7 +38,7 @@ describe('CoursesController summaries', () => {
 
     controller.listCourses(request, {});
 
-    expect(listCourses).toHaveBeenCalledWith('org-1', 1, 20, 'user-1', false);
+    expect(listCourses).toHaveBeenCalledWith('org-1', 1, 20, 'user-1', false, undefined);
   });
 
   it('checks course access before returning an individual course', async () => {

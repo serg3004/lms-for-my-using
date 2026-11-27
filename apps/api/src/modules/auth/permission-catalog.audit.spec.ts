@@ -33,6 +33,7 @@ const outsideCatalog: Record<string, string> = {
   'employee-card/': 'the card is read by any signed-in user within what the organization allows; its settings and outside inspectors stay with the administrator',
   'groups/': 'organization structure stays with the administrator',
   'learner-dashboard/': 'own data of the signed-in user',
+  'library-folders/': 'folders of the course and assignment lists: managed by the administrator (and the manager for assignments), not delegated in this version',
   'memberships/': 'granting roles (including admin) is never delegated',
   'notifications/': 'own notifications of the signed-in user',
   'org-external-references/': 'organization structure stays with the administrator',

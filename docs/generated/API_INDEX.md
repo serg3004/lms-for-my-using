@@ -341,6 +341,12 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/lessons/{id}/longread/versions` | `Longreads` | `bearer` |
 | `POST` | `/api/v1/lessons/{id}/longread/versions/{number}/restore` | `Longreads` | `bearer` |
 | `PATCH` | `/api/v1/lessons/{id}/status` | `Lessons` | `bearer` |
+| `GET` | `/api/v1/library-folders` | `LibraryFolders` | `bearer` |
+| `POST` | `/api/v1/library-folders` | `LibraryFolders` | `bearer` |
+| `POST` | `/api/v1/library-folders/bulk` | `LibraryFolders` | `bearer` |
+| `PATCH` | `/api/v1/library-folders/{id}` | `LibraryFolders` | `bearer` |
+| `DELETE` | `/api/v1/library-folders/{id}` | `LibraryFolders` | `bearer` |
+| `GET` | `/api/v1/library-folders/{id}/delete-impact` | `LibraryFolders` | `bearer` |
 | `POST` | `/api/v1/manager/overdue-reminders` | `Manager` | `bearer` |
 | `GET` | `/api/v1/manager/team-summary` | `Manager` | `bearer` |
 | `GET` | `/api/v1/materials/{id}` | `CourseMaterials` | `bearer` |

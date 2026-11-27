@@ -29,6 +29,7 @@ Canonical owner: `apps/api/src/app.module.ts`.
 | `LearnerDashboardModule` |
 | `LearningTargetsModule` |
 | `LessonsModule` |
+| `LibraryFoldersModule` |
 | `LoggerModule` |
 | `LongreadsModule` |
 | `ManagerModule` |

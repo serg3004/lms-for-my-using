@@ -281,6 +281,7 @@
       }
     },
     "courses": {
+      "createMenu": { "course": "Course" },
       "eyebrow": "Learning content",
       "title": "Courses",
       "builder": "Builder",
@@ -724,6 +725,7 @@
       }
     },
     "assignments": {
+      "createMenu": { "assignment": "Assignment" },
       "eyebrow": "Required learning",
       "sessionExpired": "Your session expired. Sign in again.",
       "loadError": "Unable to load assignment management data.",
@@ -4736,5 +4738,31 @@
     "choose": "Choose uploaded image",
     "moreImages": "Show more images",
     "imageError": "Unable to load or upload an image. JPEG, PNG, GIF and WebP up to 8 MB are accepted."
+  },
+  "libraryFolders": {
+    "settings": "Folder settings",
+    "forbidden": "You do not have permission to manage folders.",
+    "loading": "Loading folders…",
+    "loadError": "Unable to load folders.",
+    "retry": "Retry",
+    "deleteFolders": "Folders to delete: {{count}}.",
+    "expand": "Expand folder \"{{name}}\"",
+    "collapse": "Collapse folder \"{{name}}\"",
+    "course": {
+      "root": "All courses",
+      "tree": "Course folders",
+      "contents": "Folders: {{folders}}, courses: {{items}}",
+      "unfile": "Courses are not deleted; they move to the root: {{count}} ({{names}}).",
+      "selectAll": "Select all courses and folders",
+      "selectItem": "Select course \"{{title}}\""
+    },
+    "assignment": {
+      "root": "All assignments",
+      "tree": "Assignment folders",
+      "contents": "Folders: {{folders}}, assignments: {{items}}",
+      "unfile": "Assignments are not deleted; they move to the root: {{count}} ({{names}}).",
+      "selectAll": "Select all assignments and folders",
+      "selectItem": "Select assignment \"{{title}}\""
+    }
   }
 }

@@ -6,6 +6,10 @@ import { ApiClientError, apiRequest } from '../shared/apiClient.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
 import { listDepartments } from '../shared/api/departments.js';
 import { clearFieldError, type FormValidationErrors } from '../shared/formValidation.js';
+import { FolderCreateMenu } from '../shared/folders/FolderCreateMenu.js';
+import { FolderLibraryTable, type FolderLibraryActions } from '../shared/folders/FolderLibraryTable.js';
+import { canAddSubfolder } from '../shared/folders/folderTree.js';
+import { useLibraryFolders } from '../shared/folders/useLibraryFolders.js';
 import { Button, DataTable, EmptyState, PageState, StatCard, StatsGrid, type Column } from '../shared/ui.js';
 import type { PaginatedResponse } from '../shared/api/types.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
@@ -52,6 +56,8 @@ export function AdminAssignmentCompletionPage() {
   const [recordErrors, setRecordErrors] = useState<FormValidationErrors<'score'>>({});
   const assignDialogRef = useRef<HTMLDialogElement>(null);
   const progressDialogRef = useRef<HTMLDialogElement>(null);
+  const library = useLibraryFolders('assignment');
+  const libraryActions = useRef<FolderLibraryActions>(null);
 
   const navItems: AdminNavItem[] = [
     { label: t('admin.assignments.title', 'Assignments'), href: '/admin/assignments', isCurrent: true },
@@ -129,6 +135,7 @@ export function AdminAssignmentCompletionPage() {
               : { departmentId, includeDescendants }),
           status: 'assigned',
           dueAt: dueAt || undefined,
+          ...(library.status === 'loaded' && library.id ? { folderId: library.id } : {}),
         }),
       });
       setDueAt('');
@@ -213,47 +220,7 @@ export function AdminAssignmentCompletionPage() {
     );
   }
 
-  const stats = computeAssignmentStats(loadState.data.assignments, Date.now());
-
-  return (
-    <AdminPageLayout
-      brandLabel={t('admin.navLink', 'Admin')}
-      sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')}
-      navItems={navItems}
-    >
-      <AdminPageHeader
-        eyebrow={t('admin.assignments.eyebrow', 'Required learning')}
-        title={t('admin.assignments.title', 'Assignments')}
-        subtitle={t('admin.assignments.subtitle', 'Assign courses to learners and track completion.')}
-        action={
-          <div className="admin-header-actions">
-            <Button
-              variant="primary"
-              type="button"
-              onClick={openAssignDialog}
-              disabled={loadState.data.courses.length === 0 || loadState.data.users.length === 0}
-            >
-              + {t('admin.assignments.create', 'Assign course')}
-            </Button>
-            <Button variant="secondary" type="button" onClick={openProgressDialog} disabled={!selectedCourse || !userId}>
-              {t('admin.assignments.recordProgress', 'Record progress')}
-            </Button>
-          </div>
-        }
-      />
-
-      <StatsGrid>
-        <StatCard label={t('admin.assignments.stats.active', 'Active assignments')} value={stats.active} />
-        <StatCard label={t('admin.assignments.stats.dueWeek', 'Due this week')} value={stats.dueThisWeek} />
-        <StatCard label={t('admin.assignments.stats.overdue', 'Overdue')} value={stats.overdue} />
-        <StatCard label={t('admin.assignments.stats.completed', 'Completed total')} value={stats.completed} />
-      </StatsGrid>
-
-      <AdminCard>
-        <h2>{t('admin.assignments.listTitle', 'Assignments')}</h2>
-        <DataTable<Assignment>
-          label={t('admin.assignments.listTitle', 'Assignments')}
-          columns={[
+  const assignmentColumns: Column<Assignment>[] = [
             { key: 'course', label: t('admin.assignments.col.course', 'Course'), priority: 'primary', render: (a) => findCourseTitle(loadState.data.courses, a.courseId) },
             { key: 'learner', label: t('admin.assignments.col.learner', 'Learner'), priority: 'primary', render: (a) => a.userId
               ? findUserLabel(loadState.data.users, a.userId, a.userId)
@@ -274,12 +241,76 @@ export function AdminAssignmentCompletionPage() {
                 ))}
               </select>
             )},
-          ] satisfies Column<Assignment>[]}
+  ];
+
+  const openFolderId = library.status === 'loaded' ? library.id : null;
+  const folderAssignments = library.data ? loadState.data.assignments.filter((a) => (a.folderId ?? null) === openFolderId) : loadState.data.assignments;
+  const stats = computeAssignmentStats(loadState.data.assignments, Date.now());
+
+  return (
+    <AdminPageLayout
+      brandLabel={t('admin.navLink', 'Admin')}
+      sidebarLabel={t('admin.sidebarLabel', 'Admin navigation')}
+      navItems={navItems}
+    >
+      <AdminPageHeader
+        eyebrow={t('admin.assignments.eyebrow', 'Required learning')}
+        title={t('admin.assignments.title', 'Assignments')}
+        subtitle={t('admin.assignments.subtitle', 'Assign courses to learners and track completion.')}
+        action={
+          <div className="admin-header-actions">
+            {library.data ? (
+              <FolderCreateMenu
+                canCreateFolder={canAddSubfolder(library.data.folders, library.id)}
+                itemLabel={t('admin.assignments.createMenu.assignment', 'Assignment')}
+                onCreateFolder={() => libraryActions.current?.createFolder()}
+                onCreateItem={openAssignDialog}
+                t={t}
+              />
+            ) : (
+              <Button
+                variant="primary"
+                type="button"
+                onClick={openAssignDialog}
+                disabled={loadState.data.courses.length === 0 || loadState.data.users.length === 0}
+              >
+                + {t('admin.assignments.create', 'Assign course')}
+              </Button>
+            )}
+            <Button variant="secondary" type="button" onClick={openProgressDialog} disabled={!selectedCourse || !userId}>
+              {t('admin.assignments.recordProgress', 'Record progress')}
+            </Button>
+          </div>
+        }
+      />
+
+      <StatsGrid>
+        <StatCard label={t('admin.assignments.stats.active', 'Active assignments')} value={stats.active} />
+        <StatCard label={t('admin.assignments.stats.dueWeek', 'Due this week')} value={stats.dueThisWeek} />
+        <StatCard label={t('admin.assignments.stats.overdue', 'Overdue')} value={stats.overdue} />
+        <StatCard label={t('admin.assignments.stats.completed', 'Completed total')} value={stats.completed} />
+      </StatsGrid>
+
+      <AdminCard>
+        <h2>{t('admin.assignments.listTitle', 'Assignments')}</h2>
+        {library.data ? (
+          <FolderLibraryTable<Assignment>
+            actionsRef={libraryActions} library={library} items={folderAssignments}
+            columns={assignmentColumns}
+            itemTitle={(a) => findCourseTitle(loadState.data.courses, a.courseId)} showFolders
+            afterChange={() => void loadData()} emptyMessage={t('admin.assignments.empty', 'No assignments found.')}
+            label={t('admin.assignments.listTitle', 'Assignments')} t={t}
+          />
+        ) : (
+        <DataTable<Assignment>
+          label={t('admin.assignments.listTitle', 'Assignments')}
+          columns={assignmentColumns}
           rows={loadState.data.assignments}
           keyExtractor={(a) => a.id}
           responsiveDetails={{ label: t('courses.details'), expandLabel: (a) => `${t('courses.details')}: ${findCourseTitle(loadState.data.courses, a.courseId)}`, collapseLabel: (a) => `${t('courses.details')}: ${findCourseTitle(loadState.data.courses, a.courseId)}` }}
           emptyMessage={t('admin.assignments.empty', 'No assignments found.')}
         />
+        )}
       </AdminCard>
 
       <AdminCard>
