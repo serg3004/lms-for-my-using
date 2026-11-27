@@ -12,6 +12,7 @@ import { ArchiveUserDialog, type PendingArchive } from '../features/admin-users/
 import { BulkArchiveDialog, BulkMoveDialog, BulkResultDialog } from '../features/admin-users/BulkDialogs.js';
 import { BulkUserBar } from '../features/admin-users/BulkUserBar.js';
 import { useBulkUserActions } from '../features/admin-users/useBulkUserActions.js';
+import { LinkSendDialog } from '../features/admin-users/LinkSendDialog.js';
 import { TelegramSendDialog } from '../features/admin-users/TelegramSendDialog.js';
 import { UserRightsDialog } from '../features/admin-users/UserRightsDialog.js';
 import { InvitationResultDialog, ResetPasswordDialogs, TemporaryPasswordDialogs, type InvitationResult, type PasswordResetResult, type TemporaryPasswordResult } from '../features/admin-users/ResetPasswordDialogs.js';
@@ -61,6 +62,7 @@ export function AdminUsersPage() {
   const [archiveFailed, setArchiveFailed] = useState(false);
 
   const [telegramUser, setTelegramUser] = useState<AdminUserSummary | null>(null);
+  const [linkUser, setLinkUser] = useState<AdminUserSummary | null>(null);
   const [rightsUser, setRightsUser] = useState<AdminUserSummary | null>(null);
   const [pendingReset, setPendingReset] = useState<AdminUserSummary | null>(null);
   const [resetResult, setResetResult] = useState<PasswordResetResult | null>(null);
@@ -183,10 +185,11 @@ export function AdminUsersPage() {
       <button className="admin-btn admin-btn--secondary" disabled={exporting} onClick={() => void exportExcel()} type="button">{exporting ? t('userFields.exporting') : t('userFields.exportExcel')}</button>
     </div>
     {message && mode === null ? <p className="admin-form__error" role="alert">{message}</p> : null}
-    <AdminUsersTable extraFields={columnFields} selection={{ selectedKeys: bulk.selectedKeys, onChange: bulk.setSelectedKeys, selectedLabel: (count) => t('common.selectedCount', { count }), selectAllLabel: t('security.bulkSelectAllRows'), rowLabel: (user) => userName(user) }} batchActions={<BulkUserBar badgeUserIds={[...bulk.selectedKeys]} scope={bulk.scope} canArchive={canArchive} canSelectAll={bulk.canSelectAll} matching={bulk.matching} busy={bulk.busy} onAction={(action) => void bulk.start(action)} onSelectAll={bulk.selectAllMatching} onClear={bulk.clear} />} users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} onResetPassword={setPendingReset} onTemporaryPassword={setPendingTemporary} onTelegram={setTelegramUser} onRights={setRightsUser} onArchive={canArchive ? (user) => void startArchive(user) : undefined} onRestore={canArchive ? setPendingRestore : undefined} />
+    <AdminUsersTable extraFields={columnFields} selection={{ selectedKeys: bulk.selectedKeys, onChange: bulk.setSelectedKeys, selectedLabel: (count) => t('common.selectedCount', { count }), selectAllLabel: t('security.bulkSelectAllRows'), rowLabel: (user) => userName(user) }} batchActions={<BulkUserBar badgeUserIds={[...bulk.selectedKeys]} scope={bulk.scope} canArchive={canArchive} canSelectAll={bulk.canSelectAll} matching={bulk.matching} busy={bulk.busy} onAction={(action) => void bulk.start(action)} onSelectAll={bulk.selectAllMatching} onClear={bulk.clear} />} users={usersQuery.users} onEdit={(user) => open('edit', user)} onToggleStatus={(user) => void toggleStatus(user)} onResetPassword={setPendingReset} onTemporaryPassword={setPendingTemporary} onTelegram={setTelegramUser} onLink={setLinkUser} onRights={setRightsUser} onArchive={canArchive ? (user) => void startArchive(user) : undefined} onRestore={canArchive ? setPendingRestore : undefined} />
     <BulkArchiveDialog pending={bulk.pendingArchive} error={bulk.error} onCancel={bulk.cancelArchive} onConfirm={() => void bulk.confirmArchive()} />
     {bulk.moveOpen ? <BulkMoveDialog open count={bulk.count} busy={bulk.busy} error={bulk.error} onCancel={bulk.cancelMove} onConfirm={(id) => void bulk.confirmMove(id)} /> : null}
     <BulkResultDialog report={bulk.report} names={bulk.names} onClose={bulk.closeReport} />
+    <LinkSendDialog user={linkUser} onClose={() => setLinkUser(null)} />
     <TelegramSendDialog user={telegramUser} organizationId={usersQuery.state.currentUser.organizationId} canEnable={canArchive} onClose={() => setTelegramUser(null)} />
     {rightsUser ? <UserRightsDialog user={rightsUser} onClose={() => setRightsUser(null)} /> : null}
     <InvitationResultDialog result={inviteResult} onClose={() => setInviteResult(null)} />

@@ -433,6 +433,8 @@ Employee card (PR 507): `POST /employee-card/open|checked|photo` and `GET /emplo
 
 Telegram delivery (PR 503): `GET /users/telegram-delivery`, `GET /users/:id/deliveries` and `POST /users/:id/telegram/invitation` use `user.invitation.manage` with the object filters of the invitation routes; `POST /users/:id/telegram/temporary-password` uses `user.reset-password` with the filters of `POST /users/:id/temporary-password` (never for oneself). Turning the channel on is `telegramDeliveryEnabled` in organization features (administrator). `POST /telegram/webhook` is `@PublicAccess` and protected by the webhook secret header, not by a session.
 
+Links (PR 572): `POST /users/:id/links` (`user.invitation.manage` roles: administrator and manager, on the people the caller can reach for a temporary password) sends the install link or, with `sessionId`, the link to one check (only to its observer) by e-mail or Telegram. It creates no secret.
+
 `POST /users/:id/temporary-password` uses the `user.reset-password` permission and the same object filters as `POST /users/{id}/reset-password` (administrator: whole organization; manager: own team; delegated registrar: own department tree, never above `learner`); the caller cannot issue one for themselves. `POST /users` with `temporaryPassword: true` follows the existing `user.create` rules. While `mustChangePassword` is set, `AuthGuard` refuses every guarded route with `403 PASSWORD_CHANGE_REQUIRED` whatever the role; custom roles do not change this.
 
 

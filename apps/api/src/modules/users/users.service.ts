@@ -14,6 +14,8 @@ import { OrganizationAccessScopeService } from '../organization-access-scope/pub
 import { UserFieldsService } from '../user-fields/public.js';
 import { fieldAuditMetadata, validateFieldValues, WORK_SCHEDULE_KEY } from '../user-fields/public.js';
 import type { CustomFieldValues, FieldChange, FieldViewer, FieldWrite } from '../user-fields/public.js';
+import { isMailConfigured, sendMail } from '../../common/mail/mailer.js';
+import { linkTexts } from './link-messages.js';
 import { TelegramDeliveryService, type DeliveryKind } from './telegram-delivery.service.js';
 import { assertNoRoleChange, UserRegistrarAccess, type Registrar } from './user-registrar-access.js';
 import { lookupImportDepartment, resolveImportRole, type ImportRole } from './user-import.js';
@@ -289,6 +291,49 @@ export class UsersService {
       ? await this.invitationScope.user(actor)
       : { ...this.teamScope.user(actor), ...this.registrars.writeWhere(await this.registrars.resolve(actor), actor) };
     return this.telegram.send(actor, userId, kind, where);
+  }
+
+  /**
+   * PR 572: sends a link to a person by e-mail or through Telegram: the page that explains how to install the app, or
+   * one check (only to the observer of that check). The link carries no secret; opening a check still needs the sign-in and its rights.
+   */
+  async sendLink(actor: TeamScopeActor, userId: string, input: { channel: 'email' | 'telegram'; sessionId?: string }) {
+    const where = { ...this.teamScope.user(actor), ...this.registrars.writeWhere(await this.registrars.resolve(actor), actor) };
+    let path: string | null = null;
+    if (input.sessionId) {
+      const session = await this.prisma.checklistSession.findFirst({ where: { id: input.sessionId, organizationId: actor.organizationId, observerId: userId }, select: { id: true } });
+      if (!session) throw new NotFoundException('Check not found for this person');
+      path = `/instructor/checklists/sessions/${session.id}`;
+    }
+    if (input.channel === 'telegram') {
+      if (!this.telegram) throw new ConflictException('Telegram delivery is not available');
+      return this.telegram.sendLink(actor, userId, path ? { kind: 'session_link', path } : { kind: 'install_link' }, where);
+    }
+    if (!isMailConfigured()) throw new ConflictException('E-mail delivery is not configured');
+    const user = await this.prisma.user.findFirst({
+      where: { ...where, id: userId, organizationId: actor.organizationId, deletedAt: null },
+      select: { id: true, organizationId: true, email: true, firstName: true, locale: true, status: true },
+    });
+    if (!user) throw new NotFoundException('User not found');
+    if (hasNoEmail(user.email)) throw new ConflictException('The person has no mailbox');
+    if (user.status !== 'active' && !(user.status === 'invited' && !path)) throw new ConflictException('The person cannot receive this link');
+    const kind = path ? 'session_link' : 'install_link';
+    const recent = await this.prisma.messageDelivery.count({ where: { organizationId: user.organizationId, userId, channel: 'email', kind, createdAt: { gt: new Date(Date.now() - 60_000) } } });
+    if (recent > 0) throw new HttpException('A message was sent to this person a moment ago', HttpStatus.TOO_MANY_REQUESTS);
+    const texts = linkTexts(user.locale);
+    const link = `${(process.env['FRONTEND_URL'] ?? '').replace(/\/+$/, '')}${path ?? '/install'}`;
+    let status: 'sent' | 'failed' = 'sent';
+    try {
+      await sendMail({ to: user.email, subject: path ? texts.sessionSubject : texts.installSubject, text: (path ? texts.session : texts.install)({ firstName: user.firstName, link }) });
+    } catch {
+      status = 'failed';
+    }
+    await this.prisma.messageDelivery.create({ data: { organizationId: user.organizationId, userId, channel: 'email', kind, status, errorCode: status === 'failed' ? 'mail' : null, createdById: actor.id } });
+    await this.auditLog.record({
+      organizationId: user.organizationId, actorId: actor.id, action: `user.link_${status}`, targetType: 'user', targetId: userId,
+      summary: `E-mail ${kind} ${status}`, metadata: { channel: 'email', kind },
+    });
+    return status === 'sent' ? { status: 'sent' as const } : { status: 'failed' as const, reason: 'mail' };
   }
 
   async changeInvitation(actor: TeamScopeActor, userId: string, action: 'revoked' | 'extended') {

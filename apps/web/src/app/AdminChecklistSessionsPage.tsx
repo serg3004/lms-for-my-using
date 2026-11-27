@@ -25,6 +25,7 @@ import { ChecklistWorkplaceSettingsDialog } from '../features/admin-checklist-se
 import { canExportSummary, ChecklistSummarySelection } from '../features/admin-checklist-sessions/ChecklistSummarySelection.js';
 import { EditSessionDialog } from '../features/admin-checklist-sessions/EditSessionDialog.js';
 import { MessageParticipantDialog } from '../features/admin-checklist-sessions/MessageParticipantDialog.js';
+import { LinkSendDialog } from '../features/admin-users/LinkSendDialog.js';
 import {
   activeSessionFilterKeys,
   applySessionFilterChange,
@@ -71,6 +72,8 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
   const [cancelTarget, setCancelTarget] = useState<ChecklistSessionSummary | null>(null);
   const [editTarget, setEditTarget] = useState<ChecklistSessionSummary | null>(null);
   const [messageTarget, setMessageTarget] = useState<ChecklistSessionSummary | null>(null);
+  const canSendLinks = currentUser?.roles.some((role) => role === 'admin' || role === 'manager') ?? false;
+  const canLinkSession = (row: ChecklistSessionSummary) => canSendLinks && canMessageParticipant(row) && !row.observerUnavailableReason;
   const [deleteTarget, setDeleteTarget] = useState<ChecklistSessionSummary | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -130,6 +133,8 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
   );
 
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  /** PR 572: the link to one check goes to its observer, by e-mail or Telegram (administrator and manager). */
+  const [linkTarget, setLinkTarget] = useState<ChecklistSessionSummary | null>(null);
   useEffect(() => { setSelectedKeys(new Set()); }, [statusTab, period, observerFilter, checklistFilter, learnerFilter, departmentFilter, search, page]);
 
   const exporting = useRef(false);
@@ -297,7 +302,7 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
             )}
           </span>
           <span className="admin-session-actions__slot">
-            {(canReassignObserver(row) || canMessageParticipant(row) || canDeleteSession(row)) && (
+            {(canReassignObserver(row) || canMessageParticipant(row) || canLinkSession(row) || canDeleteSession(row)) && (
               <Menu
                 align="end"
                 buttonClassName="ds-button ds-button--secondary ds-button--sm"
@@ -311,6 +316,11 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
                 {canMessageParticipant(row) && (
                   <button onClick={() => setMessageTarget(row)} role="menuitem" type="button">
                     {t('admin.checklists.sessions.message.open', 'Write to the participant')}
+                  </button>
+                )}
+                {canLinkSession(row) && (
+                  <button onClick={() => setLinkTarget(row)} role="menuitem" type="button">
+                    {t('admin.checklists.sessions.sendLink', 'Send the link to the observer')}
                   </button>
                 )}
                 {canDeleteSession(row) && (
@@ -507,6 +517,7 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
         session={messageTarget}
         t={t}
       />
+      <LinkSendDialog onClose={() => setLinkTarget(null)} sessionId={linkTarget?.id} user={linkTarget ? linkTarget.observer : null} />
       {<ChecklistWorkplaceSettingsDialog onClose={() => setSettingsOpen(false)} open={settingsOpen} t={t} />}
     </>,
   );

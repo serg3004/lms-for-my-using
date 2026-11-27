@@ -1593,6 +1593,7 @@
         "removeFilter": "移除筛选：{{filter}}",
         "resetFilters": "重置筛选",
         "searchLabel": "搜索",
+        "sendLink": "向观察员发送链接",
         "edit": {
           "open": "修改时间或观察员",
           "title": "编辑会话",

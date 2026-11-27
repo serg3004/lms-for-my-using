@@ -286,6 +286,7 @@ export const permissionRouteMap: Readonly<Record<string, readonly PermissionActi
   'UsersController.getTelegramStatus': ['user.invitation.manage'],
   'UsersController.listDeliveries': ['user.invitation.manage'],
   'UsersController.sendInvitationToTelegram': ['user.invitation.manage'],
+  'UsersController.sendLink': ['user.invitation.manage'],
   'UsersController.sendTemporaryPasswordToTelegram': ['user.reset-password'],
   'UsersController.listInvitations': ['user.invitation.manage'],
   'UsersController.listUsers': ['user.read'],

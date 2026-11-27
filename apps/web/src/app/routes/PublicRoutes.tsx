@@ -9,6 +9,7 @@ const BadgePage = lazy(() => import('../BadgePage.js').then((m) => ({ default: m
 const QrConfirmPage = lazy(() => import('../QrConfirmPage.js').then((m) => ({ default: m.QrConfirmPage })));
 const LoginPage = lazy(() => import('../LoginPage.js').then((m) => ({ default: m.LoginPage })));
 const ActivatePage = lazy(() => import('../ActivatePage.js').then((m) => ({ default: m.ActivatePage })));
+const InstallPage = lazy(() => import('../InstallPage.js').then((m) => ({ default: m.InstallPage })));
 const PasswordResetPage = lazy(() => import('../PasswordResetPage.js').then((m) => ({ default: m.PasswordResetPage })));
 const PublicChecklistPage = lazy(() => import('../PublicChecklistPage.js').then((m) => ({ default: m.PublicChecklistPage })));
 const ProfilePage = lazy(() => import('../ProfilePage.js').then((m) => ({ default: m.ProfilePage })));
@@ -22,6 +23,7 @@ export function PublicRoutes() {
     <Route path="/badge" element={<BadgePage />} />
     <Route path="/employee-card" element={<EmployeeCardPage />} />
     <Route path="/activate" element={<ActivatePage />} />
+    <Route path="/install" element={<InstallPage />} />
     <Route path="/password-reset" element={<PasswordResetPage />} />
     <Route path="/invitation" element={<PasswordResetPage mode="invitation" />} />
     <Route path="/c/:token" element={<PublicChecklistPage />} />

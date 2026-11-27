@@ -485,6 +485,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `POST` | `/api/v1/users/{id}/invitation/extend` | `Users` | `bearer` |
 | `POST` | `/api/v1/users/{id}/invitation/resend` | `Users` | `bearer` |
 | `POST` | `/api/v1/users/{id}/invitation/revoke` | `Users` | `bearer` |
+| `POST` | `/api/v1/users/{id}/links` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}/login-history` | `Users` | `bearer` |
 | `GET` | `/api/v1/users/{id}/photo` | `Profile` | `bearer` |
 | `GET` | `/api/v1/users/{id}/reporting-lines` | `ReportingLines` | `bearer` |
