@@ -136,7 +136,7 @@ test.describe('Checklist library: one list of folders and checklists (PR 408)', 
     await page.getByRole('dialog').getByLabel('Название папки').fill('Основной склад');
     await page.getByRole('dialog').getByRole('button', { name: 'Сохранить' }).click();
     await expect(page.getByRole('row', { name: /Основной склад/ })).toBeVisible();
-    expect(calls.find((call) => call.method === 'PATCH')?.body).toEqual({ name: 'Основной склад', visibleToStaff: false, color: 'purple', sharedUserIds: [] });
+    expect(calls.find((call) => call.method === 'PATCH')?.body).toEqual({ name: 'Основной склад', visibleToStaff: false, accessRoles: [], color: 'purple', sharedUserIds: [] });
 
     // Move a folder into another one (it and its subfolders are not offered as targets).
     await page.getByRole('row', { name: /Основной склад/ }).getByRole('button', { name: /Действия с папкой/ }).click();
@@ -160,7 +160,7 @@ test.describe('Checklist library: one list of folders and checklists (PR 408)', 
     await dialog.getByRole('button', { name: 'Создать', exact: true }).click();
     await expect(page.getByRole('row', { name: /Подсобка/ })).toBeVisible();
     await expect(page).toHaveURL(/folder=shop/);
-    expect(calls.find((call) => call.path === '/checklist-folders' && call.method === 'POST')?.body).toEqual({ name: 'Подсобка', parentId: 'shop', visibleToStaff: false, color: 'purple', sharedUserIds: [] });
+    expect(calls.find((call) => call.path === '/checklist-folders' && call.method === 'POST')?.body).toEqual({ name: 'Подсобка', parentId: 'shop', visibleToStaff: false, accessRoles: [], color: 'purple', sharedUserIds: [] });
 
     // Move a sheet to a folder from the row menu.
     await page.getByRole('navigation', { name: 'Путь к папке' }).getByRole('button', { name: 'Все листы' }).click();
