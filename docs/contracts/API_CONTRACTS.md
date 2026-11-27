@@ -2599,8 +2599,9 @@ test outside those courses. Foreign and deleted folders are treated as missing.
 | Endpoint | Contract |
 | --- | --- |
 | `GET /assessment-folders` | Returns `{ folders, assessmentCount, rootAssessmentCount }`. The flat tree uses `parentId` and each row includes `id`, `name`, `createdBy`, timestamps, `childFolderCount`, direct `assessmentCount` and recursive `totalAssessmentCount`. Counts exclude soft-deleted tests. |
-| `POST /assessment-folders` | Accepts `{ name, parentId? }`. Omit the parent or pass null for the root. Returns the created folder. |
-| `PATCH /assessment-folders/:id` | Accepts `{ name?, parentId? }`. Omitted fields keep their values and a null parent moves the folder to the root. Returns the updated folder. |
+| `POST /assessment-folders` | Accepts `{ name, color?, parentId?, visibleToStaff?, accessRoles?, sharedUserIds? }`. Omit the parent or pass null for the root. Returns the created folder. Access (PR 576): `visibleToStaff` (all employees), `accessRoles` (`manager`, `instructor`, `mentor`; emptied when `visibleToStaff` is true) and `sharedUserIds` (employees by name); with none of them only the creator and administrators see the folder. A folder closed to the caller, and the tests inside it, are not listed, and a direct request for it returns 404; a visible folder can be changed only by its creator or an administrator (403). |
+| `GET /assessment-folders/share-candidates?search=` | Active staff of the organization a folder can be opened to by name: `[{ id, name }]`, at most 30. |
+| `PATCH /assessment-folders/:id` | Accepts `{ name?, color?, parentId?, visibleToStaff?, accessRoles?, sharedUserIds? }`. Omitted fields keep their values and a null parent moves the folder to the root. Returns the updated folder. |
 | `GET /assessment-folders/:id/delete-impact` | Returns `{ folders, movedToRoot: [{ id, title }] }`, including the selected folder and all its descendants. |
 | `DELETE /assessment-folders/:id` | Soft-deletes the subtree and returns the same impact shape, recalculated atomically. Its tests move to the root with their status, questions and attempts preserved. |
 | `POST /assessment-folders/bulk` | Accepts `{ kind: 'folder' \| 'assessment', action: 'move' \| 'delete', ids, parentId? }`. Move requires `parentId` (null for root). Delete accepts no destination. |
@@ -2631,8 +2632,9 @@ value means the root, so all existing courses and assignments stay in the root.
 | Endpoint | Contract |
 | --- | --- |
 | `GET /library-folders?scope=` | Returns `{ folders, itemCount, rootItemCount }`. Each folder has `id`, `name`, `parentId`, `color`, `childFolderCount`, direct `itemCount` and recursive `totalItemCount`. |
-| `POST /library-folders` | Accepts `{ scope, name, color?, parentId? }`. Returns the created folder. |
-| `PATCH /library-folders/:id` | Accepts `{ name?, color?, parentId? }` (rename, recolour, move). |
+| `POST /library-folders` | Accepts `{ scope, name, color?, parentId?, visibleToStaff?, accessRoles?, sharedUserIds? }`. Returns the created folder. Access rules are the same as for `/assessment-folders` (PR 576); folders and their items that are closed to the caller are not listed or counted. |
+| `GET /library-folders/share-candidates?scope=&search=` | Active staff a folder can be opened to by name: `[{ id, name }]`. |
+| `PATCH /library-folders/:id` | Accepts `{ name?, color?, parentId?, visibleToStaff?, accessRoles?, sharedUserIds? }` (rename, recolour, move, change access). |
 | `GET /library-folders/:id/delete-impact` | Returns `{ folders, movedToRoot: [{ id, title }] }` for the folder and its subtree. For assignments the title is the course title. |
 | `DELETE /library-folders/:id` | Soft-deletes the subtree. Its courses or assignments move to the root and are never deleted. |
 | `POST /library-folders/bulk` | Accepts `{ kind: 'folder' \| 'item', action: 'move' \| 'delete', ids, parentId? }`, 1–100 ids. Delete is for folders only. Result rows follow the assessment folder bulk contract. |
