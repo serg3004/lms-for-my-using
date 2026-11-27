@@ -2343,3 +2343,24 @@
 .library-switch__option { display: inline-flex; align-items: center; min-block-size: 44px; padding-inline: var(--space-4); border-radius: 999px; color: var(--color-text-muted); text-decoration: none; font-weight: 600; }
 .library-switch__option[aria-current="page"] { background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface)); color: var(--color-primary); }
 .library-switch__option:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+/* PR 517: the library of evaluation scales. */
+.scale-filter { display: flex; flex-wrap: wrap; align-items: stretch; gap: var(--space-3); margin-block: var(--space-3); }
+.scale-filter .ds-search { flex: 1 1 240px; min-inline-size: 0; }
+.scale-filter__sort { flex: none; min-block-size: 44px; }
+.scale-cards { display: grid; gap: var(--space-3); margin: var(--space-3) 0; padding: 0; list-style: none; }
+.scale-card { border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
+.scale-card:hover { border-color: var(--color-primary); }
+.scale-card--archived { opacity: .72; }
+.scale-card__link { display: grid; gap: var(--space-2); min-block-size: 44px; padding: var(--space-4); color: inherit; text-decoration: none; overflow-wrap: anywhere; }
+.scale-card__link:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; border-radius: var(--radius-md); }
+.scale-card__head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-1) var(--space-3); }
+.scale-card__name { min-inline-size: 0; font-size: 1.0625rem; }
+.scale-card__lock { display: inline-flex; margin-inline-end: var(--space-1); color: var(--color-text-muted); vertical-align: -1px; }
+.scale-card__counts, .scale-card__meta { color: var(--color-text-muted); font-size: .8125rem; }
+.scale-card__bars { display: flex; gap: 3px; }
+.scale-card__bar { flex: 1 1 0; block-size: 8px; border-radius: 4px; }
+.scale-card__levels { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); font-size: .8125rem; }
+.scale-card__level { display: inline-flex; align-items: center; gap: 6px; }
+.scale-card__dot { flex: none; inline-size: 8px; block-size: 8px; border-radius: 50%; }
+.scale-card__archived { font-weight: 600; }
