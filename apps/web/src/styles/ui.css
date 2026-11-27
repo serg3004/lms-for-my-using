@@ -2413,3 +2413,14 @@
 .sheet-analytics-widget--m { grid-column: span 6; }
 .sheet-analytics-widget--l { grid-column: span 12; }
 @media (max-width: 860px) { .sheet-analytics-widget--s, .sheet-analytics-widget--m { grid-column: span 12; } }
+
+/* PR 545: the quiet author line at the bottom of the shells and the login page */
+.authorship-note {
+  margin: 24px 0 0;
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  text-align: center;
+  color: var(--color-text-muted);
+  /* The empty-area context menu of the checklist library runs its padding under this line: clicks pass through. */
+  pointer-events: none;
+}

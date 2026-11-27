@@ -184,7 +184,8 @@
   },
   "app": {
     "title": "LMS",
-    "subtitle": "学习管理系统"
+    "subtitle": "学习管理系统",
+    "authorship": "创意与开发：Sergey Afanaskov"
   },
   "nav": {
     "home": "首页",

@@ -11,6 +11,7 @@ import { useNavigationDrawer } from './navigationDrawer.js';
 import { SidebarCollapseToggle, useSidebarCollapsed } from './sidebarCollapse.js';
 import { useOptionalSession } from './session.js';
 import { Avatar, MoreMenu, SkipLink } from './ui.js';
+import { AuthorshipNote } from './AuthorshipNote.js';
 
 const BRAND_NAME = 'LearnSpace';
 
@@ -298,7 +299,7 @@ export function AdminPageLayout({
       </header>
 
       <main className="admin-shell" id="main-content" tabIndex={-1}>
-        <div className="admin-shell__inner">{children}</div>
+        <div className="admin-shell__inner">{children}<AuthorshipNote /></div>
       </main>
     </div>
   );
