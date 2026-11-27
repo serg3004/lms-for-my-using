@@ -5,13 +5,14 @@ import { useTranslation } from 'react-i18next';
 import { AdminPageHeader, AdminPageLayout, ChecklistsTabs, ConfirmDialog } from '../shared/adminPage.js';
 import { ObserverPageLayout } from '../shared/observerLayout.js';
 import { useSession } from '../shared/session.js';
-import { Button, PageState, SearchInput } from '../shared/ui.js';
+import { Button, PageState } from '../shared/ui.js';
 import { ApiClientError } from '../shared/apiClient.js';
 import { archiveChecklistScale, copyChecklistScale, createChecklistScale, deleteChecklistScale, getChecklistScale, listChecklistScales, updateChecklistScale } from '../shared/api/checklists.js';
 import type { ChecklistScaleSummary } from '../shared/api/types.js';
 import { ScaleEditor, newScaleEditor, scaleEditorFor, scaleDraftErrorText, type ScaleEditorState } from '../features/admin-checklists/ScaleEditor.js';
 import { scaleDraftToInput, validateScaleDraft } from '../features/admin-checklists/domain.js';
 import { ObserverSessionsNav } from './ObserverSessionsNav.js';
+import { ScaleLibraryList } from '../features/admin-checklists/ScaleLibraryList.js';
 
 export function ChecklistScalesPage({ observer = false }: { observer?: boolean }) {
   const { t, i18n } = useTranslation(), { currentUser } = useSession();
@@ -21,7 +22,7 @@ export function ChecklistScalesPage({ observer = false }: { observer?: boolean }
   const canManage = !observer && roles.some((role) => ['admin', 'manager'].includes(role));
   const base = observer ? roles.includes('instructor') ? '/instructor/checklists/scales' : '/mentor/scales' : '/admin/checklists/scales';
   const [scales, setScales] = useState<ChecklistScaleSummary[]>([]), [scale, setScale] = useState<ChecklistScaleSummary | null>(null);
-  const [editor, setEditor] = useState<ScaleEditorState | null>(null), [search, setSearch] = useState(''), [descending, setDescending] = useState(false);
+  const [editor, setEditor] = useState<ScaleEditorState | null>(null);
   const [loading, setLoading] = useState(true), [error, setError] = useState(''), [busy, setBusy] = useState(false), [retry, setRetry] = useState(0);
   const [confirm, setConfirm] = useState<'archive' | 'delete' | null>(null);
   const title = t('admin.checklists.scaleManager.title');
@@ -61,7 +62,6 @@ export function ChecklistScalesPage({ observer = false }: { observer?: boolean }
   const shell = (children: ReactNode) => observer ? <ObserverPageLayout>{children}</ObserverPageLayout> : <AdminPageLayout brandLabel={t('admin.navLink')} sidebarLabel={t('admin.navLink')} currentUser={currentUser!} navItems={[{ label: t('admin.checklists.title'), href: '/admin/checklists', isCurrent: true }]}>{children}</AdminPageLayout>;
   if (!canRead || (scaleId === 'new' && !canManage)) return shell(<PageState variant="error" message={t('admin.checklists.scaleLibrary.forbidden')} />);
   const selectedTitle = scaleId === 'new' ? t('admin.checklists.scaleManager.newTitle') : scale?.name ?? title;
-  const matching = scales.filter((item) => item.name.toLocaleLowerCase(i18n.language).includes(search.trim().toLocaleLowerCase(i18n.language))).sort((a, b) => a.name.localeCompare(b.name, i18n.language) * (descending ? -1 : 1));
   return shell(<>
     {observer ? <ObserverSessionsNav current="scales" /> : <ChecklistsTabs current="scales" />}
     <LibrarySwitch base={base.replace(/\/scales$/, '')} current="scales" />
@@ -74,21 +74,7 @@ export function ChecklistScalesPage({ observer = false }: { observer?: boolean }
     {loading ? <PageState variant="loading" message={t('admin.checklists.scaleLibrary.loading')} /> : <>
       {error && <div role="alert"><p>{error}</p>{!editor && <Button type="button" onClick={() => setRetry((value) => value + 1)}>{t('longread.retry')}</Button>}</div>}
       {!scaleId && !error && <>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBlock: 16 }}>
-          <SearchInput aria-label={t('admin.checklists.scaleLibrary.search')} placeholder={t('admin.checklists.scaleLibrary.search')} value={search} onChange={setSearch} />
-          <label>{t('admin.checklists.scaleLibrary.sort')} <select value={descending ? 'desc' : 'asc'} onChange={(event) => setDescending(event.target.value === 'desc')}><option value="asc">{t('admin.checklists.scaleLibrary.ascending')}</option><option value="desc">{t('admin.checklists.scaleLibrary.descending')}</option></select></label>
-        </div>
-        {!matching.length && <PageState variant="info" message={t('admin.checklists.scaleManager.empty')} />}
-        <ul className="admin-checklist-instances">{matching.map((item) => <li key={item.id} style={{ padding: 0 }}>
-          <Link to={`${base}/${encodeURIComponent(item.id)}`} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', width: '100%', padding: 16, color: 'inherit', minHeight: 44, overflowWrap: 'anywhere' }}>
-            <strong style={{ flex: '1 1 220px', minWidth: 0 }}>{item.isDefault && <span aria-label={t('admin.checklists.scaleManager.defaultBadge')}>🔒 </span>}{item.name}</strong>
-            <span>{t('admin.checklists.scaleManager.levelsCount', { count: item.levels.length })}</span>
-            <span>{t('admin.checklists.scaleLibrary.usage', { count: item.usageCount ?? 0 })}</span>
-            <span>{item.creator ? `${item.creator.firstName} ${item.creator.lastName}` : t(item.isDefault ? 'admin.checklists.scaleLibrary.system' : 'admin.checklists.scaleLibrary.unknownCreator')}</span>
-            {item.createdAt && <time dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString(i18n.language, { dateStyle: 'short', timeStyle: 'short', timeZone: currentUser?.timezone || 'UTC' })}</time>}
-            {item.status === 'archived' && <span>{t('admin.checklists.scaleManager.archived')}</span>}
-          </Link>
-        </li>)}</ul>
+        <ScaleLibraryList base={base} language={i18n.language} scales={scales} t={t} timezone={currentUser?.timezone || 'UTC'} />
       </>}
       {editor && <section className="admin-card" style={{ maxWidth: '100%', minWidth: 0 }}>
         <fieldset disabled={busy} style={{ border: 0, minWidth: 0, margin: 0, padding: 0 }}><ScaleEditor editor={editor} onChange={setEditor} t={t} /></fieldset>

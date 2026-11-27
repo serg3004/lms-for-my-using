@@ -26,7 +26,7 @@ test('standalone scale creation and editing return to the live list without a do
 
 test('search, sort, usage and author metadata; used scales show the edit policy and cannot be deleted', async ({ page }) => {
   const server = scaleLibraryServer(); await server.attach(page);
-  await page.getByRole('combobox', { name: 'Сортировка по названию' }).selectOption('desc'); await expect(page.locator('ul.admin-checklist-instances > li > a').first()).toContainText('Навыки');
+  await page.getByRole('button', { name: /Сортировка по названию/ }).click(); await expect(page.locator('ul.scale-cards > li > a').first()).toContainText('Навыки');
   await page.getByRole('searchbox').fill('Качество'); await expect(page.getByRole('link', { name: /Анна Автор/ })).toHaveCount(1);
   await page.getByRole('link', { name: /Качество обслуживания/ }).click();
   await expect(page.getByRole('note').filter({ hasText: 'ещё не начаты' })).toBeVisible();
@@ -42,6 +42,9 @@ test('protected scale is read only and can be copied; the copy can be archived a
   await page.getByRole('button', { name: 'Сделать копию', exact: true }).click(); await expect(page).toHaveURL(/\/scales\/copy-/);
   await expect(page.getByLabel('Название шкалы', { exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'В архив', exact: true }).click(); await page.getByRole('dialog').getByRole('button', { name: 'В архив', exact: true }).click();
+  // PR 517: an archived scale leaves the list of active scales and waits on the Archive tab.
+  await expect(page.getByRole('link', { name: /Да \/ Нет.*копия/ })).toHaveCount(0);
+  await page.getByRole('tab', { name: /Архив/ }).click();
   await page.getByRole('link', { name: /Да \/ Нет.*копия/ }).click(); await expect(page.getByLabel('Название шкалы', { exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'Удалить', exact: true }).click(); await page.getByRole('dialog').getByRole('button', { name: 'Удалить', exact: true }).click();
   await expect(page).toHaveURL(/\/scales$/); expect(server.scales).toHaveLength(3);

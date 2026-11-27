@@ -89,6 +89,28 @@ for (const width of [390, 1280]) test(`custom roles editor is responsive at ${wi
   await expectVisualMatch(page, `custom-roles-editor-${width}`, false, { maxDiffPixels: 3000 });
 });
 
+for (const width of [320, 390, 768, 1280]) test(`scale library cards and the archive tab are responsive at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height }); await installAdminAuthMock(page);
+  const level = (value: number, label: string, score: number, color?: string) => ({ value, label, score, ...(color ? { color } : {}) });
+  const scale = (id: string, name: string, over: Record<string, unknown> = {}) => ({
+    id, organizationId: 'visual-org', name, status: 'active', isDefault: false, inUse: false, usageCount: 3,
+    creator: { id: 'visual-admin', firstName: 'Visual', lastName: 'Admin' }, createdAt: '2026-10-01T10:00:00.000Z',
+    levels: [level(0, 'Нет', 0), level(1, 'Частично', 5), level(2, 'Да', 10)], ...over,
+  });
+  await page.route('**/api/v1/checklist-scales', (route) => route.fulfill({ json: [
+    scale('yes-no', 'Да / Нет', { isDefault: true, usageCount: 12, creator: null, levels: [level(0, 'Нет', 0, '#C62828'), level(1, 'Да', 1, '#2E7D32')] }),
+    scale('quality', 'Качество обслуживания', { levels: [level(0, 'Плохо', 0), level(1, 'Нормально', 5, '#1565C0'), level(2, 'Отлично', 10)] }),
+    scale('old', 'Старая шкала', { status: 'archived', usageCount: 0 }),
+  ] }));
+  await page.goto('/admin/checklists/scales');
+  await expect(page.getByText('Качество обслуживания')).toBeVisible();
+  await expectNoPageOverflow(page);
+  await expectVisualMatch(page, `scale-cards-${width}`, false, { maxDiffPixels: 3000 });
+  await page.getByRole('tab', { name: /Архив/ }).click();
+  await expect(page.getByText('Старая шкала')).toBeVisible();
+  await expectNoPageOverflow(page);
+});
+
 for (const width of [390, 1280]) test(`user import page is responsive at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height }); await installUsersImportMocks(page);
   await page.goto('/admin/users/import');
