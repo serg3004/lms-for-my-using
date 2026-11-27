@@ -1,8 +1,8 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard, RolesGuard, Roles, rolePolicies } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
 import { ChecklistFoldersService } from './checklist-folders.service.js';
-import { bulkChecklistFolderSchema, createChecklistFolderSchema, updateChecklistFolderSchema } from './checklists.schemas.js';
+import { bulkChecklistFolderSchema, checklistFolderShareCandidatesQuerySchema, createChecklistFolderSchema, updateChecklistFolderSchema } from './checklists.schemas.js';
 
 /** PR 395: checklist folders. Same roles as the checklists themselves; the service decides per folder who sees and who manages it. */
 @Controller()
@@ -14,6 +14,12 @@ export class ChecklistFoldersController {
   @Roles(...rolePolicies.checklistsRead)
   list(@Req() request: AuthenticatedRequest) {
     return this.folders.list(request.currentUser!.organizationId, request.currentUser!);
+  }
+
+  @Get('checklist-folders/share-candidates')
+  @Roles(...rolePolicies.checklistsCreate)
+  shareCandidates(@Query() rawQuery: unknown, @Req() request: AuthenticatedRequest) {
+    return this.folders.shareCandidates(request.currentUser!.organizationId, checklistFolderShareCandidatesQuerySchema.parse(rawQuery).search);
   }
 
   @Post('checklist-folders')

@@ -188,11 +188,16 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
   const columns = [
     { key: 'title', label: t('admin.checklists.col.title', 'Title'), priority: 'primary', sortable: Boolean(onSortChange), render: (row) => row.kind === 'sheet' ? plainText(row.checklist.title) : (
       <span className="checklist-library__folder">
-        <FolderGlyph />
+        <FolderGlyph color={row.folder.color} />
         <button className="checklist-library__open" onClick={() => onOpenFolder?.(row.folder)} type="button" aria-label={t('admin.checklists.folders.openFolder', 'Open folder: {{name}}', { name: row.folder.name })}>{row.folder.name}</button>
-        {!row.folder.visibleToStaff && (
-          <span role="img" aria-label={t('admin.checklists.folders.closed', 'Closed folder: visible only to its creator and administrators')} title={t('admin.checklists.folders.closed', 'Closed folder: visible only to its creator and administrators')}>🔒</span>
-        )}
+        {!row.folder.visibleToStaff && (() => {
+          const named = row.folder.sharedUsers?.length ?? 0;
+          const label = named > 0 ? t('admin.checklists.folders.sharedBadge', 'Opened to employees: {{count}}', { count: named }) : t('admin.checklists.folders.closed', 'Closed folder: visible only to its creator and administrators');
+          return <span className="checklist-library__lock" role="img" aria-label={label} title={label}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10V8a5 5 0 0 1 10 0v2h1a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2Zm2 0h6V8a3 3 0 0 0-6 0Z" /></svg>
+            {named > 0 && <span>{named}</span>}
+          </span>;
+        })()}
       </span>
     ) },
     ...(childFolders ? [{ key: 'type', label: t('admin.checklists.col.type', 'Type'), priority: 'secondary' as const, render: (row: LibraryRow) => row.kind === 'folder' ? t('admin.checklists.folders.typeFolder', 'Folder') : t('admin.checklists.folders.typeChecklist', 'Checklist') }] : []),

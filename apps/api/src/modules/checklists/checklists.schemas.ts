@@ -1,5 +1,6 @@
 import { richTextSchema } from '@lms/shared/rich-text';
 import { DESCRIPTION_MARKUP_LIMIT } from '@lms/shared/checklist-description';
+import { FOLDER_COLORS } from '@lms/shared/constants/folder-colors';
 import { z } from 'zod';
 
 import { analyticsFieldFiltersSchema, fieldKeySchema } from '../user-fields/public.js';
@@ -65,14 +66,18 @@ export type BulkChecklistActionInput = z.infer<typeof bulkChecklistActionSchema>
 
 // PR 395: checklist folders. Existence, visibility, depth and name clashes are checked in the service.
 const folderNameSchema = z.string().trim().min(1).max(255);
+/** PR 515: employees a folder is opened to by name; existence and role are checked in the service. */
+const folderSharedUsersSchema = z.array(z.guid()).max(200).transform((ids) => [...new Set(ids)]);
 export const createChecklistFolderSchema = z.object({
   name: folderNameSchema,
   parentId: z.guid().nullable().optional(),
   visibleToStaff: z.boolean().optional(),
+  color: z.enum(FOLDER_COLORS).optional(),
+  sharedUserIds: folderSharedUsersSchema.optional(),
 });
 export type CreateChecklistFolderInput = z.infer<typeof createChecklistFolderSchema>;
 export const updateChecklistFolderSchema = z
-  .object({ name: folderNameSchema, parentId: z.guid().nullable(), visibleToStaff: z.boolean() })
+  .object({ name: folderNameSchema, parentId: z.guid().nullable(), visibleToStaff: z.boolean(), color: z.enum(FOLDER_COLORS), sharedUserIds: folderSharedUsersSchema })
   .partial()
   .refine((input) => Object.keys(input).length > 0, { message: 'Nothing to change' });
 export type UpdateChecklistFolderInput = z.infer<typeof updateChecklistFolderSchema>;
@@ -854,3 +859,6 @@ export const checklistAnalyticsDashboardLayoutSchema = z.object({
 }).refine((body) => body.dashboards === null || body.current === undefined || body.dashboards.some((dashboard) => dashboard.id === body.current), { message: 'Unknown current dashboard', path: ['current'] });
 export type ChecklistAnalyticsDashboardLayoutInput = z.infer<typeof checklistAnalyticsDashboardLayoutSchema>;
 export const checklistAnalyticsEmployeesQuerySchema = z.object({ search: z.string().trim().max(120).optional() });
+
+/** PR 515: search among the employees a folder can be opened to. */
+export const checklistFolderShareCandidatesQuerySchema = z.object({ search: z.string().trim().max(100).optional() });

@@ -430,8 +430,8 @@ PR 395: checklist folders (organization-wide tree, up to 5 levels, the root fold
 `checklistsCreate` roles write, and a learner never has access). `GET /checklist-folders` returns
 `{ folders[], checklistCount }`; each folder is `{ id, parentId, name, visibleToStaff, createdBy, createdAt, canManage,
 creator, checklistCount, childFolderCount, totalChecklistCount }` (direct sheets, visible direct subfolders and sheets of the visible subtree; `checklistCount` of the response is the
-number of sheets the caller can see). `POST /checklist-folders` `{ name, parentId?, visibleToStaff? }` and `PATCH
-/checklist-folders/:id` `{ name?, parentId?, visibleToStaff? }` (rename, move, open to staff) answer 400 for a depth over 5 or a
+number of sheets the caller can see). `POST /checklist-folders` `{ name, parentId?, visibleToStaff?, color?, sharedUserIds? }` and `PATCH
+/checklist-folders/:id` `{ name?, parentId?, visibleToStaff?, color?, sharedUserIds? }` (rename, move, open to staff, change colour, open to named employees; PR 515: `color` is one of purple, green, blue, orange, pink, gray, `sharedUserIds` are active staff of the organization, folders carry `color`, and `sharedUsers [{id, name}]` is returned only to those who manage the folder) answer 400 for a depth over 5 or a
 move into itself or a descendant, 409 for a name already used by a sibling (compared case-insensitively), 404 for a missing,
 other-organization or invisible folder and 403 when the folder is visible but not the caller's to change. Only the administrator and the
 creator change a folder. A folder is visible to the administrator, to its creator and, when `visibleToStaff` is on, to every

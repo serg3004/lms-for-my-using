@@ -122,7 +122,7 @@ Owner: `packages/shared/src/permission-catalog.ts`; the route table is `apps/api
 | Action | Group | Scopes | Delegable | Requires | Policy | Built-in roles | Routes |
 |---|---|---|---|---|---|---|---|
 | `checklist.library.read` | checklists | `organization` | yes | - | `checklistsRead` | `admin`, `manager`, `instructor`, `mentor` | 12 |
-| `checklist.author` | checklists | `organization` | yes | `checklist.library.read` | `checklistsCreate` | `admin`, `manager`, `instructor`, `mentor` | 39 |
+| `checklist.author` | checklists | `organization` | yes | `checklist.library.read` | `checklistsCreate` | `admin`, `manager`, `instructor`, `mentor` | 40 |
 | `checklist.template.manage` | checklists | `organization` | yes | `checklist.library.read` | `checklistTemplatesManage` | `admin` | 3 |
 | `checklist.free.start` | checklists | `own` | yes | - | `checklistsStartFree` | `admin`, `manager`, `instructor`, `mentor`, `learner` | 3 |
 | `checklist.assign` | checklists | `team`, `department`, `organization` | yes | `checklist.instance.read` | `checklistInstancesCreate` | `admin`, `manager`, `instructor` | 2 |

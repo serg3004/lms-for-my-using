@@ -146,6 +146,34 @@ describe('checklist folders (PR 395) — database', () => {
     expect(await names(colleague)).toEqual(['Closed', 'Open']);
   });
 
+  it('opens a closed folder to a named employee, changes its colour, and keeps the list of names from everyone but its managers (PR 515)', async () => {
+    const closed = await folders.create(organizationId, author, { name: 'Named', color: 'green' });
+    expect(closed.color).toBe('green');
+    const names = async (actor: Actor) => (await folders.list(organizationId, actor)).folders.map((folder) => folder.name).sort();
+    expect(await names(colleague)).not.toContain('Named');
+    const shared = await folders.update(closed.id, organizationId, author, { sharedUserIds: [colleague.id], color: 'orange' });
+    expect(shared.color).toBe('orange');
+    expect(shared.sharedUsers.map((user) => user.id)).toEqual([colleague.id]);
+    expect(await names(colleague)).toContain('Named');
+    // The colleague sees the folder but not who else it is opened to, and cannot change it.
+    const seen = (await folders.list(organizationId, colleague)).folders.find((folder) => folder.id === closed.id)!;
+    expect(seen.sharedUserIds).toEqual([]);
+    expect(seen.canManage).toBe(false);
+    await expect(folders.update(closed.id, organizationId, colleague, { color: 'pink' })).rejects.toBeInstanceOf(ForbiddenException);
+    // A learner has no role that opens the library, so naming one is refused; so is another organization's employee.
+    await expect(folders.update(closed.id, organizationId, author, { sharedUserIds: [learner.id] })).rejects.toBeInstanceOf(BadRequestException);
+    const foreignStaff = await makeActor(foreignOrganizationId, ['manager']);
+    await expect(folders.update(closed.id, organizationId, author, { sharedUserIds: [foreignStaff.id] })).rejects.toBeInstanceOf(BadRequestException);
+    // Candidates are staff of this organization only.
+    const candidates = await folders.shareCandidates(organizationId, undefined);
+    expect(candidates.map((user) => user.id)).toContain(colleague.id);
+    expect(candidates.map((user) => user.id)).not.toContain(learner.id);
+    expect(candidates.map((user) => user.id)).not.toContain(foreignStaff.id);
+    // Taking the name off the list closes the folder again.
+    await folders.update(closed.id, organizationId, author, { sharedUserIds: [] });
+    expect(await names(colleague)).not.toContain('Named');
+  });
+
   it('requires the whole chain of parents to be visible', async () => {
     const parent = await folders.create(organizationId, author, { name: 'Parent' });
     await folders.create(organizationId, author, { name: 'Open child', parentId: parent.id, visibleToStaff: true });

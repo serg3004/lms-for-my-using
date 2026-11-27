@@ -1661,6 +1661,10 @@ model ChecklistFolder {
   parentId       String?           @map("parent_id") @db.Uuid
   name           String
   visibleToStaff Boolean           @default(false) @map("visible_to_staff")
+  /// PR 515: one of the fixed folder colours (same set as assessment folders).
+  color          String            @default("purple")
+  /// PR 515: employees the folder is opened to by name, in addition to "visible to staff".
+  sharedUserIds  String[]          @default([]) @map("shared_user_ids") @db.Uuid
   createdBy      String?           @map("created_by") @db.Uuid
   createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz

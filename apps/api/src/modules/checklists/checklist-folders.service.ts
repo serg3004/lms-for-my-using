@@ -17,8 +17,10 @@ import {
 } from './checklist-folder-tree.js';
 import type { BulkChecklistFolderInput, CreateChecklistFolderInput, UpdateChecklistFolderInput } from './checklists.schemas.js';
 
+/** Roles that can open the checklist library at all (`checklistsRead`); a grant to anyone else would show nothing. */
+const LIBRARY_ROLES = ['admin', 'manager', 'instructor', 'mentor'] as const;
 const ACTIVE_INSTANCE_STATUSES = ['assigned', 'in_progress', 'submitted'] as const;
-const folderSelect = { id: true, parentId: true, name: true, visibleToStaff: true, createdBy: true, createdAt: true, creator: { select: { id: true, firstName: true, lastName: true, deletedAt: true } } } as const;
+const folderSelect = { id: true, parentId: true, name: true, color: true, visibleToStaff: true, sharedUserIds: true, createdBy: true, createdAt: true, creator: { select: { id: true, firstName: true, lastName: true, deletedAt: true } } } as const;
 
 /** What deleting a folder removes; shown to the user before they confirm and returned after the deletion. */
 export type FolderDeleteImpact = {
@@ -50,10 +52,15 @@ export class ChecklistFoldersService {
       _count: { _all: true },
     });
     const direct = new Map(counts.map((row) => [row.folderId, row._count._all]));
+    const managed = all.filter((folder) => visible.has(folder.id) && canManageFolder(folder, actor));
+    const names = new Map((await this.sharedUsers(organizationId, [...new Set(managed.flatMap((folder) => folder.sharedUserIds))])).map((user) => [user.id, user]));
     const folders = all
       .filter((folder) => visible.has(folder.id))
       .map((folder) => ({
         ...folder,
+        // Who a folder is opened to is shown only to those who manage it.
+        sharedUserIds: canManageFolder(folder, actor) ? folder.sharedUserIds : [],
+        sharedUsers: canManageFolder(folder, actor) ? folder.sharedUserIds.flatMap((id) => names.get(id) ?? []) : [],
         creator: presentCreator(folder.creator),
         canManage: canManageFolder(folder, actor),
         childFolderCount: all.filter((child) => child.parentId === folder.id && visible.has(child.id)).length,
@@ -73,12 +80,13 @@ export class ChecklistFoldersService {
       if (folderDepth(parentId, indexFolders(all)) + 1 > MAX_FOLDER_DEPTH) throw this.tooDeep();
     }
     this.assertNameFree(all, parentId, input.name, null);
+    if (input.sharedUserIds?.length) await this.assertShareable(organizationId, input.sharedUserIds);
     const created = await this.prisma.checklistFolder.create({
-      data: { organizationId, parentId, name: input.name, visibleToStaff: input.visibleToStaff ?? false, createdBy: actor.id },
+      data: { organizationId, parentId, name: input.name, visibleToStaff: input.visibleToStaff ?? false, ...(input.color ? { color: input.color } : {}), ...(input.sharedUserIds ? { sharedUserIds: input.sharedUserIds } : {}), createdBy: actor.id },
       select: folderSelect,
     });
     await this.auditLog.record({ organizationId, actorId: actor.id, action: 'checklist.folder_created', targetType: 'checklist_folder', targetId: created.id, summary: `Created checklist folder ${created.name}` });
-    return { ...created, creator: presentCreator(created.creator), canManage: true, checklistCount: 0, childFolderCount: 0, totalChecklistCount: 0 };
+    return { ...created, sharedUsers: await this.sharedUsers(organizationId, created.sharedUserIds), creator: presentCreator(created.creator), canManage: true, checklistCount: 0, childFolderCount: 0, totalChecklistCount: 0 };
   }
 
   async update(folderId: string, organizationId: string, actor: FolderActor, input: UpdateChecklistFolderInput, audit = true) {
@@ -100,17 +108,55 @@ export class ChecklistFoldersService {
     }
     if (nextParentId !== folder.parentId || nextName !== folder.name) this.assertNameFree(all, nextParentId, nextName, folderId);
 
+    if (input.sharedUserIds?.length) await this.assertShareable(organizationId, input.sharedUserIds, folder.sharedUserIds);
     const updated = await this.prisma.checklistFolder.update({
       where: { id: folderId, organizationId },
       data: {
+        ...(input.color !== undefined ? { color: input.color } : {}),
+        ...(input.sharedUserIds !== undefined ? { sharedUserIds: input.sharedUserIds } : {}),
         ...(input.name !== undefined ? { name: input.name } : {}),
         ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
         ...(input.visibleToStaff !== undefined ? { visibleToStaff: input.visibleToStaff } : {}),
       },
       select: folderSelect,
     });
-    if (audit) await this.auditLog.record({ organizationId, actorId: actor.id, action: 'checklist.folder_updated', targetType: 'checklist_folder', targetId: folderId, summary: `Updated checklist folder ${updated.name}`, metadata: { fields: Object.keys(input) } });
-    return { ...updated, creator: presentCreator(updated.creator), canManage: true };
+    if (audit) await this.auditLog.record({ organizationId, actorId: actor.id, action: 'checklist.folder_updated', targetType: 'checklist_folder', targetId: folderId, summary: `Updated checklist folder ${updated.name}`, metadata: { fields: Object.keys(input), ...(input.sharedUserIds !== undefined ? { sharedUserCount: input.sharedUserIds.length } : {}), ...(input.color !== undefined ? { color: input.color } : {}) } });
+    return { ...updated, sharedUsers: await this.sharedUsers(organizationId, updated.sharedUserIds), creator: presentCreator(updated.creator), canManage: true };
+  }
+
+  /** PR 515: employees a folder can be opened to by name: active staff of the organization who can use the library. */
+  async shareCandidates(organizationId: string, search: string | undefined) {
+    const term = search?.trim();
+    const users = await this.prisma.user.findMany({
+      where: {
+        organizationId,
+        deletedAt: null,
+        status: 'active',
+        memberships: { some: { organizationId, role: { in: [...LIBRARY_ROLES] } } },
+        ...(term ? { OR: [{ firstName: { contains: term, mode: 'insensitive' } }, { lastName: { contains: term, mode: 'insensitive' } }, { email: { contains: term, mode: 'insensitive' } }] } : {}),
+      },
+      select: { id: true, firstName: true, lastName: true },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      take: 30,
+    });
+    return users.map((user) => ({ id: user.id, name: `${user.lastName} ${user.firstName}`.trim() }));
+  }
+
+  /** Names of employees already given access, so the dialog can show them without a search. */
+  async sharedUsers(organizationId: string, ids: readonly string[]) {
+    if (ids.length === 0) return [];
+    const users = await this.prisma.user.findMany({ where: { organizationId, id: { in: [...ids] } }, select: { id: true, firstName: true, lastName: true } });
+    return users.map((user) => ({ id: user.id, name: `${user.lastName} ${user.firstName}`.trim() }));
+  }
+
+  /** Every named employee must be an active member of this organization with a library role (those already on the list stay as they are). */
+  private async assertShareable(organizationId: string, ids: readonly string[], already: readonly string[] = []) {
+    const fresh = ids.filter((id) => !already.includes(id));
+    if (fresh.length === 0) return;
+    const found = await this.prisma.user.count({
+      where: { id: { in: fresh }, organizationId, deletedAt: null, status: 'active', memberships: { some: { organizationId, role: { in: [...LIBRARY_ROLES] } } } },
+    });
+    if (found !== fresh.length) throw new BadRequestException('A folder can be opened only to active staff of the organization');
   }
 
   /** What `remove` would do, without changing anything. */
@@ -216,7 +262,7 @@ export class ChecklistFoldersService {
   }
 
   /** A missing folder and a folder the actor may not see look the same: 404. */
-  private requireVisible<T extends { id: string; parentId: string | null; createdBy: string | null; visibleToStaff: boolean }>(id: string, all: readonly T[], actor: FolderActor): T {
+  private requireVisible<T extends { id: string; parentId: string | null; createdBy: string | null; visibleToStaff: boolean; sharedUserIds?: readonly string[] }>(id: string, all: readonly T[], actor: FolderActor): T {
     const folder = all.find((candidate) => candidate.id === id);
     if (!folder || !visibleFolderIds(all, actor).has(id)) throw new NotFoundException('Folder not found');
     return folder;

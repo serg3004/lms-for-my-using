@@ -35,6 +35,14 @@ replaces the lookup index with one that includes it. Existing recordings keep `f
 and stay valid (`answer`). No backfill. On application rollback keep the column: the old
 API ignores it.
 
+## Checklist folder colour and named access migration (PR 515)
+
+Deploy `20261127100000_checklist_folder_color_sharing` before the API. It adds
+`checklist_folders.color` (text, default `purple`, check against the six fixed colours) and
+`checklist_folders.shared_user_ids` (uuid array, default empty): employees a folder is opened to
+by name. Existing folders become purple and open to nobody by name, so nothing changes for them.
+No backfill. On application rollback keep the columns: the old API ignores them.
+
 ## Assessment analytics layout migration (PR 533)
 
 Deploy `20261125090000_assessment_analytics_layouts` before the API. It adds the

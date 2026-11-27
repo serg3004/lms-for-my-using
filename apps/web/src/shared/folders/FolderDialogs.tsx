@@ -7,18 +7,24 @@ import { ContextMenu, useContextMenu } from '../ContextMenu.js';
 import { MAX_FOLDER_DEPTH, folderAndDescendantIds, type FolderNode } from './folderTree.js';
 import { FolderGlyph, FolderTreeRows } from './FolderTree.js';
 
-type DialogFolder = FolderNode & { visibleToStaff?: boolean; color?: FolderColor; canManage?: boolean };
+export type FolderShareUser = { id: string; name: string };
+type DialogFolder = FolderNode & { visibleToStaff?: boolean; color?: FolderColor; canManage?: boolean; sharedUsers?: FolderShareUser[] };
 export type FolderDialogTarget<F extends DialogFolder = DialogFolder> =
   | { kind: 'create'; parent: F | null }
   | { kind: 'edit'; folder: F };
 
 /** Creates or renames a folder with the settings available in its library. */
-export function FolderDialog<F extends DialogFolder>({ target, onClose, onSubmit, t, rootLabel, colors = false }: {
+export function FolderDialog<F extends DialogFolder>({ target, onClose, onSubmit, t, rootLabel, colors = false, colorChoice = false, shareSearch }: {
   target: FolderDialogTarget<F> | null;
   rootLabel?: string;
+  /** Assessment folders: a colour and no "visible to staff" flag. */
   colors?: boolean;
+  /** PR 515: checklist folders keep the flag and get a colour as well. */
+  colorChoice?: boolean;
+  /** PR 515: with it the dialog lets the manager open the folder to named employees; it searches them. */
+  shareSearch?: (term: string) => Promise<FolderShareUser[]>;
   onClose: () => void;
-  onSubmit: (values: { name: string; visibleToStaff: boolean; color: FolderColor }) => Promise<void>;
+  onSubmit: (values: { name: string; visibleToStaff: boolean; color: FolderColor; sharedUsers: FolderShareUser[] }) => Promise<void>;
   t: TFunction;
 }) {
   const titleId = useId();
@@ -26,6 +32,9 @@ export function FolderDialog<F extends DialogFolder>({ target, onClose, onSubmit
   const [name, setName] = useState('');
   const [color, setColor] = useState<FolderColor>('purple');
   const [visibleToStaff, setVisibleToStaff] = useState(false);
+  const [shared, setShared] = useState<FolderShareUser[]>([]);
+  const [term, setTerm] = useState('');
+  const [found, setFound] = useState<FolderShareUser[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,9 +43,19 @@ export function FolderDialog<F extends DialogFolder>({ target, onClose, onSubmit
     setName(target.kind === 'edit' ? target.folder.name : '');
     setVisibleToStaff(target.kind === 'edit' ? target.folder.visibleToStaff ?? false : false);
     setColor(target.kind === 'edit' ? target.folder.color ?? 'purple' : 'purple');
+    setShared(target.kind === 'edit' ? target.folder.sharedUsers ?? [] : []);
+    setTerm('');
+    setFound([]);
     setError(null);
     setBusy(false);
   }, [target]);
+
+  useEffect(() => {
+    if (!shareSearch || !target || term.trim().length < 2) { setFound([]); return; }
+    let current = true;
+    const timer = setTimeout(() => { void shareSearch(term.trim()).then((users) => { if (current) setFound(users); }).catch(() => { if (current) setFound([]); }); }, 250);
+    return () => { current = false; clearTimeout(timer); };
+  }, [term, shareSearch, target]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -44,7 +63,7 @@ export function FolderDialog<F extends DialogFolder>({ target, onClose, onSubmit
     setBusy(true);
     setError(null);
     try {
-      await onSubmit({ name: name.trim(), visibleToStaff, color });
+      await onSubmit({ name: name.trim(), visibleToStaff, color, sharedUsers: shared });
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
       setBusy(false);
@@ -72,7 +91,23 @@ export function FolderDialog<F extends DialogFolder>({ target, onClose, onSubmit
           </label>
           <p className="admin-form__hint">{t('admin.checklists.folders.visibleHint', 'Without the flag the folder is visible only to its creator and administrators. A learner never sees folders.')}</p>
         </>}
-        {colors && <fieldset className="folder-colors">
+        {shareSearch && <fieldset className="folder-share">
+          <legend>{t('admin.checklists.folders.shareTitle', 'Open to employees by name')}</legend>
+          <p className="admin-form__hint">{t('admin.checklists.folders.shareHint', 'These employees see the folder and its checklists even when it is not visible to all roles. Only staff of the organization can be added.')}</p>
+          {shared.length > 0 && <ul className="folder-share__chosen">
+            {shared.map((user) => <li key={user.id}>
+              <span>{user.name}</span>
+              <button aria-label={t('admin.checklists.folders.shareRemove', 'Remove: {{name}}', { name: user.name })} className="folder-share__remove" onClick={() => setShared(shared.filter((entry) => entry.id !== user.id))} type="button">×</button>
+            </li>)}
+          </ul>}
+          <input aria-label={t('admin.checklists.folders.shareSearch', 'Find an employee')} onChange={(event) => setTerm(event.target.value)} placeholder={t('admin.checklists.folders.shareSearch', 'Find an employee')} type="search" value={term} />
+          {found.filter((user) => !shared.some((entry) => entry.id === user.id)).length > 0 && <ul className="folder-share__found">
+            {found.filter((user) => !shared.some((entry) => entry.id === user.id)).map((user) => <li key={user.id}>
+              <button className="ds-button ds-button--secondary ds-button--sm" onClick={() => { setShared([...shared, user]); setTerm(''); setFound([]); }} type="button">{t('admin.checklists.folders.shareAdd', 'Add: {{name}}', { name: user.name })}</button>
+            </li>)}
+          </ul>}
+        </fieldset>}
+        {(colors || colorChoice) && <fieldset className="folder-colors">
           <legend>{t('admin.assessmentBuilder.folders.color')}</legend>
           {FOLDER_COLORS.map((value) => <label className="folder-colors__option" key={value}>
             <input checked={color === value} name={`${titleId}-color`} onChange={() => setColor(value)} type="radio" />
