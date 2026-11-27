@@ -178,7 +178,7 @@ export class ChecklistSheetAnalytics {
   async accessible(organizationId: string, actor: FolderActor) {
     const [sheets, folders, observed] = await Promise.all([
       this.prisma.checklist.findMany({ where: { organizationId, deletedAt: null }, select: { id: true, title: true, createdBy: true, folderId: true, status: true } }),
-      this.prisma.checklistFolder.findMany({ where: { organizationId, deletedAt: null }, select: { id: true, parentId: true, createdBy: true, visibleToStaff: true } }),
+      this.prisma.checklistFolder.findMany({ where: { organizationId, deletedAt: null }, select: { id: true, parentId: true, createdBy: true, visibleToStaff: true, sharedUserIds: true } }),
       actor.roles.includes('admin') ? Promise.resolve([] as Array<{ instance: { checklistId: string } }>)
         : this.prisma.checklistSession.findMany({ where: { organizationId, observerId: actor.id, deletedAt: null }, select: { instance: { select: { checklistId: true } } } }),
     ]);

@@ -1,5 +1,6 @@
 import type { FeedbackAnswerOption } from '@lms/shared/checklist-feedback';
 import type { ChecklistAnswerSet, ChecklistInstanceReport } from './types.js';
+import type { FolderColor } from '@lms/shared/constants/folder-colors';
 import { apiDownloadRequest, apiRequest, uploadChecklistItemPhotoWithProgress } from '../apiClient.js';
 
 import type {
@@ -157,11 +158,18 @@ export function bulkChecklistFolderAction(action: 'move' | 'delete', ids: string
   return apiRequest<ChecklistFolderBulkResult>('/checklist-folders/bulk', { method: 'POST', body: JSON.stringify({ action, ids, ...(action === 'move' ? { parentId: parentId ?? null } : {}) }) });
 }
 
-export function createChecklistFolder(input: { name: string; parentId?: string | null; visibleToStaff?: boolean }) {
+export type ChecklistFolderInput = { name?: string; parentId?: string | null; visibleToStaff?: boolean; color?: FolderColor; sharedUserIds?: string[] };
+
+export function createChecklistFolder(input: ChecklistFolderInput & { name: string }) {
   return apiRequest<ChecklistFolder>('/checklist-folders', { method: 'POST', body: JSON.stringify(input) });
 }
 
-export function updateChecklistFolder(folderId: string, input: { name?: string; parentId?: string | null; visibleToStaff?: boolean }) {
+/** PR 515: staff of the organization a folder can be opened to by name. */
+export function searchChecklistFolderShareCandidates(search: string) {
+  return apiRequest<Array<{ id: string; name: string }>>(`/checklist-folders/share-candidates?search=${encodeURIComponent(search)}`);
+}
+
+export function updateChecklistFolder(folderId: string, input: ChecklistFolderInput) {
   return apiRequest<ChecklistFolder>(`/checklist-folders/${encodeURIComponent(folderId)}`, { method: 'PATCH', body: JSON.stringify(input) });
 }
 

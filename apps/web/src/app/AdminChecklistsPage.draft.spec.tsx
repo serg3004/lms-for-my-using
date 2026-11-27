@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const api = vi.hoisted(() => ({
   listChecklists: vi.fn(),
   listChecklistFolders: vi.fn().mockResolvedValue({ folders: [], checklistCount: 0 }),
+  searchChecklistFolderShareCandidates: vi.fn().mockResolvedValue([]),
   createChecklist: vi.fn(),
   getChecklist: vi.fn(),
   deleteChecklist: vi.fn(),

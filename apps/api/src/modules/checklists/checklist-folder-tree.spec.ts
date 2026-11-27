@@ -54,6 +54,13 @@ describe('checklist folder tree (PR 395)', () => {
     expect([...seen].sort()).toEqual(['mine', 'open', 'open-child']);
   });
 
+  it('shows a folder opened to the actor by name, but only when its parents are visible too (PR 515)', () => {
+    const named = (id: string, parentId: string | null, sharedUserIds: string[]): FolderNode => ({ id, parentId, createdBy: 'author', visibleToStaff: false, sharedUserIds });
+    const folders = [named('shared', null, ['me']), named('other', null, ['someone']), named('under-closed', 'other', ['me']), named('shared-child', 'shared', ['me'])];
+    expect([...visibleFolderIds(folders, { id: 'me', roles: ['manager'] })].sort()).toEqual(['shared', 'shared-child']);
+    expect(visibleFolderIds(folders, { id: 'me', roles: ['learner'] }).size).toBe(0);
+  });
+
   it('treats names as equal regardless of case and surrounding spaces', () => {
     expect(normalizeFolderName('  Магазин ')).toBe(normalizeFolderName('магазин'));
   });

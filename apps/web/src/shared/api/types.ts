@@ -1,3 +1,4 @@
+import type { FolderColor } from '@lms/shared/constants/folder-colors';
 import type { AssessmentPresentation } from '@lms/shared/assessment-presentation';
 import type { AssessmentPolicy, EffectiveAssessmentResult } from '@lms/shared/assessment-policy';
 import type { Appearance } from '@lms/shared/checklist-appearance';
@@ -486,6 +487,10 @@ export type ChecklistFolder = {
   name: string;
   /** Open to every role except the learner; a closed folder shows a lock in the tree. */
   visibleToStaff: boolean;
+  /** PR 515: one of the fixed folder colours; older cached responses have none (purple). */
+  color?: FolderColor;
+  /** PR 515: employees the folder is opened to by name; filled only for those who manage the folder. */
+  sharedUsers?: Array<{ id: string; name: string }>;
   createdBy: string | null;
   createdAt: string;
   /** The caller is the administrator or the creator: may rename, move, open to staff and delete. */

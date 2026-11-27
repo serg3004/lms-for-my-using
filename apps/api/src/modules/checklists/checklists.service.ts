@@ -462,7 +462,7 @@ export class ChecklistsService {
 
   async listChecklists(organizationId: string, status?: ChecklistListQuery['status'], actor?: FolderActor, search?: string) {
     // PR 395: sheets of a folder the actor may not see are left out of the list (assignments, sessions and reports are not affected).
-    const folders = actor ? await this.prisma.checklistFolder.findMany({ where: { organizationId, deletedAt: null }, select: { id: true, parentId: true, name: true, createdBy: true, visibleToStaff: true } }) : [];
+    const folders = actor ? await this.prisma.checklistFolder.findMany({ where: { organizationId, deletedAt: null }, select: { id: true, parentId: true, name: true, createdBy: true, visibleToStaff: true, sharedUserIds: true } }) : [];
     const visible = actor ? visibleFolderIds(folders, actor) : null;
     const rows = await this.prisma.checklist.findMany({
       where: {
@@ -501,14 +501,14 @@ export class ChecklistsService {
   /** PR 395: the target folder of a move (null = root) must exist in the organization and be visible to the actor. */
   async assertCanPlaceInFolder(folderId: string | null, organizationId: string, actor: FolderActor) {
     if (folderId === null) return;
-    const folders = await this.prisma.checklistFolder.findMany({ where: { organizationId, deletedAt: null }, select: { id: true, parentId: true, createdBy: true, visibleToStaff: true } });
+    const folders = await this.prisma.checklistFolder.findMany({ where: { organizationId, deletedAt: null }, select: { id: true, parentId: true, createdBy: true, visibleToStaff: true, sharedUserIds: true } });
     if (!folders.some((folder) => folder.id === folderId) || !visibleFolderIds(folders, actor).has(folderId)) {
       throw new NotFoundException('Folder not found');
     }
   }
 
   private async hiddenFolderIds(organizationId: string, actor: FolderActor) {
-    const folders = await this.prisma.checklistFolder.findMany({ where: { organizationId, deletedAt: null }, select: { id: true, parentId: true, createdBy: true, visibleToStaff: true } });
+    const folders = await this.prisma.checklistFolder.findMany({ where: { organizationId, deletedAt: null }, select: { id: true, parentId: true, createdBy: true, visibleToStaff: true, sharedUserIds: true } });
     const visible = visibleFolderIds(folders, actor);
     return folders.filter((folder) => !visible.has(folder.id)).map((folder) => folder.id);
   }

@@ -67,6 +67,7 @@ export const permissionRouteMap: Readonly<Record<string, readonly PermissionActi
   'ChecklistFoldersController.deleteImpact': ['checklist.author'],
   'ChecklistFoldersController.list': ['checklist.library.read'],
   'ChecklistFoldersController.remove': ['checklist.author'],
+  'ChecklistFoldersController.shareCandidates': ['checklist.author'],
   'ChecklistFoldersController.update': ['checklist.author'],
   'ChecklistPublicController.startSignedIn': ['checklist.free.start'],
   'ChecklistsController.applyNoteRule': ['checklist.author'],

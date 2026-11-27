@@ -3,7 +3,8 @@
 import { indexFolders } from '../../common/folder-tree.js';
 export { MAX_FOLDER_DEPTH, folderDepth, indexFolders, normalizeFolderName, subtreeHeight, subtreeIds } from '../../common/folder-tree.js';
 
-export type FolderNode = { id: string; parentId: string | null; createdBy: string | null; visibleToStaff: boolean };
+/** `sharedUserIds` (PR 515): employees the folder is opened to by name, besides "visible to staff". */
+export type FolderNode = { id: string; parentId: string | null; createdBy: string | null; visibleToStaff: boolean; sharedUserIds?: readonly string[] };
 export type FolderActor = { id: string; roles: readonly string[] };
 
 export function isAdmin(actor: FolderActor) {
@@ -16,8 +17,8 @@ export function canManageFolder(folder: Pick<FolderNode, 'createdBy'>, actor: Fo
 }
 
 /**
- * Folders the actor may see. The administrator sees all. Everyone else sees a folder they created or one opened
- * to staff, but only when the whole chain of parents is visible too. A learner never sees a folder.
+ * Folders the actor may see. The administrator sees all. Everyone else sees a folder they created, one opened
+ * to staff or one opened to them by name, but only when the whole chain of parents is visible too. A learner never sees a folder.
  */
 export function visibleFolderIds(folders: readonly FolderNode[], actor: FolderActor): Set<string> {
   if (isAdmin(actor)) return new Set(folders.map((folder) => folder.id));
@@ -28,7 +29,7 @@ export function visibleFolderIds(folders: readonly FolderNode[], actor: FolderAc
     const known = memo.get(folder.id);
     if (known !== undefined) return known;
     if (trail.has(folder.id)) return false;
-    let result = folder.visibleToStaff || folder.createdBy === actor.id;
+    let result = folder.visibleToStaff || folder.createdBy === actor.id || (folder.sharedUserIds?.includes(actor.id) ?? false);
     if (result && folder.parentId) {
       const parent = byId.get(folder.parentId);
       result = parent ? visible(parent, new Set(trail).add(folder.id)) : false;

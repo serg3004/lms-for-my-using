@@ -132,6 +132,12 @@ Delete and participant message (PR 333: `DELETE /checklist-sessions/:id`, `POST 
 
 `POST /checklist-sessions/:id/repeat` continues to require `checklistSessionsManage` and the existing parent `sessionScope()`. `GET /checklists?status=published` retains `checklistsRead` for the shared wizard's sheet picker.
 
+Checklist folder colour and named access (PR 515): `GET /checklist-folders/share-candidates?search=` is `checklistsCreate`
+(permission `checklist.author`) and returns at most 30 active staff of the caller's organization who hold a library role
+(admin, manager, instructor, mentor). `POST`/`PATCH /checklist-folders` accept `color` and `sharedUserIds`; naming a learner,
+an inactive user or a user of another organization answers 400. A named employee sees the folder and its sheets like staff
+when the folder is open to staff, still with view-only rights; only the administrator and the creator see or change the list.
+
 Checklist folder library (PR 407): `POST /checklist-folders/bulk` reuses `checklistsCreate` (admin, manager,
 instructor, mentor). Each source and the move target obey the single-folder visibility/management rules: administrator
 or creator manages, all ancestors must be visible; invisible, deleted and foreign sources yield `not_found`, visible

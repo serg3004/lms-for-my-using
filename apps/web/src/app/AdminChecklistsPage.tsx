@@ -13,6 +13,7 @@ import { ChecklistBuilder } from '../features/admin-checklists/ChecklistBuilder.
 import { ChecklistCreateMenu } from '../features/admin-checklists/ChecklistCreateMenu.js';
 import { ChecklistTemplateDialog } from '../features/admin-checklists/ChecklistTemplateDialog.js';
 import { ChecklistBulkBar, bulkDeleteMessage, bulkResultSummary, folderBulkResultSummary, mergeBulkReports, selectionDeleteMessage, type BulkReport } from '../features/admin-checklists/ChecklistBulkBar.js';
+import type { FolderColor } from '@lms/shared/constants/folder-colors';
 import { FolderDialog, MoveToFolderDialog, type FolderDialogTarget } from '../shared/folders/FolderDialogs.js';
 import { canAddSubfolder, deleteImpactMessage, folderErrorMessage, folderPath, libraryContents, resolveSelectedFolder } from '../features/admin-checklists/folders.js';
 import { ChecklistTable } from '../features/admin-checklists/ChecklistTable.js';
@@ -32,6 +33,7 @@ import {
   listChecklists,
   updateChecklist,
   updateChecklistFolder,
+  searchChecklistFolderShareCandidates,
 } from '../shared/api/checklists.js';
 import type {
   ChecklistBulkAction,
@@ -165,15 +167,15 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
     setSearchParams(next);
     setSelectedKeys(new Set());
   }
-  async function submitFolder(values: { name: string; visibleToStaff: boolean }) {
+  async function submitFolder(values: { name: string; visibleToStaff: boolean; color: FolderColor; sharedUsers: Array<{ id: string; name: string }> }) {
     const target = folderDialog;
     if (!target) return;
     try {
       if (target.kind === 'create') {
         // PR 409: the new folder appears as a row of the open folder; the user stays where they are.
-        await createChecklistFolder({ name: values.name, parentId: target.parent?.id ?? null, visibleToStaff: values.visibleToStaff });
+        await createChecklistFolder({ name: values.name, parentId: target.parent?.id ?? null, visibleToStaff: values.visibleToStaff, color: values.color, sharedUserIds: values.sharedUsers.map((user) => user.id) });
       } else {
-        await updateChecklistFolder(target.folder.id, { name: values.name, visibleToStaff: values.visibleToStaff });
+        await updateChecklistFolder(target.folder.id, { name: values.name, visibleToStaff: values.visibleToStaff, color: values.color, sharedUserIds: values.sharedUsers.map((user) => user.id) });
         setSelectedKeys(new Set());
       }
     } catch (error) {
@@ -454,7 +456,7 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
             t={t} />
         </div>
       </div>
-      <FolderDialog onClose={() => setFolderDialog(null)} onSubmit={submitFolder} t={t} target={folderDialog} />
+      <FolderDialog colorChoice onClose={() => setFolderDialog(null)} onSubmit={submitFolder} shareSearch={searchChecklistFolderShareCandidates} t={t} target={folderDialog} />
       <MoveToFolderDialog
         count={(moveTargets?.sheets.length ?? 0) + (moveTargets?.folders.length ?? 0)}
         title={moveTargets && moveTargets.folders.length > 0

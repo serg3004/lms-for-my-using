@@ -31,6 +31,9 @@ async function mockApi(page: Page, state: { folders: ReturnType<typeof folder>[]
       const direct = (id: string) => state.sheets.filter((item) => item.folderId === id).length;
       return route.fulfill({ json: { checklistCount: state.sheets.length, folders: state.folders.map((item) => ({ ...item, checklistCount: direct(item.id), totalChecklistCount: direct(item.id) })) } });
     }
+    if (path === '/checklist-folders/share-candidates') {
+      return route.fulfill({ json: [{ id: 'staff-2', name: 'Петров Пётр' }] });
+    }
     if (path === '/checklist-folders' && method === 'POST') {
       const body = request.postDataJSON() as { name: string; parentId?: string | null; visibleToStaff?: boolean };
       calls.push({ method, path, body });
@@ -55,9 +58,9 @@ async function mockApi(page: Page, state: { folders: ReturnType<typeof folder>[]
     }
     if (/^\/checklist-folders\/[^/]+\/delete-impact$/.test(path)) return route.fulfill({ json: { folders: 2, checklists: 1, movedToDraft: [] } });
     if (/^\/checklist-folders\/[^/]+$/.test(path) && method === 'PATCH') {
-      const body = request.postDataJSON() as { name?: string; parentId?: string | null };
+      const body = request.postDataJSON() as { name?: string; parentId?: string | null; color?: string; sharedUserIds?: string[] };
       calls.push({ method, path, body });
-      state.folders = state.folders.map((item) => (path.endsWith(`/${item.id}`) ? { ...item, ...(body.name !== undefined ? { name: body.name } : {}), ...(body.parentId !== undefined ? { parentId: body.parentId } : {}) } : item));
+      state.folders = state.folders.map((item) => (path.endsWith(`/${item.id}`) ? { ...item, ...(body.name !== undefined ? { name: body.name } : {}), ...(body.parentId !== undefined ? { parentId: body.parentId } : {}), ...(body.color !== undefined ? { color: body.color } : {}) } : item));
       return route.fulfill({ json: state.folders.find((item) => path.endsWith(`/${item.id}`)) });
     }
     if (/^\/checklist-folders\/[^/]+$/.test(path) && method === 'DELETE') {
@@ -133,7 +136,7 @@ test.describe('Checklist library: one list of folders and checklists (PR 408)', 
     await page.getByRole('dialog').getByLabel('Название папки').fill('Основной склад');
     await page.getByRole('dialog').getByRole('button', { name: 'Сохранить' }).click();
     await expect(page.getByRole('row', { name: /Основной склад/ })).toBeVisible();
-    expect(calls.find((call) => call.method === 'PATCH')?.body).toEqual({ name: 'Основной склад', visibleToStaff: false });
+    expect(calls.find((call) => call.method === 'PATCH')?.body).toEqual({ name: 'Основной склад', visibleToStaff: false, color: 'purple', sharedUserIds: [] });
 
     // Move a folder into another one (it and its subfolders are not offered as targets).
     await page.getByRole('row', { name: /Основной склад/ }).getByRole('button', { name: /Действия с папкой/ }).click();
@@ -157,7 +160,7 @@ test.describe('Checklist library: one list of folders and checklists (PR 408)', 
     await dialog.getByRole('button', { name: 'Создать', exact: true }).click();
     await expect(page.getByRole('row', { name: /Подсобка/ })).toBeVisible();
     await expect(page).toHaveURL(/folder=shop/);
-    expect(calls.find((call) => call.path === '/checklist-folders' && call.method === 'POST')?.body).toEqual({ name: 'Подсобка', parentId: 'shop', visibleToStaff: false });
+    expect(calls.find((call) => call.path === '/checklist-folders' && call.method === 'POST')?.body).toEqual({ name: 'Подсобка', parentId: 'shop', visibleToStaff: false, color: 'purple', sharedUserIds: [] });
 
     // Move a sheet to a folder from the row menu.
     await page.getByRole('navigation', { name: 'Путь к папке' }).getByRole('button', { name: 'Все листы' }).click();
@@ -387,5 +390,24 @@ test.describe('Checklist library: one list of folders and checklists (PR 408)', 
     const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']).analyze();
     expect(result.violations.filter(({ impact }) => ['critical', 'serious', 'moderate'].includes(impact ?? ''))).toEqual([]);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  });
+
+  test('changes the colour of a folder that already exists and opens it to a named employee (PR 515)', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const calls: { method: string; path: string; body: unknown }[] = [];
+    await mockApi(page, { folders: [folder('store', null, 'Склад')], sheets: [] }, calls);
+    await page.goto('/admin/checklists');
+    await page.getByRole('button', { name: /Действия с папкой: Склад/ }).click();
+    await page.getByRole('menuitem', { name: 'Переименовать папку' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByRole('heading', { name: 'Настройки папки' })).toBeVisible();
+    await dialog.locator('.folder-colors input').nth(3).check();
+    await dialog.getByRole('searchbox').fill('Пет');
+    await dialog.getByRole('button', { name: 'Добавить: Петров Пётр' }).click();
+    await expect(dialog.getByText('Петров Пётр')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Сохранить' }).click();
+    await expect(dialog).toBeHidden();
+    expect(calls.find((call) => call.method === 'PATCH')?.body).toMatchObject({ color: 'orange', sharedUserIds: ['staff-2'] });
+    await expect(page.getByRole('table').locator('.folder-glyph--orange')).toHaveCount(1);
   });
 });
