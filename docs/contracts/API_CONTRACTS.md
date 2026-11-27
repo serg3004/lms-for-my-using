@@ -2794,3 +2794,9 @@ The learner browser embeds YouTube, Vimeo, Google Drive file previews, OneDrive 
 Authors can send multipart `file` data to `POST /api/v1/assessment-images` or list organization images with `GET /api/v1/assessment-images` using the returned `nextCursor` for the next page. Upload requires a validated JPEG, PNG, GIF or WebP up to 8 MiB. `GET /api/v1/assessment-images/:id` issues a short-lived read URL for a known image ID in the authenticated user's organization. Image IDs belong to the organization's reusable library.
 
 Local audio and video uploads remain disabled. Enabling them requires reviewing the API and nginx limits (currently 8 MiB and 9 MB), object storage and streaming delivery, MIME and signature checks, `media-src`, storage capacity and the file renderer.
+
+### Assessment presentation (PR 538)
+
+`POST /assessments` and the editor's `content.settings` accept an optional `presentation` object with `titleScreen`, `finalScreen` (`results`, `message`, or `none`), `completionMessage`, and `theme`. Explicitly disabling the title screen requires a null or omitted time limit. The final mode controls the screen after submission. The attempt and its score still feed progress and reports. When an older editor response carries `presentation: null`, saving it treats that value as omitted.
+
+`PATCH /assessments/default-theme` lets an administrator save the default theme for new tests in their organization. The theme accepts an optional six-digit hexadecimal `accent` and optional `headingFont` and `bodyFont` values from `system`, `arial`, `georgia`, and `verdana`.

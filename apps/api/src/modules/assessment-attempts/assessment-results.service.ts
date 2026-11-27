@@ -42,6 +42,7 @@ const attemptResultSummarySelect = {
       passingScore: true,
       passMessage: true,
       failMessage: true,
+      presentation: true,
       showCorrectAnswers: true,
       policy: true,
       maxAttempts: true,
@@ -127,6 +128,7 @@ type AttemptResultInput = {
     passingScore: number;
     passMessage: string | null;
     failMessage: string | null;
+    presentation?: unknown;
     showCorrectAnswers: boolean;
     policy?: unknown;
     maxAttempts?: number | null;

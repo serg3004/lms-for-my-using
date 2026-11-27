@@ -85,6 +85,7 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
       await expect(page.locator('.learner-quiz__breakdown iframe[title="Видео к первому вопросу"]')).toBeVisible();
       await page.setViewportSize({ width: 1280, height: 900 });
       await page.getByRole('button', { name: 'Предпросмотр с начала' }).click();
+      await page.getByRole('button', { name: 'Начать тест', exact: true }).click();
       await expect(page.getByRole('heading', { name: 'Второй вопрос' })).toBeVisible();
       await page.getByRole('button', { name: 'Опубликовать', exact: true }).click();
       await expect(page.getByText('Опубликован', { exact: true })).toBeVisible();

@@ -362,6 +362,7 @@ enum ChecklistScaleStatus {
 }
 
 model Organization {
+  assessmentTheme Json? @map("assessment_theme")
   activationQrCode           String?                     @unique @map("activation_qr_code")
   id                         String                      @id @default(uuid()) @db.Uuid
   name                       String
@@ -1187,6 +1188,7 @@ model Progress {
 }
 
 model Assessment {
+  presentation Json?
   id                             String               @id @default(uuid()) @db.Uuid
   organizationId                 String               @map("organization_id") @db.Uuid
   courseId                       String?              @map("course_id") @db.Uuid

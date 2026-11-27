@@ -1,3 +1,4 @@
+import { assessmentPresentationSchema } from '@lms/shared/assessment-presentation';
 import { z } from 'zod';
 import { questionTypeSchema, scoringModeSchema, questionDefinitionSchema } from '@lms/shared/assessment-question-types';
 
@@ -15,6 +16,7 @@ export const frozenAnswerQuestionSchema = z.union([
   z.object({ question: frozenAssessmentQuestionSchema, revealAnswers: z.boolean(), blockId: z.guid() }).strict(),
   z.object({ question: frozenAssessmentQuestionSchema, revealAnswers: z.literal(false), resultSettings: z.object({
     passMessage: z.string().nullable(), failMessage: z.string().nullable(),
+    presentation: assessmentPresentationSchema.nullable().optional(),
     showCorrectAnswers: z.boolean(), policy: z.unknown(),
   }).optional() }).strict(),
 ]);

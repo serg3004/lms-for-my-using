@@ -1,3 +1,4 @@
+import { assessmentPresentationSchema } from '@lms/shared/assessment-presentation';
 import { assessmentMaterialSchema } from '@lms/shared/longread-media';
 import { assessmentPolicySchema } from '@lms/shared/assessment-policy';
 import { z } from 'zod';
@@ -24,6 +25,7 @@ export const createAssessmentSchema = z.object({
   showCorrectAnswers: z.boolean().default(false),
   randomizeOrder: z.boolean().default(false),
   policy: assessmentPolicySchema.optional(),
+  presentation: assessmentPresentationSchema.optional(),
 });
 
 export type CreateAssessmentInput = z.infer<typeof createAssessmentSchema>;
@@ -111,7 +113,12 @@ const editorQuestionSchema = z.object({
 });
 
 export const assessmentEditorContentSchema = z.object({
-  settings: updateAssessmentSchema.omit({ status: true }).required().extend({ material: assessmentMaterialSchema.nullable().optional(), policy: assessmentPolicySchema.optional() }),
+  settings: updateAssessmentSchema.omit({ status: true }).required().extend({
+    material: assessmentMaterialSchema.nullable().optional(),
+    policy: assessmentPolicySchema.optional(),
+    // Legacy assessments have no presentation settings in their editor response.
+    presentation: assessmentPresentationSchema.nullish().transform((value) => value ?? undefined),
+  }),
   questions: z.array(editorQuestionSchema),
 }).refine(({ questions }) => {
   const ids = questions.flatMap((question) => [question.id, ...question.options.map((option) => option.id)]);
