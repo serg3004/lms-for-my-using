@@ -1,7 +1,7 @@
 import { useImperativeHandle, useMemo, useState, type ReactNode, type Ref } from 'react';
 import type { TFunction } from 'i18next';
 
-import { bulkLibraryFolders, getLibraryFolderImpact, saveLibraryFolder, type LibraryBulkKind, type LibraryBulkOperation, type LibraryFolder } from '../api/libraryFolders.js';
+import { bulkLibraryFolders, getLibraryFolderImpact, saveLibraryFolder, searchLibraryFolderShareCandidates, type LibraryBulkKind, type LibraryFolderScope, type LibraryBulkOperation, type LibraryFolder } from '../api/libraryFolders.js';
 import { ApiClientError } from '../apiClient.js';
 import { ContextMenu, useContextMenu } from '../ContextMenu.js';
 import { Button, ConfirmDialog, DataTable, Menu, PageState, type Column } from '../ui.js';
@@ -11,6 +11,13 @@ import { FolderBreadcrumbs, FolderGlyph, FolderTreeRows } from './FolderTree.js'
 import { folderDrag } from './folderDrag.js';
 import { canAddSubfolder, childrenByParent, folderAndDescendantIds, folderPath } from './folderTree.js';
 import type { LibraryFolders } from './useLibraryFolders.js';
+
+/** PR 576: roles a folder of each section can be opened to instead of all employees. */
+const FOLDER_ROLE_OPTIONS: Record<LibraryFolderScope, readonly string[]> = {
+  course: ['manager', 'instructor'],
+  assignment: ['manager', 'instructor'],
+  material: ['instructor'],
+};
 
 type Row<Item> = { kind: 'item'; item: Item } | { kind: 'folder'; item: LibraryFolder };
 type Selectable = { id: string; folderId?: string | null };
@@ -281,12 +288,12 @@ export function FolderLibraryTable<Item extends Selectable>({ actionsRef, librar
     {footer}
     <ContextMenu label={menuContent.label} onClose={menu.close} state={menu.state}>{menuContent.items}</ContextMenu>
 
-    <FolderDialog target={edit} onClose={() => setEdit(null)} colors rootLabel={rootLabel} t={t}
-      onSubmit={async ({ name, color }) => {
+    <FolderDialog target={edit} onClose={() => setEdit(null)} colors access roleOptions={FOLDER_ROLE_OPTIONS[scope]} shareSearch={(term) => searchLibraryFolderShareCandidates(scope, term)} rootLabel={rootLabel} t={t}
+      onSubmit={async ({ name, color, visibleToStaff, accessRoles, sharedUsers }) => {
         if (!edit) return;
         try {
           await saveLibraryFolder(scope, edit.kind === 'edit' ? edit.folder.id : null, {
-            name, color, ...(edit.kind === 'create' ? { parentId: edit.parent?.id ?? null } : {}),
+            name, color, visibleToStaff, accessRoles, sharedUserIds: sharedUsers.map((user) => user.id), ...(edit.kind === 'create' ? { parentId: edit.parent?.id ?? null } : {}),
           });
           await library.reload();
           setEdit(null);

@@ -17,6 +17,8 @@ const statsSorts = {
 
 export async function queryAssessmentLibrary(
   prisma: PrismaService, organizationId: string, actorId: string, courseScoped: boolean, query: AssessmentLibraryQuery,
+  /** PR 576: folders closed to the actor; the tests inside them are not listed. */
+  hiddenFolders: readonly string[] = [],
 ) {
   const direction = query.direction === 'asc' ? Prisma.sql`ASC` : Prisma.sql`DESC`;
   const sort = { ...baseSorts, ...statsSorts }[query.sort];
@@ -42,6 +44,7 @@ export async function queryAssessmentLibrary(
   if (query.status) filters.push(Prisma.sql`a.status = ${query.status}::"AssessmentStatus"`);
   if (query.mine) filters.push(Prisma.sql`a.created_by = ${actorId}::uuid`);
   if (query.courseId) filters.push(query.courseId === 'standalone' ? Prisma.sql`a.course_id IS NULL` : Prisma.sql`a.course_id = ${query.courseId}::uuid`);
+  if (hiddenFolders.length > 0) filters.push(Prisma.sql`(a.folder_id IS NULL OR a.folder_id <> ALL(${[...hiddenFolders]}::uuid[]))`);
   if (query.folderId) filters.push(query.folderId === 'root' ? Prisma.sql`a.folder_id IS NULL` : Prisma.sql`a.folder_id = ${query.folderId}::uuid`);
   if (query.attempts) filters.push(Prisma.sql`${query.attempts === 'without' ? Prisma.sql`NOT` : Prisma.empty}
     EXISTS (SELECT 1 FROM assessment_attempts r WHERE ${attempts})`);

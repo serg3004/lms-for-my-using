@@ -201,7 +201,9 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
         <button className="checklist-library__open" onClick={() => onOpenFolder?.(row.folder)} type="button" aria-label={t('admin.checklists.folders.openFolder', 'Open folder: {{name}}', { name: row.folder.name })}>{row.folder.name}</button>
         {!row.folder.visibleToStaff && (() => {
           const named = row.folder.sharedUsers?.length ?? 0;
-          const label = named > 0 ? t('admin.checklists.folders.sharedBadge', 'Opened to employees: {{count}}', { count: named }) : t('admin.checklists.folders.closed', 'Closed folder: visible only to its creator and administrators');
+          const roles = row.folder.accessRoles ?? [];
+          const roleNames = roles.map((role) => t(`admin.checklists.folders.roles.${role}`, role)).join(', ');
+          const label = roles.length > 0 ? t('admin.checklists.folders.rolesBadge', 'Opened to roles: {{roles}}', { roles: roleNames }) + (named > 0 ? ` +${named}` : '') : named > 0 ? t('admin.checklists.folders.sharedBadge', 'Opened to employees: {{count}}', { count: named }) : t('admin.checklists.folders.closed', 'Closed folder: visible only to its creator and administrators');
           return <span className="checklist-library__lock" role="img" aria-label={label} title={label}>
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10V8a5 5 0 0 1 10 0v2h1a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2Zm2 0h6V8a3 3 0 0 0-6 0Z" /></svg>
             {named > 0 && <span>{named}</span>}

@@ -8,23 +8,27 @@ import { MAX_FOLDER_DEPTH, folderAndDescendantIds, type FolderNode } from './fol
 import { FolderGlyph, FolderTreeRows } from './FolderTree.js';
 
 export type FolderShareUser = { id: string; name: string };
-type DialogFolder = FolderNode & { visibleToStaff?: boolean; color?: FolderColor; canManage?: boolean; sharedUsers?: FolderShareUser[] };
+type DialogFolder = FolderNode & { visibleToStaff?: boolean; accessRoles?: string[]; color?: FolderColor; canManage?: boolean; sharedUsers?: FolderShareUser[] };
 export type FolderDialogTarget<F extends DialogFolder = DialogFolder> =
   | { kind: 'create'; parent: F | null }
   | { kind: 'edit'; folder: F };
 
 /** Creates or renames a folder with the settings available in its library. */
-export function FolderDialog<F extends DialogFolder>({ target, onClose, onSubmit, t, rootLabel, colors = false, colorChoice = false, shareSearch }: {
+export function FolderDialog<F extends DialogFolder>({ target, onClose, onSubmit, t, rootLabel, colors = false, colorChoice = false, access = false, roleOptions = [], shareSearch }: {
   target: FolderDialogTarget<F> | null;
   rootLabel?: string;
   /** Assessment folders: a colour and no "visible to staff" flag. */
   colors?: boolean;
   /** PR 515: checklist folders keep the flag and get a colour as well. */
   colorChoice?: boolean;
+  /** PR 576: sections with a colour only (tests, courses, assignments, materials) also show who the folder is open to. */
+  access?: boolean;
+  /** PR 576: roles that can be chosen instead of "all employees". */
+  roleOptions?: readonly string[];
   /** PR 515: with it the dialog lets the manager open the folder to named employees; it searches them. */
   shareSearch?: (term: string) => Promise<FolderShareUser[]>;
   onClose: () => void;
-  onSubmit: (values: { name: string; visibleToStaff: boolean; color: FolderColor; sharedUsers: FolderShareUser[] }) => Promise<void>;
+  onSubmit: (values: { name: string; visibleToStaff: boolean; accessRoles: string[]; color: FolderColor; sharedUsers: FolderShareUser[] }) => Promise<void>;
   t: TFunction;
 }) {
   const titleId = useId();
@@ -32,6 +36,7 @@ export function FolderDialog<F extends DialogFolder>({ target, onClose, onSubmit
   const [name, setName] = useState('');
   const [color, setColor] = useState<FolderColor>('purple');
   const [visibleToStaff, setVisibleToStaff] = useState(false);
+  const [roles, setRoles] = useState<string[]>([]);
   const [shared, setShared] = useState<FolderShareUser[]>([]);
   const [term, setTerm] = useState('');
   const [found, setFound] = useState<FolderShareUser[]>([]);
@@ -42,6 +47,7 @@ export function FolderDialog<F extends DialogFolder>({ target, onClose, onSubmit
     if (!target) return;
     setName(target.kind === 'edit' ? target.folder.name : '');
     setVisibleToStaff(target.kind === 'edit' ? target.folder.visibleToStaff ?? false : false);
+    setRoles(target.kind === 'edit' ? target.folder.accessRoles ?? [] : []);
     setColor(target.kind === 'edit' ? target.folder.color ?? 'purple' : 'purple');
     setShared(target.kind === 'edit' ? target.folder.sharedUsers ?? [] : []);
     setTerm('');
@@ -63,7 +69,7 @@ export function FolderDialog<F extends DialogFolder>({ target, onClose, onSubmit
     setBusy(true);
     setError(null);
     try {
-      await onSubmit({ name: name.trim(), visibleToStaff, color, sharedUsers: shared });
+      await onSubmit({ name: name.trim(), visibleToStaff, accessRoles: visibleToStaff ? [] : roles, color, sharedUsers: shared });
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : String(failure));
       setBusy(false);
@@ -84,11 +90,18 @@ export function FolderDialog<F extends DialogFolder>({ target, onClose, onSubmit
           <label htmlFor={`${titleId}-name`}>{t('admin.checklists.folders.name', 'Folder name')}</label>
           <input id={`${titleId}-name`} maxLength={colors ? 200 : 255} onChange={(event) => setName(event.target.value)} ref={nameRef} required value={name} />
         </div>
-        {!colors && <>
+        {(!colors || access) && <>
           <label className="admin-checkbox-field">
             <input checked={visibleToStaff} onChange={(event) => setVisibleToStaff(event.target.checked)} type="checkbox" />
             {t('admin.checklists.folders.visibleToStaff', 'Visible to all roles except the learner')}
           </label>
+          {!visibleToStaff && roleOptions.length > 0 && <fieldset className="folder-roles">
+            <legend>{t('admin.checklists.folders.rolesTitle', 'Or only these roles')}</legend>
+            {roleOptions.map((role) => <label className="admin-checkbox-field" key={role}>
+              <input checked={roles.includes(role)} onChange={(event) => setRoles(event.target.checked ? [...roles, role] : roles.filter((value) => value !== role))} type="checkbox" />
+              {t(`admin.checklists.folders.roles.${role}`, role)}
+            </label>)}
+          </fieldset>}
           <p className="admin-form__hint">{t('admin.checklists.folders.visibleHint', 'Without the flag the folder is visible only to its creator and administrators. A learner never sees folders.')}</p>
         </>}
         {shareSearch && <fieldset className="folder-share">

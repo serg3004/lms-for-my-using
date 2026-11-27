@@ -158,7 +158,7 @@ export function bulkChecklistFolderAction(action: 'move' | 'delete', ids: string
   return apiRequest<ChecklistFolderBulkResult>('/checklist-folders/bulk', { method: 'POST', body: JSON.stringify({ action, ids, ...(action === 'move' ? { parentId: parentId ?? null } : {}) }) });
 }
 
-export type ChecklistFolderInput = { name?: string; parentId?: string | null; visibleToStaff?: boolean; color?: FolderColor; sharedUserIds?: string[] };
+export type ChecklistFolderInput = { name?: string; parentId?: string | null; visibleToStaff?: boolean; accessRoles?: string[]; color?: FolderColor; sharedUserIds?: string[] };
 
 export function createChecklistFolder(input: ChecklistFolderInput & { name: string }) {
   return apiRequest<ChecklistFolder>('/checklist-folders', { method: 'POST', body: JSON.stringify(input) });

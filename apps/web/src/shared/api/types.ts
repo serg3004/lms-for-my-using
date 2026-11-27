@@ -487,6 +487,8 @@ export type ChecklistFolder = {
   name: string;
   /** Open to every role except the learner; a closed folder shows a lock in the tree. */
   visibleToStaff: boolean;
+  /** PR 576: roles the folder is open to when it is not open to all employees. */
+  accessRoles?: string[];
   /** PR 515: one of the fixed folder colours; older cached responses have none (purple). */
   color?: FolderColor;
   /** PR 515: employees the folder is opened to by name; filled only for those who manage the folder. */

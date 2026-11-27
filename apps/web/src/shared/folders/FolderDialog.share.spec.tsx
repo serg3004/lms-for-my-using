@@ -15,10 +15,10 @@ const t = ((key: string, fallback?: unknown, options?: Record<string, unknown>) 
 
 const folder = { id: 'f1', parentId: null, name: 'Shop', visibleToStaff: false, color: 'green' as const, canManage: true, sharedUsers: [{ id: 'u1', name: 'Ivanov Ivan' }] };
 
-async function open(onSubmit = vi.fn().mockResolvedValue(undefined), shareSearch = vi.fn().mockResolvedValue([{ id: 'u2', name: 'Petrov Petr' }, { id: 'u1', name: 'Ivanov Ivan' }])) {
+async function open(onSubmit = vi.fn().mockResolvedValue(undefined), shareSearch = vi.fn().mockResolvedValue([{ id: 'u2', name: 'Petrov Petr' }, { id: 'u1', name: 'Ivanov Ivan' }]), extra: { colorChoice?: boolean; colors?: boolean; access?: boolean; roleOptions?: string[]; folder?: typeof folder } = {}) {
   container = document.createElement('div');
   document.body.appendChild(container);
-  await act(async () => { createRoot(container!).render(<FolderDialog colorChoice onClose={() => undefined} onSubmit={onSubmit} shareSearch={shareSearch} t={t} target={{ kind: 'edit', folder }} />); });
+  await act(async () => { createRoot(container!).render(<FolderDialog colorChoice={extra.colors ? false : true} colors={extra.colors} access={extra.access} roleOptions={extra.roleOptions} onClose={() => undefined} onSubmit={onSubmit} shareSearch={shareSearch} t={t} target={{ kind: 'edit', folder: extra.folder ?? folder }} />); });
   return { onSubmit, shareSearch };
 }
 
@@ -52,6 +52,27 @@ describe('folder settings of a checklist: colour and named employees (PR 515)', 
     await act(async () => { dialog.querySelector<HTMLButtonElement>('button[aria-label="Remove: Ivanov Ivan"]')!.click(); });
     await act(async () => { dialog.querySelectorAll<HTMLInputElement>('.folder-colors input')[3]!.click(); });
     await act(async () => { dialog.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
-    expect(onSubmit).toHaveBeenCalledWith({ name: 'Shop', visibleToStaff: false, color: 'orange', sharedUsers: [{ id: 'u2', name: 'Petrov Petr' }] });
+    expect(onSubmit).toHaveBeenCalledWith({ name: 'Shop', visibleToStaff: false, accessRoles: [], color: 'orange', sharedUsers: [{ id: 'u2', name: 'Petrov Petr' }] });
+  });
+
+  it('offers the staff flag, roles and named employees in a section with colours only (tests, courses, materials), and saves the chosen roles', async () => {
+    const { onSubmit } = await open(undefined, undefined, { colors: true, access: true, roleOptions: ['manager', 'instructor'], folder: { ...folder, accessRoles: ['instructor'] } as typeof folder });
+    const dialog = document.querySelector('dialog')!;
+    const boxes = Array.from(dialog.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'));
+    // the staff flag, then one box per role; "instructor" is already ticked
+    expect(boxes).toHaveLength(3);
+    expect(boxes.map((box) => box.checked)).toEqual([false, false, true]);
+    expect(dialog.querySelector('input[type="search"]')).not.toBeNull();
+    await act(async () => { boxes[1]!.click(); });
+    await act(async () => { dialog.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ visibleToStaff: false, accessRoles: ['instructor', 'manager'] }));
+  });
+
+  it('hides the roles and sends none when the folder is open to all employees', async () => {
+    const { onSubmit } = await open(undefined, undefined, { colors: true, access: true, roleOptions: ['instructor'], folder: { ...folder, visibleToStaff: true, accessRoles: ['instructor'] } as typeof folder });
+    const dialog = document.querySelector('dialog')!;
+    expect(dialog.querySelectorAll('input[type="checkbox"]')).toHaveLength(1);
+    await act(async () => { dialog.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })); });
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ visibleToStaff: true, accessRoles: [] }));
   });
 });

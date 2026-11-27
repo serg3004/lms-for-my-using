@@ -128,6 +128,11 @@ describe('ChecklistTable library rows (PR 408)', () => {
     const searching = renderLibrary({ showFolderPath: true, childFolders: [], rows: [sheets[0]!] });
     expect(searching).toContain('Магазин / Касса');
     expect(renderLibrary({ childFolders: [folders[1]!] })).toContain('Closed folder');
+     // PR 576: a folder opened to roles says which ones instead of "closed".
+    const forRoles = { ...folders[1]!, accessRoles: ['instructor', 'mentor'] };
+    const html = renderLibrary({ childFolders: [forRoles] });
+    expect(html).toContain('Opened to roles: instructor, mentor');
+    expect(html).not.toContain('Closed folder');
   });
 
   it('offers a checkbox on every folder and checklist row and one in the header to select the whole open folder (PR 410)', () => {

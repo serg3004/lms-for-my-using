@@ -1284,6 +1284,9 @@ model AssessmentFolder {
   parentId       String?            @map("parent_id") @db.Uuid
   name           String
   color          String             @default("purple")
+  visibleToStaff Boolean            @default(false) @map("visible_to_staff")
+  accessRoles    String[]           @default([]) @map("access_roles")
+  sharedUserIds  String[]          @default([]) @map("shared_user_ids") @db.Uuid
   createdBy      String?            @map("created_by") @db.Uuid
   createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime           @updatedAt @map("updated_at") @db.Timestamptz
@@ -1308,6 +1311,9 @@ model LibraryFolder {
   parentId       String?         @map("parent_id") @db.Uuid
   name           String
   color          String          @default("purple")
+  visibleToStaff Boolean         @default(true) @map("visible_to_staff")
+  accessRoles    String[]        @default([]) @map("access_roles")
+  sharedUserIds  String[]        @default([]) @map("shared_user_ids") @db.Uuid
   createdBy      String?         @map("created_by") @db.Uuid
   createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz
@@ -1729,6 +1735,7 @@ model ChecklistFolder {
   color          String            @default("purple")
   /// PR 515: employees the folder is opened to by name, in addition to "visible to staff".
   sharedUserIds  String[]          @default([]) @map("shared_user_ids") @db.Uuid
+  accessRoles    String[]          @default([]) @map("access_roles")
   createdBy      String?           @map("created_by") @db.Uuid
   createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz

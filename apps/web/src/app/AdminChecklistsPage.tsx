@@ -167,15 +167,15 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
     setSearchParams(next);
     setSelectedKeys(new Set());
   }
-  async function submitFolder(values: { name: string; visibleToStaff: boolean; color: FolderColor; sharedUsers: Array<{ id: string; name: string }> }) {
+  async function submitFolder(values: { name: string; visibleToStaff: boolean; accessRoles: string[]; color: FolderColor; sharedUsers: Array<{ id: string; name: string }> }) {
     const target = folderDialog;
     if (!target) return;
     try {
       if (target.kind === 'create') {
         // PR 409: the new folder appears as a row of the open folder; the user stays where they are.
-        await createChecklistFolder({ name: values.name, parentId: target.parent?.id ?? null, visibleToStaff: values.visibleToStaff, color: values.color, sharedUserIds: values.sharedUsers.map((user) => user.id) });
+        await createChecklistFolder({ name: values.name, parentId: target.parent?.id ?? null, visibleToStaff: values.visibleToStaff, accessRoles: values.accessRoles, color: values.color, sharedUserIds: values.sharedUsers.map((user) => user.id) });
       } else {
-        await updateChecklistFolder(target.folder.id, { name: values.name, visibleToStaff: values.visibleToStaff, color: values.color, sharedUserIds: values.sharedUsers.map((user) => user.id) });
+        await updateChecklistFolder(target.folder.id, { name: values.name, visibleToStaff: values.visibleToStaff, accessRoles: values.accessRoles, color: values.color, sharedUserIds: values.sharedUsers.map((user) => user.id) });
         setSelectedKeys(new Set());
       }
     } catch (error) {
@@ -456,7 +456,7 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
             t={t} />
         </div>
       </div>
-      <FolderDialog colorChoice onClose={() => setFolderDialog(null)} onSubmit={submitFolder} shareSearch={searchChecklistFolderShareCandidates} t={t} target={folderDialog} />
+      <FolderDialog colorChoice roleOptions={['manager', 'instructor', 'mentor']} onClose={() => setFolderDialog(null)} onSubmit={submitFolder} shareSearch={searchChecklistFolderShareCandidates} t={t} target={folderDialog} />
       <MoveToFolderDialog
         count={(moveTargets?.sheets.length ?? 0) + (moveTargets?.folders.length ?? 0)}
         title={moveTargets && moveTargets.folders.length > 0

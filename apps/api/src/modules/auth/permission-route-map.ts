@@ -50,6 +50,7 @@ export const permissionRouteMap: Readonly<Record<string, readonly PermissionActi
   'AssessmentFoldersController.deleteImpact': ['assessment.author'],
   'AssessmentFoldersController.list': ['assessment.author'],
   'AssessmentFoldersController.remove': ['assessment.author'],
+  'AssessmentFoldersController.shareCandidates': ['assessment.author'],
   'AssessmentFoldersController.update': ['assessment.author'],
   'AssessmentsController.copyAssessment': ['assessment.author'],
   'AssessmentsController.listLibrary': ['assessment.author'],

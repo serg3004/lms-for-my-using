@@ -112,4 +112,31 @@ describe('library folders of courses and assignments (PostgreSQL, PR 581)', () =
     await folders.remove(admin, courseFolder.id);
     await expect(assertLibraryFolder(prisma, organizationId, 'course', courseFolder.id)).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it('opens an assignment folder to all employees, to a role or to a named colleague (PR 576)', async () => {
+    const colleagueId = (await prisma.user.create({
+      data: { organizationId, email: `${randomUUID()}@example.test`, firstName: 'Other', lastName: 'Manager', passwordHash: 'unused', memberships: { create: { organizationId, role: 'manager' } } },
+    })).id;
+    const colleague: LibraryActor = { organizationId, id: colleagueId, roles: ['manager'] };
+    const closed = await folders.create(admin, { scope: 'assignment', name: 'Access closed' });
+    expect(closed).toMatchObject({ visibleToStaff: false, accessRoles: [], sharedUserIds: [] });
+    const names = async (actor: LibraryActor) => (await folders.list(actor, 'assignment')).folders.map((row) => row.name);
+    await expect(names(colleague)).resolves.not.toContain('Access closed');
+    await expect(folders.update(colleague, closed.id, { name: 'Hijack' })).rejects.toBeInstanceOf(NotFoundException);
+
+    await folders.update(admin, closed.id, { sharedUserIds: [colleagueId] });
+    await expect(names(colleague)).resolves.toContain('Access closed');
+    await expect(folders.update(colleague, closed.id, { name: 'Hijack' })).rejects.toBeInstanceOf(ForbiddenException);
+    await folders.update(admin, closed.id, { sharedUserIds: [] });
+    await expect(names(colleague)).resolves.not.toContain('Access closed');
+
+    await folders.update(admin, closed.id, { accessRoles: ['manager'] });
+    await expect(names(colleague)).resolves.toContain('Access closed');
+    await folders.update(admin, closed.id, { visibleToStaff: true });
+    await expect(folders.list(colleague, 'assignment')).resolves.toMatchObject({
+      folders: expect.arrayContaining([expect.objectContaining({ id: closed.id, accessRoles: [], canManage: false })]),
+    });
+    await expect(folders.shareCandidates(admin, 'assignment', undefined)).resolves.toEqual(expect.arrayContaining([expect.objectContaining({ id: colleagueId })]));
+    await prisma.user.deleteMany({ where: { id: colleagueId } });
+  });
 });

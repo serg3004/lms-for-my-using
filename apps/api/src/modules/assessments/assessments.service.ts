@@ -23,6 +23,7 @@ import {
 import { lockAssessmentFolders } from './assessment-folder-lock.js';
 import { assessmentCourseScope } from './assessment-author-scope.js';
 
+import { hiddenFolderIds } from './assessment-folder-access.js';
 import { queryAssessmentLibrary } from './assessment-library.query.js';
 
 const assessmentSelect = {
@@ -74,8 +75,8 @@ export class AssessmentsService {
     });
   }
 
-  listLibrary(organizationId: string, userId: string, courseScoped: boolean, query: AssessmentLibraryQuery) {
-    return queryAssessmentLibrary(this.prisma, organizationId, userId, courseScoped, query);
+  async listLibrary(organizationId: string, actor: { id: string; roles: readonly string[] }, courseScoped: boolean, query: AssessmentLibraryQuery) {
+    return queryAssessmentLibrary(this.prisma, organizationId, actor.id, courseScoped, query, await hiddenFolderIds(this.prisma, organizationId, actor));
   }
 
   async getAssessment(assessmentId: string, organizationId: string) {

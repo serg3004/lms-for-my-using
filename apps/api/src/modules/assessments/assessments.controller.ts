@@ -46,7 +46,7 @@ export class AssessmentsController {
   @Roles(...rolePolicies.assessmentsCreate)
   listLibrary(@Query() query: unknown, @Req() request: AuthenticatedRequest) {
     const user = request.currentUser!;
-    return this.assessmentsService.listLibrary(user.organizationId, user.id, isInstructorCourseScoped(user), assessmentLibrarySchema.parse(query));
+    return this.assessmentsService.listLibrary(user.organizationId, user, isInstructorCourseScoped(user), assessmentLibrarySchema.parse(query));
   }
 
   @Patch('default-theme')

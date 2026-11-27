@@ -1,7 +1,7 @@
 import { useImperativeHandle, useMemo, useState, type ReactNode, type Ref } from 'react';
 import type { TFunction } from 'i18next';
 
-import { bulkAssessmentFolders, getAssessmentFolderImpact, saveAssessmentFolder, type AssessmentFolder, type FolderBulkKind, type FolderBulkOperation } from '../../shared/api/assessmentFolders.js';
+import { bulkAssessmentFolders, getAssessmentFolderImpact, saveAssessmentFolder, searchAssessmentFolderShareCandidates, type AssessmentFolder, type FolderBulkKind, type FolderBulkOperation } from '../../shared/api/assessmentFolders.js';
 import { ApiClientError } from '../../shared/apiClient.js';
 import { Button, ConfirmDialog, DataTable, Menu, PageState, Pagination, type Column } from '../../shared/ui.js';
 import { FolderDialog, MoveToFolderDialog, type FolderDialogTarget } from '../../shared/folders/FolderDialogs.js';
@@ -277,12 +277,12 @@ export function AssessmentLibrary({ actionsRef, list, columns, library, renderAc
       label={t('admin.assessmentBuilder.list.pagination')}
       prevLabel={t('admin.assessmentBuilder.list.previous')} nextLabel={t('admin.assessmentBuilder.list.next')} />
 
-    <FolderDialog target={edit} onClose={() => setEdit(null)} colors rootLabel={library.rootLabel} t={t}
-      onSubmit={async ({ name, color }) => {
+    <FolderDialog target={edit} onClose={() => setEdit(null)} colors access roleOptions={['instructor']} shareSearch={searchAssessmentFolderShareCandidates} rootLabel={library.rootLabel} t={t}
+      onSubmit={async ({ name, color, visibleToStaff, accessRoles, sharedUsers }) => {
         if (!edit) return;
         try {
           await saveAssessmentFolder(edit.kind === 'edit' ? edit.folder.id : null, {
-            name, color, ...(edit.kind === 'create' ? { parentId: edit.parent?.id ?? null } : {}),
+            name, color, visibleToStaff, accessRoles, sharedUserIds: sharedUsers.map((user) => user.id), ...(edit.kind === 'create' ? { parentId: edit.parent?.id ?? null } : {}),
           });
           await library.reload();
           setEdit(null);
