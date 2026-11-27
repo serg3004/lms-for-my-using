@@ -194,6 +194,13 @@ describe('Security audit', () => {
       ]);
     });
 
+    it('lets the page itself use the microphone in the nginx Permissions-Policy (PR 513)', () => {
+      const config = readFileSync(new URL('../../../../infra/nginx/security-headers.conf', import.meta.url), 'utf8');
+      const policy = config.match(/add_header Permissions-Policy "([^"]+)"/)?.[1] ?? '';
+      expect(policy).toContain('microphone=(self)');
+      expect(policy).not.toMatch(/microphone=\(\)|microphone=\*/);
+    });
+
     it('sets X-Content-Type-Options: nosniff', async () => {
       const response = await makeRequest(`${getAppUrl(app)}/api/v1/health`);
 
