@@ -352,8 +352,8 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
         }}
       />
       {isObserverVariant ? <ObserverSessionsNav current="all" /> : <ChecklistsTabs current="sessions" />}
-      {/* PR 360в: an admin assigned as the observer needs the queue to start the session; hidden while empty. */}
-      {isAdmin && !isObserverVariant && <ObserverSessionsBlock />}
+      {/* PR 360в: an admin assigned as the observer needs the queue to start the session; hidden while empty; PR 516: only the sessions still to conduct, without subheadings or history. */}
+      {isAdmin && !isObserverVariant && <ObserverSessionsBlock queueOnly />}
       {isAdmin && !isObserverVariant && <DeletedChecklistResults t={t} />}
       {actionError && (
         <div className="ui-state ui-state--error admin-inline-banner" role="alert">

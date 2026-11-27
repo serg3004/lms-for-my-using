@@ -15,9 +15,9 @@ beforeEach(() => {
 });
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); vi.clearAllMocks(); });
 function Destination() { return <div data-destination>{useLocation().pathname}</div>; }
-async function render() {
+async function render(queueOnly = false) {
   await act(async () => root.render(<MemoryRouter initialEntries={['/learn/checklists']}><Routes>
-    <Route path="/learn/checklists" element={<ObserverSessionsBlock />} />
+    <Route path="/learn/checklists" element={<ObserverSessionsBlock queueOnly={queueOnly} />} />
     <Route path="/instructor/checklists/sessions/:id" element={<Destination />} />
   </Routes></MemoryRouter>));
 }
@@ -46,4 +46,22 @@ it('shows a load error and retries without leaving the page', async () => {
   await render(); expect(host.querySelector('[role=alert]')).not.toBeNull();
   const retry = host.querySelector('button'); expect(retry).not.toBeNull();
   await act(async () => retry!.click()); expect(host.textContent).toContain('Observed checklist');
+});
+
+const finished = { ...session, id: 'done-session', status: 'completed', checklist: { title: 'Finished checklist' } };
+it('on the observer page the title is not repeated by a subheading, and a missing queue has no empty text (PR 516)', async () => {
+  mocks.list.mockResolvedValue({ items: [finished], total: 1 }); await render();
+  expect([...host.querySelectorAll('h2')].map((heading) => heading.textContent)).not.toContain('To conduct');
+  expect(host.textContent).not.toContain('Nothing scheduled right now.');
+  expect(host.textContent).toContain('Finished checklist');
+});
+it('on the management page only the sessions still to conduct are shown, with no history or subheadings (PR 516)', async () => {
+  mocks.list.mockResolvedValue({ items: [session, finished], total: 2 }); await render(true);
+  expect(host.textContent).toContain('Observed checklist');
+  expect(host.textContent).not.toContain('Finished checklist');
+  expect([...host.querySelectorAll('h2')].filter((heading) => !heading.closest('dialog'))).toHaveLength(1);
+});
+it('on the management page nothing is shown when no session waits for the administrator, even with finished ones (PR 516)', async () => {
+  mocks.list.mockResolvedValue({ items: [finished], total: 1 }); await render(true);
+  expect(host.querySelector('section')).toBeNull();
 });
