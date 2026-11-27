@@ -9,6 +9,8 @@ import { clearFieldError, hasValidationErrors, validateRequiredFields, type Form
 import { sortLessons } from '../shared/sortLessons.js';
 import { AdminStatusSelect } from '../shared/AdminStatusSelect.js';
 import { MaterialTable } from './materials/MaterialTable.js';
+import { ConnectLibraryMaterial } from './materials/ConnectLibraryMaterial.js';
+import { disconnectMaterial } from '../shared/api/materialLibrary.js';
 import { MaterialMetadataForm } from './materials/MaterialMetadataForm.js';
 import { useMaterialMutations } from './materials/useMaterialMutations.js';
 import { AdminCard, AdminPageHeader, AdminPageLayout, FormField, type AdminNavItem } from '../shared/adminPage.js';
@@ -30,6 +32,7 @@ type Material = {
   mimeType: string | null;
   sizeBytes: number | null;
   status: string;
+  connected?: boolean;
 };
 
 type AdminMaterialsData = { courses: Course[]; lessons: Lesson[]; materials: Material[] };
@@ -355,7 +358,7 @@ export function AdminMaterialsPage() {
         eyebrow={t('admin.materials.eyebrow', 'Files and resources')}
         title={t('admin.materials.title', 'Materials')}
         subtitle={t('admin.materials.subtitle', 'Upload files or add URL links as course materials.')}
-        action={<a href="/admin">{t('admin.materials.backToDashboard', 'Back to dashboard')}</a>}
+        action={<><a href="/admin/material-library">{t('admin.materialLibrary.title', 'Material library')}</a> <a href="/admin">{t('admin.materials.backToDashboard', 'Back to dashboard')}</a></>}
       />
 
       <section className="admin-content-grid">
@@ -514,8 +517,20 @@ export function AdminMaterialsPage() {
                 if (material) openEditDialog(material);
               }}
               onStatusChange={(materialId, status) => void handleUpdateStatus(materialId, status)}
+              onDisconnect={(materialId) => void disconnectMaterial(selectedCourseId, materialId).then(() => loadMaterials()).catch(() => loadMaterials())}
             />
         </AdminCard>
+        {selectedCourseId ? (
+          <AdminCard>
+            <ConnectLibraryMaterial
+              courseId={selectedCourseId}
+              lessons={loadState.data.lessons}
+              connectedIds={loadState.data.materials.map((material) => material.id)}
+              onConnected={() => void loadMaterials()}
+              t={t}
+            />
+          </AdminCard>
+        ) : null}
       </section>
 
       <dialog ref={editDialogRef} className="admin-dialog">

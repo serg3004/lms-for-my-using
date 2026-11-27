@@ -1001,6 +1001,7 @@ model Course {
   deletedAt             DateTime?          @map("deleted_at") @db.Timestamptz
   organization          Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   lessons               Lesson[]
+  materialLinks         CourseMaterialLink[] @relation("CourseMaterialLinkCourse")
   materials             CourseMaterial[]
   assignments           Assignment[]
   progress              Progress[]
@@ -1053,6 +1054,7 @@ model Lesson {
   updatedAt      DateTime          @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt      DateTime?         @map("deleted_at") @db.Timestamptz
   course         Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  materialLinks  CourseMaterialLink[] @relation("CourseMaterialLinkLesson")
   materials      CourseMaterial[]
   progress       Progress[]
   assessments    Assessment[]
@@ -1069,8 +1071,9 @@ model Lesson {
 model CourseMaterial {
   id                 String               @id @default(uuid()) @db.Uuid
   organizationId     String               @map("organization_id") @db.Uuid
-  courseId           String               @map("course_id") @db.Uuid
+  courseId           String?              @map("course_id") @db.Uuid
   lessonId           String?              @map("lesson_id") @db.Uuid
+  folderId           String?              @map("folder_id") @db.Uuid
   title              String
   slug               String
   description        String?
@@ -1089,8 +1092,10 @@ model CourseMaterial {
   createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime             @updatedAt @map("updated_at") @db.Timestamptz
   deletedAt          DateTime?            @map("deleted_at") @db.Timestamptz
-  course             Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course             Course?              @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lesson             Lesson?              @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  folder             LibraryFolder?       @relation("MaterialFolder", fields: [organizationId, folderId], references: [organizationId, id], onDelete: Restrict)
+  links              CourseMaterialLink[]
   longreadDocumentId String?              @map("longread_document_id") @db.Uuid
   longreadDocument   LongreadDocument?    @relation(fields: [longreadDocumentId], references: [id], onDelete: Cascade)
   multipartUploads   MultipartUpload[]
@@ -1098,8 +1103,29 @@ model CourseMaterial {
   @@unique([courseId, slug])
   @@index([longreadDocumentId])
   @@index([organizationId, courseId, status])
+  @@index([organizationId, folderId])
   @@index([lessonId])
   @@map("course_materials")
+}
+
+/// PR 582: a library material connected to a course (and, when wanted, to one of its lessons). A material that was
+/// created inside a course keeps that course as its own place and needs no row here.
+model CourseMaterialLink {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  materialId     String         @map("material_id") @db.Uuid
+  courseId       String         @map("course_id") @db.Uuid
+  lessonId       String?        @map("lesson_id") @db.Uuid
+  createdBy      String?        @map("created_by") @db.Uuid
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  material       CourseMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  course         Course         @relation("CourseMaterialLinkCourse", fields: [courseId], references: [id], onDelete: Cascade)
+  lesson         Lesson?        @relation("CourseMaterialLinkLesson", fields: [lessonId], references: [id], onDelete: SetNull)
+
+  @@unique([materialId, courseId])
+  @@index([organizationId, courseId])
+  @@index([lessonId])
+  @@map("course_material_links")
 }
 
 model MultipartUpload {
@@ -1292,6 +1318,7 @@ model LibraryFolder {
   creator        User?           @relation("LibraryFolderCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
   courses        Course[]        @relation("CourseFolder")
   assignments    Assignment[]    @relation("AssignmentFolder")
+  materials      CourseMaterial[] @relation("MaterialFolder")
 
   @@unique([organizationId, id])
   @@index([organizationId, scope, parentId])

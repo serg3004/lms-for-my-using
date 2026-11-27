@@ -16,6 +16,7 @@ import type { BulkLibraryFolderInput, CreateLibraryFolderInput, LibraryFolderSco
 const MANAGER_ROLES: Record<LibraryFolderScope, readonly string[]> = {
   course: ['admin'],
   assignment: ['admin', 'manager'],
+  material: ['admin'],
 };
 
 const folderSelect = { id: true, scope: true, name: true, color: true, parentId: true, createdBy: true, createdAt: true, updatedAt: true } as const;

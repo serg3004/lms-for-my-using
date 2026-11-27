@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
@@ -24,11 +25,14 @@ import { Roles, rolePolicies } from '../auth/public.js';
 import { RolesGuard } from '../auth/public.js';
 import { CourseAccessGuard, CourseScope } from '../course-access/public.js';
 import {
+  connectMaterialSchema,
   createCourseMaterialSchema,
+  createLibraryMaterialSchema,
   CreateCourseMaterialInput,
   updateCourseMaterialStatusSchema,
   updateCourseMaterialSchema,
 } from './course-materials.schemas.js';
+import { folderFilterOf } from '../../common/folder-filter.schema.js';
 import { CourseMaterialsService } from './course-materials.service.js';
 import { UploadService } from '../upload/public.js';
 import { MAX_BUFFERED_UPLOAD_SIZE_BYTES, validateUploadFile } from '../upload/public.js';
@@ -66,6 +70,42 @@ export class CourseMaterialsController {
   @CourseScope('param', 'id', 'material')
   abortMultipartUpload(@Param('id') materialId: string, @Param('uploadId') uploadId: string, @Req() request: AuthenticatedRequest) {
     return this.multipartUploads.abort(materialId, request.currentUser!.organizationId, uploadId);
+  }
+
+  @Get('material-library')
+  @Roles(...rolePolicies.courseMaterialsCreate)
+  listMaterialLibrary(@Query() query: Record<string, unknown>, @Req() request: AuthenticatedRequest) {
+    return this.courseMaterialsService.listLibrary(request.currentUser!.organizationId, folderFilterOf(query));
+  }
+
+  @Post('material-library')
+  @Roles(...rolePolicies.courseMaterialsCreate)
+  createLibraryMaterial(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const user = request.currentUser!;
+    return this.courseMaterialsService.createLibraryMaterial(user.organizationId, user.roles, createLibraryMaterialSchema.parse(body));
+  }
+
+  @Get('materials/:id/usage')
+  @Roles(...rolePolicies.courseMaterialsCreate)
+  @CourseScope('param', 'id', 'material')
+  getMaterialUsage(@Param('id') materialId: string, @Req() request: AuthenticatedRequest) {
+    return this.courseMaterialsService.materialUsage(materialId, request.currentUser!.organizationId);
+  }
+
+  @Post('courses/:courseId/materials/connect')
+  @Roles(...rolePolicies.courseMaterialsCreate)
+  @CourseScope('param', 'courseId')
+  connectMaterial(@Param('courseId') courseId: string, @Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const input = connectMaterialSchema.parse(body);
+    const user = request.currentUser!;
+    return this.courseMaterialsService.connectMaterial(courseId, user.organizationId, user, input.materialId, input.lessonId ?? null);
+  }
+
+  @Delete('courses/:courseId/materials/:materialId/connection')
+  @Roles(...rolePolicies.courseMaterialsCreate)
+  @CourseScope('param', 'courseId')
+  disconnectMaterial(@Param('courseId') courseId: string, @Param('materialId') materialId: string, @Req() request: AuthenticatedRequest) {
+    return this.courseMaterialsService.disconnectMaterial(courseId, request.currentUser!.organizationId, materialId);
   }
 
   @Get('courses/:courseId/materials')

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { FOLDER_COLORS } from '@lms/shared/constants/folder-colors';
 
-export const LIBRARY_FOLDER_SCOPES = ['course', 'assignment'] as const;
+export const LIBRARY_FOLDER_SCOPES = ['course', 'assignment', 'material'] as const;
 export type LibraryFolderScope = (typeof LIBRARY_FOLDER_SCOPES)[number];
 
 const scope = z.enum(LIBRARY_FOLDER_SCOPES);

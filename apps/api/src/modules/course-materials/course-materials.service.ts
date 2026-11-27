@@ -1,10 +1,15 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
+
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+
+import { assertLibraryFolder } from '../../common/library-folder-check.js';
 
 import { releaseSlugOnDelete } from '../../common/soft-delete-slug.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { LEGACY_LIST_LIMIT } from '../../common/query-limits.js';
 import {
   CreateCourseMaterialInput,
+  CreateLibraryMaterialInput,
   UpdateCourseMaterialInput,
   UpdateCourseMaterialStatusInput,
 } from './course-materials.schemas.js';
@@ -14,6 +19,7 @@ const courseMaterialSelect = {
   organizationId: true,
   courseId: true,
   lessonId: true,
+  folderId: true,
   title: true,
   slug: true,
   description: true,
@@ -33,6 +39,19 @@ const courseMaterialSelect = {
   updatedAt: true,
 } as const;
 
+const LIBRARY_LIST_LIMIT = 500;
+
+function slugOf(title: string) {
+  // Runs of other characters become one dash; the dashes at both ends are cut by hand (no backtracking pattern on user text).
+  const dashed = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  let start = 0;
+  let end = dashed.length;
+  while (start < end && dashed[start] === '-') start += 1;
+  while (end > start && dashed[end - 1] === '-') end -= 1;
+  const slug = dashed.slice(start, end).slice(0, 60);
+  return slug.length >= 3 ? slug : 'material';
+}
+
 @Injectable()
 export class CourseMaterialsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -45,17 +64,88 @@ export class CourseMaterialsService {
   async listCourseMaterials(courseId: string, organizationId: string) {
     await this.ensureCourseExists(courseId, organizationId);
 
-    return this.prisma.courseMaterial.findMany({
+    const rows = await this.prisma.courseMaterial.findMany({
       where: {
-        courseId,
+        OR: [{ courseId }, { links: { some: { courseId } } }],
         organizationId,
         longreadDocumentId: null,
         deletedAt: null,
       },
       orderBy: { createdAt: 'desc' },
       take: LEGACY_LIST_LIMIT,
+      select: { ...courseMaterialSelect, links: { where: { courseId }, select: { lessonId: true } } },
+    });
+    // PR 582: a material connected from the library takes the lesson of its connection to this course.
+    return rows.map(({ links, ...material }) => (material.courseId === courseId ? { ...material, connected: false } : { ...material, lessonId: links[0]?.lessonId ?? null, connected: true }));
+  }
+
+  /** PR 582: the library of the organization: every standalone material with the places it is used in. */
+  async listLibrary(organizationId: string, folderId: string | null | undefined) {
+    const rows = await this.prisma.courseMaterial.findMany({
+      where: { organizationId, longreadDocumentId: null, deletedAt: null, ...(folderId === undefined ? {} : { folderId }) },
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+      take: LIBRARY_LIST_LIMIT,
+      select: { ...courseMaterialSelect, course: { select: { title: true } }, links: { select: { courseId: true, lessonId: true, course: { select: { title: true } } } } },
+    });
+    return rows.map(({ course, links, ...material }) => ({
+      ...material,
+      usedIn: [
+        ...(material.courseId && course ? [{ courseId: material.courseId, courseTitle: course.title }] : []),
+        ...links.map((link) => ({ courseId: link.courseId, courseTitle: link.course.title })),
+      ],
+    }));
+  }
+
+  /** PR 582: a material that belongs to no course. Only an administrator creates it. */
+  async createLibraryMaterial(organizationId: string, roles: readonly string[], input: CreateLibraryMaterialInput) {
+    if (!roles.includes('admin')) throw new ForbiddenException('Not allowed');
+    await assertLibraryFolder(this.prisma, organizationId, 'material', input.folderId);
+    return this.prisma.courseMaterial.create({
+      data: { ...input, organizationId, slug: input.slug ?? `${slugOf(input.title)}-${randomBytes(3).toString('hex')}` },
       select: courseMaterialSelect,
     });
+  }
+
+  /** Where a material is used: its own course and every connection. Used to warn before it is deleted. */
+  async materialUsage(materialId: string, organizationId: string) {
+    const material = await this.prisma.courseMaterial.findFirst({
+      where: { id: materialId, organizationId, longreadDocumentId: null, deletedAt: null },
+      select: { id: true, course: { select: { id: true, title: true } }, links: { select: { course: { select: { id: true, title: true } }, lesson: { select: { id: true, title: true } } } } },
+    });
+    if (!material) throw new NotFoundException('Course material not found');
+    return {
+      places: [
+        ...(material.course ? [{ courseId: material.course.id, courseTitle: material.course.title, lessonId: null, lessonTitle: null, own: true }] : []),
+        ...material.links.map((link) => ({ courseId: link.course.id, courseTitle: link.course.title, lessonId: link.lesson?.id ?? null, lessonTitle: link.lesson?.title ?? null, own: false })),
+      ],
+    };
+  }
+
+  /** PR 582: connects a library material to a course (and a lesson of it). A second call changes the lesson. */
+  async connectMaterial(courseId: string, organizationId: string, actor: { id: string; roles: readonly string[] }, materialId: string, lessonId: string | null) {
+    await this.ensureCourseExists(courseId, organizationId);
+    const material = await this.prisma.courseMaterial.findFirst({
+      where: { id: materialId, organizationId, longreadDocumentId: null, deletedAt: null },
+      select: { id: true, courseId: true },
+    });
+    if (!material) throw new NotFoundException('Course material not found');
+    if (material.courseId === courseId) throw new ConflictException('Material already belongs to this course');
+    // An instructor connects only library materials; a material of another course stays with that course.
+    if (material.courseId !== null && !actor.roles.includes('admin')) throw new ForbiddenException('Not allowed');
+    if (lessonId) await this.ensureLessonBelongsToCourse(lessonId, courseId, organizationId);
+    await this.prisma.courseMaterialLink.upsert({
+      where: { materialId_courseId: { materialId, courseId } },
+      create: { organizationId, materialId, courseId, lessonId, createdBy: actor.id },
+      update: { lessonId },
+    });
+    return { materialId, courseId, lessonId };
+  }
+
+  /** Disconnecting removes the place only; the material stays in the library. */
+  async disconnectMaterial(courseId: string, organizationId: string, materialId: string) {
+    await this.ensureCourseExists(courseId, organizationId);
+    const removed = await this.prisma.courseMaterialLink.deleteMany({ where: { organizationId, courseId, materialId } });
+    if (removed.count === 0) throw new NotFoundException('Material is not connected to this course');
   }
 
   async getCourseMaterial(materialId: string, organizationId: string) {
@@ -134,6 +224,8 @@ export class CourseMaterialsService {
     }
 
     if (input.lessonId) {
+      // A library material has no course of its own: its lesson is chosen on the connection.
+      if (!material.courseId) throw new BadRequestException('A library material has no lesson');
       await this.ensureLessonBelongsToCourse(input.lessonId, material.courseId, organizationId);
     }
 
@@ -155,11 +247,14 @@ export class CourseMaterialsService {
       throw new NotFoundException('Course material not found');
     }
 
-    await this.prisma.courseMaterial.update({
-      where: { id: materialId, organizationId },
-      data: { deletedAt: new Date(), slug: releaseSlugOnDelete(material.slug, material.id) },
-      select: { id: true },
-    });
+    await this.prisma.$transaction([
+      this.prisma.courseMaterialLink.deleteMany({ where: { materialId, organizationId } }),
+      this.prisma.courseMaterial.update({
+        where: { id: materialId, organizationId },
+        data: { deletedAt: new Date(), slug: releaseSlugOnDelete(material.slug, material.id) },
+        select: { id: true },
+      }),
+    ]);
   }
 
   async getMaterialStorageReference(materialId: string, organizationId: string) {

@@ -152,6 +152,8 @@ describe('CourseMaterialsService.deleteCourseMaterial', () => {
         findFirst: async () => ({ id: materialId, slug: 'safety-pdf' }),
         update,
       },
+      courseMaterialLink: { deleteMany: jest.fn(async () => ({ count: 0 })) },
+      $transaction: async (operations: Promise<unknown>[]) => Promise.all(operations),
     } as unknown as PrismaService;
     const service = new CourseMaterialsService(prisma);
 

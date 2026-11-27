@@ -1,8 +1,8 @@
 import type { FolderColor } from '@lms/shared/constants/folder-colors';
 import { apiRequest } from '../apiClient.js';
 
-/** PR 581: the sections whose list has folders in one shared table (courses, assignments). */
-export type LibraryFolderScope = 'course' | 'assignment';
+/** PR 581, 582: the sections whose list has folders in one shared table (courses, assignments, materials). */
+export type LibraryFolderScope = 'course' | 'assignment' | 'material';
 
 export type LibraryFolder = {
   id: string;

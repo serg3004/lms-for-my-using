@@ -53,4 +53,19 @@ describe('material table controls', () => {
     expect(onStatusChange).toHaveBeenCalledWith('material-1', 'archived');
     expect(onEdit).toHaveBeenCalledWith('material-1');
   });
+
+  it('offers "Disconnect" instead of "Edit" for a material connected from the library (PR 582)', () => {
+    const onEdit = vi.fn();
+    const onDisconnect = vi.fn();
+    const material: MaterialRow = { id: 'material-2', title: 'Policy', kind: 'link', fileUrl: null, sizeBytes: null, status: 'active', connected: true };
+    const table = MaterialTable({ materials: [material], onEdit, onStatusChange: vi.fn(), onDisconnect, t });
+    const { columns } = table.props as { columns: Array<{ render: (row: MaterialRow) => ReactElement | string }> };
+
+    expect(columns[2]!.render(material)).toBe('Active');
+    const action = columns[4]!.render(material) as ReactElement<{ onClick: () => void; children: string }>;
+    expect(action.props.children).toBe('Disconnect');
+    action.props.onClick();
+    expect(onDisconnect).toHaveBeenCalledWith('material-2');
+    expect(onEdit).not.toHaveBeenCalled();
+  });
 });

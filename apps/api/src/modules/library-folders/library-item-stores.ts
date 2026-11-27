@@ -53,4 +53,23 @@ const assignmentStore: LibraryItemStore = {
   },
 };
 
-export const LIBRARY_ITEM_STORES: Record<LibraryFolderScope, LibraryItemStore> = { course: courseStore, assignment: assignmentStore };
+/** PR 582: library materials. Version-owned longread files are not library items. */
+const materialWhere = (organizationId: string) => ({ organizationId, deletedAt: null, longreadDocumentId: null });
+const materialStore: LibraryItemStore = {
+  async counts(tx, organizationId) {
+    const rows = await tx.courseMaterial.groupBy({ by: ['folderId'], where: materialWhere(organizationId), _count: { _all: true } });
+    return rows.map((row) => ({ folderId: row.folderId, count: row._count._all }));
+  },
+  find: (tx, organizationId, id) => tx.courseMaterial.findFirst({ where: { ...materialWhere(organizationId), id }, select: { id: true, folderId: true } }),
+  async titlesIn(tx, organizationId, folderIds) {
+    return tx.courseMaterial.findMany({ where: { ...materialWhere(organizationId), folderId: { in: folderIds } }, select: { id: true, title: true }, orderBy: { id: 'asc' } });
+  },
+  async setFolder(tx, organizationId, id, folderId) {
+    await tx.courseMaterial.updateMany({ where: { ...materialWhere(organizationId), id }, data: { folderId } });
+  },
+  async unfile(tx, organizationId, folderIds) {
+    await tx.courseMaterial.updateMany({ where: { organizationId, folderId: { in: folderIds } }, data: { folderId: null } });
+  },
+};
+
+export const LIBRARY_ITEM_STORES: Record<LibraryFolderScope, LibraryItemStore> = { course: courseStore, assignment: assignmentStore, material: materialStore };

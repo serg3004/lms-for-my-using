@@ -194,6 +194,27 @@
     "brandSub": "Learning Platform"
   },
   "admin": {
+    "materialLibrary": {
+      "title": "Material library",
+      "subtitle": "Materials that live on their own and are connected to courses and lessons.",
+      "create": "Add material",
+      "createMenu": {
+        "material": "Material"
+      },
+      "titleRequired": "Enter a title.",
+      "urlRequired": "Enter a link.",
+      "fileRequired": "Choose a file.",
+      "saveError": "Unable to save the material.",
+      "loadError": "Unable to load the material library.",
+      "empty": "No materials here yet.",
+      "deleteTitle": "Delete material?",
+      "deleteUsed": "The material is connected to courses: {{count}} ({{names}}). After deleting it disappears from them.",
+      "deleteUnused": "The material is not connected anywhere. It will be deleted.",
+      "col": {
+        "used": "Used in"
+      },
+      "notUsed": "Not connected"
+    },
     "navLink": "Admin",
     "eyebrow": "Administrator",
     "sidebarLabel": "Admin navigation",
@@ -496,6 +517,15 @@
       "longreadEnabled": "Longread lessons are enabled for this organization"
     },
     "materials": {
+      "connect": {
+        "title": "Connect a material from the library",
+        "none": "There are no library materials to connect.",
+        "material": "Material",
+        "choose": "Choose a material",
+        "error": "Unable to connect the material.",
+        "button": "Connect",
+        "disconnect": "Disconnect"
+      },
       "eyebrow": "Files and resources",
       "sessionExpired": "Your session expired. Sign in again.",
       "loadError": "Unable to load materials.",
@@ -4740,6 +4770,14 @@
     "imageError": "Unable to load or upload an image. JPEG, PNG, GIF and WebP up to 8 MB are accepted."
   },
   "libraryFolders": {
+    "material": {
+      "root": "Whole library",
+      "tree": "Material folders",
+      "contents": "Folders: {{folders}}, materials: {{items}}",
+      "unfile": "Materials are not deleted; they move to the root: {{count}} ({{names}}).",
+      "selectAll": "Select all materials and folders",
+      "selectItem": "Select material \"{{title}}\""
+    },
     "settings": "Folder settings",
     "forbidden": "You do not have permission to manage folders.",
     "loading": "Loading folders…",

@@ -194,6 +194,27 @@
     "brandSub": "学习平台"
   },
   "admin": {
+    "materialLibrary": {
+      "title": "资料库",
+      "subtitle": "独立存在、可连接到课程和课时的资料。",
+      "create": "添加资料",
+      "createMenu": {
+        "material": "资料"
+      },
+      "titleRequired": "请输入标题。",
+      "urlRequired": "请输入链接。",
+      "fileRequired": "请选择文件。",
+      "saveError": "无法保存资料。",
+      "loadError": "无法加载资料库。",
+      "empty": "这里还没有资料。",
+      "deleteTitle": "删除资料？",
+      "deleteUsed": "该资料已连接到课程：{{count}} 个（{{names}}）。删除后它将从这些课程中消失。",
+      "deleteUnused": "该资料没有连接到任何地方，将被删除。",
+      "col": {
+        "used": "使用位置"
+      },
+      "notUsed": "未连接"
+    },
     "navLink": "管理员",
     "eyebrow": "管理员",
     "sidebarLabel": "管理员导航",
@@ -496,6 +517,15 @@
       "longreadEnabled": "为本组织启用长文阅读课程"
     },
     "materials": {
+      "connect": {
+        "title": "从资料库连接资料",
+        "none": "没有可连接的资料库资料。",
+        "material": "资料",
+        "choose": "选择资料",
+        "error": "无法连接资料。",
+        "button": "连接",
+        "disconnect": "断开连接"
+      },
       "eyebrow": "文件与资源",
       "sessionExpired": "会话已过期。请重新登录。",
       "loadError": "无法加载资料。",
@@ -4740,6 +4770,14 @@
     "imageError": "无法打开或上传图片。支持最大 8 MB 的 JPEG、PNG、GIF 和 WebP。"
   },
   "libraryFolders": {
+    "material": {
+      "root": "整个资料库",
+      "tree": "资料文件夹",
+      "contents": "文件夹：{{folders}}，资料：{{items}}",
+      "unfile": "资料不会被删除，而是移到根目录：{{count}} 个（{{names}}）。",
+      "selectAll": "选择所有资料和文件夹",
+      "selectItem": "选择资料“{{title}}”"
+    },
     "settings": "文件夹设置",
     "forbidden": "没有管理文件夹的权限。",
     "loading": "正在加载文件夹…",

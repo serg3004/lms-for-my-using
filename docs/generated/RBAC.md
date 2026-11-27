@@ -147,7 +147,7 @@ Owner: `packages/shared/src/permission-catalog.ts`; the route table is `apps/api
 | `lesson.read.all` | courses | `organization` | yes | `lesson.read` | `lessonsReadAll` | `admin` | 1 |
 | `lesson.edit` | courses | `own`, `organization` | yes | `lesson.read` | `lessonsCreate` | `admin`, `instructor` | 5 |
 | `material.read` | courses | `own`, `organization` | yes | - | `courseMaterialsRead` | `admin`, `manager`, `instructor`, `learner` | 3 |
-| `material.edit` | courses | `own`, `organization` | yes | `material.read` | `courseMaterialsCreate` | `admin`, `instructor` | 9 |
+| `material.edit` | courses | `own`, `organization` | yes | `material.read` | `courseMaterialsCreate` | `admin`, `instructor` | 14 |
 | `longread.read` | longreads | `own`, `organization` | yes | - | `lessonsRead` | `admin`, `manager`, `instructor`, `learner` | 5 |
 | `longread.edit` | longreads | `own`, `organization` | yes | `longread.read` | `lessonsCreate` | `admin`, `instructor` | 20 |
 | `assessment.read` | tests | `own`, `organization` | yes | - | `assessmentsRead` | `admin`, `manager`, `instructor`, `learner` | 3 |
