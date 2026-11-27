@@ -2622,6 +2622,27 @@ The assessment folder response also includes `color`. Create and update accept
 `purple`, `green`, `blue`, `orange`, `pink` and `gray`. The default is
 `purple`. Omitting color on update keeps the existing value.
 
+### Library folders: courses and assignments (PR 581)
+
+One folder tree per section: `scope` is `course` or `assignment`. Folders are stored in `library_folders`
+(organization, scope, parent, name, colour). `Course.folderId` and `Assignment.folderId` are optional; a null
+value means the root, so all existing courses and assignments stay in the root.
+
+| Endpoint | Contract |
+| --- | --- |
+| `GET /library-folders?scope=` | Returns `{ folders, itemCount, rootItemCount }`. Each folder has `id`, `name`, `parentId`, `color`, `childFolderCount`, direct `itemCount` and recursive `totalItemCount`. |
+| `POST /library-folders` | Accepts `{ scope, name, color?, parentId? }`. Returns the created folder. |
+| `PATCH /library-folders/:id` | Accepts `{ name?, color?, parentId? }` (rename, recolour, move). |
+| `GET /library-folders/:id/delete-impact` | Returns `{ folders, movedToRoot: [{ id, title }] }` for the folder and its subtree. For assignments the title is the course title. |
+| `DELETE /library-folders/:id` | Soft-deletes the subtree. Its courses or assignments move to the root and are never deleted. |
+| `POST /library-folders/bulk` | Accepts `{ kind: 'folder' \| 'item', action: 'move' \| 'delete', ids, parentId? }`, 1–100 ids. Delete is for folders only. Result rows follow the assessment folder bulk contract. |
+
+Folder rules are shared with checklists and tests: names are unique among siblings without regard to case,
+five levels at most, no cycles (400 for depth or cycle, 409 for a duplicate name).
+`GET /courses` and `GET /assignments` accept `folderId` (a UUID, or `root` for items outside any folder).
+`POST /courses` and `POST /assignments` accept `folderId`; a folder of another scope, another organization or a
+deleted one answers 404. Moving a course or an assignment is done through the bulk route.
+
 ### Assessment author library (PR 526)
 
 `GET /assessments/library` requires `assessment.author`. The response contains

@@ -22,6 +22,10 @@ import {
   type CourseInstructor,
 } from '../shared/api/courses.js';
 import { formatUserName, usersAvailableToAdd } from './admin-courses/model.js';
+import { FolderCreateMenu } from '../shared/folders/FolderCreateMenu.js';
+import { FolderLibraryTable, type FolderLibraryActions } from '../shared/folders/FolderLibraryTable.js';
+import { canAddSubfolder } from '../shared/folders/folderTree.js';
+import { useLibraryFolders } from '../shared/folders/useLibraryFolders.js';
 import { OrganizationLongreadSettings, useOrganizationLongreads } from '../features/longread-settings/OrganizationLongreadSettings.js';
 
 type CourseStatus = 'draft' | 'published' | 'archived';
@@ -35,6 +39,7 @@ type AdminCourseSummary = {
   status: CourseStatus;
   createdAt: string;
   updatedAt: string;
+  folderId?: string | null;
   _count: { lessons: number };
 };
 
@@ -81,6 +86,10 @@ export function AdminCoursesPage() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | CourseStatus>('all');
   const dialogRef = useRef<HTMLDialogElement>(null);
+  // PR 581: folders of the course list. Without access (or when they fail to load) the plain list stays.
+  const library = useLibraryFolders('course');
+  const libraryActions = useRef<FolderLibraryActions>(null);
+  const folderFilter = library.status === 'loaded' ? library.id ?? 'root' : library.status === 'loading' ? 'root' : undefined;
 
   const instructorsDialogRef = useRef<HTMLDialogElement>(null);
   const [instructorsCourse, setInstructorsCourse] = useState<AdminCourseSummary | null>(null);
@@ -98,16 +107,18 @@ export function AdminCoursesPage() {
 
   const { state: pageState, reload: loadData } = useAsyncData<AdminCoursesData>(
     async () => {
-      const result = await (listCourses({ page, pageSize: 20 }) as Promise<PaginatedResponse<AdminCourseSummary>>);
+      const result = await (listCourses({ page, pageSize: 20, ...(folderFilter ? { folderId: folderFilter } : {}) }) as Promise<PaginatedResponse<AdminCourseSummary>>);
       return { courses: result.items, total: result.total, pageSize: result.pageSize };
     },
-    [page, t],
+    [page, t, folderFilter],
     {
       unauthenticated: t('admin.courses.sessionExpired', 'Your session expired. Sign in again.'),
       error: t('admin.courses.loadError', 'Unable to load courses. Try again later.'),
     },
   );
   const longreads = useOrganizationLongreads();
+  // Another folder starts from its first page.
+  useEffect(() => { setPage(1); }, [folderFilter]);
 
   useEffect(() => {
     if (showCreate) dialogRef.current?.showModal();
@@ -147,9 +158,11 @@ export function AdminCoursesPage() {
         slug,
         description: formDescription.trim() || undefined,
         status: 'draft',
+        ...(library.status === 'loaded' && library.id ? { folderId: library.id } : {}),
       });
       setShowCreate(false);
       void loadData();
+      void library.reload();
     } catch (error) {
       const message =
         error instanceof ApiClientError && error.status === 409
@@ -167,6 +180,7 @@ export function AdminCoursesPage() {
       await deleteCourse(deletingId);
       setDeletingId(null);
       void loadData();
+      void library.reload();
     } catch {
       setDeletingId(null);
     }
@@ -333,11 +347,11 @@ export function AdminCoursesPage() {
         eyebrow={t('admin.courses.eyebrow', 'Learning content')}
         title={t('admin.courses.title', 'Courses')}
         subtitle={t('admin.courses.subtitle', 'Create and manage courses for your organization.')}
-        action={
-          <Button variant="primary" onClick={openCreate} type="button">
+        action={library.data
+          ? <FolderCreateMenu canCreateFolder={canAddSubfolder(library.data.folders, library.id)} itemLabel={t('admin.courses.createMenu.course', 'Course')} onCreateFolder={() => libraryActions.current?.createFolder()} onCreateItem={openCreate} t={t} />
+          : <Button variant="primary" onClick={openCreate} type="button">
             + {t('admin.courses.create', 'Create course')}
-          </Button>
-        }
+          </Button>}
       />
 
       <StatsGrid>
@@ -377,21 +391,27 @@ export function AdminCoursesPage() {
         }
       />
 
-      <DataTable
-        label={t('admin.courses.title', 'Courses')}
-        columns={courseColumns}
-        rows={filteredCourses}
-        keyExtractor={(c) => c.id}
-        responsiveDetails={{ label: t('courses.details'), expandLabel: (c) => `${t('courses.details')}: ${c.title}`, collapseLabel: (c) => `${t('courses.details')}: ${c.title}` }}
-        emptyMessage={t('admin.courses.empty', 'No courses yet. Create your first course.')}
-      />
-
-      <Pagination
-        page={page}
-        pageSize={pageState.data.pageSize}
-        total={pageState.data.total}
-        onPage={setPage}
-      />
+      {library.data ? (
+        <FolderLibraryTable<AdminCourseSummary>
+          actionsRef={libraryActions} library={library} items={filteredCourses} columns={courseColumns}
+          itemTitle={(course) => course.title} showFolders={page === 1 && !search.trim() && statusFilter === 'all'}
+          afterChange={() => void loadData()} label={t('admin.courses.title', 'Courses')}
+          emptyMessage={t('admin.courses.empty', 'No courses yet. Create your first course.')} t={t}
+          footer={<Pagination page={page} pageSize={pageState.data.pageSize} total={pageState.data.total} onPage={setPage} />}
+        />
+      ) : (
+        <>
+          <DataTable
+            label={t('admin.courses.title', 'Courses')}
+            columns={courseColumns}
+            rows={filteredCourses}
+            keyExtractor={(c) => c.id}
+            responsiveDetails={{ label: t('courses.details'), expandLabel: (c) => `${t('courses.details')}: ${c.title}`, collapseLabel: (c) => `${t('courses.details')}: ${c.title}` }}
+            emptyMessage={t('admin.courses.empty', 'No courses yet. Create your first course.')}
+          />
+          <Pagination page={page} pageSize={pageState.data.pageSize} total={pageState.data.total} onPage={setPage} />
+        </>
+      )}
 
       {/* Create course dialog */}
       <dialog className="admin-dialog" ref={dialogRef} onClose={() => setShowCreate(false)}>

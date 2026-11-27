@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 
+import { folderFilterOf } from '../../common/folder-filter.schema.js';
 import { paginationQuerySchema } from '../../common/pagination.schema.js';
 import { AuthGuard } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
@@ -32,7 +33,7 @@ export class CoursesController {
     const { page, pageSize } = paginationQuerySchema.parse(query);
     const user = request.currentUser!;
     const instructorId = this.courseAccess.isInstructorScoped(user) ? user.id : undefined;
-    return this.coursesService.listCourses(user.organizationId, page, pageSize, instructorId, isLearnerOnly(user.roles) && !isOrgWideGrant(user));
+    return this.coursesService.listCourses(user.organizationId, page, pageSize, instructorId, isLearnerOnly(user.roles) && !isOrgWideGrant(user), folderFilterOf(query));
   }
 
   @Get('summary')

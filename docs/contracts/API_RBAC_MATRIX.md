@@ -438,6 +438,13 @@ Links (PR 572): `POST /users/:id/links` (`user.invitation.manage` roles: adminis
 `POST /users/:id/temporary-password` uses the `user.reset-password` permission and the same object filters as `POST /users/{id}/reset-password` (administrator: whole organization; manager: own team; delegated registrar: own department tree, never above `learner`); the caller cannot issue one for themselves. `POST /users` with `temporaryPassword: true` follows the existing `user.create` rules. While `mustChangePassword` is set, `AuthGuard` refuses every guarded route with `403 PASSWORD_CHANGE_REQUIRED` whatever the role; custom roles do not change this.
 
 
+### Library folders (PR 581)
+
+`/library-folders` routes are open to `assignments.create` roles, and the service decides by scope: folders of
+courses are managed by administrators only, folders of assignments by administrators and managers. Instructors
+and learners do not manage folders. A learner still sees an assigned course through the assignment. Per-folder
+access by role is not part of this PR (see PR 575–576).
+
 ### Assessment folders (PR 524)
 
 All `/assessment-folders` routes require `assessment.author`. Authors work with

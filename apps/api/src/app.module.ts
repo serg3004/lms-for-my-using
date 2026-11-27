@@ -8,6 +8,7 @@ import { DatabaseModule } from './database/database.module.js';
 import { AssessmentAttemptsModule } from './modules/assessment-attempts/assessment-attempts.module.js';
 import { AssessmentQuestionsModule } from './modules/assessment-questions/assessment-questions.module.js';
 import { AssessmentsModule } from './modules/assessments/assessments.module.js';
+import { LibraryFoldersModule } from './modules/library-folders/library-folders.module.js';
 import { AssignmentsModule } from './modules/assignments/assignments.module.js';
 import { BackgroundJobsModule } from './modules/background-jobs/background-jobs.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
@@ -86,6 +87,7 @@ import { UserFieldsModule } from './modules/user-fields/public.js';
     AssessmentAttemptsModule,
     AssessmentQuestionsModule,
     AssessmentsModule,
+    LibraryFoldersModule,
     AssignmentsModule,
     BackgroundJobsModule,
     AuthModule,

@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 
+import { folderFilterOf } from '../../common/folder-filter.schema.js';
 import { paginationQuerySchema } from '../../common/pagination.schema.js';
 import { AuthGuard } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
@@ -28,9 +29,9 @@ export class AssignmentsController {
     const userId = isLearnerOnly(currentUser.roles) ? currentUser.id : undefined;
     const { page, pageSize } = paginationQuerySchema.parse(query);
     if (isInstructorCourseScoped(currentUser)) {
-      return this.assignmentsService.listAssignments(currentUser, userId, page, pageSize, currentUser.id);
+      return this.assignmentsService.listAssignments(currentUser, userId, page, pageSize, currentUser.id, folderFilterOf(query));
     }
-    return this.assignmentsService.listAssignments(currentUser, userId, page, pageSize);
+    return this.assignmentsService.listAssignments(currentUser, userId, page, pageSize, undefined, folderFilterOf(query));
   }
 
   @Get(':id')

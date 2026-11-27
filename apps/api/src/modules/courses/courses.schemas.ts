@@ -21,11 +21,13 @@ export const createCourseSchema = z.object({
   durationMinutes: z.number().int().min(1).max(10_000).optional(),
   status: courseStatusSchema.default('draft'),
   selfEnrollmentEnabled: z.boolean().default(false),
+  /** PR 581: the folder of the course list the course is created in; moving it later is done by the folder tools. */
+  folderId: z.guid().nullable().optional(),
 });
 
 /** zod 4 applies `.default()` inside `.partial()`, so the defaulted fields are re-declared without defaults: a PATCH must change only what it sends. */
 export const updateCourseSchema = createCourseSchema
-  .omit({ organizationId: true })
+  .omit({ organizationId: true, folderId: true })
   .extend({ status: courseStatusSchema, selfEnrollmentEnabled: z.boolean() })
   .partial();
 

@@ -439,6 +439,7 @@ model Organization {
   notifications              Notification[]
   checklists                 Checklist[]
   assessmentFolders          AssessmentFolder[]
+  libraryFolders             LibraryFolder[]
   checklistFolders           ChecklistFolder[]
   checklistPhotos            ChecklistPhoto[]
   checklistTemplates         ChecklistTemplate[]
@@ -558,6 +559,7 @@ model User {
   checklistsCreated          Checklist[]                @relation("ChecklistCreatedBy")
   assessmentsCreated        Assessment[]
   assessmentFoldersCreated  AssessmentFolder[]
+  libraryFoldersCreated     LibraryFolder[]    @relation("LibraryFolderCreatedBy")
   checklistFoldersCreated    ChecklistFolder[]          @relation("ChecklistFolderCreatedBy")
   checklistInstances         ChecklistInstance[]        @relation("ChecklistInstanceUser")
   checklistInstancesAssigned ChecklistInstance[]        @relation("ChecklistInstanceAssignedBy")
@@ -1010,9 +1012,14 @@ model Course {
   assessmentPlacements AssessmentPlacement[]
   assessmentAttempts   AssessmentAttempt[]
 
+  /// PR 581: the folder of the course list (scope `course`); null = the root level.
+  folderId String?        @map("folder_id") @db.Uuid
+  folder   LibraryFolder? @relation("CourseFolder", fields: [organizationId, folderId], references: [organizationId, id], onDelete: Restrict)
+
   @@unique([organizationId, slug])
   @@index([organizationId, status])
   @@index([organizationId, createdAt, id])
+  @@index([organizationId, folderId])
   @@map("courses")
 }
 
@@ -1149,8 +1156,13 @@ model Assignment {
   @@index([courseId, status])
   @@index([userId])
   @@index([groupId])
+  /// PR 581: the folder of the assignment list (scope `assignment`); null = the root level.
+  folderId String?        @map("folder_id") @db.Uuid
+  folder   LibraryFolder? @relation("AssignmentFolder", fields: [organizationId, folderId], references: [organizationId, id], onDelete: Restrict)
+
   @@index([organizationId, departmentId])
   @@index([dueAt])
+  @@index([organizationId, folderId])
   @@map("assignments")
 }
 
@@ -1259,6 +1271,31 @@ model AssessmentFolder {
   @@unique([organizationId, id])
   @@index([organizationId, parentId])
   @@map("assessment_folders")
+}
+
+/// PR 581: one folder tree table for the sections that get folders after checklists and tests (courses, assignments, materials).
+/// `scope` keeps the trees apart; the tree rules (depth, names, no cycles) are in `common/folder-rules`.
+model LibraryFolder {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  scope          String
+  parentId       String?         @map("parent_id") @db.Uuid
+  name           String
+  color          String          @default("purple")
+  createdBy      String?         @map("created_by") @db.Uuid
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt      DateTime?       @map("deleted_at") @db.Timestamptz
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent         LibraryFolder?  @relation("LibraryFolderTree", fields: [organizationId, parentId], references: [organizationId, id], onDelete: Restrict)
+  children       LibraryFolder[] @relation("LibraryFolderTree")
+  creator        User?           @relation("LibraryFolderCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+  courses        Course[]        @relation("CourseFolder")
+  assignments    Assignment[]    @relation("AssignmentFolder")
+
+  @@unique([organizationId, id])
+  @@index([organizationId, scope, parentId])
+  @@map("library_folders")
 }
 
 model AssessmentAssignment {

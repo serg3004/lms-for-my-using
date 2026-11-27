@@ -8,7 +8,7 @@ export function getCoursePath(courseId: string) {
   return `${coursesPath}/${encodeURIComponent(courseId)}`;
 }
 
-export function listCourses(params?: { page?: number; pageSize?: number }) {
+export function listCourses(params?: { page?: number; pageSize?: number; folderId?: string }) {
   const qs = params ? `?${new URLSearchParams(Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))).toString()}` : '';
   return apiRequest<PaginatedResponse<CourseSummary>>(`${coursesPath}${qs}`);
 }
@@ -34,6 +34,8 @@ export type CreateCourseInput = {
   category?: string;
   durationMinutes?: number;
   status?: string;
+  /** PR 581: the folder of the course list the course is created in. */
+  folderId?: string | null;
 };
 
 export type UpdateCourseInput = {

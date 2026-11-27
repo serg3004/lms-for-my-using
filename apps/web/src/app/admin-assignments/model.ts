@@ -19,6 +19,7 @@ export type Assignment = {
   includeDescendants?: boolean;
   status: string;
   dueAt: string | null;
+  folderId?: string | null;
 };
 export type Progress = {
   id: string;

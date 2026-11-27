@@ -1,5 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
+import { assertLibraryFolder } from '../../common/library-folder-check.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { ManagerTeamScope, normalizeActor, unrestrictedActor } from '../manager-team-scope/public.js';
@@ -14,6 +15,7 @@ const assignmentSelect = {
   groupId: true,
   departmentId: true,
   includeDescendants: true,
+  folderId: true,
   status: true,
   dueAt: true,
   createdAt: true,
@@ -29,7 +31,7 @@ export class AssignmentsService {
     private readonly teamScope: ManagerTeamScope = new ManagerTeamScope(),
   ) {}
 
-  async listAssignments(actorInput: TeamScopeActor | string, userId: string | undefined, page: number, pageSize: number, instructorId?: string) {
+  async listAssignments(actorInput: TeamScopeActor | string, userId: string | undefined, page: number, pageSize: number, instructorId?: string, folderId?: string | null) {
     const actor = normalizeActor(actorInput);
     const organizationId = actor.organizationId;
     const skip = (page - 1) * pageSize;
@@ -38,6 +40,7 @@ export class AssignmentsService {
       ...(userId !== undefined ? { userId } : {}),
       ...(instructorId ? { course: { instructors: { some: { instructorId, organizationId, deletedAt: null } } } } : {}),
       ...this.teamScope.assignment(actor),
+      ...(folderId !== undefined ? { folderId } : {}),
       deletedAt: null,
     } as const;
     const [items, total] = await Promise.all([
@@ -68,6 +71,7 @@ export class AssignmentsService {
 
   async createAssignment(input: CreateAssignmentInput, actor: TeamScopeActor = unrestrictedActor(input.organizationId)) {
     await this.ensureCourseExists(input.courseId, input.organizationId);
+    await assertLibraryFolder(this.prisma, input.organizationId, 'assignment', input.folderId);
 
     if (input.userId) {
       await this.ensureUserExists(input.userId, input.organizationId, actor);

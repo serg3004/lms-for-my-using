@@ -1015,3 +1015,7 @@ Migration `20261125140000_assessment_materials` adds nullable `material` columns
 ### Assessment presentation (PR 538)
 
 Migration `20261126090000_assessment_presentation` adds nullable JSONB columns for assessment presentation and the organization's default assessment theme. Apply it before starting the new API. Existing assessments keep their current behavior without a backfill. The migration adds a constraint that requires a null time limit when the title screen is explicitly disabled. On application rollback, leave the columns in place to preserve saved themes and presentation settings.
+
+### Library folders (PR 581)
+
+Migration `20261127200000_library_folders` creates the `library_folders` table (one tree per section, `course` or `assignment`) and adds a nullable `folder_id` to `courses` and `assignments`. Existing rows keep a null folder, which means the root, so no backfill is needed. Apply the migration before starting the new API. On application rollback, leave the table and columns in place; the older version ignores them and the folders are kept for the next release.

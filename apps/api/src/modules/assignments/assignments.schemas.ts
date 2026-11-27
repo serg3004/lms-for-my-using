@@ -12,6 +12,8 @@ export const createAssignmentSchema = z
     includeDescendants: z.boolean().default(false),
     status: assignmentStatusSchema.default('assigned'),
     dueAt: z.coerce.date().optional(),
+    /** PR 581: the folder of the assignment list the assignment is created in. */
+    folderId: z.guid().nullable().optional(),
   })
   .refine((input) => [input.userId, input.groupId, input.departmentId].filter(Boolean).length === 1, {
     message: 'Assignment must target exactly one of userId, groupId, or departmentId',

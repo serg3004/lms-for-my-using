@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 
 import { releaseSlugOnDelete } from '../../common/soft-delete-slug.js';
+import { assertLibraryFolder } from '../../common/library-folder-check.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { CourseAccessPolicy } from '../course-access/public.js';
@@ -24,6 +25,7 @@ const courseSelect = {
   durationMinutes: true,
   status: true,
   selfEnrollmentEnabled: true,
+  folderId: true,
   createdAt: true,
   updatedAt: true,
   _count: {
@@ -41,13 +43,14 @@ export class CoursesService {
     private readonly auditLog: AuditLogService = new AuditLogService(prisma),
   ) {}
 
-  async listCourses(organizationId: string, page: number, pageSize: number, instructorId?: string, hideDrafts = false) {
+  async listCourses(organizationId: string, page: number, pageSize: number, instructorId?: string, hideDrafts = false, folderId?: string | null) {
     const skip = (page - 1) * pageSize;
     const where = {
       organizationId,
       deletedAt: null,
       ...(instructorId ? { instructors: { some: { instructorId, organizationId, deletedAt: null } } } : {}),
       ...(hideDrafts ? { status: { not: 'draft' as const } } : {}),
+      ...(folderId !== undefined ? { folderId } : {}),
     } as const;
     const [items, total] = await Promise.all([
       this.prisma.course.findMany({ where, orderBy: { createdAt: 'desc' }, skip, take: pageSize, select: courseSelect }),
@@ -177,6 +180,7 @@ export class CoursesService {
     if (!organization) {
       throw new NotFoundException('Organization not found');
     }
+    await assertLibraryFolder(this.prisma, input.organizationId, 'course', input.folderId);
 
     const existingCourse = await this.prisma.course.findUnique({
       where: {
