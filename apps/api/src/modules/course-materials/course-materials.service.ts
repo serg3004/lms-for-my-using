@@ -42,7 +42,13 @@ const courseMaterialSelect = {
 const LIBRARY_LIST_LIMIT = 500;
 
 function slugOf(title: string) {
-  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+  // Runs of other characters become one dash; the dashes at both ends are cut by hand (no backtracking pattern on user text).
+  const dashed = title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  let start = 0;
+  let end = dashed.length;
+  while (start < end && dashed[start] === '-') start += 1;
+  while (end > start && dashed[end - 1] === '-') end -= 1;
+  const slug = dashed.slice(start, end).slice(0, 60);
   return slug.length >= 3 ? slug : 'material';
 }
 
