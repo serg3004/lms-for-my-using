@@ -2337,3 +2337,9 @@
 .assessment-folder-tree__row { display: flex; align-items: center; gap: var(--space-1); }
 .assessment-folder-tree [aria-current="page"] { color: var(--color-text); text-decoration: underline; }
 .assessment-folder-tree__row > button:first-child:not(:only-child) { min-height: 44px; }
+
+/* PR 516: the scales / answer sets switch is a small segmented control, not a second tab strip. */
+.library-switch { display: inline-flex; margin-block: var(--space-3); padding: 2px; border: 1px solid var(--color-border); border-radius: 999px; background: var(--color-surface); }
+.library-switch__option { display: inline-flex; align-items: center; min-block-size: 44px; padding-inline: var(--space-4); border-radius: 999px; color: var(--color-text-muted); text-decoration: none; font-weight: 600; }
+.library-switch__option[aria-current="page"] { background: color-mix(in srgb, var(--color-primary) 14%, var(--color-surface)); color: var(--color-primary); }
+.library-switch__option:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }

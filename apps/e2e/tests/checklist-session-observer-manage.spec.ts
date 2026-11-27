@@ -115,4 +115,13 @@ test.describe('instructor and mentor manage organization sessions (PR 360б)', (
     await expect(page.getByText('Alex Learner').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Sessions to conduct' })).toHaveCount(0);
   });
+
+  test('PR 516: the status is a filter in the filter card, not a second strip of tabs under the section tabs', async ({ page }) => {
+    await mockApi(page, 'admin');
+    await page.goto('/admin/checklists/sessions');
+    await expect(page.getByText('Alex Learner').first()).toBeVisible();
+    await expect(page.getByRole('tablist')).toHaveCount(0);
+    await page.getByLabel('Status', { exact: true }).selectOption('completed');
+    await expect(page).toHaveURL(/status=completed/);
+  });
 });

@@ -367,21 +367,15 @@ export function AdminChecklistSessionsPage({ variant = 'admin' }: { variant?: 'a
           <button aria-label={t('admin.checklists.close', 'Close')} className="admin-inline-banner__close" onClick={() => setNotice(null)} type="button">×</button>
         </div>
       )}
-      <div aria-label={t('admin.checklists.sessions.statusFilter', 'Status')} className="admin-org-tabs" role="tablist">
-        {SESSION_STATUS_TABS.map((tab) => (
-          <button
-            aria-selected={statusTab === tab}
-            className="admin-org-tabs__tab"
-            key={tab}
-            onClick={() => changeFilter({ status: tab })}
-            role="tab"
-            type="button"
-          >
-            {tab === 'all' ? t('admin.checklists.allStatuses', 'All statuses') : statusLabels[tab]}
-          </button>
-        ))}
-      </div>
       <div className="admin-card admin-session-filters">
+        {/* PR 516: the status is one of the filters, not a second strip of tabs under the section tabs. */}
+        <FormField id="sessions-filter-status" label={t('admin.checklists.sessions.statusFilter', 'Status')}>
+          <select id="sessions-filter-status" onChange={(e) => changeFilter({ status: e.target.value as typeof statusTab })} value={statusTab}>
+            {SESSION_STATUS_TABS.map((tab) => (
+              <option key={tab} value={tab}>{tab === 'all' ? t('admin.checklists.allStatuses', 'All statuses') : statusLabels[tab]}</option>
+            ))}
+          </select>
+        </FormField>
         <FormField id="sessions-filter-period" label={t('admin.checklists.sessions.periodLabel', 'Period')}>
           <select id="sessions-filter-period" onChange={(e) => changeFilter({ period: e.target.value as SessionPeriod })} value={period}>
             {SESSION_PERIODS.map((option) => (
