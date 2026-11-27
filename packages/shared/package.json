@@ -29,6 +29,11 @@
       "types": "./src/constants/roles.ts",
       "import": "./dist/constants/roles.js"
     },
+    "./assessment-presentation": {
+      "types": "./src/assessment-presentation.ts",
+      "development": "./src/assessment-presentation.ts",
+      "import": "./dist/assessment-presentation.js"
+    },
     "./assessment-policy": {
       "types": "./src/assessment-policy.ts",
       "development": "./src/assessment-policy.ts",

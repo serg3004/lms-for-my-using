@@ -44,11 +44,12 @@ function freezeGradedAnswers(
   questions: ({ id: string; bankSampleCandidate?: boolean } & Prisma.InputJsonObject)[],
   answers: ReturnType<typeof gradeAssessmentAnswers>,
   assessment: { id: string; title: string; passingScore: number; maxAttempts: number | null;
-    passMessage?: string | null; failMessage?: string | null; showCorrectAnswers?: boolean; policy?: Prisma.JsonValue },
+    passMessage?: string | null; failMessage?: string | null; showCorrectAnswers?: boolean; policy?: Prisma.JsonValue; presentation?: Prisma.JsonValue },
 ) {
   const { id, title, passingScore, maxAttempts } = assessment;
   const resultSettings = {
     passMessage: assessment.passMessage ?? null, failMessage: assessment.failMessage ?? null,
+    presentation: assessment.presentation ?? null,
     showCorrectAnswers: assessment.showCorrectAnswers ?? false, policy: assessment.policy ?? null,
   };
   return answers.map((answer, index) => {
@@ -560,6 +561,7 @@ export class AssessmentAttemptsService {
         status: true,
         passingScore: true,
         passMessage: true,
+        presentation: true,
         failMessage: true,
         showCorrectAnswers: true,
         maxAttempts: true,

@@ -47,8 +47,9 @@ const outsideCatalog: Record<string, string> = {
 
 const inCatalog = (file: string) => catalogFiles.some((prefix) => file.startsWith(prefix));
 
-// Cross-course placement management stays with system administrators.
-const adminOnlyPlacementRoutes = [
+// Placement, assignment and organization theme management stay with administrators.
+const adminOnlyAssessmentRoutes = [
+  'AssessmentsController.setDefaultTheme',
   'AssessmentsController.attachPlacement',
   'AssessmentsController.detachPlacement',
   'AssessmentsController.listPlacements',
@@ -66,15 +67,15 @@ const roleRoutes: Route[] = controllerEntries.flatMap(({ file, Controller }) =>
     return roles?.length ? [{ id: `${Controller.name}.${method}`, file, roles }] : [];
   }),
 );
-const catalogRoutes = roleRoutes.filter((route) => inCatalog(route.file) && !adminOnlyPlacementRoutes.includes(route.id));
+const catalogRoutes = roleRoutes.filter((route) => inCatalog(route.file) && !adminOnlyAssessmentRoutes.includes(route.id));
 
 describe('permission catalog (PR 479)', () => {
   it('maps every role-protected route of the seven areas to catalog actions, and nothing else', () => {
     expect(catalogRoutes.map((route) => route.id).sort()).toEqual(Object.keys(permissionRouteMap).sort());
   });
 
-  it('keeps cross-course assessment placement routes restricted to system administrators', () => {
-    for (const id of adminOnlyPlacementRoutes) {
+  it('keeps assessment placements, assignments and organization themes restricted to administrators', () => {
+    for (const id of adminOnlyAssessmentRoutes) {
       expect(roleRoutes.find((route) => route.id === id)?.roles).toEqual(['admin']);
       expect(Object.keys(permissionRouteMap)).not.toContain(id);
     }
