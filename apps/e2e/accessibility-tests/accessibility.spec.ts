@@ -42,6 +42,9 @@ async function loginAs(page: Page, role: DemoRole) {
 const severityOrder = ['critical', 'serious', 'moderate', 'minor', 'unknown'] as const;
 
 async function auditAccessibility(page: Page, testInfo: TestInfo, name = 'axe-findings', include?: string) {
+  // Buttons fade their colour in over 0.15 s: axe reads a colour half-way between two states as low contrast (the pending-invitation
+  // 'Revoke' button showed #e14242 instead of #dc2626 on main). Let every running transition and animation end before the scan.
+  await page.evaluate(() => Promise.allSettled(document.getAnimations().map((animation) => animation.finished)));
   const builder = new AxeBuilder({ page });
   if (include) builder.include(include);
   const results = await builder
