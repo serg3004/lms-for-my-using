@@ -8,6 +8,7 @@ import { getLoginErrorMessage } from '../shared/apiErrorFeedback.js';
 import { hasValidationErrors, validateRequiredFields, type FormValidationErrors } from '../shared/formValidation.js';
 import { LoginLanguageMenu } from '../shared/LoginLanguageMenu.js';
 import { SkipLink } from '../shared/ui.js';
+import { AuthorshipNote } from '../shared/AuthorshipNote.js';
 import { QrLoginPanel } from '../features/qr-login/QrLoginPanel.js';
 
 type LoginFormState = {
@@ -410,6 +411,7 @@ export function LoginPage() {
           </form>
         </div>
       </section>
+      <AuthorshipNote />
       </main>
     </>
   );

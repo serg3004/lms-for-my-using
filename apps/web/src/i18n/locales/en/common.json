@@ -184,7 +184,8 @@
   },
   "app": {
     "title": "LMS",
-    "subtitle": "Learning management system"
+    "subtitle": "Learning management system",
+    "authorship": "Idea and development: Sergey Afanaskov"
   },
   "nav": {
     "home": "Home",

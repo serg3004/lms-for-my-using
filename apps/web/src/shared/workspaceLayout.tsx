@@ -4,6 +4,7 @@ import { NavIcon, navIconForHref } from './navIcons.js';
 import { useNavigationDrawer } from './navigationDrawer.js';
 import { SidebarCollapseToggle, useSidebarCollapsed } from './sidebarCollapse.js';
 import { Avatar, SkipLink } from './ui.js';
+import { AuthorshipNote } from './AuthorshipNote.js';
 
 export type WorkspaceNavItem = {
   label: string;
@@ -152,6 +153,7 @@ export function WorkspaceLayout({
           tabIndex={-1}
         >
           {children}
+          <AuthorshipNote />
         </main>
       </div>
       {mobileNavigation}
