@@ -24,6 +24,7 @@ module.exports = {
     '/src/integration/assessment-question-types\\.database\\.spec\\.ts$',
     '/src/integration/assessment-folders\\.database\\.spec\\.ts$',
     '/src/integration/library-folders\\.database\\.spec\\.ts$',
+    '/src/integration/material-library\\.database\\.spec\\.ts$',
     '/src/integration/api\\.database-smoke\\.spec\\.ts$',
     '/src/integration/checklist-snapshot\\.database\\.spec\\.ts$',
     '/src/integration/checklist-session-domain\\.database\\.spec\\.ts$',

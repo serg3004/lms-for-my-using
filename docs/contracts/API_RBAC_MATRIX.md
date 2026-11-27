@@ -445,6 +445,13 @@ courses are managed by administrators only, folders of assignments by administra
 and learners do not manage folders. A learner still sees an assigned course through the assignment. Per-folder
 access by role is not part of this PR (see PR 575–576).
 
+### Material library (PR 582)
+
+`/material-library` routes and the connect routes use the material edit roles (administrator, instructor). Only an
+administrator creates a library material and manages `material` folders. An instructor can connect a library material
+to their own courses and see it through that connection, but cannot edit it, and cannot connect a material that belongs
+to another course. Learners read connected materials through the course as before; the download rules are unchanged.
+
 ### Assessment folders (PR 524)
 
 All `/assessment-folders` routes require `assessment.author`. Authors work with

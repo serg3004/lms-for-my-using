@@ -10,6 +10,8 @@ export type MaterialRow = {
   fileUrl: string | null;
   sizeBytes: number | null;
   status: string;
+  /** PR 582: connected from the library; it is disconnected here, never deleted or edited. */
+  connected?: boolean;
 };
 
 function formatSize(sizeBytes: number | null, fallback: string) {
@@ -19,10 +21,11 @@ function formatSize(sizeBytes: number | null, fallback: string) {
   return `${sizeBytes} B`;
 }
 
-export function MaterialTable({ materials, onEdit, onStatusChange, t }: {
+export function MaterialTable({ materials, onEdit, onStatusChange, onDisconnect, t }: {
   materials: MaterialRow[];
   onEdit: (materialId: string) => void;
   onStatusChange: (materialId: string, status: MaterialStatus) => void;
+  onDisconnect?: (materialId: string) => void;
   t: TFunction;
 }) {
   const statusLabels: Record<'active' | 'archived', string> = {
@@ -43,9 +46,11 @@ export function MaterialTable({ materials, onEdit, onStatusChange, t }: {
         : material.title,
     },
     { key: 'kind', label: t('admin.materials.col.kind', 'Kind'), priority: 'secondary', render: (m) => <StatusBadge>{kindLabels[m.kind]}</StatusBadge> },
-    { key: 'status', label: t('admin.materials.col.status', 'Status'), priority: 'primary', render: (m) => <AdminStatusSelect value={m.status} statuses={['active', 'archived']} labels={statusLabels} onChange={(status) => onStatusChange(m.id, status)} /> },
+    { key: 'status', label: t('admin.materials.col.status', 'Status'), priority: 'primary', render: (m) => m.connected ? statusLabels[m.status as 'active' | 'archived'] ?? m.status : <AdminStatusSelect value={m.status} statuses={['active', 'archived']} labels={statusLabels} onChange={(status) => onStatusChange(m.id, status)} /> },
     { key: 'size', label: t('admin.materials.col.size', 'Size'), priority: 'secondary', render: (m) => formatSize(m.sizeBytes, t('admin.materials.unknownSize', '—')) },
-    { key: 'actions', label: '', priority: 'secondary', render: (m) => <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => onEdit(m.id)}>{t('admin.materials.edit', 'Edit')}</button> },
+    { key: 'actions', label: '', priority: 'secondary', render: (m) => m.connected
+      ? <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => onDisconnect?.(m.id)}>{t('admin.materials.connect.disconnect', 'Disconnect')}</button>
+      : <button className="admin-btn admin-btn--sm admin-btn--secondary" type="button" onClick={() => onEdit(m.id)}>{t('admin.materials.edit', 'Edit')}</button> },
   ];
   return (
     <DataTable

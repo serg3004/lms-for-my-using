@@ -48,7 +48,8 @@ export class CourseAccessPolicy {
     let record: { id: string } | null;
     switch (resource) {
       case 'lesson': record = await this.prisma.lesson.findFirst({ where: { ...where, course }, select: { id: true } }); break;
-      case 'material': record = await this.prisma.courseMaterial.findFirst({ where: { ...where, course }, select: { id: true } }); break;
+      // PR 582: a library material is reachable through its connections as well as through its own course.
+      case 'material': record = await this.prisma.courseMaterial.findFirst({ where: { ...where, OR: [{ course }, { links: { some: { course } } }] }, select: { id: true } }); break;
       case 'assessment': record = await this.prisma.assessment.findFirst({ where: { ...where, course }, select: { id: true } }); break;
       case 'assignment': record = await this.prisma.assignment.findFirst({ where: { ...where, course }, select: { id: true } }); break;
       case 'progress': record = await this.prisma.progress.findFirst({ where: { ...where, course }, select: { id: true } }); break;

@@ -28,6 +28,15 @@ export const createCourseMaterialSchema = z.object({
 
 export type CreateCourseMaterialInput = z.infer<typeof createCourseMaterialSchema>;
 
+/** PR 582: a material created in the library: no course, optional folder; the slug is generated when omitted. */
+export const createLibraryMaterialSchema = createCourseMaterialSchema.omit({ organizationId: true, courseId: true, lessonId: true }).extend({
+  slug: materialSlugSchema.optional(),
+  folderId: z.guid().nullable().optional(),
+});
+export type CreateLibraryMaterialInput = z.infer<typeof createLibraryMaterialSchema>;
+
+export const connectMaterialSchema = z.object({ materialId: z.guid(), lessonId: z.guid().nullable().optional() });
+
 export const updateCourseMaterialStatusSchema = z.object({
   status: courseMaterialStatusSchema,
 });

@@ -24,6 +24,7 @@ const AdminOrgStructureToolsPage = lazy(() => import('../AdminOrgStructureToolsP
 const AdminDepartmentUsersPage = lazy(() => import('../AdminDepartmentUsersPage.js').then((m) => ({ default: m.AdminDepartmentUsersPage })));
 const AdminGroupsPage = lazy(() => import('../AdminGroupsPage.js').then((m) => ({ default: m.AdminGroupsPage })));
 const AdminLessonsPage = lazy(() => import('../AdminLessonsPage.js').then((m) => ({ default: m.AdminLessonsPage })));
+const AdminMaterialLibraryPage = lazy(() => import('../AdminMaterialLibraryPage.js').then((m) => ({ default: m.AdminMaterialLibraryPage })));
 const AdminMaterialsPage = lazy(() => import('../AdminMaterialsPage.js').then((m) => ({ default: m.AdminMaterialsPage })));
 const AdminPositionCoursesPage = lazy(() => import('../AdminPositionCoursesPage.js').then((m) => ({ default: m.AdminPositionCoursesPage })));
 const AdminPositionsPage = lazy(() => import('../AdminPositionsPage.js').then((m) => ({ default: m.AdminPositionsPage })));
@@ -67,6 +68,7 @@ export function AdminRoutes() {
     <Route path="/admin/lessons/:id/longread" element={<LongreadEditorPage />} />
     <Route path="/admin/lessons" element={<AdminLessonsPage />} />
     <Route path="/admin/materials" element={<AdminMaterialsPage />} />
+    <Route path="/admin/material-library" element={<AdminMaterialLibraryPage />} />
     <Route path="/admin/assessments/analytics" element={<AdminAssessmentAnalyticsPage />} />
     <Route path="/admin/assessments/analytics/:assessmentId" element={<AdminAssessmentAnalyticsPage />} />
     <Route path="/admin/assessments" element={<AdminAssessmentBuilderPage />} />

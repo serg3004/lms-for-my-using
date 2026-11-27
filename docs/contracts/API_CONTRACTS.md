@@ -2624,7 +2624,7 @@ The assessment folder response also includes `color`. Create and update accept
 
 ### Library folders: courses and assignments (PR 581)
 
-One folder tree per section: `scope` is `course` or `assignment`. Folders are stored in `library_folders`
+One folder tree per section: `scope` is `course`, `assignment` or `material` (PR 582). Folders are stored in `library_folders`
 (organization, scope, parent, name, colour). `Course.folderId` and `Assignment.folderId` are optional; a null
 value means the root, so all existing courses and assignments stay in the root.
 
@@ -2642,6 +2642,26 @@ five levels at most, no cycles (400 for depth or cycle, 409 for a duplicate name
 `GET /courses` and `GET /assignments` accept `folderId` (a UUID, or `root` for items outside any folder).
 `POST /courses` and `POST /assignments` accept `folderId`; a folder of another scope, another organization or a
 deleted one answers 404. Moving a course or an assignment is done through the bulk route.
+
+### Material library (PR 582)
+
+A material may exist without a course (`CourseMaterial.courseId` is null), lie in a `material` folder (`folderId`) and be
+connected to courses and lessons through `course_material_links` (one link per material and course, optional lesson).
+A material created inside a course keeps that course as its own place; no data was moved and no link rows were created
+for it, so old links and downloads work as before.
+
+| Endpoint | Contract |
+| --- | --- |
+| `GET /material-library?folderId=` | Standalone materials of the organization (`folderId` is a UUID or `root`; omitted returns all, at most 500). Each row has the material fields, `folderId`, `courseId` and `usedIn: [{ courseId, courseTitle }]`. |
+| `POST /material-library` | Accepts `{ title, kind, fileUrl?, description?, folderId?, slug? }` and creates a material without a course; the slug is generated when omitted. Administrators only (403 otherwise). A file is attached with the existing `POST /materials/:id/file`. |
+| `GET /materials/:id/usage` | Returns `{ places: [{ courseId, courseTitle, lessonId, lessonTitle, own }] }`. The UI uses it to warn before deleting. |
+| `POST /courses/:courseId/materials/connect` | Accepts `{ materialId, lessonId? }`. Creates or updates the link (404 for a foreign or missing material, lesson or course; 409 if the material already belongs to this course; 403 when an instructor tries to connect a material of another course). |
+| `DELETE /courses/:courseId/materials/:materialId/connection` | Removes the link only; the material stays in the library (404 when not connected). |
+
+`GET /courses/:courseId/materials` returns the course's own materials and the connected ones; a connected row has
+`connected: true` and the `lessonId` of its link. `DELETE /materials/:id` also removes the links. Malware scan states,
+storage keys and download rules are unchanged. Moving materials between folders uses `POST /library-folders/bulk`
+with `scope: 'material'` (administrators only).
 
 ### Assessment author library (PR 526)
 

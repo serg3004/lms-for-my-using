@@ -244,6 +244,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `PATCH` | `/api/v1/courses/{courseId}/lessons/order` | `Lessons` | `bearer` |
 | `GET` | `/api/v1/courses/{courseId}/materials` | `CourseMaterials` | `bearer` |
 | `POST` | `/api/v1/courses/{courseId}/materials` | `CourseMaterials` | `bearer` |
+| `POST` | `/api/v1/courses/{courseId}/materials/connect` | `CourseMaterials` | `bearer` |
+| `DELETE` | `/api/v1/courses/{courseId}/materials/{materialId}/connection` | `CourseMaterials` | `bearer` |
 | `GET` | `/api/v1/courses/{id}` | `Courses` | `bearer` |
 | `PATCH` | `/api/v1/courses/{id}` | `Courses` | `bearer` |
 | `DELETE` | `/api/v1/courses/{id}` | `Courses` | `bearer` |
@@ -349,6 +351,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/library-folders/{id}/delete-impact` | `LibraryFolders` | `bearer` |
 | `POST` | `/api/v1/manager/overdue-reminders` | `Manager` | `bearer` |
 | `GET` | `/api/v1/manager/team-summary` | `Manager` | `bearer` |
+| `GET` | `/api/v1/material-library` | `CourseMaterials` | `bearer` |
+| `POST` | `/api/v1/material-library` | `CourseMaterials` | `bearer` |
 | `GET` | `/api/v1/materials/{id}` | `CourseMaterials` | `bearer` |
 | `PATCH` | `/api/v1/materials/{id}` | `CourseMaterials` | `bearer` |
 | `DELETE` | `/api/v1/materials/{id}` | `CourseMaterials` | `bearer` |
@@ -359,6 +363,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `DELETE` | `/api/v1/materials/{id}/file/multipart/{uploadId}` | `CourseMaterials` | `bearer` |
 | `POST` | `/api/v1/materials/{id}/file/multipart/{uploadId}/complete` | `CourseMaterials` | `bearer` |
 | `PATCH` | `/api/v1/materials/{id}/status` | `CourseMaterials` | `bearer` |
+| `GET` | `/api/v1/materials/{id}/usage` | `CourseMaterials` | `bearer` |
 | `GET` | `/api/v1/me/permissions` | `MePermissions` | `bearer` |
 | `GET` | `/api/v1/memberships` | `Memberships` | `bearer` |
 | `POST` | `/api/v1/memberships` | `Memberships` | `bearer` |

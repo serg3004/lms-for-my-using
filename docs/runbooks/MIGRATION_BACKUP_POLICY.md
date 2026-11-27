@@ -1019,3 +1019,7 @@ Migration `20261126090000_assessment_presentation` adds nullable JSONB columns f
 ### Library folders (PR 581)
 
 Migration `20261127200000_library_folders` creates the `library_folders` table (one tree per section, `course` or `assignment`) and adds a nullable `folder_id` to `courses` and `assignments`. Existing rows keep a null folder, which means the root, so no backfill is needed. Apply the migration before starting the new API. On application rollback, leave the table and columns in place; the older version ignores them and the folders are kept for the next release.
+
+### Material library (PR 582)
+
+Migration `20261127220000_material_library` makes `course_materials.course_id` optional, adds `folder_id`, creates `course_material_links` and allows the `material` scope in `library_folders`. Existing materials keep their course and lesson, so no backfill is needed. Apply the migration before starting the new API. On application rollback, leave the changes in place; before rolling back to a version that expects a course on every material, check that no row has a null `course_id` (library materials), because the older version cannot read them.
