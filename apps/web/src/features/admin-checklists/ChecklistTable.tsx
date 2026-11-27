@@ -1,5 +1,5 @@
 import { plainText } from '@lms/shared/rich-text';
-import type { KeyboardEvent, ReactNode } from 'react';
+import type { DragEvent, KeyboardEvent, ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { Badge, Button, DataTable, Menu, type BadgeVariant, type Column, type DataTableSort } from '../../shared/ui.js';
 import type { ChecklistFolder, ChecklistScoringMode, ChecklistStatus, ChecklistSummary } from '../../shared/api/types.js';
@@ -9,6 +9,9 @@ import { ChecklistAccessBadge } from '../../shared/checklistAccess.js';
 import { checklistStatusAction } from './domain.js';
 import { ContextMenu, useContextMenu } from '../../shared/ContextMenu.js';
 import { FolderGlyph } from '../../shared/folders/FolderTree.js';
+import { folderDrag } from '../../shared/folders/folderDrag.js';
+
+const sheetDrag = folderDrag('application/x-lms-checklist');
 
 const STATUS_BADGE_VARIANT: Record<ChecklistStatus, BadgeVariant> = {
   draft: 'draft',
@@ -32,7 +35,7 @@ const EMPTY_AREA_STYLE = { paddingBottom: 'min(40vh, 320px)', marginBottom: 'cal
 export type LibraryRow = { kind: 'folder'; key: string; folder: ChecklistFolder } | { kind: 'sheet'; key: string; checklist: ChecklistSummary };
 
 export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatusChange, onEdit, onCopy, onDelete, folders, onMove, selectedKeys, onSelectionChange, batchActions,
-  childFolders, allSheets, showFolderPath, onOpenFolder, onRenameFolder, onMoveFolder, onDeleteFolder, onMoveSelection, onDeleteSelection, onCreateFolder, onCreateChecklist, canCreateFolder = true,
+  childFolders, allSheets, showFolderPath, onOpenFolder, onRenameFolder, onMoveFolder, onDeleteFolder, onMoveSelection, onDeleteSelection, onCreateFolder, onCreateChecklist, onDropToFolder, canCreateFolder = true,
   emptyMessage, sort, onSortChange, t }: {
   rows: ChecklistSummary[];
   statusLabels: Record<ChecklistStatus, string>;
@@ -62,6 +65,8 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
   onMoveSelection?: (selection: { sheets: ChecklistSummary[]; folders: ChecklistFolder[] }) => void;
   onDeleteSelection?: (selection: { sheets: ChecklistSummary[]; folders: ChecklistFolder[] }) => void;
   onCreateFolder?: () => void;
+  /** PR 580: a checklist row dragged onto a folder row moves the checklist into that folder. */
+  onDropToFolder?: (checklist: ChecklistSummary, folderId: string) => void;
   onCreateChecklist?: () => void;
   canCreateFolder?: boolean;
   emptyMessage?: string;
@@ -98,8 +103,12 @@ export function ChecklistTable({ rows, statusLabels, scoringModeLabels, onStatus
     const trigger = menu.triggerProps({ kind: 'row', key: row.key }, () => {
       if (selectedKeys && onSelectionChange && !selectedKeys.has(row.key)) onSelectionChange(new Set([row.key]));
     });
+    const dragProps = !onDropToFolder ? {}
+      : row.kind === 'sheet' ? { draggable: true, onDragStart: (event: DragEvent) => sheetDrag.start(event, row.checklist.id) }
+        : sheetDrag.drop(row.folder.id, (id, folderId) => { const sheet = rows.find((candidate) => candidate.id === id); if (sheet && folderId) onDropToFolder(sheet, folderId); });
     return {
       ...trigger,
+      ...dragProps,
       tabIndex: 0,
       'data-row-key': row.key,
       onKeyDown(event: KeyboardEvent<HTMLTableRowElement>) {

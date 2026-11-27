@@ -1,32 +1,13 @@
-import type { DragEvent } from 'react';
 import type { TFunction } from 'i18next';
 
 import { FolderBreadcrumbs, FolderGlyph, FolderTreeRows } from '../../shared/folders/FolderTree.js';
+import { folderDrag } from '../../shared/folders/folderDrag.js';
 import { folderPath } from '../../shared/folders/folderTree.js';
 import type { useAssessmentFolders } from './useAssessmentFolders.js';
 
-const ASSESSMENT_DRAG_TYPE = 'application/x-lms-assessment';
-
-export function startAssessmentDrag(event: DragEvent, id: string) {
-  event.dataTransfer.effectAllowed = 'move';
-  event.dataTransfer.setData(ASSESSMENT_DRAG_TYPE, id);
-}
-
-export function assessmentFolderDrop(targetId: string | null, move: (id: string, target: string | null) => void) {
-  return {
-    onDragOver(event: DragEvent) {
-      if (!event.dataTransfer.types.includes(ASSESSMENT_DRAG_TYPE)) return;
-      event.preventDefault();
-      event.dataTransfer.dropEffect = 'move';
-    },
-    onDrop(event: DragEvent) {
-      const id = event.dataTransfer.getData(ASSESSMENT_DRAG_TYPE);
-      if (!id) return;
-      event.preventDefault();
-      move(id, targetId);
-    },
-  };
-}
+const drag = folderDrag('application/x-lms-assessment');
+export const startAssessmentDrag = drag.start;
+export const assessmentFolderDrop = drag.drop;
 
 export function AssessmentFolderNavigation({ library, move, t }: {
   library: ReturnType<typeof useAssessmentFolders>;

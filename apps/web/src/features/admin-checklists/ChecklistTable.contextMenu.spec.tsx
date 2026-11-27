@@ -26,7 +26,7 @@ const sheets = [sheet('s1', 'Уборка'), sheet('s2', 'Открытие')];
 
 const handlers = {
   onOpenFolder: vi.fn(), onRenameFolder: vi.fn(), onMoveFolder: vi.fn(), onDeleteFolder: vi.fn(), onMoveSelection: vi.fn(), onDeleteSelection: vi.fn(),
-  onCreateFolder: vi.fn(), onCreateChecklist: vi.fn(), onEdit: vi.fn(), onCopy: vi.fn(), onDelete: vi.fn(), onMove: vi.fn(), onStatusChange: vi.fn(),
+  onCreateFolder: vi.fn(), onCreateChecklist: vi.fn(), onDropToFolder: vi.fn(), onEdit: vi.fn(), onCopy: vi.fn(), onDelete: vi.fn(), onMove: vi.fn(), onStatusChange: vi.fn(),
 };
 
 function Harness({ initial = [] as string[], canCreateFolder = true }: { initial?: string[]; canCreateFolder?: boolean }) {
@@ -171,5 +171,22 @@ describe('ChecklistTable context menu (PR 411)', () => {
       delete (HTMLElement.prototype as unknown as Record<string, unknown>).offsetWidth;
       delete (HTMLElement.prototype as unknown as Record<string, unknown>).offsetHeight;
     }
+  });
+
+  it('moves a checklist dragged onto a folder row (PR 580)', () => {
+    mount();
+    const store: Record<string, string> = {};
+    const dataTransfer = { types: ['application/x-lms-checklist'], effectAllowed: '', dropEffect: '', setData: (type: string, value: string) => { store[type] = value; }, getData: (type: string) => store[type] ?? '' };
+    const fire = (element: Element, type: string) => {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'dataTransfer', { value: dataTransfer });
+      act(() => { element.dispatchEvent(event); });
+      return event;
+    };
+    expect(row('s1').getAttribute('draggable')).toBe('true');
+    fire(row('s1'), 'dragstart');
+    expect(fire(row('folder:b'), 'dragover').defaultPrevented).toBe(true);
+    fire(row('folder:b'), 'drop');
+    expect(handlers.onDropToFolder).toHaveBeenCalledWith(sheets[0], 'b');
   });
 });

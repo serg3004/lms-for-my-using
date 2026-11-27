@@ -1,7 +1,8 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
-import { MAX_FOLDER_DEPTH, folderDepth, indexFolders, normalizeFolderName, subtreeHeight, subtreeIds } from '../../common/folder-tree.js';
+import { FolderMoveException, assertFolderDepth, assertFolderNameFree, folderCycle, folderSkipReason, type FolderMoveReason } from '../../common/folder-rules.js';
+import { folderDepth, indexFolders, subtreeHeight, subtreeIds } from '../../common/folder-tree.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { lockAssessmentFolders } from './assessment-folder-lock.js';
 import { assessmentCourseScope } from './assessment-author-scope.js';
@@ -15,11 +16,7 @@ type DeleteImpact = { folders: number; movedToRoot: Array<{ id: string; title: s
 type SkipReason = 'not_found' | 'forbidden' | 'name_conflict' | 'too_deep' | 'cycle' | 'already_in_folder' | 'covered_by_parent' | 'longread_exercise' | 'attempt_in_progress';
 type Outcome = { id: string; result: 'done'; impact?: DeleteImpact } | { id: string; result: 'skipped'; reason: SkipReason };
 
-class FolderOperationException extends BadRequestException {
-  constructor(readonly reason: 'cycle' | 'too_deep' | 'longread_exercise', message: string) {
-    super(message);
-  }
-}
+type FolderOperationReason = FolderMoveReason | 'longread_exercise';
 
 @Injectable()
 export class AssessmentFoldersService {
@@ -61,9 +58,9 @@ export class AssessmentFoldersService {
       const parentId = input.parentId ?? null;
       if (parentId) {
         this.requireFolder(folders, parentId);
-        this.assertDepth(folderDepth(parentId, indexFolders(folders)) + 1);
+        assertFolderDepth(folderDepth(parentId, indexFolders(folders)) + 1);
       }
-      this.assertNameFree(folders, parentId, input.name);
+      assertFolderNameFree(folders, parentId, input.name);
       return tx.assessmentFolder.create({
         data: { organizationId, createdBy: actorId, parentId, name: input.name, color: input.color },
         select: folderSelect,
@@ -85,14 +82,14 @@ export class AssessmentFoldersService {
       if (parentId !== current.parentId && parentId !== null) {
         this.requireFolder(folders, parentId);
         if (subtreeIds(id, folders).includes(parentId)) {
-          throw new FolderOperationException('cycle', 'A folder cannot be moved into itself or a descendant');
+          throw folderCycle();
         }
-        this.assertDepth(folderDepth(parentId, indexFolders(folders)) + subtreeHeight(id, folders));
+        assertFolderDepth(folderDepth(parentId, indexFolders(folders)) + subtreeHeight(id, folders));
       }
       const color = input.color ?? current.color;
       const locationChanged = parentId !== current.parentId || name !== current.name;
       if (!locationChanged && color === current.color) return { folder: current, changed: false };
-      if (locationChanged) this.assertNameFree(folders, parentId, name, id);
+      if (locationChanged) assertFolderNameFree(folders, parentId, name, id);
       const folder = await tx.assessmentFolder.update({ where: { id, organizationId }, data: { parentId, name, color }, select: folderSelect });
       return { folder, changed: true };
     });
@@ -161,7 +158,7 @@ export class AssessmentFoldersService {
         const destination = await tx.assessmentFolder.findFirst({ where: { id: folderId, organizationId, deletedAt: null }, select: { id: true } });
         if (!destination) throw new NotFoundException('Folder not found');
         if (assessment.isLongreadExercise) {
-          throw new FolderOperationException('longread_exercise', 'Assessments created by longread exercises stay at the root');
+          throw new FolderMoveException<FolderOperationReason>('longread_exercise', 'Assessments created by longread exercises stay at the root');
         }
       }
       if (assessment.folderId === folderId) return false;
@@ -216,22 +213,9 @@ export class AssessmentFoldersService {
     return folder;
   }
 
-  private assertNameFree(folders: readonly Folder[], parentId: string | null, name: string, id?: string) {
-    const normalized = normalizeFolderName(name);
-    if (folders.some((row) => row.id !== id && row.parentId === parentId && normalizeFolderName(row.name) === normalized)) {
-      throw new ConflictException('A folder with this name already exists here');
-    }
-  }
-
-  private assertDepth(depth: number) {
-    if (depth > MAX_FOLDER_DEPTH) throw new FolderOperationException('too_deep', `Folders can be nested at most ${MAX_FOLDER_DEPTH} levels deep`);
-  }
-
   private skipReason(error: unknown): SkipReason | undefined {
-    if (error instanceof FolderOperationException) return error.reason;
-    if (error instanceof NotFoundException) return 'not_found';
-    if (error instanceof ForbiddenException) return 'forbidden';
-    if (error instanceof ConflictException) return 'name_conflict';
+    if (error instanceof FolderMoveException) return error.reason;
     if (error instanceof AssessmentAttemptInProgressException) return 'attempt_in_progress';
+    return folderSkipReason(error);
   }
 }
