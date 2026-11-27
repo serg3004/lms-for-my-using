@@ -5,6 +5,7 @@ import { bulkAssessmentFolders, getAssessmentFolderImpact, saveAssessmentFolder,
 import { ApiClientError } from '../../shared/apiClient.js';
 import { Button, ConfirmDialog, DataTable, Menu, PageState, Pagination, type Column } from '../../shared/ui.js';
 import { FolderDialog, MoveToFolderDialog, type FolderDialogTarget } from '../../shared/folders/FolderDialogs.js';
+import { ContextMenu, useContextMenu } from '../../shared/ContextMenu.js';
 import { FolderBulkDelete, FolderBulkMove } from '../../shared/folders/FolderBulkActions.js';
 import { FolderGlyph } from '../../shared/folders/FolderTree.js';
 import { canAddSubfolder, folderAndDescendantIds, folderPath, folderPathLabel, childrenByParent } from '../../shared/folders/folderTree.js';
@@ -35,6 +36,8 @@ export function AssessmentLibrary({ actionsRef, list, columns, library, renderAc
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<{ done: number; skipped: number; details: { key: string; text: string }[] } | null>(null);
 
+  // PR 580: the right button, the menu key, Shift+F10 and a long press open the row menu, as in the checklist library.
+  const menu = useContextMenu<{ key: string }>();
   const folders = useMemo(() => library.data?.folders ?? [], [library.data]);
   const active = folders.find((folder) => folder.id === library.id) ?? null;
   const assessments = list.page.items;
@@ -48,6 +51,43 @@ export function AssessmentLibrary({ actionsRef, list, columns, library, renderAc
   ];
   const scope = list.key;
   const selectedKeys = selection?.scope === scope ? selection.keys : new Set<string>();
+  const rowsByKey = new Map(rows.map((row) => [rowKey(row), row]));
+  /** A row outside the selection acts alone; a row inside it acts on the whole selection (as in file managers). */
+  const actingRows = (key: string): Row[] => (selectedKeys.has(key) ? [...selectedKeys] : [key]).flatMap((id) => rowsByKey.get(id) ?? []);
+  const movable = (row: Row) => row.kind === 'folder' || !row.item.isLongreadExercise;
+  function contextMenuContent() {
+    const target = menu.state?.target;
+    if (!target) return { label: '', items: null };
+    const picked = actingRows(target.key);
+    const only = picked.length === 1 ? picked[0] : undefined;
+    if (!only) {
+      return {
+        label: t('admin.checklists.contextMenu.selectionLabel', { selected: picked.length }),
+        items: <>
+          <button type="button" role="menuitem" disabled={!picked.some(movable)} onClick={() => setMove(picked)}>{t('admin.checklists.contextMenu.moveSelection')}</button>
+          <button type="button" role="menuitem" onClick={() => void previewDelete(picked)}>{t('admin.checklists.contextMenu.deleteSelection')}</button>
+        </>,
+      };
+    }
+    if (only.kind === 'folder') {
+      const folder = only.item;
+      return {
+        label: t('admin.checklists.contextMenu.rowLabel', { name: folder.name }),
+        items: <>
+          <button type="button" role="menuitem" onClick={() => library.select(folder.id)}>{t('admin.checklists.folders.open')}</button>
+          <button type="button" role="menuitem" onClick={() => setEdit({ kind: 'edit', folder })}>{t('admin.assessmentBuilder.folders.settings')}</button>
+          <button type="button" role="menuitem" disabled={!canAddSubfolder(folders, folder.id)} onClick={() => setEdit({ kind: 'create', parent: folder })}>{t('admin.checklists.contextMenu.newInside')}</button>
+          <button type="button" role="menuitem" onClick={() => setMove([only])}>{t('admin.checklists.folders.moveOpen')}</button>
+          <button type="button" role="menuitem" onClick={() => void previewDelete([only])}>{t('admin.checklists.folders.delete')}</button>
+        </>,
+      };
+    }
+    return {
+      label: t('admin.checklists.contextMenu.rowLabel', { name: only.item.title }),
+      items: <button type="button" role="menuitem" onClick={() => setMove([only])}>{t('admin.checklists.folders.moveOpen')}</button>,
+    };
+  }
+  const menuContent = contextMenuContent();
   const moveFolders = move?.flatMap((row) => row.kind === 'folder' ? [row.item.id] : []) ?? [];
   const commonMoveParent = move?.map((row) => row.kind === 'folder' ? row.item.parentId : row.item.folderId ?? null) ?? [];
 
@@ -206,8 +246,15 @@ export function AssessmentLibrary({ actionsRef, list, columns, library, renderAc
       }}
       rowProps={(row) => {
         if (!library.data || busy) return {};
-        if (row.kind === 'folder') return assessmentFolderDrop(row.item.id, drop);
-        return row.item.isLongreadExercise ? {} : { draggable: true, onDragStart: (event) => startAssessmentDrag(event, row.item.id) };
+        const key = rowKey(row);
+        // A longread exercise cannot leave the root, so its row has neither the menu nor the drag.
+        const trigger = movable(row) ? {
+          ...menu.triggerProps({ key }, () => { if (!selectedKeys.has(key)) setSelection({ scope, keys: new Set([key]) }); }),
+          tabIndex: 0,
+          'data-row-key': key,
+        } : {};
+        if (row.kind === 'folder') return { ...trigger, ...assessmentFolderDrop(row.item.id, drop) };
+        return row.item.isLongreadExercise ? trigger : { ...trigger, draggable: true, onDragStart: (event) => startAssessmentDrag(event, row.item.id) };
       }}
       selection={library.data ? {
         selectedKeys,
@@ -222,6 +269,8 @@ export function AssessmentLibrary({ actionsRef, list, columns, library, renderAc
         <FolderBulkDelete busy={busy} onClick={() => void previewDelete(selected)} t={t} />
       </>}
     />
+
+    <ContextMenu label={menuContent.label} onClose={menu.close} state={menu.state}>{menuContent.items}</ContextMenu>
 
     <Pagination page={list.page.page} pageSize={list.page.pageSize} total={list.page.total}
       onPage={(page) => list.set({ page: page === 1 ? '' : String(page) })}

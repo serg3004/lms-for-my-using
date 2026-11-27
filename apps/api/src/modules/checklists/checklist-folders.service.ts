@@ -1,15 +1,14 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 
+import { assertFolderDepth, assertFolderNameFree, folderCycle, folderSkipReason } from '../../common/folder-rules.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { AuditLogService } from '../audit-log/public.js';
 import { markGuestPassesDisabled } from './checklist-public-access.js';
 import {
-  MAX_FOLDER_DEPTH,
   canManageFolder,
   folderDepth,
   indexFolders,
   isAdmin,
-  normalizeFolderName,
   subtreeHeight,
   subtreeIds,
   visibleFolderIds,
@@ -77,9 +76,9 @@ export class ChecklistFoldersService {
     if (parentId) {
       const parent = this.requireVisible(parentId, all, actor);
       this.requireManage(parent, actor);
-      if (folderDepth(parentId, indexFolders(all)) + 1 > MAX_FOLDER_DEPTH) throw this.tooDeep();
+      assertFolderDepth(folderDepth(parentId, indexFolders(all)) + 1);
     }
-    this.assertNameFree(all, parentId, input.name, null);
+    assertFolderNameFree(all, parentId, input.name);
     if (input.sharedUserIds?.length) await this.assertShareable(organizationId, input.sharedUserIds);
     const created = await this.prisma.checklistFolder.create({
       data: { organizationId, parentId, name: input.name, visibleToStaff: input.visibleToStaff ?? false, ...(input.color ? { color: input.color } : {}), ...(input.sharedUserIds ? { sharedUserIds: input.sharedUserIds } : {}), createdBy: actor.id },
@@ -102,11 +101,11 @@ export class ChecklistFoldersService {
         const target = this.requireVisible(nextParentId, all, actor);
         this.requireManage(target, actor);
         // Not into itself and not into one of its own descendants.
-        if (subtreeIds(folderId, all).includes(nextParentId)) throw new FolderMoveException('cycle', 'A folder cannot be moved into itself or into one of its subfolders');
-        if (folderDepth(nextParentId, byId) + subtreeHeight(folderId, all) > MAX_FOLDER_DEPTH) throw this.tooDeep();
+        if (subtreeIds(folderId, all).includes(nextParentId)) throw folderCycle();
+        assertFolderDepth(folderDepth(nextParentId, byId) + subtreeHeight(folderId, all));
       }
     }
-    if (nextParentId !== folder.parentId || nextName !== folder.name) this.assertNameFree(all, nextParentId, nextName, folderId);
+    if (nextParentId !== folder.parentId || nextName !== folder.name) assertFolderNameFree(all, nextParentId, nextName, folderId);
 
     if (input.sharedUserIds?.length) await this.assertShareable(organizationId, input.sharedUserIds, folder.sharedUserIds);
     const updated = await this.prisma.checklistFolder.update({
@@ -227,7 +226,7 @@ export class ChecklistFoldersService {
         }
         results.set(id, { id, result: 'done' });
       } catch (error) {
-        const reason = error instanceof NotFoundException ? 'not_found' : error instanceof ForbiddenException ? 'forbidden' : error instanceof ConflictException ? 'name_conflict' : error instanceof FolderMoveException ? error.reason : null;
+        const reason = folderSkipReason(error);
         if (!reason) throw error;
         results.set(id, { id, result: 'skipped', reason });
       }
@@ -273,23 +272,9 @@ export class ChecklistFoldersService {
       throw new ForbiddenException(isAdmin(actor) ? 'Not allowed' : 'Only the creator or an administrator can change this folder');
     }
   }
-
-  private assertNameFree(all: ReadonlyArray<{ id: string; parentId: string | null; name: string }>, parentId: string | null, name: string, exceptId: string | null) {
-    const wanted = normalizeFolderName(name);
-    if (all.some((folder) => folder.id !== exceptId && folder.parentId === parentId && normalizeFolderName(folder.name) === wanted)) {
-      throw new ConflictException('A folder with this name already exists here');
-    }
-  }
-
-  private tooDeep() {
-    return new FolderMoveException('too_deep', `Folders can be nested at most ${MAX_FOLDER_DEPTH} levels deep`);
-  }
 }
 
 type FolderBulkOutcome = { id: string; result: 'done' } | { id: string; result: 'skipped'; reason: 'not_found' | 'forbidden' | 'name_conflict' | 'too_deep' | 'cycle' | 'already_in_folder' | 'covered_by_parent' };
-class FolderMoveException extends BadRequestException {
-  constructor(readonly reason: 'cycle' | 'too_deep', message: string) { super(message); }
-}
 
 function presentCreator(creator: { id: string; firstName: string; lastName: string; deletedAt: Date | null } | null) {
   return creator && !creator.deletedAt && (creator.firstName.trim() || creator.lastName.trim()) ? { id: creator.id, firstName: creator.firstName, lastName: creator.lastName } : null;

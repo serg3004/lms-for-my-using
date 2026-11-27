@@ -446,7 +446,7 @@ export function AdminChecklistsPage({ variant = 'admin' }: { variant?: 'admin' |
             </div>
           )}
           <ChecklistTable rows={sortedSheets} childFolders={shownFolders} allSheets={loadState.data.checklists} showFolderPath={searching} statusLabels={statusLabels} scoringModeLabels={scoringModeLabels} folders={folders}
-            onStatusChange={updateStatus} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} onDelete={setDeleteTarget} onMove={(checklist) => setMoveTargets({ sheets: [checklist], folders: [] })}
+            onStatusChange={updateStatus} onEdit={(checklist) => setSelectedId(checklist.id)} onCopy={copy} onDelete={setDeleteTarget} onMove={(checklist) => setMoveTargets({ sheets: [checklist], folders: [] })} onDropToFolder={(checklist, folderId) => void runMove({ sheets: [checklist], folders: [] }, folderId)}
             selectedKeys={selectedKeys} onSelectionChange={setSelectedKeys}
             onMoveSelection={setMoveTargets} onDeleteSelection={(selection) => void requestSelectionDelete(selection)}
             onCreateFolder={() => setFolderDialog({ kind: 'create', parent: selectedFolder })} onCreateChecklist={() => void createInOpenFolder()} canCreateFolder={canAddSubfolder(folders, selectedFolderId)}
