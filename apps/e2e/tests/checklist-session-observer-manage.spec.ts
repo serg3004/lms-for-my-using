@@ -96,6 +96,17 @@ test.describe('instructor and mentor manage organization sessions (PR 360б)', (
     await mockApi(page, 'admin', [sessionRow()]);
     await page.goto('/admin/checklists/sessions');
     await expect(page.getByRole('heading', { name: 'Sessions to conduct' })).toBeVisible();
+    // PR 516: just the queue, with none of the subheadings or the history that the table below already holds.
+    await expect(page.getByRole('heading', { name: 'To conduct', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('heading', { name: 'History', exact: true })).toHaveCount(0);
+  });
+
+  test('PR 516: an admin whose only sessions are finished sees neither the block nor its empty text', async ({ page }) => {
+    await mockApi(page, 'admin', [{ ...sessionRow(), status: 'completed' }]);
+    await page.goto('/admin/checklists/sessions');
+    await expect(page.getByText('Alex Learner').first()).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Sessions to conduct' })).toHaveCount(0);
+    await expect(page.getByText('Nothing scheduled right now.')).toHaveCount(0);
   });
 
   test('PR 360в: an admin without sessions to conduct sees no queue block', async ({ page }) => {
@@ -103,5 +114,14 @@ test.describe('instructor and mentor manage organization sessions (PR 360б)', (
     await page.goto('/admin/checklists/sessions');
     await expect(page.getByText('Alex Learner').first()).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Sessions to conduct' })).toHaveCount(0);
+  });
+
+  test('PR 516: the status is a filter in the filter card, not a second strip of tabs under the section tabs', async ({ page }) => {
+    await mockApi(page, 'admin');
+    await page.goto('/admin/checklists/sessions');
+    await expect(page.getByText('Alex Learner').first()).toBeVisible();
+    await expect(page.getByRole('tablist')).toHaveCount(0);
+    await page.getByLabel('Status', { exact: true }).selectOption('completed');
+    await expect(page).toHaveURL(/status=completed/);
   });
 });

@@ -39,7 +39,12 @@ export function makeOpenHandler(onOpenSession: (sessionId: string) => void, sess
 }
 
 /** The server pins this queue to the authenticated observer for every role. */
-export function ChecklistSessionsToConduct({ onOpenSession, t, hideEmpty = false }: { onOpenSession: (sessionId: string) => void; t: TFunction; hideEmpty?: boolean }) {
+/**
+ * `hideEmpty` is the block embedded in another page: its own title is enough, so the "To conduct" subheading and the
+ * "nothing scheduled" text are left out (PR 516). `queueOnly` (the administrator's management page) shows just the
+ * sessions still to conduct, without the history that the table of that page already holds, and nothing at all when there are none.
+ */
+export function ChecklistSessionsToConduct({ onOpenSession, t, hideEmpty = false, queueOnly = false }: { onOpenSession: (sessionId: string) => void; t: TFunction; hideEmpty?: boolean; queueOnly?: boolean }) {
   const { state, reload } = useAsyncData<ChecklistSessionSummary[]>(
     fetchObserverSessions,
     [],
@@ -60,6 +65,7 @@ export function ChecklistSessionsToConduct({ onOpenSession, t, hideEmpty = false
   const toConduct = state.data.filter(isActionable);
   const history = state.data.filter((session) => !isActionable(session));
 
+  if (queueOnly && toConduct.length === 0) return null;
   if (state.data.length === 0) {
     return hideEmpty ? null : <PageState message={t('checklistSessions.conduct.empty', 'No checklist sessions are assigned to you yet.')} />;
   }
@@ -68,11 +74,11 @@ export function ChecklistSessionsToConduct({ onOpenSession, t, hideEmpty = false
     <section aria-label={t('checklistSessions.conduct.sessionsTitle', 'Sessions to conduct')} style={{ display: 'grid', gap: 20, marginTop: hideEmpty ? 24 : undefined }}>
       {hideEmpty && <h2>{t('checklistSessions.conduct.sessionsTitle', 'Sessions to conduct')}</h2>}
       <div>
-        <h2 style={{ fontSize: 14, color: COLORS.muted, margin: '0 0 8px' }}>
+        {!hideEmpty && <h2 style={{ fontSize: 14, color: COLORS.muted, margin: '0 0 8px' }}>
           {t('checklistSessions.conduct.toConduct', 'To conduct')}
-        </h2>
+        </h2>}
         {toConduct.length === 0 ? (
-          <p style={{ color: COLORS.muted, fontSize: 13 }}>{t('checklistSessions.conduct.toConductEmpty', 'Nothing scheduled right now.')}</p>
+          hideEmpty ? null : <p style={{ color: COLORS.muted, fontSize: 13 }}>{t('checklistSessions.conduct.toConductEmpty', 'Nothing scheduled right now.')}</p>
         ) : (
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
             {toConduct.map((session) => (
@@ -81,7 +87,7 @@ export function ChecklistSessionsToConduct({ onOpenSession, t, hideEmpty = false
           </ul>
         )}
       </div>
-      {history.length > 0 && (
+      {!queueOnly && history.length > 0 && (
         <div>
           <h2 style={{ fontSize: 14, color: COLORS.muted, margin: '0 0 8px' }}>{t('checklistSessions.conduct.historyHeading', 'History')}</h2>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
