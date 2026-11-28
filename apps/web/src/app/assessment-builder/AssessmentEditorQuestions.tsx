@@ -118,7 +118,9 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview, sing
           <select id={`${question.id}-type`} value={question.type} onChange={(event) => {
             const type = questionTypeSchema.parse(event.target.value);
             const definition = emptyQuestionDefinition(type);
-            changeQuestion(question.id, { type, definition, options: definition ? [] : question.options });
+            // PR 539: "one answer" and "several answers" switch without rebuilding the question; one answer keeps the first correct option.
+            const options = definition ? [] : type === 'single_choice' ? question.options.map((option, index) => ({ ...option, isCorrect: option.isCorrect && index === question.options.findIndex((item) => item.isCorrect) })) : question.options;
+            changeQuestion(question.id, { type, definition, options });
           }}>
             {questionTypeSchema.options.map((type) =>
               <option key={type} value={type}>{t(`longreadExercises.types.${type}`)}</option>)}

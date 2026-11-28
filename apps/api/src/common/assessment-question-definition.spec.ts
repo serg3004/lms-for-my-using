@@ -66,3 +66,65 @@ describe('typed assessment question grading', () => {
     }
   });
 });
+
+// PR 539: image drop, card sorting and matching with extra answers.
+const image = JSON.stringify({ kind: 'file', fileId: '11111111-1111-4111-8111-111111111111.png', caption: '', alt: 'Plan' });
+const zones = ['z1', 'z2', 'z3'].map((id, index) => ({ id, shape: 'rect' as const, x: index * 30, y: 10, width: 20, height: 20 }));
+const imageDrop = { type: 'image_drop', background: image, objects: [{ id: 'o1', text: 'Valve' }, { id: 'o2', text: 'Gauge' }, { id: 'o3', text: 'Spare' }], zones,
+  correctPairs: [{ zoneId: 'z1', objectId: 'o1' }, { zoneId: 'z2', objectId: 'o2' }, { zoneId: 'z3', objectId: 'o1' }] } as const;
+const cardSort = { type: 'card_sort', categories: [{ id: 'k1', text: 'Safe' }, { id: 'k2', text: 'Unsafe' }], cards: items.map(({ id, text }) => ({ id, text })),
+  correctPlacements: [{ cardId: 'a', categoryId: 'k1' }, { cardId: 'b', categoryId: 'k1' }, { cardId: 'c', categoryId: 'k2' }, { cardId: 'd', categoryId: 'k2' }] } as const;
+const extras = { ...matching, right: [...items, { id: 'x', text: 'Trap' }] };
+
+describe('PR 539 question types', () => {
+  it('grades image drop per zone, allowing one object in several zones', () => {
+    const grade = (placements: { zoneId: string; objectId: string }[]) => gradeDefinedQuestion('image_drop', imageDrop, { type: 'image_drop', placements }, 9, 'proportional');
+    expect(grade([{ zoneId: 'z1', objectId: 'o1' }, { zoneId: 'z2', objectId: 'o2' }, { zoneId: 'z3', objectId: 'o1' }])).toMatchObject({ isCorrect: true, score: 9 });
+    expect(grade([{ zoneId: 'z1', objectId: 'o1' }, { zoneId: 'z2', objectId: 'o3' }, { zoneId: 'z3', objectId: 'o1' }])).toMatchObject({ isCorrect: false, score: 6 });
+    expect(() => grade([{ zoneId: 'z1', objectId: 'o1' }])).toThrow(BadRequestException);
+    expect(() => grade([{ zoneId: 'z1', objectId: 'nope' }, { zoneId: 'z2', objectId: 'o2' }, { zoneId: 'z3', objectId: 'o1' }])).toThrow(BadRequestException);
+  });
+  it('grades card sorting per card and rejects missing or unknown placements', () => {
+    const grade = (placements: { cardId: string; categoryId: string }[], mode: QuestionScoringMode = 'proportional') => gradeDefinedQuestion('card_sort', cardSort, { type: 'card_sort', placements }, 8, mode);
+    expect(grade(cardSort.correctPlacements.map((value) => ({ ...value })))).toMatchObject({ isCorrect: true, score: 8 });
+    expect(grade(cardSort.correctPlacements.map((value) => ({ ...value, categoryId: value.cardId === 'd' ? 'k1' : value.categoryId })))).toMatchObject({ isCorrect: false, score: 6 });
+    expect(grade(cardSort.correctPlacements.map((value) => ({ ...value, categoryId: 'k2' })), 'all_or_nothing')).toMatchObject({ isCorrect: false, score: 0 });
+    expect(() => grade([{ cardId: 'a', categoryId: 'k1' }, { cardId: 'b', categoryId: 'k1' }])).toThrow(BadRequestException);
+    expect(() => grade(cardSort.correctPlacements.map((value) => ({ ...value, categoryId: 'k9' })))).toThrow(BadRequestException);
+  });
+  it('accepts free-shape zones and picture objects, and rejects points on other shapes', () => {
+    const shaped = { ...imageDrop, zones: [{ ...zones[0], shape: 'polygon', points: [{ x: 50, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }] }, zones[1], zones[2]],
+      objects: [{ id: 'o1', text: '', image }, imageDrop.objects[1], imageDrop.objects[2]] };
+    expect(questionDefinitionSchema.safeParse(shaped).success).toBe(true);
+    expect(questionDefinitionSchema.safeParse({ ...shaped, zones: [{ ...shaped.zones[0], points: shaped.zones[0].points!.slice(0, 2) }, zones[1], zones[2]] }).success).toBe(false);
+    expect(questionDefinitionSchema.safeParse({ ...shaped, zones: [{ ...zones[0], points: [{ x: 0, y: 0 }, { x: 1, y: 1 }, { x: 2, y: 2 }] }, zones[1], zones[2]] }).success).toBe(false);
+    expect(questionDefinitionSchema.safeParse({ ...shaped, zones: [{ ...shaped.zones[0], points: undefined }, zones[1], zones[2]] }).success).toBe(false);
+    expect(questionDefinitionSchema.safeParse({ ...shaped, objects: [{ id: 'o1', text: '' }, imageDrop.objects[1], imageDrop.objects[2]] }).success).toBe(false);
+  });
+  it('does not leak the answer key of the new types to the learner', () => {
+    const imagePublic = JSON.stringify(publicQuestionDefinition(questionDefinitionSchema.parse(imageDrop), 'seed'));
+    expect(imagePublic).not.toContain('correctPairs');
+    expect(JSON.stringify(publicQuestionDefinition(questionDefinitionSchema.parse(cardSort), 'seed'))).not.toContain('correctPlacements');
+  });
+  it('rejects broken definitions of the new types', () => {
+    const bad = [
+      { ...imageDrop, correctPairs: imageDrop.correctPairs.slice(0, 2) },
+      { ...imageDrop, correctPairs: [...imageDrop.correctPairs.slice(0, 2), { zoneId: 'z3', objectId: 'gone' }] },
+      { ...imageDrop, zones: [{ ...zones[0], x: 95 }, zones[1], zones[2]] },
+      { ...imageDrop, background: JSON.stringify({ kind: 'link', url: 'https://example.com/a.png', caption: '', alt: '' }) },
+      { ...cardSort, categories: [{ id: 'k1', text: 'Only' }] },
+      { ...cardSort, categories: [...'12345'].map((id) => ({ id: `k${id}`, text: id })) },
+      { ...cardSort, correctPlacements: cardSort.correctPlacements.slice(0, 3) },
+      { ...cardSort, cards: [{ id: 'a', text: '' }, { id: 'b', text: 'B' }, { id: 'c', text: 'C' }, { id: 'd', text: 'D' }] },
+    ];
+    for (const value of bad) expect(questionDefinitionSchema.safeParse(value).success).toBe(false);
+  });
+  it('matching accepts extra right-hand answers and rejects a reused or foreign answer', () => {
+    const definition = questionDefinitionSchema.parse(extras);
+    const pairs = matching.correctPairs.map((value) => ({ ...value }));
+    expect(gradeDefinedQuestion('matching', definition, { type: 'matching', pairs }, 4, 'proportional')).toMatchObject({ isCorrect: true, score: 4 });
+    expect(gradeDefinedQuestion('matching', definition, { type: 'matching', pairs: pairs.map((value) => value.leftId === 'd' ? { ...value, rightId: 'x' } : value) }, 4, 'proportional')).toMatchObject({ isCorrect: false, score: 3 });
+    expect(() => gradeDefinedQuestion('matching', definition, { type: 'matching', pairs: pairs.map((value) => value.leftId === 'd' ? { ...value, rightId: 'a' } : value) }, 4, 'proportional')).toThrow(BadRequestException);
+    expect(questionDefinitionSchema.safeParse({ ...extras, correctPairs: matching.correctPairs.map((value) => value.leftId === 'd' ? { ...value, rightId: 'zzz' } : value) }).success).toBe(false);
+  });
+});

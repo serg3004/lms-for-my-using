@@ -1,4 +1,6 @@
 import { AssessmentMaterialField } from '../assessment-materials/AssessmentMaterial.js';
+import { CardSortAuthor } from './CardSortQuestion.js';
+import { ImageDropAuthor } from './ImageDropQuestion.js';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { QuestionDefinition } from '@lms/shared/assessment-question-types';
@@ -47,8 +49,18 @@ export function QuestionDefinitionFields({ definition: d, onChange: patch }: { d
         {text('rightItem', right.text, (value) => patch({ ...d, right: d.right.map((v) => v.id === right.id ? { ...v, text: value } : v) }))}
         <button type="button" className="admin-btn admin-btn--secondary" disabled={d.left.length <= 2} onClick={() => patch({ ...d, left: d.left.filter((_, n) => n !== i), right: d.right.filter((item) => item.id !== right.id), correctPairs: d.correctPairs.filter((p) => p.leftId !== left.id) })}>{t('longread.delete')}</button>
       </div>; })}
-      <button type="button" className="admin-btn admin-btn--secondary" disabled={d.left.length >= 50} onClick={() => { const leftId = crypto.randomUUID(), rightId = crypto.randomUUID(); patch({ ...d, left: [...d.left, { id: leftId, text: '' }], right: [...d.right, { id: rightId, text: '' }], correctPairs: [...d.correctPairs, { leftId, rightId }] }); }}>{t('longreadExercises.addPair')}</button>
+      <button type="button" className="admin-btn admin-btn--secondary" disabled={d.left.length >= 50 || d.right.length >= 50} onClick={() => { const leftId = crypto.randomUUID(), rightId = crypto.randomUUID(); patch({ ...d, left: [...d.left, { id: leftId, text: '' }], right: [...d.right, { id: rightId, text: '' }], correctPairs: [...d.correctPairs, { leftId, rightId }] }); }}>{t('longreadExercises.addPair')}</button>
+      {/* PR 539: extra answers that match nothing. */}
+      <h4>{t('longreadExercises.extraRight')}</h4>
+      <p>{t('longreadExercises.extraRightHelp')}</p>
+      {d.right.filter((item) => !d.correctPairs.some((pair) => pair.rightId === item.id)).map((extra) => <div key={extra.id} style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+        {text('rightItem', extra.text, (value) => patch({ ...d, right: d.right.map((v) => v.id === extra.id ? { ...v, text: value } : v) }))}
+        <button type="button" className="admin-btn admin-btn--secondary" onClick={() => patch({ ...d, right: d.right.filter((item) => item.id !== extra.id) })}>{t('longread.delete')}</button>
+      </div>)}
+      <button type="button" className="admin-btn admin-btn--secondary" disabled={d.right.length >= 50} onClick={() => patch({ ...d, right: [...d.right, { id: crypto.randomUUID(), text: '' }] })}>{t('longreadExercises.addExtra')}</button>
     </>}
+    {d.type === 'image_drop' && <ImageDropAuthor definition={d} onChange={patch} />}
+    {d.type === 'card_sort' && <CardSortAuthor definition={d} onChange={patch} />}
     {d.type === 'ordering' && <>
       <p>{t('longreadExercises.orderingHelp')}</p>
       {d.correctOrder.map((itemId, index) => <div key={itemId} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>

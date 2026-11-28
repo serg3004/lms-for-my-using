@@ -1031,3 +1031,7 @@ Migrations `20261127230000_folder_access_roles`, `20261127230100_assessment_fold
 ### Who may assign a standalone test (PR 584)
 
 Migration `20261128120000_assessment_assign_grants` adds `assign_roles` (text array) and `assign_user_ids` (uuid array) to `assessments`, both empty by default, so existing tests grant nothing beyond the defaults (administrator, author, manager for their own team). Apply the migration before starting the new API. On application rollback, leave the columns in place; the older version ignores them and again lets only administrators assign.
+
+### Image drop and card sort questions (PR 539)
+
+Migration `20261128140000_assessment_image_drop_card_sort` adds the values `image_drop` and `card_sort` to the enum `AssessmentQuestionType` and extends the `assessment_attempt_answers_selection_check` constraint so a typed response may be of those two kinds. Both changes are additive: existing rows, definitions and answers are untouched, and nothing is rewritten. Apply the migration before starting the new API. On application rollback, leave the enum values in place; the older version does not create such questions, and a test that already contains one would fail to open for the older version, so do not roll back after authors have started to use them.

@@ -30,13 +30,23 @@ export function gradeDefinedQuestion(type: QuestionType, rawDefinition: unknown,
   if (definition.type === 'true_false' && response.type === 'true_false') correct = Number(response.value === definition.correctAnswer);
   else if (definition.type === 'short_answer' && response.type === 'short_answer') correct = Number(definition.acceptedAnswers.some((answer) => normalizeQuestionText(answer, definition) === normalizeQuestionText(response.text, definition)));
   else if (definition.type === 'matching' && response.type === 'matching') {
-    if (!fullSet(response.pairs.map((pair) => pair.leftId), definition.left.map((item) => item.id)) || !fullSet(response.pairs.map((pair) => pair.rightId), definition.right.map((item) => item.id))) invalid();
+    // PR 539: extra right-hand answers exist, so only the left side must be complete; each answer is used at most once.
+    const used = response.pairs.map((pair) => pair.rightId);
+    if (!fullSet(response.pairs.map((pair) => pair.leftId), definition.left.map((item) => item.id)) || new Set(used).size !== used.length || used.some((id) => !definition.right.some((item) => item.id === id))) invalid();
     total = definition.left.length;
     correct = response.pairs.filter((pair) => definition.correctPairs.some((key) => key.leftId === pair.leftId && key.rightId === pair.rightId)).length;
   } else if (definition.type === 'ordering' && response.type === 'ordering') {
     if (!fullSet(response.itemIds, definition.items.map((item) => item.id))) invalid();
     total = definition.items.length;
     correct = response.itemIds.filter((id, index) => id === definition.correctOrder[index]).length;
+  } else if (definition.type === 'image_drop' && response.type === 'image_drop') {
+    if (!fullSet(response.placements.map((placement) => placement.zoneId), definition.zones.map((zone) => zone.id)) || response.placements.some((placement) => !definition.objects.some((object) => object.id === placement.objectId))) invalid();
+    total = definition.zones.length;
+    correct = response.placements.filter((placement) => definition.correctPairs.some((key) => key.zoneId === placement.zoneId && key.objectId === placement.objectId)).length;
+  } else if (definition.type === 'card_sort' && response.type === 'card_sort') {
+    if (!fullSet(response.placements.map((placement) => placement.cardId), definition.cards.map((card) => card.id)) || response.placements.some((placement) => !definition.categories.some((category) => category.id === placement.categoryId))) invalid();
+    total = definition.cards.length;
+    correct = response.placements.filter((placement) => definition.correctPlacements.some((key) => key.cardId === placement.cardId && key.categoryId === placement.categoryId)).length;
   } else if (definition.type === 'fill_blank' && response.type === 'fill_blank') {
     if (!fullSet(response.blanks.map((blank) => blank.blankId), definition.blanks.map((blank) => blank.id))) invalid();
     total = definition.blanks.length;

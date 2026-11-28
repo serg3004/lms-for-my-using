@@ -55,7 +55,7 @@ export function ExerciseEditor({ lessonId, content, onChange, ready, revision, a
       <button type="button" className="admin-btn admin-btn--secondary" disabled={!ready} onClick={() => { const assessment = parent ?? bank[0]; setForm({ ...emptyQuestion('single_choice'), ...(assessment ? { assessmentId: assessment.id, assessmentPassingScore: assessment.passingScore, assessmentMaxAttempts: assessment.maxAttempts } : {}) }); }}>{t('longreadExercises.createQuestion')}</button>
       {linked && <button type="button" className="admin-btn admin-btn--secondary" disabled={!ready || linked.options.some((o) => o.imageUrl)} onClick={() => {
         let definition = linked.definition;
-        if (definition?.type === 'matching') { const d = definition; definition = { ...d, right: d.left.map((left) => d.right.find((right) => right.id === d.correctPairs.find((p) => p.leftId === left.id)!.rightId)!) }; }
+        if (definition?.type === 'matching') { const d = definition; definition = { ...d, right: [...d.left.map((left) => d.right.find((right) => right.id === d.correctPairs.find((p) => p.leftId === left.id)!.rightId)!), ...d.right.filter((right) => !d.correctPairs.some((p) => p.rightId === right.id))] }; }
         setForm({ questionId: linked.id, assessmentId: parent!.id, updatedAt: linked.updatedAt, type: linked.type, title: linked.title, text: linked.text ?? '', material: linked.material, definition, scoringMode: linked.scoringMode,
           options: linked.options.map((o) => ({ id: o.id, text: o.text ?? '', material: o.material, isCorrect: o.isCorrect })), assessmentPassingScore: parent!.passingScore, assessmentMaxAttempts: parent!.maxAttempts });
       }}>{t('longreadExercises.editQuestion')}</button>}

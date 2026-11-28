@@ -2,20 +2,21 @@ import { expect, type Page } from '@playwright/test';
 
 export const typedAssessmentId = '38800000-0000-4000-8000-000000000001';
 export const typedQuestionMessage = 'Вопросы этого теста пока недоступны в этой форме. Обратитесь к организатору обучения.';
-export async function openTypedAssessment(page: Page, { role = 'learner', type = 'ordering', locale = 'ru' }: { role?: 'learner' | 'admin'; type?: string; locale?: 'ru' | 'en' | 'kk' | 'zh' } = {}) {
+export async function openTypedAssessment(page: Page, { role = 'learner', type = 'ordering', locale = 'ru', custom }: { role?: 'learner' | 'admin'; type?: string; locale?: 'ru' | 'en' | 'kk' | 'zh'; custom?: Record<string, unknown> } = {}) {
   const writes: string[] = [];
   const assessment = { id: typedAssessmentId, organizationId: 'org-388', courseId: 'course-388', title: 'Проверка знаний', slug: 'typed-quiz', status: 'published', passingScore: 70, timeLimitMinutes: 10, availableAfterCourseCompletion: false, maxAttempts: 1, showCorrectAnswers: false, randomizeOrder: false, createdAt: '2026-10-31T00:00:00Z' };
   const displayItems = [{ id: 'a', text: 'Проверить оборудование' }, { id: 'b', text: 'Начать работу' }];
-  const definition = type === 'true_false' ? { type: 'true_false' }
+  const definition = custom ?? (type === 'true_false' ? { type: 'true_false' }
     : type === 'matching' ? { type: 'matching', left: displayItems, right: displayItems }
     : type === 'fill_blank' ? { type: 'fill_blank', blanks: [{ id: 'city' }], caseSensitive: true, whitespace: 'exact' }
     : type === 'short_answer' ? { type: 'short_answer', caseSensitive: true, whitespace: 'trim' }
-    : { type: 'ordering', items: displayItems, ...(role === 'admin' ? { correctOrder: ['b', 'a'] } : {}) };
+    : { type: 'ordering', items: displayItems, ...(role === 'admin' ? { correctOrder: ['b', 'a'] } : {}) });
   const question = { id: '38800000-0000-4000-8000-000000000002', organizationId: assessment.organizationId, assessmentId: typedAssessmentId, title: 'Порядок действий', type, text: null, points: 8, order: 0, options: [], definition: role === 'admin' ? definition : { ...definition, unsupported: true } };
   await page.route('**/api/v1/**', (route) => {
     const path = new URL(route.request().url()).pathname.replace('/api/v1', '');
     if (route.request().method() !== 'GET') { writes.push(path); return route.fulfill({ status: 400, json: { message: 'Must not submit unsupported questions' } }); }
     if (path === '/auth/me') return route.fulfill({ json: { id: 'user-388', organizationId: assessment.organizationId, email: 'question@example.invalid', firstName: 'Анна', lastName: 'Тест', roles: [role], locale, timezone: 'UTC', status: 'active' } });
+    if (path.startsWith('/assessment-images/')) return route.fulfill({ json: { url: `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="640" height="400"><rect width="640" height="400" fill="#dbeafe"/></svg>')}` } });
     if (path.endsWith('/theme')) return route.fulfill({ json: { themeSettings: {} } });
     if (path === '/notifications/unread-count') return route.fulfill({ json: { count: 0 } });
     if (path === `/assessments/${typedAssessmentId}`) return route.fulfill({ json: assessment });

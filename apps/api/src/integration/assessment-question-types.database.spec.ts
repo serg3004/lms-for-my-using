@@ -436,6 +436,40 @@ describe('seven assessment question types and legacy grading — database', () =
     expect((await results.getAttemptResult(failed.id, learner)).answers.filter((answer) => 'correctDefinition' in answer)).toHaveLength(5);
   });
 
+  it('stores, hides and grades image drop, card sorting and matching with extra answers (PR 539)', async () => {
+    const background = JSON.stringify({ kind: 'file', fileId: `${randomUUID()}.png`, caption: '', alt: 'Plan' });
+    const drop: QuestionDefinition = { type: 'image_drop', background, objects: [{ id: 'valve', text: 'Valve' }, { id: 'gauge', text: 'Gauge' }, { id: 'spare', text: 'Spare' }],
+      zones: [{ id: 'z1', shape: 'rect', x: 5, y: 5, width: 20, height: 20 }, { id: 'z2', shape: 'ellipse', x: 40, y: 40, width: 20, height: 20 }, { id: 'z3', shape: 'rect', x: 70, y: 10, width: 20, height: 20 }],
+      correctPairs: [{ zoneId: 'z1', objectId: 'valve' }, { zoneId: 'z2', objectId: 'gauge' }, { zoneId: 'z3', objectId: 'valve' }] };
+    const sort: QuestionDefinition = { type: 'card_sort', categories: [{ id: 'safe', text: 'Safe' }, { id: 'unsafe', text: 'Unsafe' }], cards: items.map(({ id, text }) => ({ id, text })),
+      correctPlacements: [{ cardId: 'a', categoryId: 'safe' }, { cardId: 'b', categoryId: 'safe' }, { cardId: 'c', categoryId: 'unsafe' }, { cardId: 'd', categoryId: 'unsafe' }] };
+    const extra: QuestionDefinition = { type: 'matching', left: items, right: [...items, { id: 'trap', text: 'Trap answer' }], correctPairs: items.map(({ id }) => ({ leftId: id, rightId: id })) };
+    const created = await Promise.all([drop, sort, extra].map((definition) => createDefined(definition, 'proportional')));
+    await papers.updateAssessmentStatus(assessmentId, org, 'published');
+    const quiz = JSON.stringify(await questions.listLearnerQuizQuestions(assessmentId, org, learner.id));
+    expect(quiz).toContain('Trap answer');
+    expect(quiz).not.toMatch(/correctPairs|correctPlacements/);
+    const correct: QuestionResponse[] = [
+      { type: 'image_drop', placements: [{ zoneId: 'z3', objectId: 'valve' }, { zoneId: 'z2', objectId: 'gauge' }, { zoneId: 'z1', objectId: 'valve' }] },
+      { type: 'card_sort', placements: sort.type === 'card_sort' ? sort.correctPlacements.map((placement) => ({ ...placement })) : [] },
+      { type: 'matching', pairs: items.map(({ id }) => ({ leftId: id, rightId: id })) },
+    ];
+    const attempt = await submit(createAssessmentAttemptSchema.parse({ answers: created.map((question, index) => ({ questionId: question.id, response: correct[index] })) }));
+    expect(attempt).toMatchObject({ score: 24, maxScore: 24, percentage: 100, passed: true });
+    expect(attempt.answers.map((answer) => (answer.response as { type: string }).type).sort()).toEqual(['card_sort', 'image_drop', 'matching']);
+    const wrong: QuestionResponse[] = [
+      { type: 'image_drop', placements: [{ zoneId: 'z1', objectId: 'spare' }, { zoneId: 'z2', objectId: 'gauge' }, { zoneId: 'z3', objectId: 'valve' }] },
+      { type: 'card_sort', placements: items.map(({ id }) => ({ cardId: id, categoryId: 'safe' })) },
+      { type: 'matching', pairs: items.map(({ id }) => ({ leftId: id, rightId: id === 'd' ? 'trap' : id })) },
+    ];
+    const failed = await submit(createAssessmentAttemptSchema.parse({ answers: created.map((question, index) => ({ questionId: question.id, response: wrong[index] })) }));
+    expect(failed).toMatchObject({ score: 5 + 4 + 6, maxScore: 24 });
+    await expect(submit(createAssessmentAttemptSchema.parse({ answers: [
+      { questionId: created[0]!.id, response: { type: 'image_drop', placements: [{ zoneId: 'z1', objectId: 'valve' }] } },
+      { questionId: created[1]!.id, response: correct[1] }, { questionId: created[2]!.id, response: correct[2] },
+    ] }))).rejects.toThrow(BadRequestException);
+  });
+
   it.each(['all_or_nothing', 'proportional', 'proportional_with_penalty', 'per_option'] as const)('preserves legacy option-id grades and stored results in %s', async (mode) => {
     const single = await createChoice('single_choice'), boolean = await createChoice('true_false'), multiple = await createChoice('multiple_choice', mode);
     await papers.updateAssessmentStatus(assessmentId, org, 'published');

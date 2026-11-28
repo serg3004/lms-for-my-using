@@ -1,5 +1,7 @@
 import { AssessmentMaterial } from '../assessment-materials/AssessmentMaterial.js';
 import { Fragment, useId } from 'react';
+import { CardSortResponse } from './CardSortQuestion.js';
+import { ImageDropResponse } from './ImageDropQuestion.js';
 import { useTranslation } from 'react-i18next';
 import type { AssessmentAnswer, QuestionResponse } from '@lms/shared/assessment-question-types';
 import type { PublicExerciseQuestion } from '@lms/shared/longread-exercises';
@@ -13,7 +15,9 @@ export function exerciseAnswerComplete(question: ResponseQuestion, answer: Asses
   const response = answer.response, definition = question.definition;
   if (!response || response.type !== definition.type) return false;
   if (response.type === 'true_false' || response.type === 'short_answer') return true;
-  if (response.type === 'matching' && definition.type === 'matching') return response.pairs.length === definition.left.length && new Set(response.pairs.map((pair) => pair.rightId)).size === definition.right.length;
+  if (response.type === 'matching' && definition.type === 'matching') return response.pairs.length === definition.left.length && new Set(response.pairs.map((pair) => pair.rightId)).size === response.pairs.length;
+  if (response.type === 'image_drop' && definition.type === 'image_drop') return definition.zones.every((zone) => response.placements.some((placement) => placement.zoneId === zone.id));
+  if (response.type === 'card_sort' && definition.type === 'card_sort') return definition.cards.every((card) => response.placements.some((placement) => placement.cardId === card.id));
   if (response.type === 'ordering' && definition.type === 'ordering') return response.itemIds.length === definition.items.length && response.itemIds.every(Boolean) && new Set(response.itemIds).size === response.itemIds.length;
   return response.type === 'fill_blank' && definition.type === 'fill_blank' && response.blanks.length === definition.blanks.length;
 }
@@ -44,6 +48,8 @@ export function QuestionResponseFields({ question, answer, onChange, disabled = 
         <option value="">{t('longreadExercises.choose')}</option>{definition.items.map((item) => <option key={item.id} value={item.id} disabled={item.id !== value && selected.includes(item.id)}>{item.text}</option>)}
       </select></div>;
     })}</div>}
+    {definition?.type === 'image_drop' && <ImageDropResponse definition={definition} response={response} onChange={set} id={id} />}
+    {definition?.type === 'card_sort' && <CardSortResponse definition={definition} response={response} onChange={set} id={id} />}
     {definition?.type === 'fill_blank' && <div style={{ display: 'grid', gap: 12 }}>{definition.blanks.map((blank, index) => <div key={blank.id}>
       <label htmlFor={`${id}-blank-${index}`}>{t('longreadExercises.blank', { id: index + 1 })} · <bdi>{blank.id}</bdi></label>
       <input id={`${id}-blank-${index}`} style={control} maxLength={4000} value={response?.type === 'fill_blank' ? response.blanks.find((value) => value.blankId === blank.id)?.value ?? '' : ''} onChange={(event) => set({ type: 'fill_blank', blanks: definition.blanks.map((item) => ({ blankId: item.id, value: item.id === blank.id ? event.target.value : response?.type === 'fill_blank' ? response.blanks.find((value) => value.blankId === item.id)?.value ?? '' : '' })) })} />
