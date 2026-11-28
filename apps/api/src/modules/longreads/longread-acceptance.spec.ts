@@ -14,7 +14,7 @@ import type { PrismaService } from '../../database/prisma.service.js';
  * Actual publication/pinning/grading and HTTP guards are exercised by the real browser acceptance chain.
  */
 describe('longread acceptance sentry (PR 391)', () => {
-  it('keeps additive migrations for documents, versions, reading state, files and seven question types', () => {
+  it('keeps additive migrations for documents, versions, reading state, files and nine question types', () => {
     const root = new URL('../../../prisma/migrations/', import.meta.url);
     const migrations = readdirSync(root).filter((name) => /^20261030|^20261031/.test(name)).map((name) => readFileSync(new URL(`${name}/migration.sql`, root), 'utf8')).join('\n');
     for (const table of ['longread_documents', 'longread_chapters', 'longread_blocks', 'longread_revisions']) expect(migrations).toContain(`CREATE TABLE "${table}"`);
@@ -24,9 +24,9 @@ describe('longread acceptance sentry (PR 391)', () => {
     expect(schema).toMatch(/longreadEnabled\s+Boolean\s+@default\(false\)/);
   });
 
-  it('retains every required registry block, all seven question types and server-only completion inputs', () => {
+  it('retains every required registry block, all nine question types and server-only completion inputs', () => {
     expect(KNOWN_BLOCK_TYPES).toEqual(expect.arrayContaining(['paragraph', 'heading', 'list', 'quote', 'note', 'divider', 'code', 'table', 'columns', 'tabs', 'accordion', 'image', 'attachments', 'audio', 'video', 'embed', 'exercise', 'continue']));
-    expect(questionTypeSchema.options).toEqual(['single_choice', 'multiple_choice', 'true_false', 'matching', 'ordering', 'fill_blank', 'short_answer']);
+    expect(questionTypeSchema.options).toEqual(['single_choice', 'multiple_choice', 'true_false', 'matching', 'ordering', 'fill_blank', 'short_answer', 'image_drop', 'card_sort']);
     expect(validateBlockContent('continue', { mode: 'correct', minViewSeconds: 30 }).ok).toBe(true);
     expect(validateBlockContent('paragraph', { html: '<script>bad()</script>' }).ok).toBe(false);
     expect(validateBlockContent('paragraph', { runs: [{ text: 'bad', href: 'javascript:bad()' }] }).ok).toBe(false);

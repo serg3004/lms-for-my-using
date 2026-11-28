@@ -19,6 +19,8 @@ function answerHash(answer: AssessmentAnswer) {
   const response = answer.response;
   const canonical = { ...answer, ...(answer.selectedOptionIds ? { selectedOptionIds: [...answer.selectedOptionIds].sort() } : {}),
     ...(response?.type === 'matching' ? { response: { ...response, pairs: [...response.pairs].sort((a, b) => a.leftId.localeCompare(b.leftId, 'en')) } } : {}),
+    ...(response?.type === 'image_drop' ? { response: { ...response, placements: [...response.placements].sort((a, b) => a.zoneId.localeCompare(b.zoneId, 'en')) } } : {}),
+    ...(response?.type === 'card_sort' ? { response: { ...response, placements: [...response.placements].sort((a, b) => a.cardId.localeCompare(b.cardId, 'en')) } } : {}),
     ...(response?.type === 'fill_blank' ? { response: { ...response, blanks: [...response.blanks].sort((a, b) => a.blankId.localeCompare(b.blankId, 'en')) } } : {}) };
   return createHash('sha256').update(stableJson(canonical)).digest('hex');
 }

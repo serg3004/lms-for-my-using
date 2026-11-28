@@ -2258,10 +2258,24 @@ a defined type to a legacy option type requires explicitly clearing `definition:
 | `ordering` | `{type:"ordering",items:[{id,text}],correctOrder:[id]}` | `{type:"ordering",itemIds:[id]}` |
 | `fill_blank` | `{type:"fill_blank",blanks:[{id,acceptedAnswers:[string]}],caseSensitive,whitespace}` | `{type:"fill_blank",blanks:[{blankId,value}]}` |
 | `short_answer` | `{type:"short_answer",acceptedAnswers:[string],caseSensitive,whitespace}` | `{type:"short_answer",text:string}` |
+| `image_drop` (PR 539) | `{type:"image_drop",background:material,objects:[{id,text}],zones:[{id,shape:"rect"\|"ellipse",x,y,width,height}],correctPairs:[{zoneId,objectId}]}` | `{type:"image_drop",placements:[{zoneId,objectId}]}` |
+| `card_sort` (PR 539) | `{type:"card_sort",categories:[{id,text}],cards:[{id,text,image?}],correctPlacements:[{cardId,categoryId}]}` | `{type:"card_sort",placements:[{cardId,categoryId}]}` |
+
+PR 539: `image_drop` and `card_sort` are two more defined types (migration `20261128140000_assessment_image_drop_card_sort`
+adds the enum values and extends the typed-response check). `background` and a card `image` are the stored string of an
+uploaded assessment image (the same format as a question material; links are refused). Zone `x`, `y`, `width`, `height` are
+percentages of the picture (0–100, at least 2 wide/high, inside the picture); there are 1–30 zones and 1–30 objects, every zone
+has exactly one correct object, one object may be correct for several zones, and an object may be correct for none (a
+distractor). `card_sort` has 2–4 categories and 2–50 cards, a card has text, an image or both, and each card has exactly one
+correct category. A learner's answer must place every zone/card exactly once; the score is the share of correct zones/cards in
+the proportional modes and all-or-nothing otherwise. Drafts may be incomplete. The learner projection carries the background,
+objects (shuffled), zones, categories and cards (shuffled), never `correctPairs` or `correctPlacements`. Matching accepts extra
+right-hand answers that belong to no pair: every left item has its own answer, an answer is used at most once, and the right
+list may be longer than the left list.
 
 Matching and ordering require 2–50 items, unique IDs (1–64 ASCII letters, digits, `_`, `-`),
-and a full bijection/permutation using only the definition's IDs. Matching left/right counts must
-agree. Fill-blank requires 1–50 unique blank IDs and an entry for every blank; empty submitted text
+and a full bijection/permutation using only the definition's IDs. Matching has one correct right item per left item
+(extra right items are allowed since PR 539). Fill-blank requires 1–50 unique blank IDs and an entry for every blank; empty submitted text
 is a valid wrong answer. Short answer and each blank allow 1–50 distinct, nonempty normalized answer
 variants; each variant/submitted text has at most 4000 UTF-16 code units. Display item text is at most
 2000 characters. Text must be well-formed Unicode without NUL (the PostgreSQL JSONB constraint).

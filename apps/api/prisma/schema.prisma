@@ -157,6 +157,8 @@ enum AssessmentQuestionType {
   ordering
   fill_blank
   short_answer
+  image_drop
+  card_sort
 }
 
 enum AssessmentQuestionScoringMode {

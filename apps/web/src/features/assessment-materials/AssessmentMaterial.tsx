@@ -1,10 +1,10 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
 import { assessmentImageTypes, assessmentMaterialSchema, readAssessmentMaterial } from '@lms/shared/longread-media';
 
 import { apiRequest, MAX_BUFFERED_UPLOAD_SIZE_BYTES } from '../../shared/apiClient.js';
 
-function AssessmentImage({ id, alt }: { id: string; alt: string }) {
+export function AssessmentImage({ id, alt, style }: { id: string; alt: string; style?: CSSProperties }) {
   const { t } = useTranslation();
   const [loaded, setLoaded] = useState<{ id: string; url?: string }>();
   useEffect(() => {
@@ -16,8 +16,15 @@ function AssessmentImage({ id, alt }: { id: string; alt: string }) {
     return () => { active = false; };
   }, [id]);
   if (loaded?.id !== id) return null;
-  return loaded.url ? <img src={loaded.url} alt={alt} onError={() => setLoaded({ id })} style={{ maxWidth: '100%', maxHeight: 360 }} />
+  return loaded.url ? <img src={loaded.url} alt={alt} onError={() => setLoaded({ id })} style={style ?? { maxWidth: '100%', maxHeight: 360 }} />
     : <p role="status">{t('assessmentMaterials.imageError')}</p>;
+}
+
+/** PR 539: the uploaded image of a material (nothing else), sized by its container; used by image and card questions. */
+export function AssessmentPicture({ value, alt = '', style }: { value?: string | null; alt?: string; style?: CSSProperties }) {
+  const material = readAssessmentMaterial(value);
+  if (material?.kind !== 'file') return null;
+  return <AssessmentImage id={material.fileId} alt={alt || material.alt || material.caption} style={style ?? { display: 'block', width: '100%', height: 'auto' }} />;
 }
 
 export function AssessmentMaterial({ value }: { value?: string | null }) {

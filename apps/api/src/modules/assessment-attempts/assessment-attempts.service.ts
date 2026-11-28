@@ -356,6 +356,18 @@ export class AssessmentAttemptsService {
               || picked.some((id) => !definition.items.some((item) => item.id === id))) {
               throw new BadRequestException('Invalid ordering draft');
             }
+          } else if (response?.type === 'image_drop' && definition?.type === 'image_drop') {
+            const zones = response.placements.map((placement) => placement.zoneId);
+            if (new Set(zones).size !== zones.length || zones.some((id) => !definition.zones.some((zone) => zone.id === id))
+              || response.placements.some((placement) => !definition.objects.some((object) => object.id === placement.objectId))) {
+              throw new BadRequestException('Invalid image drop draft');
+            }
+          } else if (response?.type === 'card_sort' && definition?.type === 'card_sort') {
+            const cards = response.placements.map((placement) => placement.cardId);
+            if (new Set(cards).size !== cards.length || cards.some((id) => !definition.cards.some((item) => item.id === id))
+              || response.placements.some((placement) => !definition.categories.some((category) => category.id === placement.categoryId))) {
+              throw new BadRequestException('Invalid card sort draft');
+            }
           } else {
             gradeAssessmentAnswers([question], [input]);
           }

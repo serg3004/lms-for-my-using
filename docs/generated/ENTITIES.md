@@ -101,7 +101,7 @@ Canonical owner: `apps/api/prisma/schema.prisma` via Prisma DMMF.
 |---|---|
 | `AssessmentAttemptStatus` | `in_progress`, `completed`, `pending_review` |
 | `AssessmentQuestionScoringMode` | `all_or_nothing`, `proportional`, `proportional_with_penalty`, `per_option` |
-| `AssessmentQuestionType` | `single_choice`, `multiple_choice`, `true_false`, `matching`, `ordering`, `fill_blank`, `short_answer` |
+| `AssessmentQuestionType` | `single_choice`, `multiple_choice`, `true_false`, `matching`, `ordering`, `fill_blank`, `short_answer`, `image_drop`, `card_sort` |
 | `AssessmentStatus` | `draft`, `published`, `archived` |
 | `AssignmentStatus` | `assigned`, `completed`, `cancelled` |
 | `CertificateStatus` | `issued`, `revoked` |
