@@ -21,7 +21,7 @@ import { AssessmentEditorPreview } from './AssessmentEditorPreview.js';
 import type { EditorContent, EditorDocument } from './editorModel.js';
 import './assessmentEditor.css';
 
-const tabs = ['questions', 'main', 'settings', 'preview', 'usage'] as const;
+const tabs = ['questions', 'main', 'settings', 'screens', 'preview', 'usage'] as const;
 type Tab = typeof tabs[number];
 type Action = 'save' | 'publish' | 'archive' | 'draft';
 const listPath = '/admin/assessments';
@@ -69,7 +69,8 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
     ? assessmentToForm({ ...document.assessment, ...document.draft?.settings })
     : emptyAssessmentForm());
   const [questions, setQuestions] = useState(initial?.draft?.questions ?? initial?.questions ?? []);
-  const [policy, setPolicy] = useState<AssessmentPolicy>(initial?.draft?.settings.policy ?? initial?.assessment.policy ?? {});
+  const [bankOpen, setBankOpen] = useState(false);
+  const [policy, setPolicy] = useState<AssessmentPolicy>(initial?.draft?.settings.policy ?? initial?.assessment.policy ?? (initial ? {} : { attemptPolicy: 'best' })); // PR 584: a new test counts the best attempt; saved tests keep their own setting
   const [material, setMaterial] = useState(initial?.draft?.settings.material === undefined ? initial?.assessment.material : initial.draft.settings.material);
   const [presentation, setPresentation] = useState<AssessmentPresentation | undefined>(
     initial ? initial.draft?.settings.presentation ?? initial.assessment.presentation ?? undefined : { titleScreen: true },
@@ -242,7 +243,7 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
         </>}
       </div>} />
     <nav className="admin-builder-tabbar__actions" aria-label={t('admin.assessmentBuilder.editTitle')}>
-      {tabs.filter((item) => initial || item === 'main' || item === 'settings').map((item) =>
+      {tabs.filter((item) => initial || item === 'main' || item === 'settings' || item === 'screens').map((item) =>
         <Button key={item} type="button" aria-pressed={tab === item} variant={tab === item ? 'primary' : 'secondary'}
           onClick={() => setTab(item)}>{label(item)}</Button>)}
     </nav>
@@ -263,11 +264,12 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
         <RichTextField id="assessment-editor-description" label={t('admin.assessmentBuilder.description')}
           value={form.description} maxLength={2000} onChange={(value) => change('description', value)} />
         <AssessmentMaterialField value={material} onChange={setMaterial} />
-        <AssessmentPresentationFields value={presentation ?? {}} onChange={(value) => {
-          if (value.titleScreen === false) change('timeLimitMinutes', '');
-          setPresentation(value);
-        }} />
       </>}
+      {/* PR 584: the title screen, the final screen and the look of the test have their own tab, as in the mockup. */}
+      {tab === 'screens' && <AssessmentPresentationFields value={presentation ?? {}} onChange={(value) => {
+        if (value.titleScreen === false) change('timeLimitMinutes', '');
+        setPresentation(value);
+      }} />}
       {tab === 'settings' && <>
         <AssessmentPolicyFields policy={policy} onChange={setPolicy} legacyReveal={form.showCorrectAnswers} />
         {([
@@ -286,6 +288,7 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
       </>}
       {tab === 'questions' && <>
         <AssessmentEditorQuestions questions={questions} onChange={setQuestions} onPreview={startPreview} onEditBank={setBankEntryId}
+          onOpenBank={initial ? () => setBankOpen((value) => !value) : undefined}
           onDetachBank={dirty || busy ? undefined : (id) => {
             setBankError(false);
             setBusy(true);
@@ -295,7 +298,7 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
             });
           }} />
         {bankError && <p role="alert">{t('questionBank.error')}</p>}
-        {initial && <AssessmentQuestionBank assessmentId={initial.assessment.id} disabled={dirty}
+        {initial && <AssessmentQuestionBank assessmentId={initial.assessment.id} disabled={dirty} open={bankOpen || Boolean(bankEntryId)} onOpenChange={setBankOpen}
           selectedId={bankEntryId} changed={() => window.location.reload()} />}
       </>}
       {tab === 'preview' && initial && <>

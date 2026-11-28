@@ -39,6 +39,7 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
       await page.getByRole('checkbox', { name: /самостоятельный тест/i }).waitFor();
       await page.getByRole('textbox', { name: /^Название/ }).fill('Проверка знаний');
       await page.getByLabel('Лимит времени (минуты)').fill('12');
+      await expect(page.getByRole('button', { name: 'Экраны и вид', exact: true })).toBeVisible();
       await page.setViewportSize({ width: 375, height: 900 });
       await page.getByRole('button', { name: 'Настройки', exact: true }).click();
       await page.getByLabel('Какая попытка считается').selectOption('best');
@@ -65,8 +66,11 @@ test('creates, reorders, previews and publishes a test without exposing saved dr
         await question.getByLabel('Текст варианта', { exact: true }).fill(`Ответ ${index + 1}`);
         await question.getByRole('radio', { name: 'Верный' }).check();
         if (index === 0) {
-          await question.locator('summary').filter({ hasText: 'Материал' }).first().click();
-          const material = question.locator('details[open]');
+          // PR 584: the material of the opened question is edited in the block next to the list.
+          const side = page.locator('.assessment-editor-side');
+          await expect(side.getByRole('heading', { name: 'Материал к вопросу' })).toBeVisible();
+          await side.locator('summary').filter({ hasText: 'Материал' }).first().click();
+          const material = side.locator('details[open]');
           await material.getByLabel('Ссылка HTTPS или код встраивания').fill('https://youtu.be/dQw4w9WgXcQ');
           await material.getByLabel('Название для экранного диктора').fill('Видео к первому вопросу');
           await material.getByRole('button', { name: 'Применить источник', exact: true }).click();

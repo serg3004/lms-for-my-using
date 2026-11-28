@@ -8,6 +8,7 @@ import { listUsers } from '../../shared/api/users.js';
 import { apiRequest } from '../../shared/apiClient.js';
 
 import { StandaloneAssessmentResults } from './StandaloneAssessmentResults.js';
+import { StandaloneAssignGrants } from './StandaloneAssignGrants.js';
 
 type Target = 'user' | 'group' | 'department';
 type Option = { id: string; name: string };
@@ -105,6 +106,7 @@ export function StandaloneAssessmentDialog({ assessment, dialog }: {
       <img width={144} height={144} alt={t('assessments.standalone.qr')} src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(qrSvg(link))}`} />
       <button type="button" className="admin-btn" onClick={() => downloadQrSvg(link, assessment.title)}>{t('assessments.standalone.qr')}</button>
     </>}
+    <StandaloneAssignGrants root={root} />
     <StandaloneAssessmentResults assessmentId={assessment.id} />
     {feedback && <p role="status">{feedback}</p>}
   </>;

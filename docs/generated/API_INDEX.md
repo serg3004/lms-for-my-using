@@ -53,6 +53,8 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `DELETE` | `/api/v1/assessments/{id}/placements/{placementId}` | `Assessments` | `bearer` |
 | `GET` | `/api/v1/assessments/{id}/standalone/access` | `StandaloneAssessments` | `bearer` |
 | `POST` | `/api/v1/assessments/{id}/standalone/assignments` | `StandaloneAssessments` | `bearer` |
+| `GET` | `/api/v1/assessments/{id}/standalone/grants` | `StandaloneAssessments` | `bearer` |
+| `PUT` | `/api/v1/assessments/{id}/standalone/grants` | `StandaloneAssessments` | `bearer` |
 | `POST` | `/api/v1/assessments/{id}/standalone/link` | `StandaloneAssessments` | `bearer` |
 | `DELETE` | `/api/v1/assessments/{id}/standalone/link` | `StandaloneAssessments` | `bearer` |
 | `PATCH` | `/api/v1/assessments/{id}/status` | `Assessments` | `bearer` |

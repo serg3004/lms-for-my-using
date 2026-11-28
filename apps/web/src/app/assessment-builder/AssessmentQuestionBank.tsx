@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiRequest } from '../../shared/apiClient.js';
 import { Button } from '../../shared/ui.js';
@@ -9,7 +9,7 @@ type Content = Omit<EditorQuestion, 'id' | 'options' | 'bankEntryId'> & {
   options: Omit<EditorQuestion['options'][number], 'id'>[];
 };
 type Entry = { id: string; title: string; content: Content };
-type Bank = { folders: { id: string; name: string }[]; entries: Entry[] };
+type Bank = { folders: { id: string; name: string }[]; entries: Entry[]; total?: number; page?: number; pageSize?: number };
 type Usage = {
   confirmation: string;
   assessments: { title: string }[];
@@ -29,15 +29,21 @@ function questionContent(question: EditorQuestion): Content {
   };
 }
 
-export function AssessmentQuestionBank({ assessmentId, disabled, selectedId, changed }: {
+export function AssessmentQuestionBank({ assessmentId, disabled, selectedId, changed, open: controlledOpen, onOpenChange }: {
   assessmentId: string;
   disabled: boolean;
   selectedId?: string;
+  /** PR 584: when the editor owns the state, its "+ From the bank" item opens the bank and this component draws no toggle of its own. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   changed: () => void;
 }) {
   const { t } = useTranslation();
   const label = (key: string) => t(`questionBank.${key}`);
-  const [open, setOpen] = useState(Boolean(selectedId));
+  const [ownOpen, setOwnOpen] = useState(Boolean(selectedId));
+  const controlled = controlledOpen !== undefined;
+  const open = controlled ? controlledOpen : ownOpen;
+  const setOpen = useCallback((value: boolean) => { if (controlled) onOpenChange?.(value); else setOwnOpen(value); }, [controlled, onOpenChange]);
   const [bank, setBank] = useState<Bank>({ folders: [], entries: [] });
   const [folderId, setFolderId] = useState('');
   const [sampleSize, setSampleSize] = useState(1);
@@ -50,18 +56,19 @@ export function AssessmentQuestionBank({ assessmentId, disabled, selectedId, cha
   const [rowErrors, setRowErrors] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);
   const [revision, setRevision] = useState(0);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     if (!open) return;
     const controller = new AbortController();
-    const query = new URLSearchParams({ search, ...(folderId ? { folderId } : {}) });
+    const query = new URLSearchParams({ search, page: String(page), ...(folderId ? { folderId } : {}) });
     const timer = window.setTimeout(() => {
       void apiRequest<Bank>(`/question-bank?${query}`, { signal: controller.signal }).then(setBank, () => {
         if (!controller.signal.aborted) setError(true);
       });
     }, 200);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [open, search, folderId, revision]);
+  }, [open, search, folderId, revision, page]);
 
   function edit(entry: Entry) {
     setEntryId(entry.id);
@@ -79,7 +86,7 @@ export function AssessmentQuestionBank({ assessmentId, disabled, selectedId, cha
       if (!controller.signal.aborted) setError(true);
     });
     return () => controller.abort();
-  }, [selectedId]);
+  }, [selectedId, setOpen]);
 
   async function run(action: () => Promise<unknown>) {
     setBusy(true);
@@ -144,10 +151,10 @@ export function AssessmentQuestionBank({ assessmentId, disabled, selectedId, cha
   }
 
   return <section className="admin-form">
-    <Button type="button" aria-expanded={open} onClick={() => setOpen(!open)}>{label('title')}</Button>
+    {!controlled && <Button type="button" aria-expanded={open} onClick={() => setOpen(!open)}>{label('title')}</Button>}
     {open && <>
-      <label>{label('search')} <input value={search} onChange={(event) => setSearch(event.target.value)} /></label>
-      <label>{label('folder')} <select value={folderId} onChange={(event) => { setFolderId(event.target.value); setEditor([]); setUsage(undefined); }}>
+      <label>{label('search')} <input value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} /></label>
+      <label>{label('folder')} <select value={folderId} onChange={(event) => { setFolderId(event.target.value); setPage(1); setEditor([]); setUsage(undefined); }}>
         <option value="">{label('allFolders')}</option>
         {bank.folders.map((folder) => <option key={folder.id} value={folder.id}>{folder.name}</option>)}
       </select></label>
@@ -182,6 +189,11 @@ export function AssessmentQuestionBank({ assessmentId, disabled, selectedId, cha
         })}>{label('link')}</Button>{' '}
         <Button type="button" disabled={busy || disabled} onClick={() => edit(entry)}>{label('edit')}</Button>
       </li>)}</ul>
+      {(bank.total ?? 0) > (bank.pageSize ?? 50) && <nav aria-label={label('pages')}>
+        <Button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>{label('previous')}</Button>{' '}
+        <span>{page} / {Math.ceil((bank.total ?? 0) / (bank.pageSize ?? 50))}</span>{' '}
+        <Button type="button" disabled={page * (bank.pageSize ?? 50) >= (bank.total ?? 0)} onClick={() => setPage(page + 1)}>{label('next')}</Button>
+      </nav>}
       {editor.length > 0 && <>
         <AssessmentEditorQuestions questions={editor} onChange={(items) => { setEditor(items.slice(0, 1)); setUsage(undefined); }} onPreview={() => undefined} single />
         {usage && <div role="status">

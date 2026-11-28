@@ -330,6 +330,62 @@ describe('seven assessment question types and legacy grading — database', () =
     expect(await results.listAssessmentResults(paper.id, { ...instructor, roles: ['manager'] }, null)).toMatchObject([{ id: own.id }]);
   });
 
+  it('lets the author, managers for their team and named roles or employees assign a standalone test (PR 584)', async () => {
+    const service = new StandaloneAssessmentsService(prisma, {} as BackgroundJobsService);
+    const paper = await prisma.assessment.create({ data: {
+      organizationId: org, title: 'Who assigns', slug: randomUUID(), status: 'published', createdBy: instructor.id,
+    } });
+    const other = await person('instructor');
+    const manager = await person('manager');
+    const dueAt = new Date(Date.now() + 86_400_000).toISOString();
+
+    await expect(service.assertCanAssign(paper.id, instructor)).resolves.toBeUndefined();
+    await expect(service.assertCanAssign(paper.id, other)).rejects.toThrow(ForbiddenException);
+    await expect(service.assertCanAssign(paper.id, manager)).resolves.toBeUndefined();
+    await expect(service.assertCanAssign(paper.id, manager, true)).rejects.toThrow(ForbiddenException);
+    await expect(service.assertCanAssign(paper.id, learner)).rejects.toThrow(ForbiddenException);
+
+    // A manager reaches only their own team: a learner outside every group they lead is not found.
+    await expect(service.assign(paper.id, org, { target: 'user', targetId: learner.id, dueAt: new Date(dueAt) }, manager)).rejects.toThrow(NotFoundException);
+
+    await expect(service.setGrants(paper.id, other, { roles: ['instructor'], userIds: [] })).rejects.toThrow(ForbiddenException);
+    await expect(service.setGrants(paper.id, instructor, { roles: [], userIds: [learner.id] })).rejects.toThrow(NotFoundException);
+    await expect(service.setGrants(paper.id, instructor, { roles: ['manager'], userIds: [other.id] }))
+      .resolves.toMatchObject({ roles: ['manager'], users: [{ id: other.id }] });
+    await expect(service.assertCanAssign(paper.id, other, true)).resolves.toBeUndefined();
+    await expect(service.assertCanAssign(paper.id, manager, true)).resolves.toBeUndefined();
+    await expect(service.getGrants(paper.id, other)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('pages a large question bank folder fifty at a time (PR 584)', async () => {
+    const folder = await prisma.questionBankFolder.create({ data: { organizationId: org, name: `Paging ${randomUUID()}` } });
+    await prisma.questionBankEntry.createMany({ data: Array.from({ length: 120 }, (_, index) => ({
+      organizationId: org, folderId: folder.id, title: `Entry ${String(index).padStart(3, '0')}`, content: {},
+    })) });
+    const bank = new QuestionBankService(prisma);
+    const first = await bank.list(org, '', folder.id, 1);
+    const third = await bank.list(org, '', folder.id, 3);
+    expect(first).toMatchObject({ total: 120, page: 1, pageSize: 50 });
+    expect(first.entries).toHaveLength(50);
+    expect(third.entries.map(({ title }) => title)).toEqual(Array.from({ length: 20 }, (_, index) => `Entry ${String(100 + index).padStart(3, '0')}`));
+  });
+
+  it('does not let two parallel starts of a timed test pass the attempts limit (PR 584)', async () => {
+    const timed = await prisma.assessment.create({ data: {
+      organizationId: org, title: 'Parallel start', slug: randomUUID(), status: 'published', timeLimitMinutes: 10, maxAttempts: 1,
+    } });
+    await prisma.assessmentQuestion.create({ data: {
+      organizationId: org, assessmentId: timed.id, title: 'Q',
+      options: { create: [{ organizationId: org, text: 'A', isCorrect: true }, { organizationId: org, text: 'B', isCorrect: false }] },
+    } });
+    const [first, second] = await Promise.all([
+      attempts.startAttempt(timed.id, learner.id, org, null),
+      attempts.startAttempt(timed.id, learner.id, org, null),
+    ]);
+    expect(second.id).toBe(first.id);
+    await expect(prisma.assessmentAttempt.count({ where: { assessmentId: timed.id, userId: learner.id } })).resolves.toBe(1);
+  });
+
   it('inherits the organization theme and records completion without a final screen', async () => {
     const theme = { accent: '#ffff00', headingFont: 'georgia' } as const;
     const presentation = { titleScreen: false, finalScreen: 'none' } as const;

@@ -2210,7 +2210,13 @@ file is unavailable or the caller can no longer read its contents.
 
 ## Standalone assessment assignments (PR 523)
 
-Administrators use `POST /assessments/:id/standalone/assignments` for a published assessment
+Who may assign a test (PR 584): the administrator, the test's author, a manager (only to their own
+team: recipients outside it are skipped, and a user target outside it answers 404) and the roles
+(`instructor`, `manager`) and named staff the author chose with `PUT /assessments/:id/standalone/grants`
+body `{ roles, userIds }` (`GET` reads them; only the administrator and the author may call either;
+others get 403). A manager who is neither author nor named may assign but not create a link.
+
+`POST /assessments/:id/standalone/assignments` works for a published assessment
 created without a course. The body is `{ target: "user" | "group" | "department", targetId, dueAt }`.
 Group membership and primary department membership, including descendants, are expanded at
 assignment time. Repeating a request with the same deadline leaves each employee's assignment
@@ -2221,7 +2227,7 @@ course tests, with the nearest deadlines first and only the caller's attempts. T
 reminder runs through the background worker in the 24 hours before the deadline for employees
 without a passing attempt. A deadline is advisory.
 
-Administrators create or rotate a link with `POST /assessments/:id/standalone/link` and revoke
+Whoever may assign with a link right (see above) creates or rotates a link with `POST /assessments/:id/standalone/link` and revoke
 it with `DELETE` on the same path. Only the digest is stored. A signed-in employee from the
 same organization may supply the token as `?token=` on quiz, timed start and submission
 requests. Rotation and revocation invalidate the old token. An employee with a direct
@@ -2768,7 +2774,7 @@ to standard test attempts. Longread exercises continue to use their versioned po
 ### Assessment question bank (PR 530)
 
 Authors can search their organization's question bank with
-`GET /question-bank?search=&folderId=`. Creating a folder, adding a question and
+`GET /question-bank?search=&folderId=&page=` (50 entries a page; the answer carries `total`, `page` and `pageSize`). Creating a folder, adding a question and
 importing rows use `POST /question-bank/folders`, `POST /question-bank` and
 `POST /question-bank/import`. The editor reads the workbook locally and submits
 `{ folderId, rows: [{ row, content }] }`. The API returns the imported count and

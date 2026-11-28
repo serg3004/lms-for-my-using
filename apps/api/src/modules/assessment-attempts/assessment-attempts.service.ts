@@ -202,7 +202,7 @@ export class AssessmentAttemptsService {
    * completed attempt in one call, exactly as before startAttempt existed.
    *
    * Timed assessments: requires an existing in_progress attempt from startAttempt. Late submission
-   * (now - startedAt > timeLimitMinutes) still grades and records the answers, but forces
+   * (now - startedAt >= timeLimitMinutes) still grades and records the answers, but forces
    * passed: false regardless of score — the attempt is spent, not silently rejected.
    */
   async createAttempt(assessmentId: string, userId: string, organizationId: string, input: CreateAssessmentAttemptInput) {
@@ -239,7 +239,7 @@ export class AssessmentAttemptsService {
       const score = gradedAnswers.reduce((sum, answer) => sum + answer.score, 0);
       const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
       const expired = Boolean(
-        inProgress && assessment.timeLimitMinutes && Date.now() - inProgress.startedAt.getTime() > assessment.timeLimitMinutes * 60_000,
+        inProgress && assessment.timeLimitMinutes && Date.now() - inProgress.startedAt.getTime() >= assessment.timeLimitMinutes * 60_000,
       );
       const passed = expired ? false : percentage >= assessment.passingScore;
       const completedAt = new Date();
@@ -297,7 +297,7 @@ export class AssessmentAttemptsService {
       const score = graded.reduce((sum, answer) => sum + answer.score, 0);
       const maxScore = questions.reduce((sum, question) => sum + question.points, 0);
       const completedAt = new Date();
-      const expired = Boolean(active && assessment.timeLimitMinutes && completedAt.getTime() - active.startedAt.getTime() > assessment.timeLimitMinutes * 60000);
+      const expired = Boolean(active && assessment.timeLimitMinutes && completedAt.getTime() - active.startedAt.getTime() >= assessment.timeLimitMinutes * 60000);
       const percentage = expired && policy.attemptPolicy ? 0 : maxScore ? Math.round(score * 100 / maxScore) : 0;
       const passed = !expired && percentage >= assessment.passingScore;
 
@@ -493,20 +493,10 @@ export class AssessmentAttemptsService {
       };
     }
 
-    const existing = await this.prisma.assessmentAttempt.findFirst({
-      where: { assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
-      select: { id: true },
-    });
-
-    if (existing) {
-      return this.getAttempt(existing.id, { id: userId, organizationId, roles: ['learner'] });
-    }
-
-    await this.ensureAttemptsLimit(assessmentId, userId, organizationId, assessment.maxAttempts, location.placementId);
-
     // SELECT ... FOR UPDATE takes the same lock deleteAssessment() takes before soft-deleting,
     // so the two are fully serialized: whichever of the two transactions acquires the lock
     // first, the other only proceeds once it's committed and can see the up-to-date row.
+    // PR 584: the resume check and the attempts limit run under that lock, so two parallel starts cannot both pass the limit.
     const attemptId = await this.prisma.$transaction(async (tx) => {
       const rows = await tx.$queryRaw<{ id: string }[]>`
         SELECT id FROM assessments
@@ -518,6 +508,13 @@ export class AssessmentAttemptsService {
         throw new NotFoundException('Assessment not found');
       }
 
+      const existing = await tx.assessmentAttempt.findFirst({
+        where: { assessmentId, userId, organizationId, placementId: location.placementId, longreadRevisionId: null, status: 'in_progress', deletedAt: null },
+        select: { id: true },
+      });
+      if (existing) return existing.id;
+
+      await this.ensureAttemptsLimit(assessmentId, userId, organizationId, assessment.maxAttempts, location.placementId, tx);
       const bankQuestionSnapshot = await this.snapshotQuestions(tx, assessmentId, organizationId, userId, assessment.randomizeOrder);
       const attempt = await tx.assessmentAttempt.create({
         data: { organizationId, assessmentId, userId, ...location, status: 'in_progress', startedAt: new Date(),
