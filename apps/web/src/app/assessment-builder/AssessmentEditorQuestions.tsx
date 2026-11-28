@@ -51,6 +51,10 @@ function ReorderList<T extends { id: string }>({ items, onChange, children }: {
   </ol>;
 }
 
+function manualReview(question: EditorQuestion) {
+  return question.type === 'short_answer' && Boolean((question.definition as { manualReview?: boolean } | null | undefined)?.manualReview);
+}
+
 export function AssessmentEditorQuestions({ questions, onChange, onPreview, single, onEditBank, onDetachBank }: {
   questions: EditorQuestion[];
   onChange: (questions: EditorQuestion[]) => void;
@@ -76,8 +80,12 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview, sing
           <div className="admin-header-actions">
             {reorder}
             <div>
-              <small>{index + 1} · {t('admin.assessmentBuilder.points')} {question.points}</small>
+              <small>{index + 1} · {t(`longreadExercises.types.${question.type}`)} · {t('admin.assessmentBuilder.points')} {question.points}</small>
               <div>{question.bankEntryId && <span>↗ {t('questionBank.linked')} </span>}<strong>{question.title || t('admin.assessmentBuilder.questionTitle')}</strong></div>
+              {(manualReview(question) || question.material || question.imageUrl) && <small>
+                {manualReview(question) && <span>{t('admin.assessmentBuilder.editor.marker.manual')} </span>}
+                {(question.material || question.imageUrl) && <span>{t('admin.assessmentBuilder.editor.marker.material')}</span>}
+              </small>}
             </div>
           </div>
           <div className="admin-header-actions">

@@ -64,7 +64,7 @@ export async function queryAssessmentLibrary(
     ), candidates AS (
       SELECT * FROM filtered a ${sortUsesStats ? Prisma.empty : page}
     ), measured AS (
-      SELECT a.*, q.questions_count, r.attempts_count, r.pass_rate, r.last_attempt_at
+      SELECT a.*, q.questions_count, r.attempts_count, r.pass_rate, r.last_attempt_at, pl.places
       FROM candidates a
       CROSS JOIN LATERAL (
         SELECT count(*)::int AS questions_count FROM assessment_questions q
@@ -76,6 +76,21 @@ export async function queryAssessmentLibrary(
                  / nullif(count(*) FILTER (WHERE r.status = 'completed'), 0))::int AS pass_rate
         FROM assessment_attempts r WHERE ${attempts}
       ) r
+      CROSS JOIN LATERAL (
+        -- PR 583: where the test is used besides its own course: courses and longread lessons (at most three, no repeats).
+        SELECT coalesce(jsonb_agg(jsonb_build_object('kind', u.kind, 'title', u.title) ORDER BY u.kind, u.title), '[]'::jsonb) AS places
+        FROM (
+          SELECT DISTINCT CASE WHEN p.longread_block_id IS NOT NULL THEN 'longread' ELSE 'course' END AS kind,
+                 coalesce(CASE WHEN p.longread_block_id IS NOT NULL THEN l.title END, pc.title) AS title
+          FROM assessment_placements p
+          LEFT JOIN courses pc ON pc.id = p.course_id AND pc.organization_id = p.organization_id AND pc.deleted_at IS NULL
+          LEFT JOIN lessons l ON l.id = p.lesson_id AND l.organization_id = p.organization_id
+          WHERE p.assessment_id = a.id AND p.organization_id = a.organization_id AND p.deleted_at IS NULL
+            AND (p.longread_block_id IS NULL OR l.title IS NOT NULL) AND (p.longread_block_id IS NOT NULL OR pc.title IS NOT NULL)
+            AND (p.longread_block_id IS NOT NULL OR p.course_id IS DISTINCT FROM a.course_id)
+          LIMIT 3
+        ) u
+      ) pl
     ), paged AS (
       SELECT * FROM measured a ${sortUsesStats ? page : Prisma.empty}
     )
@@ -88,7 +103,7 @@ export async function queryAssessmentLibrary(
         'passMessage', a.pass_message, 'failMessage', a.fail_message, 'showCorrectAnswers', a.show_correct_answers,
         'randomizeOrder', a.randomize_order, 'isLongreadExercise', a.is_longread_exercise, 'createdAt', a.created_at,
         'questionsCount', a.questions_count, 'attemptsCount', a.attempts_count,
-        'passRate', a.pass_rate, 'lastAttemptAt', a.last_attempt_at
+        'passRate', a.pass_rate, 'lastAttemptAt', a.last_attempt_at, 'places', a.places
       ) ORDER BY ${order}), '[]') AS items
     FROM paged a
   `;
