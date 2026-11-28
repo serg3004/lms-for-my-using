@@ -10,11 +10,11 @@ export function checklistAccessKind(checklist: { accessMode?: ChecklistAccessMod
   return checklist.pinned ? 'pinned' : 'free';
 }
 
-// Three distinct tones, all with text at least 4.5:1 against their background (WCAG AA at badge size).
+// Three distinct tones taken from the theme tokens, so every theme (including high contrast) keeps the text readable.
 const TONE: Record<ChecklistAccessKind, { color: string; background: string }> = {
-  assigned: { color: '#92400e', background: '#fff7e8' },
-  free: { color: '#166534', background: '#e9f8f2' },
-  pinned: { color: '#3730a3', background: '#e0e7ff' },
+  assigned: { color: 'var(--color-warning-text)', background: 'var(--color-warning-bg)' },
+  free: { color: 'var(--color-success)', background: 'var(--color-success-bg)' },
+  pinned: { color: 'var(--color-accent-strong)', background: 'var(--color-accent-soft)' },
 };
 
 export function checklistAccessLabel(kind: ChecklistAccessKind, t: TFunction): string {

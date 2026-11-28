@@ -5,6 +5,8 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'node',
+    // PR 578: the contrast-theme test reads the token file as text.
+    css: { include: [/tokens\.css/] },
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],

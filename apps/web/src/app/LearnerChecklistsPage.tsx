@@ -53,11 +53,9 @@ const COLORS = {
   primary: 'var(--color-primary)',
   success: 'var(--color-success)',
   successSoft: 'var(--color-success-bg)',
-  // #d97706 (the design system's --color-warning token) only reaches a 2.99:1 contrast ratio
-  // against warningSoft/white as *text* -- WCAG AA needs 4.5:1 for normal-size text. This darker
-  // shade (~6.7:1 on warningSoft, ~4.9:1 on white) is used for warning-toned text specifically on
-  // this page; warningSoft (the background) is unaffected.
-  warning: '#92400e',
+  // The warning text token is darker than --color-warning (which only reaches 2.99:1 as text): about 6.6:1 on
+  // warningSoft in the light theme, and it is re-tuned by every other theme (PR 578).
+  warning: 'var(--color-warning-text)',
   warningSoft: 'var(--color-warning-bg)',
   primarySoft: 'var(--color-accent-soft)',
 };

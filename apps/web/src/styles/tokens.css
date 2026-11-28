@@ -120,3 +120,53 @@
   --admin-sidebar-text: #e8ebf2;
   --admin-sidebar-text-muted: #aab3c5;
 }
+
+/*
+ * PR 578: high-contrast theme for people with low vision and for bright light. Black text on white, solid dark borders,
+ * no translucent layers and no shadows; every text pair is at least 7:1 (WCAG AAA). Sizes and shapes stay as they are.
+ * The values are checked by `tokens.contrast.spec.ts`.
+ */
+:root[data-theme='contrast'] {
+  color-scheme: light;
+  --color-background: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f0f0f0;
+  --color-surface-secondary: #f0f0f0;
+  --color-border: #4a4a4a;
+  --color-border-strong: #000000;
+  --color-card-border: #000000;
+  --color-text: #000000;
+  --color-text-muted: #262626;
+  --color-text-subtle: #262626;
+  --color-primary: #0000b3;
+  --color-primary-hover: #00007a;
+  --color-on-primary: #ffffff;
+  --color-accent-muted: #e6e6ff;
+  --color-selected: #d6d6ff;
+  --color-accent-soft: #e6e6ff;
+  --color-accent-strong: #00007a;
+  --color-accent-border: #0000b3;
+  --color-violet-soft: #ece6ff;
+  --color-violet: #3b0a8c;
+  --color-danger: #8a0000;
+  --color-danger-bg: #ffe5e5;
+  --color-danger-soft: #ffe5e5;
+  --color-danger-text: #6b0000;
+  --color-on-danger: #ffffff;
+  --color-success: #004d1a;
+  --color-success-bg: #e3f5e9;
+  --color-success-soft: #e3f5e9;
+  --color-warning: #5c3a00;
+  --color-warning-text: #4d2e00;
+  --color-warning-bg: #fff3d6;
+  --color-info: #003a8c;
+  --color-info-bg: #e0eeff;
+  --color-info-soft: #e0eeff;
+  --color-info-text: #00306e;
+  --focus-ring: #0000b3;
+  --shadow-card: none;
+  --shadow-button: 0 0 0 1px #000000;
+  --admin-sidebar-background: #000000;
+  --admin-sidebar-text: #ffffff;
+  --admin-sidebar-text-muted: #e6e6e6;
+}

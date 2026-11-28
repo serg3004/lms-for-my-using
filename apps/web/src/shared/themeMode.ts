@@ -1,11 +1,13 @@
 import { reapplyThemeSettings } from './theme.js';
 
-/** PR 573: light / dark / follow the system. The choice lives in this browser only. */
-export type ThemeMode = 'light' | 'dark' | 'system';
+/** PR 573, 578: light / dark / high contrast / follow the device. The choice lives in this browser only. */
+export type ThemeMode = 'light' | 'dark' | 'contrast' | 'system';
+/** The theme that is really on the page ("system" resolves to light or dark). */
+export type AppliedTheme = 'light' | 'dark' | 'contrast';
 
 const storageKey = 'lms.themeMode';
 /** Order of the items in the theme menu; a new theme (PR 578) is added here. */
-export const THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'system'];
+export const THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'contrast', 'system'];
 const modes = THEME_MODES;
 
 export function getStoredThemeMode(): ThemeMode {
@@ -22,7 +24,7 @@ function systemPrefersDark() {
   return typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 }
 
-export function resolveTheme(mode: ThemeMode): 'light' | 'dark' {
+export function resolveTheme(mode: ThemeMode): AppliedTheme {
   return mode === 'system' ? (systemPrefersDark() ? 'dark' : 'light') : mode;
 }
 
