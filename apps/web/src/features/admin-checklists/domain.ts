@@ -5,7 +5,7 @@ import type { TFunction } from 'i18next';
 import type {
   ChecklistAnswerState,
 } from '../../app/checklistCompletion.js';
-import { HIGHLIGHT_COLOR_PATTERN } from '../../shared/HighlightColorField.js';
+import { HIGHLIGHT_COLOR_PATTERN } from '../../shared/ColorField.js';
 import { checklistItemLevels, isChecklistNoteMissing, isChecklistRequirementSatisfied } from '../../app/checklistCompletion.js';
 import type {
   ChecklistAccessMode,

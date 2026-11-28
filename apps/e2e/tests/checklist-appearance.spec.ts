@@ -19,9 +19,9 @@ test('author sets a block with its button, sees it change at once, saves, and th
   const row = page.locator('.admin-criteria-row:not(.admin-criteria-row--head)').first();
   await row.getByRole('button', { name: /^Оформление блока:/ }).click();
   await expect(settings(page)).toContainText('Критерий');
-  await settings(page).getByRole('button', { name: 'Фон #FFF7CC', exact: true }).click();
+  await settings(page).getByRole('button', { name: 'Фон: #FFF7CC', exact: true }).click();
   await expect(row).toHaveCSS('background-color', 'rgb(255, 247, 204)');
-  await settings(page).getByRole('button', { name: 'Цвет текста #172033', exact: true }).click();
+  await settings(page).getByRole('button', { name: 'Цвет текста: #172033', exact: true }).click();
   await page.getByRole('button', { name: 'Сохранить', exact: true }).first().click();
   await expect.poll(() => (saved()?.appearance as { overrides?: Record<string, { background?: string }> } | undefined)?.overrides?.[ids[0]!]?.background).toBe('#FFF7CC');
   expect((saved()?.appearance as { blocks: Record<string, unknown> }).blocks).toHaveProperty('header');
@@ -41,7 +41,7 @@ test('only this block can be styled, low contrast warns, reset restores the look
   await row.getByRole('button', { name: /^Оформление блока:/ }).click();
   const panel = settings(page);
   await expect(panel.getByRole('radio', { name: 'Только этот блок' })).toHaveAttribute('aria-checked', 'true');
-  await panel.getByRole('button', { name: 'Цвет текста #FFFFFF', exact: true }).click();
+  await panel.getByRole('button', { name: 'Цвет текста: #FFFFFF', exact: true }).click();
   await expect(panel.getByRole('status')).toContainText('Низкий контраст');
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await panel.getByRole('button', { name: 'Сбросить к стандартному', exact: true }).click();
@@ -102,13 +102,13 @@ test('PR 441: a colour changes only the chosen criterion; "to all" is a separate
   const panel = settings(page);
   await expect(panel.getByRole('radio', { name: 'Только этот блок' })).toHaveAttribute('aria-checked', 'true');
   await expect(panel.getByRole('radio', { name: 'Ко всем критериям (3)' })).toHaveAttribute('aria-checked', 'false');
-  await panel.getByRole('button', { name: 'Фон #FFF7CC', exact: true }).click();
+  await panel.getByRole('button', { name: 'Фон: #FFF7CC', exact: true }).click();
   await expect(rows.nth(1)).toHaveCSS('background-color', 'rgb(255, 247, 204)');
   await expect(rows.nth(0)).not.toHaveCSS('background-color', 'rgb(255, 247, 204)');
   await expect(rows.nth(2)).not.toHaveCSS('background-color', 'rgb(255, 247, 204)');
   await panel.getByRole('radio', { name: 'Ко всем критериям (3)' }).click();
   await expect(panel.getByRole('note')).toContainText('У 1 блока свои настройки, они остаются.');
-  await panel.getByRole('button', { name: 'Фон #EAF2FB', exact: true }).click();
+  await panel.getByRole('button', { name: 'Фон: #EAF2FB', exact: true }).click();
   await expect(rows.nth(0)).toHaveCSS('background-color', 'rgb(234, 242, 251)');
   await expect(rows.nth(2)).toHaveCSS('background-color', 'rgb(234, 242, 251)');
   await expect(rows.nth(1)).toHaveCSS('background-color', 'rgb(255, 247, 204)');

@@ -3,7 +3,7 @@ import type { TFunction } from 'i18next';
 
 import { getChecklistWorkplaceSettings } from '../../shared/api/checklists.js';
 import type { ChecklistFeedbackVisibility, ChecklistGeolocationPolicy, ChecklistModuleSettings, ChecklistWorkplaceSettingsView } from '../../shared/api/types.js';
-import { HighlightColorField } from '../../shared/HighlightColorField.js';
+import { ColorField } from '../../shared/ColorField.js';
 import { Button, Select } from '../../shared/ui.js';
 import { ObserverEligibilityFields } from '../admin-checklist-sessions/ObserverEligibilityFields.js';
 import { ChecklistCheckboxOption } from './ChecklistHelpTip.js';
@@ -99,7 +99,7 @@ export function ChecklistModuleSettingsBlock({ value, onChange, locationPolicy, 
           <legend>{t('admin.checklists.settings.resultColors.title', 'Result colours')}</legend>
           {(['low', 'mid', 'high'] as const).map((band) => (
             <div className="admin-form__field" key={band}>
-              <HighlightColorField
+              <ColorField
                 disabled={disabled}
                 label={t(`admin.checklists.settings.resultColors.${band}Label`, band)}
                 onChange={(color) => set({ resultColors: { ...value.resultColors!, [band]: color } })}

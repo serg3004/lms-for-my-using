@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
+import { ColorField } from '../../shared/ColorField.js';
 import type { TFunction } from 'i18next';
 import {
   APPEARANCE_BORDER_MAX, APPEARANCE_PADDINGS, APPEARANCE_PRESETS, APPEARANCE_RADII, appearanceLowContrast, resolveBlockStyle, sanitizeAppearance,
@@ -65,19 +66,11 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   return <section style={{ display: 'grid', gap: 8 }}><h4 style={heading}>{title}</h4>{children}</section>;
 }
 
-function ColorField({ label, value, fallback, disabled, onPick, t }: { label: string; value: string | undefined; fallback: string; disabled: boolean; onPick: (value: string | undefined) => void; t: TFunction }) {
+function BlockColor({ label, value, fallback, disabled, onPick }: { label: string; value: string | undefined; fallback: string; disabled: boolean; onPick: (value: string | undefined) => void }) {
   return (
-    <div role="group" aria-label={label} style={{ display: 'grid', gap: 6 }}>
+    <div style={{ display: 'grid', gap: 6 }}>
       <span>{label}</span>
-      <div style={row}>
-        {READY_COLORS.map((color) => (
-          <button key={color} type="button" disabled={disabled} aria-label={`${label} ${color}`} aria-pressed={value?.toUpperCase() === color} onClick={() => onPick(color)}
-            style={{ width: 30, height: 30, minHeight: 30, borderRadius: 8, padding: 0, background: color, cursor: 'pointer', border: value?.toUpperCase() === color ? '2px solid var(--color-primary, #4f46e5)' : '1px solid var(--color-border)', boxShadow: value?.toUpperCase() === color ? '0 0 0 2px var(--color-accent-muted, #eef2ff)' : undefined, flex: '0 0 30px' }} />
-        ))}
-        <input type="color" disabled={disabled} aria-label={`${t('admin.checklists.appearance.customColor')}: ${label}`} title={t('admin.checklists.appearance.customColor')} value={value ?? fallback} style={{ width: 44, height: 36, padding: 0, border: 0, background: 'none' }}
-          onChange={(event) => onPick(event.target.value.toUpperCase())} />
-        <button type="button" className="admin-btn admin-btn--sm" style={linkButton} disabled={disabled || !value} onClick={() => onPick(undefined)}>{t('admin.checklists.appearance.unset')}</button>
-      </div>
+      <ColorField disabled={disabled} fallback={fallback} label={label} onChange={onPick} onUnset={() => onPick(undefined)} swatches={READY_COLORS} value={value} />
     </div>
   );
 }
@@ -175,16 +168,16 @@ export function BlockSettingsWindow({ target, appearance, onChange, onClose, dis
           : <button type="button" className="admin-btn admin-btn--sm admin-btn--secondary" disabled={disabled || !appearance} onClick={() => onChange(null)}>{t('admin.checklists.appearance.reset')}</button>}
       </div>
       <Section title={t('admin.checklists.appearance.sectionBlock')}>
-        <ColorField label={t('admin.checklists.appearance.background')} value={style.background} fallback={DEFAULT_BACKGROUND} disabled={disabled} onPick={(value) => write({ background: value })} t={t} />
+        <BlockColor label={t('admin.checklists.appearance.background')} value={style.background} fallback={DEFAULT_BACKGROUND} disabled={disabled} onPick={(value) => write({ background: value })} />
         <StepField label={t('admin.checklists.appearance.padding')} value={style.padding} options={APPEARANCE_PADDINGS} disabled={disabled} onPick={(value) => write({ padding: value })} t={t} />
       </Section>
       <Section title={t('admin.checklists.appearance.sectionBorder')}>
-        <ColorField label={t('admin.checklists.appearance.borderColor')} value={style.borderColor} fallback={DEFAULT_BORDER} disabled={disabled} onPick={(value) => write({ borderColor: value })} t={t} />
+        <BlockColor label={t('admin.checklists.appearance.borderColor')} value={style.borderColor} fallback={DEFAULT_BORDER} disabled={disabled} onPick={(value) => write({ borderColor: value })} />
         <StepField label={t('admin.checklists.appearance.borderWidth')} value={style.borderWidth} options={Array.from({ length: APPEARANCE_BORDER_MAX + 1 }, (_, index) => index)} disabled={disabled} onPick={(value) => write({ borderWidth: value })} t={t} />
         <StepField label={t('admin.checklists.appearance.radius')} value={style.radius} options={APPEARANCE_RADII} disabled={disabled} onPick={(value) => write({ radius: value })} t={t} />
       </Section>
       <Section title={t('admin.checklists.appearance.sectionText')}>
-        <ColorField label={t('admin.checklists.appearance.textColor')} value={style.color} fallback={DEFAULT_COLOR} disabled={disabled} onPick={(value) => write({ color: value })} t={t} />
+        <BlockColor label={t('admin.checklists.appearance.textColor')} value={style.color} fallback={DEFAULT_COLOR} disabled={disabled} onPick={(value) => write({ color: value })} />
       </Section>
       {appearanceLowContrast(effective) && <p role="status" style={{ margin: 0, color: 'var(--color-danger, #B91C1C)' }}>{t('admin.checklists.appearance.lowContrast')}</p>}
     </div>

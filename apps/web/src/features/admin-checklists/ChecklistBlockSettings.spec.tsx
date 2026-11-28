@@ -37,7 +37,7 @@ describe('BlockSettingsWindow (PR 431)', () => {
     const dialog = container.querySelector('[role="dialog"]')!;
     expect(dialog.getAttribute('aria-modal')).toBe('false');
     expect(container.querySelector('select')).toBeNull();
-    await click(button('Фон #FFF7CC'));
+    await click(button('Фон: #FFF7CC'));
     await click(button('Толщина границы: 2 px'));
     await click(button('Отступ: 24 px'));
     await click(button('Скругление: 12 px'));
@@ -70,10 +70,10 @@ describe('BlockSettingsWindow (PR 431)', () => {
     await render(item, { blocks: { item: { color: '#111111' } } }, false, { kindIds: [itemId, 'other-1', 'other-2'] });
     const radios = () => [...container.querySelectorAll<HTMLElement>('[role="radio"]')];
     expect(radios().map((radio) => [radio.textContent, radio.getAttribute('aria-checked')])).toEqual([['Ко всем критериям (3)', 'false'], ['Только этот блок', 'true']]);
-    await click(button('Фон #EAF2FB'));
+    await click(button('Фон: #EAF2FB'));
     expect(value).toEqual({ blocks: { item: { color: '#111111' } }, overrides: { [itemId]: { background: '#EAF2FB' } } });
     await click(radios()[0]);
-    await click(button('Фон #F3F4F6'));
+    await click(button('Фон: #F3F4F6'));
     expect(value).toEqual({ blocks: { item: { color: '#111111', background: '#F3F4F6' } }, overrides: { [itemId]: { background: '#EAF2FB' } } });
   });
   it('PR 441: reset in "only this block" removes only its own settings; reset for all keeps nothing', async () => {
@@ -103,7 +103,7 @@ describe('BlockSettingsWindow (PR 431)', () => {
     await render({ kind: 'group', id: null, name: 'Без группы' }, null, false, { kindIds: ['g1', 'g2'] });
     expect(container.querySelectorAll('[role="radio"]').length).toBe(0);
     expect(container.querySelector('[role="note"]')?.textContent).toContain('все группы (2)');
-    await click(button('Фон #FFF7CC'));
+    await click(button('Фон: #FFF7CC'));
     expect(value).toEqual({ blocks: { group: { background: '#FFF7CC' } } });
   });
   it('offers no scope choice for the header and "General information"', async () => {
@@ -120,7 +120,7 @@ describe('BlockSettingsWindow (PR 431)', () => {
   });
   it('closes with the cross and with Escape, and is read-only when the sheet cannot be edited', async () => {
     await render(header, null, true);
-    expect(button('Фон #FFF7CC').disabled).toBe(true);
+    expect(button('Фон: #FFF7CC').disabled).toBe(true);
     expect(button('Строгий').disabled).toBe(true);
     await click(button('Закрыть настройки'));
     await act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); });
@@ -164,7 +164,7 @@ describe('BlockSettingsWindow (PR 431)', () => {
     expect(button('Отступ: 16 px').style.color).toBe('var(--color-primary, #4f46e5)');
     expect(button('Отступ: 24 px').style.color).toBe('');
     const close = button('Закрыть настройки'); expect(close.style.background).toBe('none');
-    const unset = [...container.querySelectorAll('button')].find((b) => b.textContent === 'Снять')!; expect(unset.style.textDecoration).toBe('underline');
+    const unset = [...container.querySelectorAll('button')].find((b) => b.textContent === 'Снять')!; expect(unset.style.color).toBe('');
     const radios = [...container.querySelectorAll<HTMLElement>('[role="radio"]')];
     expect(radios.map((radio) => radio.getAttribute('aria-checked'))).toEqual(['true', 'false']);
   });

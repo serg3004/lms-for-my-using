@@ -91,7 +91,7 @@ test('assessment presentation uses the unsaved theme and final mode in author pr
   });
 
   await page.goto(`/admin${path}/edit?tab=main`);
-  await page.getByLabel('Accent color (hex)').fill('#ffff00');
+  await page.getByLabel('Accent color (hex): code #RRGGBB', { exact: true }).fill('#ffff00');
   await page.getByLabel('Heading font').selectOption('georgia');
   await page.getByLabel('Final screen').selectOption('message');
   await page.getByRole('button', { name: /preview from the beginning/i }).click();

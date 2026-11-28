@@ -14,6 +14,7 @@ import {
   themePresets,
   uploadOrganizationThemeLogo,
 } from '../shared/theme.js';
+import { ColorField } from '../shared/ColorField.js';
 import { AdminPageHeader, AdminPageLayout, type AdminNavItem } from '../shared/adminPage.js';
 
 type ThemeField = {
@@ -309,37 +310,24 @@ export function AdminThemeSettingsPage() {
                   {group.fields.map((field) => {
                     const onFieldChange = (event: ChangeEvent<HTMLInputElement>) =>
                       updateThemeSetting(field.key, event.target.value);
+                    const wide = field.fullWidth
+                      ? 'admin-theme-settings__field admin-theme-settings__field--full'
+                      : 'admin-theme-settings__field';
 
-                    return (
-                      <label
-                        className={
-                          field.fullWidth
-                            ? 'admin-theme-settings__field admin-theme-settings__field--full'
-                            : 'admin-theme-settings__field'
-                        }
-                        key={field.key}
-                      >
+                    return field.type === 'color' ? (
+                      <div className={wide} key={field.key}>
+                        <ColorField
+                          fallback={themeSettings[field.key]}
+                          label={field.label}
+                          onChange={(color) => updateThemeSetting(field.key, color)}
+                          showLabel
+                          value={themeSettings[field.key]}
+                        />
+                      </div>
+                    ) : (
+                      <label className={wide} key={field.key}>
                         {field.label}
-                        {field.type === 'color' ? (
-                          <span className="admin-theme-settings__color-row">
-                            <input
-                              aria-hidden="true"
-                              className="admin-theme-settings__color-swatch"
-                              tabIndex={-1}
-                              type="color"
-                              value={themeSettings[field.key]}
-                              onChange={onFieldChange}
-                            />
-                            <input
-                              className="admin-theme-settings__color-hex"
-                              type="text"
-                              value={themeSettings[field.key]}
-                              onChange={onFieldChange}
-                            />
-                          </span>
-                        ) : (
-                          <input type="text" value={themeSettings[field.key]} onChange={onFieldChange} />
-                        )}
+                        <input type="text" value={themeSettings[field.key]} onChange={onFieldChange} />
                       </label>
                     );
                   })}

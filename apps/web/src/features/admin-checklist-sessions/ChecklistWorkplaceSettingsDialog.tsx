@@ -6,7 +6,7 @@ import { useOptionalSession } from '../../shared/session.js';
 import { getChecklistWorkplaceSettings, updateChecklistWorkplaceSettings } from '../../shared/api/checklists.js';
 import type { ChecklistFeedbackVisibility, ChecklistGeolocationPolicy, ChecklistWorkplaceSettingsView } from '../../shared/api/types.js';
 import { ObserverEligibilityFields } from './ObserverEligibilityFields.js';
-import { HighlightColorField } from '../../shared/HighlightColorField.js';
+import { ColorField } from '../../shared/ColorField.js';
 import { Button, Dialog, Select } from '../../shared/ui.js';
 
 /**
@@ -119,7 +119,7 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
             {settings.lowThreshold !== null && (
               <div className="admin-form__field">
                 <span>{t('admin.checklists.settings.resultColors.low', 'Below {{low}}%', { low: settings.lowThreshold })}</span>
-                <HighlightColorField
+                <ColorField
                   label={t('admin.checklists.settings.resultColors.lowLabel', 'Low result colour')}
                   onChange={(color) => setSettings({ ...settings, resultColors: { ...settings.resultColors, low: color } })}
                   value={settings.resultColors.low}
@@ -132,7 +132,7 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
                   ? t('admin.checklists.settings.resultColors.mid', 'From {{low}}% to {{high}}%', { low: settings.lowThreshold, high: settings.highPerformanceThreshold })
                   : t('admin.checklists.settings.resultColors.midNoLow', 'Below {{high}}%', { high: settings.highPerformanceThreshold })}
               </span>
-              <HighlightColorField
+              <ColorField
                 label={t('admin.checklists.settings.resultColors.midLabel', 'Middle result colour')}
                 onChange={(color) => setSettings({ ...settings, resultColors: { ...settings.resultColors, mid: color } })}
                 value={settings.resultColors.mid}
@@ -140,7 +140,7 @@ export function ChecklistWorkplaceSettingsDialog({ open, onClose, t }: { open: b
             </div>
             <div className="admin-form__field">
               <span>{t('admin.checklists.settings.resultColors.high', 'From {{high}}%', { high: settings.highPerformanceThreshold })}</span>
-              <HighlightColorField
+              <ColorField
                 label={t('admin.checklists.settings.resultColors.highLabel', 'High result colour')}
                 onChange={(color) => setSettings({ ...settings, resultColors: { ...settings.resultColors, high: color } })}
                 value={settings.resultColors.high}
