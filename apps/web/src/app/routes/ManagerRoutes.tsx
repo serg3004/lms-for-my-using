@@ -8,6 +8,7 @@ const ManagerOverduePage = lazy(() => import('../ManagerOverduePage.js').then((m
 const ManagerCourseAnalyticsPage = lazy(() => import('../CourseAnalyticsPages.js').then((m) => ({ default: m.ManagerCourseAnalyticsPage })));
 const ManagerReportsPage = lazy(() => import('../ManagerReportsPage.js').then((m) => ({ default: m.ManagerReportsPage })));
 const ManagerSheetAnalyticsPage = lazy(() => import('../SheetAnalyticsPage.js').then((m) => ({ default: m.ManagerSheetAnalyticsPage })));
+const ManagerAssessmentsPage = lazy(() => import('../ManagerAssessmentsPage.js').then((m) => ({ default: m.ManagerAssessmentsPage })));
 const ManagerChecklistsPage = lazy(() => import('../ManagerChecklistsPage.js').then((m) => ({ default: m.ManagerChecklistsPage })));
 
 export function ManagerRoutes() {
@@ -21,6 +22,7 @@ export function ManagerRoutes() {
       <Route path="reports/assessments" element={<ManagerAssessmentAnalyticsPage />} />
       <Route path="reports/assessments/:assessmentId" element={<ManagerAssessmentAnalyticsPage />} />
       <Route path="reports" element={<ManagerReportsPage />} />
+      <Route path="assessments" element={<ManagerAssessmentsPage />} />
       <Route path="checklists" element={<ManagerChecklistsPage />} />
       <Route path="checklists/sheets" element={<ManagerSheetAnalyticsPage />} />
       <Route path="checklists/sheets/:checklistId" element={<ManagerSheetAnalyticsPage />} />

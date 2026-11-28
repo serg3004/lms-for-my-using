@@ -20,10 +20,13 @@ async function loadOptions(target: Target): Promise<Option[]> {
   return result.items.map((user) => ({ id: user.id, name: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email }));
 }
 
-export function StandaloneAssessmentDialog({ assessment, dialog }: {
+/** PR 585: `manager` is the manager workspace: only people and groups of the team (departments are admin-only), no results. */
+export function StandaloneAssessmentDialog({ assessment, dialog, manager = false }: {
   assessment: { id: string; title: string };
   dialog: RefObject<HTMLDialogElement | null>;
+  manager?: boolean;
 }) {
+  const targets = manager ? (['user', 'group'] as const) : (['user', 'group', 'department'] as const);
   const { t } = useTranslation();
   const [target, setTarget] = useState<Target>('user');
   const [targetId, setTargetId] = useState('');
@@ -81,7 +84,7 @@ export function StandaloneAssessmentDialog({ assessment, dialog }: {
           setTargetId('');
           setOptions([]);
         }}>
-          {(['user', 'group', 'department'] as const).map((type) => <option key={type} value={type}>{t(`assessments.standalone.${type}`)}</option>)}
+          {targets.map((type) => <option key={type} value={type}>{t(`assessments.standalone.${type}`)}</option>)}
         </select>
       </label>
       <label className="admin-field">{t('assessments.standalone.recipient')}
@@ -107,7 +110,7 @@ export function StandaloneAssessmentDialog({ assessment, dialog }: {
       <button type="button" className="admin-btn" onClick={() => downloadQrSvg(link, assessment.title)}>{t('assessments.standalone.qr')}</button>
     </>}
     <StandaloneAssignGrants root={root} />
-    <StandaloneAssessmentResults assessmentId={assessment.id} />
+    {!manager && <StandaloneAssessmentResults assessmentId={assessment.id} />}
     {feedback && <p role="status">{feedback}</p>}
   </>;
 }

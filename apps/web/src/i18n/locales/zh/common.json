@@ -3122,6 +3122,17 @@
       "empty": "没有符合筛选条件的员工。",
       "tableLabel": "员工进度详情"
     },
+    "navAssessments": "测试",
+    "assessments": {
+      "title": "团队测试",
+      "subtitle": "把已发布的独立测试分配给你的团队，并分享链接或二维码。",
+      "empty": "没有已发布的独立测试。",
+      "loading": "正在加载测试…",
+      "loadError": "无法加载测试。",
+      "columnTitle": "测试",
+      "columnAction": "操作",
+      "assign": "分配"
+    },
     "navChecklists": "检查表",
     "checklists": {
       "eyebrow": "在岗培训",
