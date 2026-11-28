@@ -81,7 +81,8 @@ export const assessmentImageIdSchema = z.string().refine((id) => {
 
 const assessmentMaterialInput = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('link'), url: z.string().max(8192), provider: z.string().optional(), id: z.string().nullable().optional(), ...materialFields }).strict(),
-  z.object({ kind: z.literal('file'), fileId: assessmentImageIdSchema, ...materialFields }).strict(),
+  // PR 541: an edited picture is a new file; `originalId` keeps the picture it was made from so the author can go back to it.
+  z.object({ kind: z.literal('file'), fileId: assessmentImageIdSchema, originalId: assessmentImageIdSchema.optional(), ...materialFields }).strict(),
 ]);
 
 function resolveMaterialAddress(input: string) {

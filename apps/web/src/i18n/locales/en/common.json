@@ -2790,6 +2790,69 @@
     "assignedFallback": "Manager",
     "attemptsLeft": "Attempts remaining"
   },
+  "imageEditor": {
+    "title": "Image editor",
+    "tools": "Tools",
+    "canvas": "Image being edited",
+    "undo": "Undo step",
+    "save": "Save as new",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "loading": "Loading the picture…",
+    "loadError": "The picture could not be opened",
+    "saveError": "The picture could not be saved",
+    "color": "Colour",
+    "width": "Thickness",
+    "size": "Size",
+    "fillShape": "Fill",
+    "curved": "Curved",
+    "bold": "Bold",
+    "italic": "Italic",
+    "textLabel": "Text on the picture",
+    "addText": "Add text",
+    "colors": {
+      "red": "Red",
+      "blue": "Blue",
+      "green": "Green",
+      "yellow": "Yellow",
+      "black": "Black",
+      "white": "White"
+    },
+    "widths": {
+      "thin": "Thin",
+      "medium": "Medium",
+      "thick": "Thick"
+    },
+    "sizes": {
+      "small": "Small",
+      "medium": "Medium",
+      "large": "Large"
+    },
+    "tool": {
+      "rect": "Rectangle",
+      "arrow": "Arrow",
+      "text": "Text",
+      "crop": "Crop",
+      "loupe": "Magnifier",
+      "darken": "Darken",
+      "pixelate": "Pixelate",
+      "fill": "Area fill",
+      "number": "Numbering",
+      "highlight": "Highlight area"
+    },
+    "hint": {
+      "rect": "Drag to draw a frame or a filled rectangle",
+      "arrow": "Drag from the start of the arrow to its tip",
+      "text": "Tap where the text goes and type it",
+      "crop": "Select the part of the picture to keep",
+      "loupe": "Drag over the area to magnify",
+      "darken": "Drag over the area to darken",
+      "pixelate": "Drag over the area to hide with pixels",
+      "fill": "Drag over the area to fill",
+      "number": "Tap the picture to place the next number",
+      "highlight": "Drag over the area to highlight"
+    }
+  },
   "assessments": {
     "survey": {
       "thanks": "Thank you! Your answers are saved.",
@@ -4876,6 +4939,8 @@
     "exportTooLarge": "Too many rows to export (the limit is 5000). Narrow the period or pick a course."
   },
   "assessmentMaterials": {
+    "editImage": "Edit image",
+    "restoreOriginal": "Restore original",
     "material": "Material",
     "link": "HTTPS link or embed code",
     "alt": "Accessible title",

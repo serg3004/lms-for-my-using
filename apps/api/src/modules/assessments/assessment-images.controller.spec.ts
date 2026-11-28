@@ -10,8 +10,9 @@ describe('assessment images', () => {
   const uploadAssessmentImage = jest.fn(async () => id);
   const getInlinePresignedUrl = jest.fn(async () => 'https://files.example.org/image');
   const listAssessmentImages = jest.fn(async () => ({ ids: [id, 'invalid'], nextCursor: 'next' }));
+  const getObjectBytes = jest.fn<(key: string, max: number) => Promise<Buffer | null>>().mockResolvedValue(Buffer.from('png'));
   const controller = new AssessmentImagesController({
-    uploadAssessmentImage, getInlinePresignedUrl, listAssessmentImages,
+    uploadAssessmentImage, getInlinePresignedUrl, listAssessmentImages, getObjectBytes,
   } as unknown as UploadService);
 
   beforeEach(() => jest.clearAllMocks());
@@ -36,5 +37,14 @@ describe('assessment images', () => {
     expect(getInlinePresignedUrl).not.toHaveBeenCalled();
     await controller.read(id, user('org-b'));
     expect(getInlinePresignedUrl).toHaveBeenCalledWith(`organizations/org-b/assessment-images/${id}`, 'image/png');
+  });
+
+  it('gives the editor the picture bytes of the authenticated organization only', async () => {
+    await expect(controller.content('../' + id, user('org-a'))).rejects.toThrow();
+    expect(getObjectBytes).not.toHaveBeenCalled();
+    await controller.content(id, user('org-b'));
+    expect(getObjectBytes).toHaveBeenCalledWith(`organizations/org-b/assessment-images/${id}`, 8 * 1024 * 1024);
+    getObjectBytes.mockResolvedValueOnce(null);
+    await expect(controller.content(id, user('org-b'))).rejects.toThrow('Image not found');
   });
 });

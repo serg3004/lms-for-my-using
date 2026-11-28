@@ -2790,6 +2790,69 @@
     "assignedFallback": "管理员",
     "attemptsLeft": "剩余尝试次数"
   },
+  "imageEditor": {
+    "title": "图片编辑器",
+    "tools": "工具",
+    "canvas": "正在编辑的图片",
+    "undo": "撤销一步",
+    "save": "另存为新图片",
+    "saving": "正在保存…",
+    "cancel": "取消",
+    "loading": "正在加载图片…",
+    "loadError": "无法打开图片",
+    "saveError": "无法保存图片",
+    "color": "颜色",
+    "width": "粗细",
+    "size": "大小",
+    "fillShape": "填充",
+    "curved": "弧形",
+    "bold": "粗体",
+    "italic": "斜体",
+    "textLabel": "图片上的文字",
+    "addText": "添加文字",
+    "colors": {
+      "red": "红色",
+      "blue": "蓝色",
+      "green": "绿色",
+      "yellow": "黄色",
+      "black": "黑色",
+      "white": "白色"
+    },
+    "widths": {
+      "thin": "细",
+      "medium": "中",
+      "thick": "粗"
+    },
+    "sizes": {
+      "small": "小",
+      "medium": "中",
+      "large": "大"
+    },
+    "tool": {
+      "rect": "矩形",
+      "arrow": "箭头",
+      "text": "文字",
+      "crop": "裁剪",
+      "loupe": "放大镜",
+      "darken": "变暗",
+      "pixelate": "像素化",
+      "fill": "区域填充",
+      "number": "编号",
+      "highlight": "突出区域"
+    },
+    "hint": {
+      "rect": "拖动以绘制边框或实心矩形",
+      "arrow": "从箭头起点拖动到箭头尖端",
+      "text": "点击放置文字的位置并输入",
+      "crop": "选择要保留的图片部分",
+      "loupe": "拖过要放大的区域",
+      "darken": "拖过要变暗的区域",
+      "pixelate": "拖过要用像素遮挡的区域",
+      "fill": "拖过要填充的区域",
+      "number": "点击图片放置下一个编号",
+      "highlight": "拖过要突出显示的区域"
+    }
+  },
   "assessments": {
     "survey": {
       "thanks": "谢谢！您的回答已保存。",
@@ -4876,6 +4939,8 @@
     "exportTooLarge": "行数过多，无法导出（上限 5000）。请缩小时间范围或选择课程。"
   },
   "assessmentMaterials": {
+    "editImage": "编辑图片",
+    "restoreOriginal": "恢复原图",
     "material": "材料",
     "link": "HTTPS 链接或嵌入代码",
     "alt": "无障碍标题",
