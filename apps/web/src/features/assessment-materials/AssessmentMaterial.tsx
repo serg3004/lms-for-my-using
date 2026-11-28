@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { assessmentImageTypes, assessmentMaterialSchema, readAssessmentMaterial } from '@lms/shared/longread-media';
 
 import { apiRequest, MAX_BUFFERED_UPLOAD_SIZE_BYTES } from '../../shared/apiClient.js';
+import { ImageEditor } from './ImageEditor.js';
 
 export function AssessmentImage({ id, alt, style }: { id: string; alt: string; style?: CSSProperties }) {
   const { t } = useTranslation();
@@ -61,12 +62,26 @@ export function AssessmentMaterialField({ value, onChange }: {
   const [images, setImages] = useState<ImagePage>();
   const [loadingImages, setLoadingImages] = useState(false);
   const [fileId, setFileId] = useState(material?.kind === 'file' ? material.fileId : '');
+  const [originalId, setOriginalId] = useState(material?.kind === 'file' ? material.originalId ?? '' : '');
+  const [editing, setEditing] = useState(false);
 
-  function chooseImage(id: string) {
+  function chooseImage(id: string, original = '') {
     setFileId(id);
+    setOriginalId(original);
     setUrl('');
     setInvalid(false);
-    onChangeRef.current(JSON.stringify({ kind: 'file', fileId: id, caption, alt }));
+    onChangeRef.current(JSON.stringify({ kind: 'file', fileId: id, caption, alt, ...(original ? { originalId: original } : {}) }));
+  }
+
+  /** PR 541: the edited picture is a new file; the one it was made from stays and can be brought back. */
+  async function saveEdited(blob: Blob) {
+    const extension = blob.type === 'image/webp' ? 'webp' : blob.type === 'image/jpeg' ? 'jpg' : 'png';
+    const body = new FormData();
+    body.append('file', new File([blob], `edited.${extension}`, { type: blob.type }));
+    const { id: newId } = await apiRequest<{ id: string }>('/assessment-images', { method: 'POST', body });
+    chooseImage(newId, originalId || fileId);
+    setImages(undefined);
+    setEditing(false);
   }
 
   async function listImages(cursor?: string) {
@@ -131,15 +146,21 @@ export function AssessmentMaterialField({ value, onChange }: {
     <label htmlFor={`${id}-alt`}>{t('assessmentMaterials.alt')}</label>
     <input id={`${id}-alt`} value={alt} disabled={busy} maxLength={300} onChange={(event) => setAlt(event.target.value)} />
     <button type="button" className="admin-btn admin-btn--secondary" disabled={busy} onClick={() => {
-      const input = fileId && !url.trim() ? { kind: 'file', fileId } : { kind: 'link', url };
+      const input = fileId && !url.trim() ? { kind: 'file', fileId, ...(originalId ? { originalId } : {}) } : { kind: 'link', url };
       const parsed = assessmentMaterialSchema.safeParse(JSON.stringify({ ...input, caption, alt }));
       setInvalid(!parsed.success);
-      if (parsed.success) { if (input.kind === 'link') setFileId(''); onChange(parsed.data); }
+      if (parsed.success) { if (input.kind === 'link') { setFileId(''); setOriginalId(''); } onChange(parsed.data); }
     }}>{t('longreadMedia.applyEmbed')}</button>
     {value && <button type="button" className="admin-btn admin-btn--secondary" disabled={busy} onClick={() => {
-      onChange(null); setFileId(''); setUrl(''); setCaption(''); setAlt(''); setInvalid(false);
+      onChange(null); setFileId(''); setOriginalId(''); setUrl(''); setCaption(''); setAlt(''); setInvalid(false);
     }}>{t('longreadMedia.remove')}</button>}
     {invalid && <p role="alert">{t('assessmentMaterials.invalid')}</p>}
+    {material?.kind === 'file' && !url.trim() && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+      <button type="button" className="admin-btn admin-btn--secondary" style={{ minHeight: 44 }} disabled={busy} onClick={() => setEditing(true)}>{t('assessmentMaterials.editImage')}</button>
+      {originalId && <button type="button" className="admin-btn admin-btn--secondary" style={{ minHeight: 44 }} disabled={busy}
+        onClick={() => chooseImage(originalId)}>{t('assessmentMaterials.restoreOriginal')}</button>}
+    </div>}
+    {editing && fileId && <ImageEditor fileId={fileId} onClose={() => setEditing(false)} onSave={saveEdited} />}
     <AssessmentMaterial value={value} />
   </details>;
 }

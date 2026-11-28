@@ -45,6 +45,7 @@ export const permissionRouteMap: Readonly<Record<string, readonly PermissionActi
   'AssessmentQuestionsController.listQuestions': ['assessment.question.read'],
   'AssessmentQuestionsController.updateAnswerOption': ['assessment.option.edit'],
   'AssessmentQuestionsController.updateQuestion': ['assessment.question.edit'],
+  'AssessmentImagesController.content': ['assessment.author'],
   'AssessmentImagesController.list': ['assessment.author'],
   'AssessmentImagesController.upload': ['assessment.author'],
   'AssessmentFoldersController.bulk': ['assessment.author'],
