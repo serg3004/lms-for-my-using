@@ -2371,7 +2371,10 @@
 .scale-preview li { display: flex; justify-content: space-between; gap: 8px; padding: 8px 12px; border: 2px solid; border-radius: 10px; overflow-wrap: anywhere; }
 .scale-back { display: inline-flex; align-items: center; min-height: 44px; margin-block: 8px; font-weight: 600; }
 @media (max-width: 520px) {
-  .scale-levels__head, .scale-level { grid-template-columns: 28px minmax(0, 1fr) 72px; }
+  .scale-levels__head, .scale-level { grid-template-columns: 44px minmax(0, 1fr) 72px; }
+  .scale-level__handle { width: 44px; height: 44px; }
+  .color-field__swatch { width: 44px; height: 44px; min-height: 44px; }
+  .color-field__custom { min-height: 44px; }
   .scale-level__actions { grid-column: 1 / -1; justify-content: flex-end; order: 5; }
   .scale-level__color { grid-column: 1 / -1; }
 }
