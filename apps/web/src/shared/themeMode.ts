@@ -4,7 +4,9 @@ import { reapplyThemeSettings } from './theme.js';
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 const storageKey = 'lms.themeMode';
-const modes: readonly ThemeMode[] = ['light', 'dark', 'system'];
+/** Order of the items in the theme menu; a new theme (PR 578) is added here. */
+export const THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'system'];
+const modes = THEME_MODES;
 
 export function getStoredThemeMode(): ThemeMode {
   try {
@@ -38,10 +40,6 @@ export function setThemeMode(mode: ThemeMode) {
   }
   applyThemeMode(mode);
   window.dispatchEvent(new Event('lms-theme-mode'));
-}
-
-export function nextThemeMode(mode: ThemeMode): ThemeMode {
-  return mode === 'light' ? 'dark' : mode === 'dark' ? 'system' : 'light';
 }
 
 /** Called once on start: applies the saved mode and follows the system while the mode is "system". */
