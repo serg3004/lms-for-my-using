@@ -13,6 +13,7 @@ const MANAGER_NAV_DEFS = [
   { key: 'manager.navOverdue', href: '/manager/overdue' },
   { key: 'manager.navReports', href: '/manager/reports' },
   { key: 'manager.navChecklists', href: '/manager/checklists' },
+  { key: 'manager.navAssessments', href: '/manager/assessments' },
   { key: 'learner.profileTitle', href: '/profile' },
 ] as const;
 

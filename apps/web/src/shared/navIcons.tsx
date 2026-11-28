@@ -158,6 +158,7 @@ const ICON_BY_HREF: Record<string, NavIconName> = {
   '/manager/overdue': 'overdue',
   '/manager/reports': 'reports',
   '/manager/checklists': 'checklists',
+  '/manager/assessments': 'checklists',
   '/mentor': 'checklists',
 };
 

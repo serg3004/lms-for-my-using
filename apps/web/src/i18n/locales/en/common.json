@@ -3122,6 +3122,17 @@
       "empty": "No employees match these filters.",
       "tableLabel": "Employee progress details"
     },
+    "navAssessments": "Assessments",
+    "assessments": {
+      "title": "Assessments for your team",
+      "subtitle": "Assign published standalone tests to your team and share a link or QR code.",
+      "empty": "No published standalone tests.",
+      "loading": "Loading assessments…",
+      "loadError": "Could not load assessments.",
+      "columnTitle": "Assessment",
+      "columnAction": "Action",
+      "assign": "Assign"
+    },
     "navChecklists": "Checklists",
     "checklists": {
       "eyebrow": "Workplace training",
