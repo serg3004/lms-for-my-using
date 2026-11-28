@@ -1027,3 +1027,7 @@ Migration `20261127220000_material_library` makes `course_materials.course_id` o
 ### Folder access settings (PR 576)
 
 Migrations `20261127230000_folder_access_roles`, `20261127230100_assessment_folder_access` and `20261127230200_folder_shared_users` add `access_roles` to checklist and assessment folders, `visible_to_staff`, `access_roles` and `shared_user_ids` to library folders, and `shared_user_ids` to assessment folders. Existing assessment and library folders are set to visible to all staff, so no folder disappears for anyone; existing checklist folders keep their flag. Apply the migrations before starting the new API. On application rollback, leave the columns in place; the older version ignores them, but folders created while the new version ran as private would then show their old default.
+
+### Who may assign a standalone test (PR 584)
+
+Migration `20261128120000_assessment_assign_grants` adds `assign_roles` (text array) and `assign_user_ids` (uuid array) to `assessments`, both empty by default, so existing tests grant nothing beyond the defaults (administrator, author, manager for their own team). Apply the migration before starting the new API. On application rollback, leave the columns in place; the older version ignores them and again lets only administrators assign.
