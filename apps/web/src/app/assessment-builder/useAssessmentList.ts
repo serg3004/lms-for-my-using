@@ -11,6 +11,8 @@ export type AssessmentListRow = Assessment & {
   attemptsCount: number;
   passRate: number | null;
   lastAttemptAt: string | null;
+  /** PR 583: other courses and longread lessons the test is placed in. */
+  places?: { kind: 'course' | 'longread'; title: string }[];
 };
 
 type AssessmentPage = { items: AssessmentListRow[]; total: number; page: number; pageSize: number };

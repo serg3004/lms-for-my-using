@@ -73,6 +73,13 @@ export function AdminAssessmentBuilderPage() {
     }
   }
 
+  /** PR 583: the own course as it is, then the other courses and longreads; a test with none is standalone. */
+  function usedIn(a: AssessmentListRow) {
+    const parts = [a.courseTitle, ...(a.places ?? []).map((place) =>
+      t(place.kind === 'longread' ? 'admin.assessmentBuilder.list.placeLongread' : 'admin.assessmentBuilder.list.placeCourse', { title: place.title }))].filter(Boolean);
+    return parts.length ? parts.join(' · ') : t('admin.assessmentBuilder.list.standalone');
+  }
+
   function openCreateDialog() {
     const params = new URLSearchParams({ list: window.location.search.slice(1) });
     window.location.assign(`/admin/assessments/new?${params}`);
@@ -89,6 +96,8 @@ export function AdminAssessmentBuilderPage() {
         disabled={!assessment.questionsCount}
         title={!assessment.questionsCount ? t('admin.assessmentBuilder.publishNoQuestions') : undefined}
         onClick={() => openEditor(assessment)}>{t('admin.assessmentBuilder.publish')}</Button>}
+      {assessment.courseId === null && assessment.status === 'published' && <Button size="sm" variant="secondary" type="button"
+        onClick={() => { setManagedAssessment(assessment); standaloneDialogRef.current?.showModal(); }}>{t('admin.assessmentBuilder.list.shareLink')}</Button>}
       {assessment.status !== 'archived' && <Button size="sm" variant="secondary" type="button"
         onClick={() => void updateStatus(assessment.id, 'archived')}>{t('admin.checklists.action.archive')}</Button>}
       <Menu align="end" buttonClassName="ds-button ds-button--secondary ds-button--sm"
@@ -175,7 +184,7 @@ export function AdminAssessmentBuilderPage() {
     <AssessmentLibrary actionsRef={libraryActions} list={list} library={library} renderActions={renderActions} t={t}
       columns={[
         { key: 'title', label: t('admin.assessmentBuilder.col.title'), priority: 'primary', sortable: true, render: (a) => a.title },
-        { key: 'course', label: t('admin.assessmentBuilder.list.course'), priority: 'secondary', sortable: true, render: (a) => a.courseTitle ?? '—' },
+        { key: 'course', label: t('admin.assessmentBuilder.list.usedIn'), priority: 'secondary', sortable: true, render: (a) => usedIn(a) },
         { key: 'status', label: t('admin.assessmentBuilder.col.status'), priority: 'primary', sortable: true, render: (a) => <div className="td-actions">
           <Badge variant={a.status === 'published' ? 'published' : a.status === 'draft' ? 'draft' : 'neutral'}>
             {statusLabels[a.status as AssessmentStatus]}

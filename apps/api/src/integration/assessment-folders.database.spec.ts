@@ -194,4 +194,20 @@ describe('assessment folders (PostgreSQL)', () => {
       folders: expect.arrayContaining([expect.objectContaining({ id: owned.id, accessRoles: [], canManage: false })]),
     });
   });
+  it('lists the courses and longread lessons a test is placed in (PR 583)', async () => {
+    const own = await prisma.course.create({ data: { organizationId, title: 'Own course', slug: randomUUID() } });
+    const other = await prisma.course.create({ data: { organizationId, title: 'Other course', slug: randomUUID() } });
+    const lesson = await prisma.lesson.create({ data: { organizationId, courseId: other.id, title: 'Longread lesson', slug: randomUUID() } });
+    const shared = await prisma.assessment.create({ data: { organizationId, courseId: own.id, title: 'Places shared', slug: randomUUID(), createdBy: actorId } });
+    const lonely = await prisma.assessment.create({ data: { organizationId, title: 'Places lonely', slug: randomUUID(), createdBy: actorId } });
+    await prisma.assessmentPlacement.createMany({ data: [
+      { organizationId, assessmentId: shared.id, courseId: other.id, locationKey: `course:${other.id}` },
+      { organizationId, assessmentId: shared.id, courseId: other.id, lessonId: lesson.id, longreadBlockId: randomUUID(), locationKey: `longread:${lesson.id}` },
+    ] });
+    const page = await assessments.listLibrary(organizationId, admin, false, assessmentLibrarySchema.parse({ search: 'Places', folderId: undefined }));
+    const byTitle = new Map((page.items as { title: string; places: unknown }[]).map((item) => [item.title, item.places]));
+    expect(byTitle.get('Places shared')).toEqual([{ kind: 'course', title: 'Other course' }, { kind: 'longread', title: 'Longread lesson' }]);
+    expect(byTitle.get('Places lonely')).toEqual([]);
+    expect(lonely.courseId).toBeNull();
+  });
 });
