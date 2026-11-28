@@ -10,7 +10,7 @@ describe('assessment images', () => {
   const uploadAssessmentImage = jest.fn(async () => id);
   const getInlinePresignedUrl = jest.fn(async () => 'https://files.example.org/image');
   const listAssessmentImages = jest.fn(async () => ({ ids: [id, 'invalid'], nextCursor: 'next' }));
-  const getObjectBytes = jest.fn(async (_key: string, _max: number): Promise<Buffer | null> => Buffer.from('png'));
+  const getObjectBytes = jest.fn<(key: string, max: number) => Promise<Buffer | null>>().mockResolvedValue(Buffer.from('png'));
   const controller = new AssessmentImagesController({
     uploadAssessmentImage, getInlinePresignedUrl, listAssessmentImages, getObjectBytes,
   } as unknown as UploadService);
