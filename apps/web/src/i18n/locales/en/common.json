@@ -577,6 +577,21 @@
       }
     },
     "assessmentBuilder": {
+      "survey": {
+        "mode": "Type",
+        "graded": "Test (graded)",
+        "survey": "Survey (no grading)",
+        "gradedHint": "Points, a passing score and a “passed / failed” result.",
+        "surveyHint": "No points or correct answers, no “passed / failed” and no certificate. Answers are tied to the employee.",
+        "locked": "The type cannot be changed: the test is in a course or has already been answered. A survey works only as a standalone test.",
+        "text": "Free text answer",
+        "likertTemplate": "Agreement scale (1–5)",
+        "likert1": "Strongly disagree",
+        "likert2": "Somewhat disagree",
+        "likert3": "Neither agree nor disagree",
+        "likert4": "Somewhat agree",
+        "likert5": "Strongly agree"
+      },
       "editor": {
         "main": "Basics",
         "questions": "Questions",
@@ -2776,6 +2791,14 @@
     "attemptsLeft": "Attempts remaining"
   },
   "assessments": {
+    "survey": {
+      "thanks": "Thank you! Your answers are saved.",
+      "toList": "To my tests",
+      "subtitleTaking": "Question {{current}} of {{total}} · not graded",
+      "yourAnswers": "Your answers",
+      "answered": "Answered",
+      "label": "Survey"
+    },
     "presentation": {
       "titleScreen": "Show title screen",
       "noTimer": "The timer is unavailable when the title screen is off.",
@@ -4484,6 +4507,24 @@
       "weight": "Weight",
       "text": "Text"
     }
+  },
+  "surveyReport": {
+    "title": "Survey report",
+    "back": "Choose another test",
+    "open": "Survey report",
+    "respondents_one": "{{count}} employee answered",
+    "respondents_few": "{{count}} employees answered",
+    "respondents_many": "{{count}} employees answered",
+    "respondents_other": "{{count}} employees answered",
+    "notAnonymous": "The survey is not anonymous: each answer is tied to the employee.",
+    "empty": "Nobody has answered yet.",
+    "answered_one": "{{count}} answer",
+    "answered_few": "{{count}} answers",
+    "answered_many": "{{count}} answers",
+    "answered_other": "{{count}} answers",
+    "noTexts": "There are no text answers.",
+    "untitledOption": "Untitled option",
+    "error": "Could not load the survey report."
   },
   "assessmentExport": {
     "label": "Export",

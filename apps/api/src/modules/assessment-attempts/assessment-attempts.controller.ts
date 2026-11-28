@@ -17,6 +17,7 @@ import { assessmentExportInput, AssessmentExportsService } from './assessment-ex
 import { exportMime, type ExportFormat } from './assessment-export-file.js';
 import { assessmentAnalyticsQuery } from './assessment-analytics.js';
 import { AssessmentResultsService } from './assessment-results.service.js';
+import { AssessmentSurveyReportService } from './assessment-survey-report.service.js';
 
 import { AssessmentManualReviewService, reviewQueueQuery, reviewAnswerInput } from './assessment-manual-review.service.js';
 
@@ -26,6 +27,7 @@ function exportFile({ file, format }: { file: Buffer; format: ExportFormat }) {
   return new StreamableFile(file, { type: exportMime[format], disposition: `attachment; filename="assessment.${format}"` });
 }
 
+const surveyExportQuery = z.object({ format: z.enum(['xlsx', 'pdf']), locale: z.enum(['en', 'ru', 'kk', 'zh']) }).strict();
 const placementQuery = z.union([z.guid(), z.literal('standalone').transform(() => null)]).optional();
 
 @Controller()
@@ -37,6 +39,7 @@ export class AssessmentAttemptsController {
     private readonly standalone: StandaloneAssessmentsService,
     private readonly manualReview: AssessmentManualReviewService,
     private readonly exports: AssessmentExportsService,
+    private readonly surveyReport: AssessmentSurveyReportService,
   ) {}
 
   @Get('assessment-reviews')
@@ -122,6 +125,24 @@ export class AssessmentAttemptsController {
   @CourseScope('param', 'assessmentId', 'assessment')
   getAssessmentReport(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest) {
     return this.assessmentResultsService.getAssessmentReport(assessmentId, request.currentUser!);
+  }
+
+  /** PR 540: the answer distribution of a survey, with the respondent named next to each answer. */
+  @Get('assessments/:assessmentId/survey-report')
+  @Header('Cache-Control', 'private, no-store')
+  @Roles(...rolePolicies.assessmentAttemptsRead)
+  @CourseScope('param', 'assessmentId', 'assessment')
+  getSurveyReport(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest) {
+    return this.surveyReport.report(z.guid().parse(assessmentId), request.currentUser!);
+  }
+
+  @Get('assessments/:assessmentId/survey-report/export')
+  @Header('Cache-Control', 'private, no-store')
+  @Roles(...rolePolicies.assessmentAttemptsRead)
+  @CourseScope('param', 'assessmentId', 'assessment')
+  async exportSurveyReport(@Param('assessmentId') assessmentId: string, @Req() request: AuthenticatedRequest, @Query() query: unknown) {
+    const { format, locale } = surveyExportQuery.parse(query);
+    return exportFile({ file: await this.surveyReport.export(z.guid().parse(assessmentId), request.currentUser!, format, locale), format });
   }
 
   @Get('attempts/:id')

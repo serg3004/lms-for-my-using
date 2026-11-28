@@ -22,6 +22,7 @@ module.exports = {
   testPathIgnorePatterns: [
     '/src/integration/longread-exercises\\.database\\.spec\\.ts$',
     '/src/integration/assessment-question-types\\.database\\.spec\\.ts$',
+    '/src/integration/assessment-survey-mode\\.database\\.spec\\.ts$',
     '/src/integration/assessment-folders\\.database\\.spec\\.ts$',
     '/src/integration/library-folders\\.database\\.spec\\.ts$',
     '/src/integration/material-library\\.database\\.spec\\.ts$',

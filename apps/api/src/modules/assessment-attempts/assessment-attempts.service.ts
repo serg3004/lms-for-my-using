@@ -234,20 +234,22 @@ export class AssessmentAttemptsService {
       const questions = inProgress?.bankQuestionSnapshot
         ? bankSnapshotSchema.parse(inProgress.bankQuestionSnapshot)
         : await this.getQuestions(assessmentId, organizationId, tx);
-      const gradedAnswers = gradeAssessmentAnswers(questions, input.answers);
-      const maxScore = questions.reduce((sum, question) => sum + question.points, 0);
+      const survey = assessment.mode === 'survey';
+      const gradedAnswers = gradeAssessmentAnswers(questions, input.answers, survey);
+      const maxScore = survey ? 0 : questions.reduce((sum, question) => sum + question.points, 0);
       const score = gradedAnswers.reduce((sum, answer) => sum + answer.score, 0);
       const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
       const expired = Boolean(
         inProgress && assessment.timeLimitMinutes && Date.now() - inProgress.startedAt.getTime() >= assessment.timeLimitMinutes * 60_000,
       );
-      const passed = expired ? false : percentage >= assessment.passingScore;
+      // A survey is never passed or failed: its attempt only records that the employee answered.
+      const passed = survey ? false : expired ? false : percentage >= assessment.passingScore;
       const completedAt = new Date();
 
       return recordCompletedAssessment(tx,
         { organizationId, assessmentId, userId, ...location, score, maxScore, percentage, passed, completedAt, status: 'completed', ...(gradedAnswers.some((answer) => answer.reviewPending) ? { reviewPassingScore: expired ? 101 : assessment.passingScore } : {}) },
         freezeGradedAnswers(questions, gradedAnswers, assessment),
-        location.courseId, assessment.title, inProgress?.id);
+        location.courseId, assessment.title, inProgress?.id, undefined, survey);
     });
 
     return this.getAttempt(attemptId, { id: userId, organizationId, roles: ['learner'] });
@@ -293,20 +295,21 @@ export class AssessmentAttemptsService {
         return active.id;
       }
       const answers = locked ? z.array(assessmentAnswerSchema).parse(active?.lockedAnswers ?? []) : input.answers;
-      const graded = gradeAssessmentAnswers(questions, answers);
+      const survey = assessment.mode === 'survey';
+      const graded = gradeAssessmentAnswers(questions, answers, survey);
       const score = graded.reduce((sum, answer) => sum + answer.score, 0);
-      const maxScore = questions.reduce((sum, question) => sum + question.points, 0);
+      const maxScore = survey ? 0 : questions.reduce((sum, question) => sum + question.points, 0);
       const completedAt = new Date();
       const expired = Boolean(active && assessment.timeLimitMinutes && completedAt.getTime() - active.startedAt.getTime() >= assessment.timeLimitMinutes * 60000);
       const percentage = expired && policy.attemptPolicy ? 0 : maxScore ? Math.round(score * 100 / maxScore) : 0;
-      const passed = !expired && percentage >= assessment.passingScore;
+      const passed = !survey && !expired && percentage >= assessment.passingScore;
 
       return recordCompletedAssessment(tx,
         { organizationId, assessmentId, userId, ...location, score, maxScore, percentage, passed, completedAt, status: 'completed', ...(graded.some((answer) => answer.reviewPending) ? { reviewPassingScore: expired ? 101 : assessment.passingScore } : {}) },
         freezeGradedAnswers(questions, graded, assessment), location.courseId, assessment.title, active?.id,
-        policy.attemptPolicy ? async () => effectiveAssessmentResult(policy.attemptPolicy!,
+        policy.attemptPolicy && !survey ? async () => effectiveAssessmentResult(policy.attemptPolicy!,
           await tx.assessmentAttempt.findMany({ where: completedAssessmentAttempts(scope), orderBy: assessmentAttemptOrder,
-            select: { id: true, percentage: true, passed: true } }), assessment.passingScore) : undefined);
+            select: { id: true, percentage: true, passed: true } }), assessment.passingScore) : undefined, survey);
     });
 
     return this.getAttempt(attemptId, { id: userId, organizationId, roles: ['learner'] });
@@ -369,7 +372,7 @@ export class AssessmentAttemptsService {
               throw new BadRequestException('Invalid card sort draft');
             }
           } else {
-            gradeAssessmentAnswers([question], [input]);
+            gradeAssessmentAnswers([question], [input], current.mode === 'survey');
           }
           next.push(input);
         }
@@ -384,8 +387,9 @@ export class AssessmentAttemptsService {
       if (!question || question.id !== input.questionId) throw new BadRequestException('Answer the current assessment question first');
 
       const answer = previous ?? input;
-      const [grade] = gradeAssessmentAnswers([question], [answer]);
+      const [grade] = gradeAssessmentAnswers([question], [answer], current.mode === 'survey');
       if (!previous) await tx.assessmentAttempt.update({ where: { id: active.id }, data: { lockedAnswers: [...saved, input] } });
+      if (current.mode === 'survey') return { answer };
       if (grade.reviewPending || policy.incorrectAnswer !== 'immediate') return { answer };
       return { answer, isCorrect: grade.isCorrect,
         feedback: policy.showFeedback ? (grade.isCorrect ? question.correctFeedback : question.incorrectFeedback) : undefined,
@@ -424,7 +428,7 @@ export class AssessmentAttemptsService {
     input = createAssessmentAttemptSchema.parse(input);
     const assessment = await this.prisma.assessment.findFirst({
       where: { id: assessmentId, organizationId, deletedAt: null },
-      select: { id: true, passingScore: true },
+      select: { id: true, passingScore: true, mode: true },
     });
 
     if (!assessment) {
@@ -432,11 +436,11 @@ export class AssessmentAttemptsService {
     }
 
     const questions = await this.getQuestions(assessmentId, organizationId);
-    const gradedAnswers = gradeAssessmentAnswers(questions, input.answers);
+    const gradedAnswers = gradeAssessmentAnswers(questions, input.answers, assessment.mode === 'survey');
     const maxScore = questions.reduce((sum, question) => sum + question.points, 0);
     const score = gradedAnswers.reduce((sum, answer) => sum + answer.score, 0);
     const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-    const passed = percentage >= assessment.passingScore;
+    const passed = assessment.mode !== 'survey' && percentage >= assessment.passingScore;
 
     return { score, maxScore, percentage, passed, answers: gradedAnswers };
   }
@@ -568,6 +572,7 @@ export class AssessmentAttemptsService {
         title: true,
         courseId: true,
         status: true,
+        mode: true,
         passingScore: true,
         passMessage: true,
         presentation: true,

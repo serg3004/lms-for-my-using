@@ -10,11 +10,12 @@ import { AssessmentsModule } from '../assessments/public.js';
 import { BackgroundJobsModule } from '../background-jobs/public.js';
 
 import { AssessmentExportsService } from './assessment-exports.service.js';
+import { AssessmentSurveyReportService } from './assessment-survey-report.service.js';
 import { AssessmentManualReviewService } from './assessment-manual-review.service.js';
 
 @Module({
   imports: [AuthModule, DatabaseModule, AssessmentsModule, BackgroundJobsModule],
   controllers: [AssessmentAttemptsController],
-  providers: [AssessmentManualReviewService, AssessmentAttemptsService, AssessmentResultsService, AssessmentExportsService],
+  providers: [AssessmentManualReviewService, AssessmentAttemptsService, AssessmentResultsService, AssessmentExportsService, AssessmentSurveyReportService],
 })
 export class AssessmentAttemptsModule {}

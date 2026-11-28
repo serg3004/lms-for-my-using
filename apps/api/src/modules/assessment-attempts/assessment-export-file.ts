@@ -14,6 +14,7 @@ export const exportLabels = {
     questionColumns: ['Question', 'Answers', 'Correct', 'Correct answers (%)', 'Top wrong answer', 'Selections'],
     folderColumns: ['Test', 'Attempts', 'Passed', 'Pass rate (%)', 'Average score (%)'],
     passed: 'Passed', failed: 'Failed', standalone: 'Standalone', course: 'Course', longread: 'Longread',
+    survey: 'Survey results', surveyColumns: ['Employee', 'Date (UTC)'],
     untitledQuestion: 'Untitled question', untitledOption: 'Untitled option',
   },
   ru: {
@@ -22,6 +23,7 @@ export const exportLabels = {
     questionColumns: ['Вопрос', 'Ответы', 'Верные', 'Верные ответы (%)', 'Частый неверный ответ', 'Выборы'],
     folderColumns: ['Тест', 'Попытки', 'Сдали', 'Процент сдачи (%)', 'Средний балл (%)'],
     passed: 'Сдан', failed: 'Не сдан', standalone: 'Самостоятельно', course: 'Курс', longread: 'Лонгрид',
+    survey: 'Результаты опроса', surveyColumns: ['Сотрудник', 'Дата (UTC)'],
     untitledQuestion: 'Вопрос без названия', untitledOption: 'Вариант без названия',
   },
   kk: {
@@ -30,6 +32,7 @@ export const exportLabels = {
     questionColumns: ['Сұрақ', 'Жауаптар', 'Дұрыс жауаптар', 'Дұрыс жауаптар (%)', 'Жиі таңдалған қате жауап', 'Таңдау саны'],
     folderColumns: ['Тест', 'Талпыныстар', 'Өткендер', 'Өту үлесі (%)', 'Орташа ұпай (%)'],
     passed: 'Өтті', failed: 'Өтпеді', standalone: 'Өз бетінше', course: 'Курс', longread: 'Лонгрид',
+    survey: 'Сауалнама нәтижелері', surveyColumns: ['Қызметкер', 'Күні (UTC)'],
     untitledQuestion: 'Атаусыз сұрақ', untitledOption: 'Атаусыз нұсқа',
   },
   zh: {
@@ -38,6 +41,7 @@ export const exportLabels = {
     questionColumns: ['题目', '作答数', '答对数', '正确率 (%)', '最常选的错误答案', '选择次数'],
     folderColumns: ['测试', '作答次数', '通过次数', '通过率 (%)', '平均得分 (%)'],
     passed: '已通过', failed: '未通过', standalone: '独立测试', course: '课程', longread: '长文',
+    survey: '调查结果', surveyColumns: ['员工', '日期 (UTC)'],
     untitledQuestion: '未命名题目', untitledOption: '未命名选项',
   },
 } satisfies Record<ExportLocale, Record<string, string | string[]>>;

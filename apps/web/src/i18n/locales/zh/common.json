@@ -577,6 +577,21 @@
       }
     },
     "assessmentBuilder": {
+      "survey": {
+        "mode": "类型",
+        "graded": "测试（评分）",
+        "survey": "问卷（不评分）",
+        "gradedHint": "有分数、及格分数以及“通过 / 未通过”的结果。",
+        "surveyHint": "没有分数和正确答案，没有“通过 / 未通过”，也不发证书。答案与员工关联。",
+        "locked": "无法更改类型：该测试已在课程中使用，或已有人作答。问卷只能作为独立测试使用。",
+        "text": "自由文本回答",
+        "likertTemplate": "同意程度量表（1–5）",
+        "likert1": "非常不同意",
+        "likert2": "不太同意",
+        "likert3": "说不清",
+        "likert4": "比较同意",
+        "likert5": "非常同意"
+      },
       "editor": {
         "main": "基本信息",
         "questions": "题目",
@@ -2776,6 +2791,14 @@
     "attemptsLeft": "剩余尝试次数"
   },
   "assessments": {
+    "survey": {
+      "thanks": "谢谢！您的回答已保存。",
+      "toList": "返回我的测试",
+      "subtitleTaking": "第 {{current}} 题，共 {{total}} 题 · 不评分",
+      "yourAnswers": "您的回答",
+      "answered": "已作答",
+      "label": "问卷"
+    },
     "presentation": {
       "titleScreen": "显示封面",
       "noTimer": "关闭封面后无法使用计时器。",
@@ -4484,6 +4507,24 @@
       "weight": "权重",
       "text": "文本"
     }
+  },
+  "surveyReport": {
+    "title": "问卷报告",
+    "back": "选择其他测试",
+    "open": "问卷报告",
+    "respondents_one": "{{count}} 名员工已作答",
+    "respondents_few": "{{count}} 名员工已作答",
+    "respondents_many": "{{count}} 名员工已作答",
+    "respondents_other": "{{count}} 名员工已作答",
+    "notAnonymous": "问卷不是匿名的：每个答案都与员工关联。",
+    "empty": "暂时还没有人作答。",
+    "answered_one": "{{count}} 份回答",
+    "answered_few": "{{count}} 份回答",
+    "answered_many": "{{count}} 份回答",
+    "answered_other": "{{count}} 份回答",
+    "noTexts": "没有文本回答。",
+    "untitledOption": "未命名选项",
+    "error": "无法加载问卷报告。"
   },
   "assessmentExport": {
     "label": "导出",

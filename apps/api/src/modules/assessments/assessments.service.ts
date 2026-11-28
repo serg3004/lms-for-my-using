@@ -1,3 +1,4 @@
+import { surveyQuestionTypes } from '@lms/shared/assessment-question-types';
 import { assessmentPresentationSchema, assessmentThemeSchema, type AssessmentTheme } from '@lms/shared/assessment-presentation';
 import { randomUUID } from 'node:crypto';
 import { Prisma } from '@prisma/client';
@@ -37,6 +38,7 @@ const assessmentSelect = {
   slug: true,
   description: true, material: true, presentation: true,
   status: true,
+  mode: true,
   passingScore: true,
   maxAttempts: true,
   timeLimitMinutes: true,
@@ -104,6 +106,7 @@ export class AssessmentsService {
       await this.ensureLessonBelongsToCourse(input.lessonId, input.courseId, input.organizationId);
     }
 
+    if (input.mode === 'survey' && (input.courseId || input.lessonId)) throw new BadRequestException('A survey is a standalone assessment');
     this.validatePresentationTimer(input.presentation, input.timeLimitMinutes);
     const organization = await this.prisma.organization.findUnique({
       where: { id: input.organizationId }, select: { assessmentTheme: true },
@@ -134,7 +137,7 @@ export class AssessmentsService {
         },
       });
       if (!source) throw new NotFoundException('Assessment not found');
-      const { questions, isLongreadExercise, courseId, folderId, title, description, material, passingScore, maxAttempts,
+      const { questions, isLongreadExercise, courseId, folderId, title, description, material, mode, passingScore, maxAttempts,
         timeLimitMinutes, availableAfterCourseCompletion, passMessage, failMessage, showCorrectAnswers, randomizeOrder } = source;
       const draft = source.editorDraft == null ? null : assessmentEditorContentSchema.parse(source.editorDraft);
       const copiedQuestions = draft?.questions.map(({ type, title, text, imageUrl, material, points, definition, scoringMode, options, correctFeedback, incorrectFeedback }, order) => ({
@@ -143,7 +146,7 @@ export class AssessmentsService {
       })) ?? questions;
       return tx.assessment.create({
         data: {
-          courseId, folderId, title, description, material, passingScore, maxAttempts, timeLimitMinutes,
+          courseId, folderId, title, description, material, mode, passingScore, maxAttempts, timeLimitMinutes,
           availableAfterCourseCompletion, passMessage, failMessage, showCorrectAnswers, randomizeOrder,
           policy: source.policy ?? Prisma.DbNull,
           presentation: source.presentation ?? Prisma.DbNull,
@@ -207,19 +210,24 @@ export class AssessmentsService {
   async saveEditor(id: string, organizationId: string, input: SaveAssessmentEditorInput, actorId?: string) {
     const { content, action, confirmPublished, revision } = input;
     for (const question of content.questions) validateQuestionDefinition(question.type, question.definition);
-    if (action === 'publish') {
-      const missing = content.questions.filter((question) => {
-        const correct = question.options.filter((option) => option.isCorrect).length;
-        return !question.definition && (correct === 0 || (question.type !== 'multiple_choice' && correct !== 1));
-      });
-      if (missing.length) throw new BadRequestException(missing.map((question) => question.title).join(', '));
-    }
-
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM assessments WHERE id = ${id}::uuid AND organization_id = ${organizationId}::uuid FOR UPDATE`;
       const where = { id, organizationId, deletedAt: null };
       const current = await tx.assessment.findFirst({ where, select: assessmentSelect });
       if (!current) throw new NotFoundException('Assessment not found');
+      const mode = content.settings.mode ?? current.mode;
+      await this.assertModeAllowed(tx, current, mode);
+      if (mode === 'survey' && content.questions.some((question) => !surveyQuestionTypes.includes(question.type))) {
+        throw new BadRequestException('A survey offers choice and text questions only');
+      }
+      // A survey has no right answers, so only a graded test needs a correct option before it is published.
+      if (action === 'publish' && mode === 'graded') {
+        const missing = content.questions.filter((question) => {
+          const correct = question.options.filter((option) => option.isCorrect).length;
+          return !question.definition && (correct === 0 || (question.type !== 'multiple_choice' && correct !== 1));
+        });
+        if (missing.length) throw new BadRequestException(missing.map((question) => question.title).join(', '));
+      }
       if (action === 'publish' && !content.questions.length && !current.bankSampleSize) {
         throw new BadRequestException('Cannot publish assessment: it has no questions');
       }
@@ -351,6 +359,23 @@ export class AssessmentsService {
     }
   }
 
+  /**
+   * PR 540: a survey is standalone (not in a course or a longread) and its mode is fixed once someone has answered,
+   * so neither a test's pass statistics nor a survey's report is ever rewritten by a later switch.
+   */
+  private async assertModeAllowed(db: Prisma.TransactionClient | PrismaService,
+    current: { id: string; organizationId: string; courseId: string | null; isLongreadExercise: boolean; mode: 'graded' | 'survey' },
+    mode: 'graded' | 'survey') {
+    if (mode === 'survey') {
+      const placed = await db.assessmentPlacement.count({ where: { assessmentId: current.id, organizationId: current.organizationId, deletedAt: null } });
+      if (current.courseId || current.isLongreadExercise || placed) throw new BadRequestException('A survey is a standalone assessment');
+    }
+    if (mode !== current.mode
+      && await db.assessmentAttempt.count({ where: { assessmentId: current.id, organizationId: current.organizationId, deletedAt: null } })) {
+      throw new ConflictException('Cannot change the mode of an assessment that has attempts');
+    }
+  }
+
   private validateLimits(input: UpdateAssessmentInput, current: { maxAttempts: number | null; timeLimitMinutes: number | null }) {
     if (input.maxAttempts != null && input.maxAttempts > 10 && input.maxAttempts !== current.maxAttempts) {
       throw new BadRequestException('Attempt limit must be between 1 and 10');
@@ -370,6 +395,8 @@ export class AssessmentsService {
 
   async attachPlacement(assessmentId: string, organizationId: string, input: AssessmentPlacementInput) {
     const { questionId, ...location } = input;
+    const target = await this.prisma.assessment.findFirst({ where: { id: assessmentId, organizationId, deletedAt: null }, select: { mode: true } });
+    if (target?.mode === 'survey') throw new BadRequestException('A survey cannot be placed in a course');
     await this.ensureCourseExists(input.courseId, organizationId);
     if (input.lessonId) await this.ensureLessonBelongsToCourse(input.lessonId, input.courseId, organizationId);
     return this.prisma.$transaction(async (tx) => {
@@ -426,7 +453,7 @@ export class AssessmentsService {
   ) {
     const assessment = await this.prisma.assessment.findFirst({
       where: { id: assessmentId, organizationId, deletedAt: null },
-      select: { id: true },
+      select: { id: true, mode: true },
     });
 
     if (!assessment) {
@@ -434,7 +461,7 @@ export class AssessmentsService {
     }
 
     if (status === 'published') {
-      await this.ensureQuestionsHaveCorrectOption(assessmentId, organizationId);
+      await this.ensureQuestionsHaveCorrectOption(assessmentId, organizationId, assessment.mode);
     }
 
     return this.prisma.assessment.update({
@@ -447,16 +474,17 @@ export class AssessmentsService {
   async updateAssessment(assessmentId: string, organizationId: string, input: UpdateAssessmentInput) {
     const assessment = await this.prisma.assessment.findFirst({
       where: { id: assessmentId, organizationId, deletedAt: null },
-      select: { id: true, maxAttempts: true, timeLimitMinutes: true, presentation: true },
+      select: { id: true, organizationId: true, courseId: true, isLongreadExercise: true, mode: true, maxAttempts: true, timeLimitMinutes: true, presentation: true },
     });
 
     if (!assessment) {
       throw new NotFoundException('Assessment not found');
     }
+    await this.assertModeAllowed(this.prisma, assessment, input.mode ?? assessment.mode);
 
     this.validateLimits(input, assessment);
     this.validatePresentationTimer(assessment.presentation, input.timeLimitMinutes);
-    if (input.status === 'published') await this.ensureQuestionsHaveCorrectOption(assessmentId, organizationId);
+    if (input.status === 'published') await this.ensureQuestionsHaveCorrectOption(assessmentId, organizationId, input.mode ?? assessment.mode);
     return this.prisma.assessment.update({
       where: { id: assessmentId, organizationId },
       data: input,
@@ -544,7 +572,7 @@ export class AssessmentsService {
    * Publishing an empty test or one with a question nobody can answer correctly would otherwise
    * only surface as a hard failure for the first learner to attempt it (createAttempt).
    */
-  private async ensureQuestionsHaveCorrectOption(assessmentId: string, organizationId: string) {
+  private async ensureQuestionsHaveCorrectOption(assessmentId: string, organizationId: string, mode: 'graded' | 'survey' = 'graded') {
     const questions = await this.prisma.assessmentQuestion.findMany({
       where: { assessmentId, organizationId, deletedAt: null },
       select: {
@@ -559,6 +587,7 @@ export class AssessmentsService {
       throw new BadRequestException('Cannot publish assessment: it has no questions');
     }
 
+    if (mode === 'survey') return;
     const missing = questions.filter((question) => {
       const definition = validateQuestionDefinition(question.type, question.definition);
       return !definition && question.options.length === 0;

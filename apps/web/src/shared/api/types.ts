@@ -206,6 +206,8 @@ export type AssignmentSummary = {
 };
 
 export type AssessmentSummary = {
+  /** PR 540: a survey has no points and no verdict. Older responses have no mode and are tests. */
+  mode?: 'graded' | 'survey';
   presentation?: AssessmentPresentation | null;
   material?: string | null;
   bankSampleSize?: number | null;
@@ -349,7 +351,7 @@ export type AssessmentAttemptResult = {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
-  assessment: { id: string; title: string; slug: string; passingScore: number; passMessage: string | null; failMessage: string | null; presentation?: AssessmentPresentation | null };
+  assessment: { id: string; title: string; slug: string; mode?: 'graded' | 'survey'; passingScore: number; passMessage: string | null; failMessage: string | null; presentation?: AssessmentPresentation | null };
   user: { id: string; email: string; firstName: string; lastName: string };
   answers: AttemptAnswerResult[];
 };

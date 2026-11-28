@@ -64,7 +64,7 @@ export class StandaloneAssessmentsService implements OnModuleInit {
       },
       orderBy: [{ title: 'asc' }, { id: 'asc' }],
       select: {
-        id: true, title: true, courseId: true, maxAttempts: true, passingScore: true,
+        id: true, title: true, courseId: true, mode: true, maxAttempts: true, passingScore: true,
         standaloneAssignments: { where: { organizationId, userId }, select: { dueAt: true } },
         _count: { select: { questions: { where: { deletedAt: null } } } },
         attempts: {
@@ -74,10 +74,10 @@ export class StandaloneAssessmentsService implements OnModuleInit {
         },
       },
     });
-    return assessments.map(({ id, title, courseId, maxAttempts, passingScore, standaloneAssignments, attempts: allAttempts, _count }) => {
+    return assessments.map(({ id, title, courseId, mode, maxAttempts, passingScore, standaloneAssignments, attempts: allAttempts, _count }) => {
       const attempts = allAttempts.filter((attempt) => attempt.courseId === courseId && (courseId !== null || attempt.longreadRevisionId === null));
       return {
-        assessment: { id, title, courseId, maxAttempts, passingScore },
+        assessment: { id, title, courseId, mode, maxAttempts, passingScore },
         dueAt: standaloneAssignments[0]?.dueAt ?? null,
         questionCount: _count.questions,
         attemptsUsed: attempts.filter((attempt) => attempt.status !== 'in_progress').length,
@@ -86,7 +86,8 @@ export class StandaloneAssessmentsService implements OnModuleInit {
         lastCompletedAttemptId: attempts.find((attempt) => attempt.status === 'completed')?.id ?? null,
         bestPercentage: attempts.reduce<number | null>((best, attempt) =>
           attempt.status === 'completed' ? Math.max(best ?? 0, attempt.percentage) : best, null),
-        completed: attempts.some((attempt) => attempt.passed),
+        // A survey is done once it is answered; it has no pass verdict.
+        completed: mode === 'survey' ? attempts.some((attempt) => attempt.status === 'completed') : attempts.some((attempt) => attempt.passed),
       };
     }).sort((a, b) => (a.dueAt?.getTime() ?? Infinity) - (b.dueAt?.getTime() ?? Infinity));
   }

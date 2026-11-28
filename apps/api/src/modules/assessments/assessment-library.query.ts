@@ -55,7 +55,7 @@ export async function queryAssessmentLibrary(
   const [result] = await prisma.$queryRaw<{ total: number; items: Prisma.JsonArray }[]>`
     WITH filtered AS MATERIALIZED (
       SELECT a.id, a.organization_id, a.course_id, a.lesson_id, a.folder_id, a.title, a.slug,
-             a.status, a.description, a.passing_score, a.max_attempts, a.available_after_course_completion,
+             a.status, a.mode, a.description, a.passing_score, a.max_attempts, a.available_after_course_completion,
              a.pass_message, a.fail_message, a.show_correct_answers, a.randomize_order, a.is_longread_exercise,
              (a.editor_draft IS NOT NULL) AS has_unpublished_changes, a.created_at, c.title AS course_title
       FROM assessments a
@@ -72,8 +72,9 @@ export async function queryAssessmentLibrary(
       ) q
       CROSS JOIN LATERAL (
         SELECT count(*)::int AS attempts_count, max(r.started_at) AS last_attempt_at,
-               round(100.0 * count(*) FILTER (WHERE r.status = 'completed' AND r.passed)
-                 / nullif(count(*) FILTER (WHERE r.status = 'completed'), 0))::int AS pass_rate
+               -- PR 540: a survey has no verdict, so it has no pass rate.
+               CASE WHEN a.mode = 'survey' THEN NULL ELSE round(100.0 * count(*) FILTER (WHERE r.status = 'completed' AND r.passed)
+                 / nullif(count(*) FILTER (WHERE r.status = 'completed'), 0))::int END AS pass_rate
         FROM assessment_attempts r WHERE ${attempts}
       ) r
       CROSS JOIN LATERAL (
@@ -98,7 +99,7 @@ export async function queryAssessmentLibrary(
       coalesce(jsonb_agg(jsonb_build_object(
         'id', a.id, 'courseId', a.course_id, 'courseTitle', a.course_title, 'lessonId', a.lesson_id,
         'folderId', a.folder_id, 'title', a.title, 'slug', a.slug, 'description', a.description,
-        'status', a.status, 'hasUnpublishedChanges', a.has_unpublished_changes, 'passingScore', a.passing_score, 'maxAttempts', a.max_attempts,
+        'status', a.status, 'mode', a.mode, 'hasUnpublishedChanges', a.has_unpublished_changes, 'passingScore', a.passing_score, 'maxAttempts', a.max_attempts,
         'availableAfterCourseCompletion', a.available_after_course_completion,
         'passMessage', a.pass_message, 'failMessage', a.fail_message, 'showCorrectAnswers', a.show_correct_answers,
         'randomizeOrder', a.randomize_order, 'isLongreadExercise', a.is_longread_exercise, 'createdAt', a.created_at,

@@ -29,7 +29,7 @@ export function assessmentTokenQuery(token?: string) {
 
 export function listMyAssessments() {
   return apiRequest<Array<{
-    assessment: Pick<AssessmentSummary, 'id' | 'title' | 'courseId' | 'maxAttempts' | 'passingScore'>;
+    assessment: Pick<AssessmentSummary, 'id' | 'title' | 'courseId' | 'mode' | 'maxAttempts' | 'passingScore'>;
     dueAt: string | null;
     questionCount: number;
     attemptsUsed: number;

@@ -133,7 +133,7 @@ export class AssessmentExportsService implements OnModuleInit {
     if (!folder || folder.deletedAt) throw new NotFoundException('Assessment folder not found');
     const tests = await this.prisma.assessment.findMany({
       where: {
-        organizationId, folderId: folder.id, deletedAt: null,
+        organizationId, folderId: folder.id, deletedAt: null, mode: 'graded' as const,
         ...(isInstructorCourseScoped(actor) ? { course: this.courses.courseWhere(actor) } : {}),
       },
       select: { id: true },

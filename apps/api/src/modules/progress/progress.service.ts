@@ -233,6 +233,8 @@ export class ProgressService {
         where: {
           organizationId,
           countsTowardResults: true,
+          // PR 540: a survey has no score, so it does not enter the learner's average.
+          assessment: { mode: 'graded' },
           userId,
           deletedAt: null,
           completedAt: { not: null },

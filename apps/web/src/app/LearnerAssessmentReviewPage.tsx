@@ -51,7 +51,23 @@ export function LearnerAssessmentReviewPage({ attemptId }: { attemptId: string }
         <a href={assessmentHref}>{result.assessment.title}</a>
       </nav>
 
-      {result.status === 'pending_review' ? <p role="status">{t('assessmentReview.pending')}</p> : <>
+      {result.assessment.mode === 'survey' ? <>
+        <div className="learner-quiz__result-banner learner-quiz__result-banner--passed" role="status">
+          <span className="learner-quiz__result-label">{t('assessments.survey.thanks')}</span>
+        </div>
+        <section className="learner-quiz__breakdown">
+          <h2>{t('assessments.survey.yourAnswers')}</h2>
+          <ol className="learner-quiz__breakdown-list">
+            {result.answers.slice().sort((a, b) => a.question.order - b.question.order).map((answer) =>
+              <li key={answer.id} className="learner-quiz__breakdown-item">
+                <div className="learner-quiz__breakdown-body">
+                  <p className="learner-quiz__breakdown-question">{answer.question.title}</p>
+                  <p className="learner-quiz__breakdown-answer">{ownAnswerText(answer, t)}</p>
+                </div>
+              </li>)}
+          </ol>
+        </section>
+      </> : result.status === 'pending_review' ? <p role="status">{t('assessmentReview.pending')}</p> : <>
       <div className={`learner-quiz__result-banner ${result.passed ? 'learner-quiz__result-banner--passed' : 'learner-quiz__result-banner--failed'}`}>
         <span className="learner-quiz__result-label">
           {result.passed

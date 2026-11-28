@@ -39,6 +39,7 @@ const attemptResultSummarySelect = {
       id: true,
       title: true,
       slug: true,
+      mode: true,
       passingScore: true,
       passMessage: true,
       failMessage: true,
@@ -125,6 +126,7 @@ type AttemptResultInput = {
     id: string;
     title: string;
     slug: string;
+    mode?: 'graded' | 'survey';
     passingScore: number;
     passMessage: string | null;
     failMessage: string | null;

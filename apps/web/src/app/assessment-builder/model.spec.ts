@@ -4,7 +4,12 @@ import { appendOption, assessmentFormReducer, assessmentToForm, buildEditOptionI
 
 describe('assessment builder model', () => {
   it('maps and normalizes a valid form', () => {
-    expect(mapAssessmentForm({ ...emptyAssessmentForm(), title: '  Safety Basics  ', description: '  Intro ', maxAttempts: '3' })).toEqual({ title: 'Safety Basics', slug: 'safety-basics', description: 'Intro', passingScore: 70, maxAttempts: 3, availableAfterCourseCompletion: true, passMessage: null, failMessage: null, showCorrectAnswers: false, randomizeOrder: false, status: 'draft' });
+    expect(mapAssessmentForm({ ...emptyAssessmentForm(), title: '  Safety Basics  ', description: '  Intro ', maxAttempts: '3' })).toEqual({ mode: 'graded', title: 'Safety Basics', slug: 'safety-basics', description: 'Intro', passingScore: 70, maxAttempts: 3, availableAfterCourseCompletion: true, passMessage: null, failMessage: null, showCorrectAnswers: false, randomizeOrder: false, status: 'draft' });
+  });
+  it('keeps the survey mode of a form and reads it back from the assessment', () => {
+    expect(mapAssessmentForm({ ...emptyAssessmentForm(), title: 'Opinion', mode: 'survey' })).toMatchObject({ mode: 'survey' });
+    expect(emptyAssessmentForm().mode).toBe('graded');
+    expect(assessmentToForm({ id: 'a', title: 'Opinion', slug: 'opinion', description: null, passingScore: 70, maxAttempts: 1, availableAfterCourseCompletion: false, passMessage: null, failMessage: null, showCorrectAnswers: false, randomizeOrder: false, status: 'draft', mode: 'survey' }).mode).toBe('survey');
   });
   it('trims and normalizes custom pass/fail messages, falling back to null when blank', () => {
     expect(mapAssessmentForm({ ...emptyAssessmentForm(), title: 'Test', passMessage: '  Great job!  ', failMessage: '   ' })).toMatchObject({ passMessage: 'Great job!', failMessage: null });

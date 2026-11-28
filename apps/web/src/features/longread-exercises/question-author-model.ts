@@ -15,3 +15,10 @@ export function emptyQuestionDefinition(type: QuestionType): QuestionDefinition 
   };
   return definitions[type];
 }
+
+/** PR 540: a survey's free-text question has nothing to match, so it is a text answer with no accepted variants and no review. */
+export function surveyQuestionDefinition(type: QuestionType): QuestionDefinition | null {
+  return type === 'short_answer'
+    ? { type: 'short_answer', manualReview: true, acceptedAnswers: [], caseSensitive: false, whitespace: 'trim' }
+    : emptyQuestionDefinition(type);
+}

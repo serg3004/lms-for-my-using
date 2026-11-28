@@ -11,6 +11,8 @@ import { AnalyticsTrendChart, Bar, rateColor } from '../SheetAnalyticsDashboard.
 import { FilterDropdown, moveFilter } from '../SheetAnalyticsFilters.js';
 
 import { AssessmentExportControls } from './AssessmentExportControls.js';
+import { SurveyReport } from './SurveyReport.js';
+import type { AssessmentSummary } from '../../shared/api/types.js';
 
 const places = ['standalone', 'course', 'longread'] as const;
 const cards = ['passRate', 'average', 'duration', 'distribution', 'difficulty', 'traps', 'trend', 'departments', 'employees'] as const;
@@ -119,6 +121,9 @@ function AssessmentAnalyticsContent({ base }: { base: string }) {
     ? apiRequest<Analytics>(`${getAssessmentPath(id)}/analytics?${query}`, { signal })
     : Promise.resolve(null), [id, query], { error, unauthenticated: error });
   const data = analytics.state.status === 'loaded' ? analytics.state.data : null;
+  // PR 540: a survey has no pass rate or score, so its page is the distribution of answers.
+  const kind = useAsyncData((signal) => id ? apiRequest<AssessmentSummary>(getAssessmentPath(id), { signal }) : Promise.resolve(null), [id], { error, unauthenticated: error });
+  const survey = kind.state.status === 'loaded' && kind.state.data?.mode === 'survey';
   const update = (field: string, value: string) => {
     const next = new URLSearchParams(search);
     if (field !== 'page') next.delete('page');
@@ -150,6 +155,11 @@ function AssessmentAnalyticsContent({ base }: { base: string }) {
     { key: 'attempt', priority: 'secondary', label: t('assessmentAnalytics.attemptId'), render: ({ id }) =>
       <button className="ds-button ds-button--secondary" type="button" onClick={() => update('attemptId', id)}>{t('assessmentAnalytics.filterAttempt')}</button> },
   ];
+  if (survey) return <section style={{ display: 'grid', gap: 16 }}>
+    <header><h1 style={{ margin: 0, fontSize: 'clamp(28px,4vw,36px)' }}>{t('surveyReport.title')}</h1></header>
+    {!details && <Link to={base} style={{ justifySelf: 'start' }}>{t('surveyReport.back')}</Link>}
+    <SurveyReport assessmentId={id} />
+  </section>;
   return <section style={{ display: 'grid', gap: 16 }}>
     <header><h1 style={{ margin: 0, fontSize: 'clamp(28px,4vw,36px)' }}>{t(details ? 'assessmentAnalytics.details' : 'assessmentAnalytics.title')}</h1></header>
     {details && <Link to={`${base}?${new URLSearchParams({ ...Object.fromEntries(filters), assessment: id })}`}>{t('assessmentAnalytics.title')}</Link>}

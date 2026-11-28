@@ -2188,6 +2188,25 @@ counted under longread even when the revision belongs to a course.
 unique `{ id, enabled }` entries and returns `{ cards }`. Both routes use the same
 assessment-attempt read policy. The layout is scoped by user and organization.
 
+## Survey mode of a test (PR 540)
+
+An assessment has `mode`: `graded` (default) or `survey`; `POST /assessments` and `PATCH /assessments/:id` accept it, the editor
+`settings.mode` is optional (a draft without it keeps the current mode), and `GET /assessments/*`, the library and
+`GET /assessments/standalone/mine` return it. A survey must be standalone: setting `survey` on an assessment that has a course, a
+lesson or a placement, or placing a survey in a course, answers 400; changing the mode after any attempt answers 409. A survey offers
+`single_choice`, `multiple_choice` and `short_answer` questions only (400 otherwise) and is published without correct options.
+
+Attempts of a survey (`POST /assessments/:assessmentId/attempts`) store the answers as given: `score`, `maxScore` and `percentage` are
+0, `passed` is `false`, no answer is `isCorrect` or `reviewPending`, no certificate and no result notification are created, and
+`POST /assessments/:assessmentId/attempts/answer` returns no correctness. The attempt result carries `assessment.mode`.
+The library `passRate` of a survey is `null`; surveys are left out of the learner and team averages and of the folder summary export.
+
+`GET /assessments/:assessmentId/survey-report` (assessment-attempt read policy, team scope for managers) answers
+`{ assessment: { id, title }, respondents, questions: [{ id, type, title, answered, options: [{ id, text, count, percent }],
+texts: [{ attemptId, name, text }] }], rows }`; answers are tied to the employee (a survey is not anonymous). 404 for a test that is
+not a survey. `GET /assessments/:assessmentId/survey-report/export?format=xlsx|pdf&locale=en|ru|kk|zh` returns the same data as a file,
+one row per respondent and one column per question.
+
 ## Assessment analytics exports (PR 534)
 
 `POST /assessments/:assessmentId/analytics/exports` accepts `{ format, view, locale, filters }`.
