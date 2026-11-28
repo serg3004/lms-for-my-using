@@ -27,8 +27,9 @@ export class AssessmentQuestionsController {
 
   @Get('question-bank')
   @Roles(...rolePolicies.assessmentQuestionsCreate)
-  listBankQuestions(@Req() request: AuthenticatedRequest, @Query('search') search?: string, @Query('folderId') folderId?: string) {
-    return this.bank.list(request.currentUser!.organizationId, z.string().max(200).parse(search ?? ''), z.guid().optional().parse(folderId));
+  listBankQuestions(@Req() request: AuthenticatedRequest, @Query('search') search?: string, @Query('folderId') folderId?: string, @Query('page') page?: string) {
+    return this.bank.list(request.currentUser!.organizationId, z.string().max(200).parse(search ?? ''), z.guid().optional().parse(folderId),
+      z.coerce.number().int().min(1).max(100_000).default(1).parse(page));
   }
 
   @Post('question-bank/folders')

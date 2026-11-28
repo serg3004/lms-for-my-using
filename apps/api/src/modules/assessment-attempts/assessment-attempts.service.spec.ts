@@ -455,17 +455,13 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
 
   it('starts a new in_progress attempt when none exists', async () => {
     const create = jest.fn(async () => ({ id: 'attempt-id' }));
-    let findFirstCalls = 0;
     const prisma = {
       assessmentPlacement: { findFirst: async () => ({ id: assessmentId, courseId }) },
       assessment: { findFirst: async () => buildAssessment() },
       user: { findFirst: async () => ({ id: userId }) },
       assessmentAttempt: {
-        findFirst: async () => {
-          findFirstCalls += 1;
-          // 1st call: no existing in_progress attempt. 2nd call: the final getAttempt read-back.
-          return findFirstCalls === 1 ? null : { id: 'attempt-id', assessmentId, status: 'in_progress', startedAt: new Date(), assessment: { timeLimitMinutes } };
-        },
+        // The existing-attempt check and the limit now run inside the transaction; this is the final getAttempt read-back.
+        findFirst: async () => ({ id: 'attempt-id', assessmentId, status: 'in_progress', startedAt: new Date(), assessment: { timeLimitMinutes } }),
         count: async () => 0,
       },
       // The row-lock SELECT ... FOR UPDATE and the create both run inside the transaction.
@@ -477,7 +473,7 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
             order: 0, points: 1, scoringMode: 'all_or_nothing', definition: null,
             options: [{ id: optionId, order: 0, text: 'Original answer', imageUrl: null, isCorrect: true }],
           }] },
-          assessmentAttempt: { create },
+          assessmentAttempt: { create, findFirst: async () => null, count: async () => 0 },
         }),
     } as unknown as PrismaService;
     const service = new AssessmentAttemptsService(prisma);
@@ -519,6 +515,7 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
 
   it('is idempotent — resumes an existing in_progress attempt instead of creating a new one', async () => {
     const create = jest.fn();
+    const prismaRef: { current: unknown } = { current: null };
     const prisma = {
       assessmentPlacement: { findFirst: async () => ({ id: assessmentId, courseId }) },
       assessment: { findFirst: async () => buildAssessment() },
@@ -528,7 +525,10 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
         count: async () => 0,
         create,
       },
+      // The resume check and the limit run under the row lock (PR 584).
+      $transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback({ ...prismaRef.current, $queryRaw: async () => [{ id: assessmentId }] }),
     } as unknown as PrismaService;
+    prismaRef.current = prisma;
     const service = new AssessmentAttemptsService(prisma);
 
     const result = await service.startAttempt(assessmentId, userId, organizationId);
@@ -548,6 +548,7 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
 
   it('enforces the attempts limit before starting a fresh attempt', async () => {
     const create = jest.fn();
+    const prismaRef: { current: unknown } = { current: null };
     const prisma = {
       assessmentPlacement: { findFirst: async () => ({ id: assessmentId, courseId }) },
       assessment: { findFirst: async () => buildAssessment({ maxAttempts: 1 }) },
@@ -557,7 +558,10 @@ describe('AssessmentAttemptsService timed assessments (startAttempt / late submi
         count: async () => 1,
         create,
       },
+      // The resume check and the limit run under the row lock (PR 584).
+      $transaction: async (callback: (tx: unknown) => Promise<unknown>) => callback({ ...prismaRef.current, $queryRaw: async () => [{ id: assessmentId }] }),
     } as unknown as PrismaService;
+    prismaRef.current = prisma;
     const service = new AssessmentAttemptsService(prisma);
 
     await expect(service.startAttempt(assessmentId, userId, organizationId)).rejects.toBeInstanceOf(BadRequestException);

@@ -43,3 +43,10 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* PR 584: the add-question list and the material of the opened question share the right column. */
+.assessment-editor-side {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+}

@@ -48,15 +48,13 @@ const outsideCatalog: Record<string, string> = {
 
 const inCatalog = (file: string) => catalogFiles.some((prefix) => file.startsWith(prefix));
 
-// Placement, assignment and organization theme management stay with administrators.
+// Placement and organization theme management stay with administrators. Standalone assignment and links are no longer
+// here: since PR 584 the service decides per test (administrator, author, manager for their team, named roles and staff).
 const adminOnlyAssessmentRoutes = [
   'AssessmentsController.setDefaultTheme',
   'AssessmentsController.attachPlacement',
   'AssessmentsController.detachPlacement',
   'AssessmentsController.listPlacements',
-  'StandaloneAssessmentsController.assign',
-  'StandaloneAssessmentsController.rotate',
-  'StandaloneAssessmentsController.revoke',
 ];
 
 type Route = { id: string; file: string; roles: readonly UserRole[] };
@@ -75,7 +73,7 @@ describe('permission catalog (PR 479)', () => {
     expect(catalogRoutes.map((route) => route.id).sort()).toEqual(Object.keys(permissionRouteMap).sort());
   });
 
-  it('keeps assessment placements, assignments and organization themes restricted to administrators', () => {
+  it('keeps assessment placements and organization themes restricted to administrators', () => {
     for (const id of adminOnlyAssessmentRoutes) {
       expect(roleRoutes.find((route) => route.id === id)?.roles).toEqual(['admin']);
       expect(Object.keys(permissionRouteMap)).not.toContain(id);

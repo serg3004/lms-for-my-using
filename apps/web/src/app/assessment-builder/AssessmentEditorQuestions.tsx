@@ -55,19 +55,22 @@ function manualReview(question: EditorQuestion) {
   return question.type === 'short_answer' && Boolean((question.definition as { manualReview?: boolean } | null | undefined)?.manualReview);
 }
 
-export function AssessmentEditorQuestions({ questions, onChange, onPreview, single, onEditBank, onDetachBank }: {
+export function AssessmentEditorQuestions({ questions, onChange, onPreview, single, onEditBank, onDetachBank, onOpenBank }: {
   questions: EditorQuestion[];
   onChange: (questions: EditorQuestion[]) => void;
   onPreview: (index: number) => void;
   single?: boolean;
   onEditBank?: (id: string) => void;
   onDetachBank?: (id: string) => void;
+  /** PR 584: shows "+ From the question bank" last in the add list. */
+  onOpenBank?: () => void;
 }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState<string | null>(null);
   function changeQuestion(id: string, patch: Partial<EditorQuestion>) {
     onChange(questions.map((question) => question.id === id ? { ...question, ...patch } : question));
   }
+  const materialQuestion = questions.find((question) => question.id === expanded && !question.bankEntryId);
   function addQuestion(type: QuestionType) {
     const question = { ...newEditorQuestion(), type, definition: emptyQuestionDefinition(type) };
     onChange([...questions, question]);
@@ -126,7 +129,7 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview, sing
         <FormField id={`${question.id}-image`} label={t('admin.assessmentBuilder.editor.questionImage')}>
           <input id={`${question.id}-image`} maxLength={2000} value={question.imageUrl ?? ''}
             onChange={(event) => changeQuestion(question.id, { imageUrl: event.target.value || null })} />
-          <AssessmentMaterialField value={question.material} onChange={(material) => changeQuestion(question.id, { material })} />
+          {single && <AssessmentMaterialField value={question.material} onChange={(material) => changeQuestion(question.id, { material })} />}
         </FormField>
         <FormField id={`${question.id}-scoring`} label={t('longreadExercises.scoringMode')}>
           <select id={`${question.id}-scoring`} value={question.scoringMode} onChange={(event) =>
@@ -179,12 +182,20 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview, sing
         </>}
       </div>}
     </ReorderList>
-    {!single && <section className="admin-card admin-form">
-      <h2>{t('admin.assessmentBuilder.addQuestionBtn')}</h2>
-      {questionTypeSchema.options.map((type) =>
-        <Button key={type} type="button" variant="secondary" onClick={() => addQuestion(type)}>
-          + {t(type in optionLabels ? `admin.assessmentBuilder.${optionLabels[type as keyof typeof optionLabels]}` : `longreadExercises.types.${type}`)}
-        </Button>)}
-    </section>}
+    {!single && <div className="assessment-editor-side">
+      <section className="admin-card admin-form">
+        <h2>{t('admin.assessmentBuilder.addQuestionBtn')}</h2>
+        {questionTypeSchema.options.map((type) =>
+          <Button key={type} type="button" variant="secondary" onClick={() => addQuestion(type)}>
+            + {t(type in optionLabels ? `admin.assessmentBuilder.${optionLabels[type as keyof typeof optionLabels]}` : `longreadExercises.types.${type}`)}
+          </Button>)}
+        {onOpenBank && <Button type="button" variant="secondary" onClick={onOpenBank}>+ {t('questionBank.fromBank')}</Button>}
+      </section>
+      {/* PR 584: the video or file of the question opened for editing, next to the list, as in the mockup. */}
+      {materialQuestion && <section className="admin-card admin-form">
+        <h2>{t('admin.assessmentBuilder.editor.questionMaterial')}</h2>
+        <AssessmentMaterialField value={materialQuestion.material} onChange={(material) => changeQuestion(materialQuestion.id, { material })} />
+      </section>}
+    </div>}
   </div>;
 }

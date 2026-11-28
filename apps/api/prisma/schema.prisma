@@ -1232,6 +1232,9 @@ model Assessment {
   courseId                       String?              @map("course_id") @db.Uuid
   lessonId                       String?              @map("lesson_id") @db.Uuid
   createdBy                      String?              @map("created_by") @db.Uuid
+  /// PR 584: who besides the administrator, the author and (for their team) managers may assign the test and manage its link.
+  assignRoles                    String[]             @default([]) @map("assign_roles")
+  assignUserIds                  String[]             @default([]) @map("assign_user_ids") @db.Uuid
   folderId                       String?              @map("folder_id") @db.Uuid
   isLongreadExercise             Boolean              @default(false) @map("is_longread_exercise")
   title                          String

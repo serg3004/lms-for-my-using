@@ -1,11 +1,12 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { Injectable, NotFoundException, type OnModuleInit } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, type OnModuleInit } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
 
 import { PrismaService } from '../../database/prisma.service.js';
 import { BackgroundJobsService } from '../background-jobs/public.js';
 import { getSubtreeDepartmentIds } from '../departments/public.js';
+import { ManagerTeamScope, type TeamScopeActor } from '../manager-team-scope/public.js';
 
 const day = 86_400_000;
 const jobName = 'assessments.assignment-reminders';
@@ -17,11 +18,19 @@ export const assignmentInput = z.object({
   dueAt: z.iso.datetime({ offset: true }).transform((value) => new Date(value)),
 }).strict();
 
+/** PR 584: roles an author may let assign the test besides the defaults; the employees are chosen by name. */
+export const assignGrantsInput = z.object({
+  roles: z.array(z.enum(['instructor', 'manager'])).max(2).transform((roles) => [...new Set(roles)]),
+  userIds: z.array(z.guid()).max(100).transform((ids) => [...new Set(ids)]),
+}).strict();
+
 const liveStandalone = { deletedAt: null, status: 'published', courseId: null } as const;
 const standaloneAttempt = { placementId: null, longreadRevisionId: null, deletedAt: null } as const;
 
 @Injectable()
 export class StandaloneAssessmentsService implements OnModuleInit {
+  private readonly teamScope = new ManagerTeamScope();
+
   constructor(private readonly prisma: PrismaService, private readonly jobs: BackgroundJobsService) {}
 
   onModuleInit() {
@@ -82,7 +91,61 @@ export class StandaloneAssessmentsService implements OnModuleInit {
     }).sort((a, b) => (a.dueAt?.getTime() ?? Infinity) - (b.dueAt?.getTime() ?? Infinity));
   }
 
-  async assign(assessmentId: string, organizationId: string, input: z.output<typeof assignmentInput>) {
+  /**
+   * PR 584: who may assign a standalone test or manage its link. The administrator and the author always may;
+   * a manager may assign (to their own team only, see assign) but not open a link; roles and employees named by the
+   * author may do both.
+   */
+  async assertCanAssign(assessmentId: string, actor: TeamScopeActor, link = false) {
+    const assessment = await this.prisma.assessment.findFirst({
+      where: { id: assessmentId, organizationId: actor.organizationId, deletedAt: null, courseId: null },
+      select: { createdBy: true, assignRoles: true, assignUserIds: true },
+    });
+    if (!assessment) throw new NotFoundException('Assessment not found');
+    const allowed = actor.roles.includes('admin') || assessment.createdBy === actor.id
+      || assessment.assignUserIds.includes(actor.id) || actor.roles.some((role) => assessment.assignRoles.includes(role))
+      || (!link && actor.roles.includes('manager'));
+    if (!allowed) throw new ForbiddenException('You cannot assign this assessment');
+  }
+
+  async getGrants(assessmentId: string, actor: TeamScopeActor) {
+    const assessment = await this.grantsOwner(assessmentId, actor);
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: assessment.assignUserIds }, organizationId: actor.organizationId, deletedAt: null },
+      select: { id: true, firstName: true, lastName: true }, orderBy: [{ lastName: 'asc' }, { id: 'asc' }],
+    });
+    return {
+      roles: assessment.assignRoles,
+      users: users.map(({ id, firstName, lastName }) => ({ id, name: [lastName, firstName].filter(Boolean).join(' ') })),
+    };
+  }
+
+  async setGrants(assessmentId: string, actor: TeamScopeActor, input: z.output<typeof assignGrantsInput>) {
+    await this.grantsOwner(assessmentId, actor);
+    const staff = await this.prisma.user.count({ where: {
+      id: { in: input.userIds }, organizationId: actor.organizationId, deletedAt: null, status: { in: ['active', 'invited'] },
+      memberships: { some: { organizationId: actor.organizationId, role: { in: ['admin', 'manager', 'instructor'] } } },
+    } });
+    if (staff !== input.userIds.length) throw new NotFoundException('Employee not found');
+    await this.prisma.assessment.updateMany({
+      where: { id: assessmentId, organizationId: actor.organizationId },
+      data: { assignRoles: input.roles, assignUserIds: input.userIds },
+    });
+    return this.getGrants(assessmentId, actor);
+  }
+
+  /** Only the administrator and the author decide who else may assign the test. */
+  private async grantsOwner(assessmentId: string, actor: TeamScopeActor) {
+    const assessment = await this.prisma.assessment.findFirst({
+      where: { id: assessmentId, organizationId: actor.organizationId, deletedAt: null, courseId: null },
+      select: { createdBy: true, assignRoles: true, assignUserIds: true },
+    });
+    if (!assessment) throw new NotFoundException('Assessment not found');
+    if (!actor.roles.includes('admin') && assessment.createdBy !== actor.id) throw new ForbiddenException('Only the author can change who assigns this assessment');
+    return assessment;
+  }
+
+  async assign(assessmentId: string, organizationId: string, input: z.output<typeof assignmentInput>, actor?: TeamScopeActor) {
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM assessments WHERE id = ${assessmentId}::uuid AND organization_id = ${organizationId}::uuid FOR UPDATE`;
       const assessment = await tx.assessment.findFirst({
@@ -91,7 +154,7 @@ export class StandaloneAssessmentsService implements OnModuleInit {
       if (!assessment) throw new NotFoundException('Assessment not found');
       const recipientWhere = await this.recipients(tx, organizationId, input);
       const users = await tx.user.findMany({
-        where: { ...recipientWhere, organizationId, deletedAt: null, status: { in: ['active', 'invited'] } },
+        where: { ...recipientWhere, organizationId, deletedAt: null, status: { in: ['active', 'invited'] }, ...(actor ? { AND: [this.teamScope.user(actor)] } : {}) },
         select: { id: true },
       });
       if (input.target === 'user' && !users.length) throw new NotFoundException('Assignment target not found');

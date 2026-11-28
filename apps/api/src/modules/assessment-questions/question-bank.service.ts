@@ -47,16 +47,18 @@ function placementOptions(content: BankContent, organizationId: string) {
 export class QuestionBankService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(organizationId: string, search: string, folderId?: string) {
-    const [folders, entries] = await Promise.all([
+  /** PR 584: the entries come 50 at a time; `total` counts every match in the folder. */
+  async list(organizationId: string, search: string, folderId?: string, page = 1) {
+    const pageSize = 50;
+    const where = { organizationId, folderId, title: { contains: search, mode: 'insensitive' as const } };
+    const [folders, entries, total] = await Promise.all([
       this.prisma.questionBankFolder.findMany({ where: { organizationId }, orderBy: { name: 'asc' } }),
       this.prisma.questionBankEntry.findMany({
-        where: { organizationId, folderId, title: { contains: search, mode: 'insensitive' } },
-        orderBy: [{ title: 'asc' }, { id: 'asc' }],
-        take: 100,
+        where, orderBy: [{ title: 'asc' }, { id: 'asc' }], skip: (page - 1) * pageSize, take: pageSize,
       }),
+      this.prisma.questionBankEntry.count({ where }),
     ]);
-    return { folders, entries };
+    return { folders, entries, total, page, pageSize };
   }
 
   createFolder(organizationId: string, name: string) {

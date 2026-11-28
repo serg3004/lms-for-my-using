@@ -75,7 +75,7 @@ function AnalyticsCards({ data, stored, onSaved }: { data: Analytics; stored: Ca
     trend: <AnalyticsTrendChart title={t('assessmentAnalytics.trend')} unit="%" points={data.dates.map(({ id, name, value }) => ({ id, label: name, value }))} />,
     departments: data.departments.map(({ id, name, value, count }) => <Bar key={id} label={name || t('assessmentAnalytics.noDepartment')}
       value={value} hint={String(count)} color={rateColor(value)} />),
-    employees: <><h3>{t('assessmentAnalytics.leaders')}</h3>{metrics(data.leaders)}<h3>{t('assessmentAnalytics.lagging')}</h3>{metrics(data.lagging)}</>,
+    employees: <><h3>{t('assessmentAnalytics.leaders')}</h3>{metrics(data.leaders)}{data.lagging.length > 0 && <><h3>{t('assessmentAnalytics.lagging')}</h3>{metrics(data.lagging)}</>}</>,
   };
 
   return <>

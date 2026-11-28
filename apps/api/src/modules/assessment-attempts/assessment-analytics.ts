@@ -163,7 +163,8 @@ export async function summarizeAssessment(
     dates: averages(dates).sort((a, b) => a.id.localeCompare(b.id)),
     departments: averages(departments),
     leaders: ranking.slice(0, 5),
-    lagging: ranking.slice(-5).reverse(),
+    // PR 584: an employee is either a leader or lagging, never both, so a small group shows only the leaders.
+    lagging: ranking.slice(Math.max(5, ranking.length - 5)).reverse(),
     questions: [...questions].map(([id, { text, total, correct, wrong }]) => ({
       id, text, total, correct,
       trap: [...wrong].sort(([a, left], [b, right]) => right.count - left.count || a.localeCompare(b))[0]?.[1] ?? null,
