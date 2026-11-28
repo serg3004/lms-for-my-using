@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getStoredThemeMode, nextThemeMode, resolveTheme, setThemeMode } from './themeMode.js';
+import { THEME_MODES, getStoredThemeMode, resolveTheme, setThemeMode } from './themeMode.js';
 
 function storageStub(initial?: string) {
   let value = initial ?? null;
@@ -14,10 +14,8 @@ function storageStub(initial?: string) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('theme mode', () => {
-  it('cycles light, dark, system', () => {
-    expect(nextThemeMode('light')).toBe('dark');
-    expect(nextThemeMode('dark')).toBe('system');
-    expect(nextThemeMode('system')).toBe('light');
+  it('lists the modes in the order of the theme menu', () => {
+    expect(THEME_MODES).toEqual(['light', 'dark', 'system']);
   });
 
   it('reads the saved mode and falls back to system for anything else or without storage', () => {

@@ -23,3 +23,4 @@
 | [`CHECKLIST_REMAINING_WORK_PLAN.md`](./CHECKLIST_REMAINING_WORK_PLAN.md) | 469–478 и 357 | остаток по чек-листам: аналитика курсов, почта, PWA |
 | [`CUSTOM_ROLE_PERMISSIONS_PLAN.md`](./CUSTOM_ROLE_PERMISSIONS_PLAN.md) | — | проект модели настраиваемых ролей (историческая модель) |
 | [`CUSTOM_ROLES_IMPLEMENTATION_PLAN.md`](./CUSTOM_ROLES_IMPLEMENTATION_PLAN.md) | 479–486 | реализация настраиваемых ролей |
+| [`APP_IMPROVEMENTS_PLAN.md`](./APP_IMPROVEMENTS_PLAN.md) | 508–521, 545, 572, 574, 580–582 | голос в комментариях, папки, аналитика, дашборд, установка приложения; перенесён 2026-11-28 |
