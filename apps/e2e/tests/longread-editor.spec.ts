@@ -258,7 +258,7 @@ test('the formatting window of the sheets opens on selected longread text and it
   await fillRich(page, text, 'Важно');
   await page.keyboard.press('ControlOrMeta+A'); await page.keyboard.press('Shift+F10');
   const window = page.getByRole('dialog', { name: 'Форматирование текста' });
-  await window.getByRole('button', { name: 'Цвет #B91C1C', exact: true }).click();
+  await window.getByRole('button', { name: 'Цвет: #B91C1C', exact: true }).click();
   await window.getByRole('button', { name: 'Размер: Крупный', exact: true }).click();
   await window.getByRole('button', { name: 'Прописные', exact: true }).click();
   await page.keyboard.press('Escape');

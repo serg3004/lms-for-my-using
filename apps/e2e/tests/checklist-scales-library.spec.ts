@@ -67,7 +67,7 @@ test('failed saves retain the draft; missing and empty states remain distinct', 
 for (const locale of ['ru', 'en', 'kk', 'zh'] as const) test(`${locale}: empty list and narrow keyboard editor are localized`, async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 900 }); const server = scaleLibraryServer({ locale, empty: true }); await server.attach(page);
   await expect(page.locator('main')).not.toContainText('admin.checklists.');
-  await page.goto(`${server.base}/new`); const name = page.locator('input[maxlength="255"]'); await expect(name).toBeVisible(); await name.focus(); await page.keyboard.press('Tab'); await expect(page.locator('input[maxlength="80"]').first()).toBeFocused();
+  await page.goto(`${server.base}/new`); const name = page.locator('input[maxlength="255"]'); await expect(name).toBeVisible(); await name.focus(); await page.keyboard.press('Tab'); await expect(page.getByRole('button', { name: /^(Перетащить уровень 1|Drag level 1|1-деңгейді сүйреу|拖动第 1 级)$/ })).toBeFocused(); await page.keyboard.press('Tab'); await expect(page.locator('input[maxlength="80"]').first()).toBeFocused();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 

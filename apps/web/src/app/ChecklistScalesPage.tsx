@@ -64,12 +64,9 @@ export function ChecklistScalesPage({ observer = false }: { observer?: boolean }
   const selectedTitle = scaleId === 'new' ? t('admin.checklists.scaleManager.newTitle') : scale?.name ?? title;
   return shell(<>
     {observer ? <ObserverSessionsNav current="scales" /> : <ChecklistsTabs current="scales" />}
-    <LibrarySwitch base={base.replace(/\/scales$/, '')} current="scales" />
-    <nav aria-label={t('admin.checklists.scaleLibrary.breadcrumbs')} style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBlock: 16 }}>
-      <Link to={observer ? roles.includes('instructor') ? '/instructor/checklists/library' : '/mentor/library' : '/admin/checklists'}>{t('admin.checklists.title')}</Link><span aria-hidden="true">/</span>
-      {scaleId ? <><Link to={base}>{title}</Link><span aria-hidden="true">/</span><span aria-current="page" style={{ overflowWrap: 'anywhere' }}>{selectedTitle}</span></> : <span aria-current="page">{title}</span>}
-    </nav>
-    <AdminPageHeader title={scaleId ? selectedTitle : title} action={!scaleId && canManage && !loading && !error ? <Link className="admin-btn admin-btn--primary" to={`${base}/new`}>{t('admin.checklists.scaleManager.addScale')}</Link> : undefined} />
+    {!scaleId && <LibrarySwitch base={base.replace(/\/scales$/, '')} current="scales" />}
+    {scaleId && <Link className="scale-back" to={base}>{t('admin.checklists.scaleManager.backToScales', '← Back to scales')}</Link>}
+    <AdminPageHeader subtitle={t('admin.checklists.scaleLibrary.subtitle', 'Answer levels with points and colours for observation sheets.')} title={scaleId ? selectedTitle : title} action={!scaleId && canManage && !loading && !error ? <Link className="admin-btn admin-btn--primary" to={`${base}/new`}>{t('admin.checklists.scaleManager.addScale')}</Link> : undefined} />
     {(location.state as { scaleNotice?: string } | null)?.scaleNotice && <p role="status">{(location.state as { scaleNotice: string }).scaleNotice}</p>}
     {loading ? <PageState variant="loading" message={t('admin.checklists.scaleLibrary.loading')} /> : <>
       {error && <div role="alert"><p>{error}</p>{!editor && <Button type="button" onClick={() => setRetry((value) => value + 1)}>{t('longread.retry')}</Button>}</div>}
@@ -78,7 +75,6 @@ export function ChecklistScalesPage({ observer = false }: { observer?: boolean }
       </>}
       {editor && <section className="admin-card" style={{ maxWidth: '100%', minWidth: 0 }}>
         <fieldset disabled={busy} style={{ border: 0, minWidth: 0, margin: 0, padding: 0 }}><ScaleEditor editor={editor} onChange={setEditor} t={t} /></fieldset>
-        <section aria-label={t('admin.checklists.scaleLibrary.preview')} style={{ marginBlock: 24 }}><h2>{t('admin.checklists.scaleLibrary.preview')}</h2><ol style={{ paddingInlineStart: 24 }}>{editor.levels.map((level) => <li key={level.key} style={{ overflowWrap: 'anywhere', marginBlock: 8 }}><span aria-hidden="true" style={{ display: 'inline-block', width: 14, height: 14, background: level.color, border: '1px solid var(--color-border)', marginInlineEnd: 8 }} />{level.label} · {level.score}</li>)}</ol></section>
         {scale && <section aria-label={t('admin.checklists.scaleLibrary.usedBy')}><h2>{t('admin.checklists.scaleLibrary.usedBy')}</h2><p>{t('admin.checklists.scaleLibrary.usage', { count: scale.usageCount ?? 0 })}</p><ul>{scale.usedByChecklists?.map((item) => <li key={item.id}><Link to={`${observer ? roles.includes('instructor') ? '/instructor/checklists/library' : '/mentor/library' : '/admin/checklists'}?checklistId=${encodeURIComponent(item.id)}`}>{item.title}</Link></li>)}</ul></section>}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 24 }}>
           <Link className="admin-btn admin-btn--secondary" to={base}>{t('admin.checklists.cancel')}</Link>

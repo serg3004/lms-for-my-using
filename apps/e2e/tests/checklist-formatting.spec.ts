@@ -6,7 +6,7 @@ test('selected description formats, saves, previews, and resets without changing
   const { editor, popup, saved } = await openFormattingPopup(page);
   for (const name of ['Жирный', 'Курсив', 'Подчёркнутый', 'Прописные']) await popup.getByRole('button', { name, exact: true }).click();
   await popup.getByRole('button', { name: 'Размер: Заголовок', exact: true }).click();
-  await popup.getByRole('button', { name: 'Цвет #1D4ED8', exact: true }).click();
+  await popup.getByRole('button', { name: 'Цвет: #1D4ED8', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect(editor).toBeFocused(); await expect(editor.locator('strong')).toHaveText('Важный текст');
   await page.getByRole('button', { name: 'Сохранить', exact: true }).first().click();
@@ -45,7 +45,7 @@ for (const width of [320, 390]) test(`touch long-press and low-contrast warning 
   await editor.dispatchEvent('pointerdown', { pointerType: 'touch', pointerId: 1, clientX: point.x, clientY: point.y });
   const popup = page.getByRole('dialog', { name: 'Форматирование текста' }); await expect(popup).toBeVisible();
   await editor.dispatchEvent('pointerup', { pointerType: 'touch', pointerId: 1 });
-  await popup.getByLabel('Свой цвет', { exact: true }).fill('#ffff00');
+  await popup.getByLabel('Цвет: выбор цвета', { exact: true }).fill('#ffff00');
   await expect(popup.getByRole('status')).toContainText('Низкий контраст');
   const rect = await popup.boundingBox(); expect(rect!.x).toBeGreaterThanOrEqual(0); expect(rect!.x + rect!.width).toBeLessThanOrEqual(width);
   await expect.poll(async () => { const bounds = await popup.boundingBox(); return bounds!.y + bounds!.height; }).toBeLessThanOrEqual(800);

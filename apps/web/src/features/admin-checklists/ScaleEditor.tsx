@@ -1,5 +1,10 @@
+import { useState, type ReactNode } from 'react';
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { TFunction } from 'i18next';
-import { HighlightColorField } from '../../shared/HighlightColorField.js';
+import { levelPaint } from '../../shared/levelPaint.js';
+import { ColorField } from '../../shared/ColorField.js';
 import { Button, Input } from '../../shared/ui.js';
 import type { ChecklistScaleSummary } from '../../shared/api/types.js';
 import { CHECK_BOX, CHECK_ROW } from '../../shared/checkField.js';
@@ -51,6 +56,15 @@ export function scaleDraftErrorText(error: ScaleDraftError, t: TFunction) {
 
 /** One form for the standalone library and the existing builder dialog. */
 export function ScaleEditor({ editor, onChange, error, t }: { editor: ScaleEditorState; onChange: (value: ScaleEditorState) => void; error?: string | null; t: TFunction }) {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
+  const [moved, setMoved] = useState('');
+  function dropLevel({ active, over }: DragEndEvent) {
+    if (editor.readOnly || !over || active.id === over.id) return;
+    const from = editor.levels.findIndex((level) => level.key === active.id), to = editor.levels.findIndex((level) => level.key === over.id);
+    if (from < 0 || to < 0) return;
+    onChange({ ...editor, levels: arrayMove(editor.levels, from, to) });
+    setMoved(t('admin.checklists.scaleManager.levelMoved', 'Level {{n}} moved to position {{pos}}.', { n: from + 1, pos: to + 1 }));
+  }
   function patchLevel(key: string, patch: Partial<ScaleLevelDraft>) {
     onChange({ ...editor, levels: editor.levels.map((level) => level.key === key ? { ...level, ...patch } : level) });
   }
@@ -70,6 +84,7 @@ export function ScaleEditor({ editor, onChange, error, t }: { editor: ScaleEdito
         {error && <p className="learner-quiz__submit-error" role="alert">{error}</p>}
         <Input
           disabled={editor.readOnly}
+          hint={t('admin.checklists.scaleManager.nameHint', 'The scale name is shown when a sheet picks a scale.')}
           label={t('admin.checklists.scaleManager.name', 'Scale name')}
           maxLength={SCALE_NAME_MAX}
           onChange={(e) => onChange({ ...editor, name: e.target.value })}
@@ -77,78 +92,106 @@ export function ScaleEditor({ editor, onChange, error, t }: { editor: ScaleEdito
         />
         <p aria-live="off" className="admin-form__hint">{editor.name.length}/{SCALE_NAME_MAX}</p>
         <h3>{t('admin.checklists.scaleManager.levels', 'Levels')}</h3>
-        <ol className="admin-checklist-instances">
-          {editor.levels.map((level, index) => {
-            const n = index + 1;
-            return (
-              <li key={level.key} style={{ flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-                  <Input
-                    aria-label={t('admin.checklists.scaleManager.levelName', 'Level {{n}} name', { n })}
-                    disabled={editor.readOnly}
-                    maxLength={80}
-                    onChange={(e) => patchLevel(level.key, { label: e.target.value })}
-                    value={level.label}
-                  />
-                </div>
-                <Input
-                  aria-label={t('admin.checklists.scaleManager.levelScore', 'Level {{n}} points', { n })}
-                  disabled={editor.readOnly}
-                  inputMode="numeric"
-                  onChange={(e) => patchLevel(level.key, { score: e.target.value })}
-                  value={level.score}
-                />
-                <HighlightColorField
-                  disabled={editor.readOnly}
-                  label={t('admin.checklists.scaleManager.levelColor', 'Level {{n}} colour', { n })}
-                  onChange={(color) => patchLevel(level.key, { color })}
-                  value={level.color}
-                />
-                {!editor.readOnly && (
-                  <>
-                    <Button
-                      aria-label={t('admin.checklists.scaleManager.moveLevelUp', 'Move level {{n}} up', { n })}
-                      disabled={index === 0}
-                      onClick={() => onChange({ ...editor, levels: moveScaleLevelDraft(editor.levels, index, 'up') })}
-                      type="button"
-                      variant="secondary"
-                    >
-                      ↑
-                    </Button>
-                    <Button
-                      aria-label={t('admin.checklists.scaleManager.moveLevelDown', 'Move level {{n}} down', { n })}
-                      disabled={index === editor.levels.length - 1}
-                      onClick={() => onChange({ ...editor, levels: moveScaleLevelDraft(editor.levels, index, 'down') })}
-                      type="button"
-                      variant="secondary"
-                    >
-                      ↓
-                    </Button>
-                    <Button
-                      aria-label={t('admin.checklists.scaleManager.removeLevel', 'Remove level {{n}}', { n })}
-                      disabled={editor.levels.length <= SCALE_MIN_LEVELS}
-                      onClick={() => onChange({ ...editor, levels: editor.levels.filter((l) => l.key !== level.key) })}
-                      type="button"
-                      variant="secondary"
-                    >
-                      ✕
-                    </Button>
-                  </>
-                )}
-              </li>
-            );
-          })}
-        </ol>
-        {!editor.readOnly && (
-          <Button
-            disabled={editor.levels.length >= SCALE_MAX_LEVELS}
-            onClick={() => onChange({ ...editor, levels: [...editor.levels, createScaleLevelDraft()] })}
-            type="button"
-            variant="secondary"
-          >
-            + {t('admin.checklists.scaleManager.addLevel', 'Add level')}
-          </Button>
-        )}
+        <div className="scale-editor">
+          <div className="scale-editor__levels">
+            {!editor.readOnly && <p className="admin-form__hint">{t('admin.checklists.scaleManager.dragHint', 'Drag levels by the handle on the left; the up and down buttons work from the keyboard.')}</p>}
+            <div aria-hidden="true" className="scale-levels__head">
+              <span /><span>{t('admin.checklists.scaleManager.colName', 'Name')}</span><span>{t('admin.checklists.scaleManager.colScore', 'Points')}</span>
+            </div>
+            <DndContext collisionDetection={closestCenter} onDragEnd={dropLevel} sensors={sensors}>
+              <SortableContext items={editor.levels.map((level) => level.key)} strategy={verticalListSortingStrategy}>
+                <ol className="scale-levels">
+                  {editor.levels.map((level, index) => {
+                    const n = index + 1;
+                    return (
+                      <ScaleLevelRow dragLabel={t('admin.checklists.scaleManager.dragLevel', 'Drag level {{n}}', { n })} key={level.key} levelKey={level.key} readOnly={editor.readOnly}
+                        actions={!editor.readOnly && <>
+                          <Button
+                            aria-label={t('admin.checklists.scaleManager.moveLevelUp', 'Move level {{n}} up', { n })}
+                            disabled={index === 0}
+                            onClick={() => onChange({ ...editor, levels: moveScaleLevelDraft(editor.levels, index, 'up') })}
+                            type="button"
+                            variant="secondary"
+                          >
+                            ↑
+                          </Button>
+                          <Button
+                            aria-label={t('admin.checklists.scaleManager.moveLevelDown', 'Move level {{n}} down', { n })}
+                            disabled={index === editor.levels.length - 1}
+                            onClick={() => onChange({ ...editor, levels: moveScaleLevelDraft(editor.levels, index, 'down') })}
+                            type="button"
+                            variant="secondary"
+                          >
+                            ↓
+                          </Button>
+                          <Button
+                            aria-label={t('admin.checklists.scaleManager.removeLevel', 'Remove level {{n}}', { n })}
+                            disabled={editor.levels.length <= SCALE_MIN_LEVELS}
+                            onClick={() => onChange({ ...editor, levels: editor.levels.filter((l) => l.key !== level.key) })}
+                            type="button"
+                            variant="secondary"
+                          >
+                            ✕
+                          </Button>
+                        </>}
+                        name={
+                          <Input
+                          aria-label={t('admin.checklists.scaleManager.levelName', 'Level {{n}} name', { n })}
+                          disabled={editor.readOnly}
+                          maxLength={80}
+                          onChange={(e) => patchLevel(level.key, { label: e.target.value })}
+                          placeholder={t('admin.checklists.scaleManager.colName', 'Name')}
+                          value={level.label}
+                        />
+                        }
+                        points={
+                          <Input
+                          aria-label={t('admin.checklists.scaleManager.levelScore', 'Level {{n}} points', { n })}
+                          disabled={editor.readOnly}
+                          inputMode="numeric"
+                          onChange={(e) => patchLevel(level.key, { score: e.target.value })}
+                          placeholder={t('admin.checklists.scaleManager.colScore', 'Points')}
+                          value={level.score}
+                        />
+                        }
+                        color={
+                          <ColorField
+                          disabled={editor.readOnly}
+                          label={t('admin.checklists.scaleManager.levelColor', 'Level {{n}} colour', { n })}
+                          onChange={(color) => patchLevel(level.key, { color })}
+                          value={level.color}
+                        />
+                        }
+                      />
+                    );
+                  })}
+                </ol>
+              </SortableContext>
+            </DndContext>
+            <p className="ui-visually-hidden" role="status">{moved}</p>
+            {!editor.readOnly && (
+              <Button
+                disabled={editor.levels.length >= SCALE_MAX_LEVELS}
+                onClick={() => onChange({ ...editor, levels: [...editor.levels, createScaleLevelDraft()] })}
+                type="button"
+                variant="secondary"
+              >
+                + {t('admin.checklists.scaleManager.addLevel', 'Add level')}
+              </Button>
+            )}
+          </div>
+          <section aria-label={t('admin.checklists.scaleLibrary.preview')} className="scale-preview">
+            <h3>{t('admin.checklists.scaleLibrary.preview')}</h3>
+            <p className="admin-form__hint">{t('admin.checklists.scaleManager.previewHint', 'This is how the levels look in a session.')}</p>
+            <ul>
+              {editor.levels.map((level) => (
+                <li key={level.key} style={levelPaint(level.color)}>
+                  <span>{level.label.trim() || '—'}</span><b>{level.score}</b>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
         {/* PR 457: the explanation rule set once for the scale; a criterion that picks the scale takes it and it is edited there as usual. */}
         <fieldset style={{ border: 0, padding: 0, margin: '12px 0' }}>
           <legend><b>{t('admin.checklists.scaleManager.noteTitle', 'Default explanation')}</b></legend>
@@ -183,4 +226,18 @@ export function ScaleEditor({ editor, onChange, error, t }: { editor: ScaleEdito
           {t('admin.checklists.scaleManager.appliesToNew', 'Changes apply to new and not yet started sessions; sessions already started keep their own copy.')}
         </p>
   </>;
+}
+
+/** PR 579: one level: handle, name, points and buttons in one grid row, the colour under them; the whole row can be dragged by the handle. */
+function ScaleLevelRow({ levelKey, dragLabel, readOnly, actions, name, points, color }: { levelKey: string; dragLabel: string; readOnly: boolean; actions: ReactNode; name: ReactNode; points: ReactNode; color: ReactNode }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: levelKey, disabled: readOnly });
+  return (
+    <li className={isDragging ? 'scale-level scale-level--dragging' : 'scale-level'} ref={setNodeRef} style={{ transform: CSS.Translate.toString(transform), transition }}>
+      {readOnly ? <span /> : <button aria-label={dragLabel} className="admin-drag scale-level__handle" ref={setActivatorNodeRef} type="button" {...attributes} {...listeners}>⋮⋮</button>}
+      <div className="scale-level__name">{name}</div>
+      <div className="scale-level__score">{points}</div>
+      <div className="scale-level__actions">{actions}</div>
+      <div className="scale-level__color">{color}</div>
+    </li>
+  );
 }

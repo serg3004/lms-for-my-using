@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { assessmentAccentContrast, assessmentFonts, assessmentThemeSchema, type AssessmentPresentation } from '@lms/shared/assessment-presentation';
 import { apiRequest, getCurrentUser } from '../../shared/apiClient.js';
+import { ColorField } from '../../shared/ColorField.js';
 import { Button } from '../../shared/ui.js';
 import { FormField } from '../../shared/adminPage.js';
 import { RichTextField } from '../../shared/RichTextField.js';
@@ -46,13 +47,8 @@ export function AssessmentPresentationFields({ value, onChange }: {
     {value.finalScreen === 'message' && <RichTextField id="assessment-completion-message" label={label('completionMessage')}
       value={value.completionMessage ?? ''} maxLength={2000}
       onChange={(completionMessage) => onChange({ ...value, completionMessage })} />}
-    <FormField id="assessment-accent-picker" label={label('palette')}>
-      <input id="assessment-accent-picker" type="color" value={accent ?? '#2563eb'}
-        onChange={(event) => changeTheme({ accent: event.target.value })} />
-    </FormField>
     <FormField id="assessment-accent" label={label('accent')} error={parsedTheme.success ? undefined : label('invalidAccent')}>
-      <input id="assessment-accent" placeholder="#2563eb" maxLength={7} value={theme.accent ?? ''}
-        onChange={(event) => changeTheme({ accent: event.target.value.trim() || undefined })} />
+      <ColorField fallback="#2563EB" label={label('accent')} onChange={(color) => changeTheme({ accent: color })} onUnset={() => changeTheme({ accent: undefined })} value={theme.accent} />
     </FormField>
     {accent && assessmentAccentContrast(accent).white < 4.5 && <p role="status">{label('contrast')}</p>}
     {(['headingFont', 'bodyFont'] as const).map((field) => <FormField key={field} id={field} label={label(field)}>
