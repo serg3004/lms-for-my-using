@@ -9,6 +9,11 @@ export type LibraryFolder = {
   name: string;
   parentId: string | null;
   color?: FolderColor;
+  /** PR 576: who the folder is open to; filled only for those who manage it. */
+  visibleToStaff?: boolean;
+  accessRoles?: string[];
+  sharedUsers?: Array<{ id: string; name: string }>;
+  canManage?: boolean;
   childFolderCount: number;
   itemCount: number;
   totalItemCount: number;
@@ -24,6 +29,8 @@ export type LibraryBulkResult = {
     { id: string; result: 'skipped'; reason: 'not_found' | 'forbidden' | 'name_conflict' | 'too_deep' | 'cycle' | 'already_in_folder' | 'covered_by_parent' })[];
 };
 
+export type FolderAccessInput = { visibleToStaff?: boolean; accessRoles?: string[]; sharedUserIds?: string[] };
+
 const path = '/library-folders';
 const folderPath = (id: string) => `${path}/${encodeURIComponent(id)}`;
 
@@ -31,10 +38,15 @@ export function listLibraryFolders(scope: LibraryFolderScope, signal?: AbortSign
   return apiRequest<{ folders: LibraryFolder[]; rootItemCount: number; itemCount: number }>(`${path}?scope=${scope}`, { signal });
 }
 
-export function saveLibraryFolder(scope: LibraryFolderScope, id: string | null, input: { name: string; color: FolderColor; parentId?: string | null }) {
+export function saveLibraryFolder(scope: LibraryFolderScope, id: string | null, input: FolderAccessInput & { name: string; color: FolderColor; parentId?: string | null }) {
   return apiRequest<LibraryFolder>(id === null ? path : folderPath(id), {
     method: id === null ? 'POST' : 'PATCH', body: JSON.stringify(id === null ? { ...input, scope } : input),
   });
+}
+
+/** PR 576: staff a folder can be opened to by name. */
+export function searchLibraryFolderShareCandidates(scope: LibraryFolderScope, search: string) {
+  return apiRequest<Array<{ id: string; name: string }>>(`${path}/share-candidates?scope=${scope}&search=${encodeURIComponent(search)}`);
 }
 
 export function getLibraryFolderImpact(id: string) {

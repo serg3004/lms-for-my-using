@@ -68,16 +68,20 @@ export type BulkChecklistActionInput = z.infer<typeof bulkChecklistActionSchema>
 const folderNameSchema = z.string().trim().min(1).max(255);
 /** PR 515: employees a folder is opened to by name; existence and role are checked in the service. */
 const folderSharedUsersSchema = z.array(z.guid()).max(200).transform((ids) => [...new Set(ids)]);
+/** PR 576: the roles a folder can be opened to (the administrator always sees every folder). */
+export const FOLDER_ACCESS_ROLES = ['manager', 'instructor', 'mentor'] as const;
+const folderAccessRolesSchema = z.array(z.enum(FOLDER_ACCESS_ROLES)).max(FOLDER_ACCESS_ROLES.length).transform((roles) => [...new Set(roles)]);
 export const createChecklistFolderSchema = z.object({
   name: folderNameSchema,
   parentId: z.guid().nullable().optional(),
   visibleToStaff: z.boolean().optional(),
+  accessRoles: folderAccessRolesSchema.optional(),
   color: z.enum(FOLDER_COLORS).optional(),
   sharedUserIds: folderSharedUsersSchema.optional(),
 });
 export type CreateChecklistFolderInput = z.infer<typeof createChecklistFolderSchema>;
 export const updateChecklistFolderSchema = z
-  .object({ name: folderNameSchema, parentId: z.guid().nullable(), visibleToStaff: z.boolean(), color: z.enum(FOLDER_COLORS), sharedUserIds: folderSharedUsersSchema })
+  .object({ name: folderNameSchema, parentId: z.guid().nullable(), visibleToStaff: z.boolean(), accessRoles: folderAccessRolesSchema, color: z.enum(FOLDER_COLORS), sharedUserIds: folderSharedUsersSchema })
   .partial()
   .refine((input) => Object.keys(input).length > 0, { message: 'Nothing to change' });
 export type UpdateChecklistFolderInput = z.infer<typeof updateChecklistFolderSchema>;

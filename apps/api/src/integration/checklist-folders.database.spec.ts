@@ -146,6 +146,26 @@ describe('checklist folders (PR 395) — database', () => {
     expect(await names(colleague)).toEqual(['Closed', 'Open']);
   });
 
+  it('opens a folder to the chosen roles, switches to all employees and back, and rejects other roles (PR 576)', async () => {
+    const mentor = await makeActor(organizationId, ['mentor']);
+    const roleOnly = await folders.create(organizationId, author, { name: 'Managers only', accessRoles: ['manager'] });
+    const names = async (actor: Actor) => (await folders.list(organizationId, actor)).folders.map((folder) => folder.name);
+    expect(roleOnly.accessRoles).toEqual(['manager']);
+    expect(await names(colleague)).toContain('Managers only');
+    expect(await names(mentor)).not.toContain('Managers only');
+    // Roles are changed by the creator only; "all employees" empties the roles.
+    await expect(folders.update(roleOnly.id, organizationId, colleague, { accessRoles: ['mentor'] })).rejects.toBeInstanceOf(ForbiddenException);
+    const all = await folders.update(roleOnly.id, organizationId, author, { visibleToStaff: true });
+    expect(all).toMatchObject({ visibleToStaff: true, accessRoles: [] });
+    expect(await names(mentor)).toContain('Managers only');
+    const back = await folders.update(roleOnly.id, organizationId, author, { visibleToStaff: false, accessRoles: ['mentor'] });
+    expect(back).toMatchObject({ visibleToStaff: false, accessRoles: ['mentor'] });
+    expect(await names(colleague)).not.toContain('Managers only');
+    expect(await names(mentor)).toContain('Managers only');
+    // A direct request for a folder that is closed to the role is "not found", like any hidden folder.
+    await expect(folders.update(roleOnly.id, organizationId, colleague, { name: 'Peek' })).rejects.toBeInstanceOf(NotFoundException);
+  });
+
   it('opens a closed folder to a named employee, changes its colour, and keeps the list of names from everyone but its managers (PR 515)', async () => {
     const closed = await folders.create(organizationId, author, { name: 'Named', color: 'green' });
     expect(closed.color).toBe('green');

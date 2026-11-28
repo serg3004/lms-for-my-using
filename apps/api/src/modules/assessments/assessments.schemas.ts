@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { assessmentAnswerSchema, questionDefinitionSchema, questionTypeSchema, scoringModeSchema } from '@lms/shared/assessment-question-types';
 import { FOLDER_COLORS } from '@lms/shared/constants/folder-colors';
 import { richTextSchema } from '@lms/shared/rich-text';
+import { folderSharedUserIdsSchema } from '../../common/folder-share.js';
 
 export const assessmentStatusSchema = z.enum(['draft', 'published', 'archived']);
 
@@ -61,11 +62,17 @@ export const assessmentPlacementSchema = z.object({
 export type AssessmentPlacementInput = z.infer<typeof assessmentPlacementSchema>;
 
 const folderLocation = z.guid().nullable();
+/** PR 576: who a folder is open to: all employees, or the chosen roles; neither means the creator and administrators. */
+const folderAccessRoles = z.array(z.enum(['instructor'])).max(1).transform((roles) => [...new Set(roles)]);
 export const createAssessmentFolderSchema = z.object({
   name: z.string().trim().min(1).max(200),
   color: z.enum(FOLDER_COLORS).optional(),
   parentId: folderLocation.optional(),
+  visibleToStaff: z.boolean().optional(),
+  accessRoles: folderAccessRoles.optional(),
+  sharedUserIds: folderSharedUserIdsSchema.optional(),
 }).strict();
+export const assessmentFolderShareCandidatesSchema = z.object({ search: z.string().trim().max(100).optional() }).strict();
 export const updateAssessmentFolderSchema = createAssessmentFolderSchema.partial();
 export const bulkAssessmentFolderSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('move'), kind: z.enum(['assessment', 'folder']), ids: z.array(z.guid()).min(1).max(100), parentId: folderLocation }).strict(),

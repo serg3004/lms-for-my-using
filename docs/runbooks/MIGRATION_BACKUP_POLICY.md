@@ -1023,3 +1023,7 @@ Migration `20261127200000_library_folders` creates the `library_folders` table (
 ### Material library (PR 582)
 
 Migration `20261127220000_material_library` makes `course_materials.course_id` optional, adds `folder_id`, creates `course_material_links` and allows the `material` scope in `library_folders`. Existing materials keep their course and lesson, so no backfill is needed. Apply the migration before starting the new API. On application rollback, leave the changes in place; before rolling back to a version that expects a course on every material, check that no row has a null `course_id` (library materials), because the older version cannot read them.
+
+### Folder access settings (PR 576)
+
+Migrations `20261127230000_folder_access_roles`, `20261127230100_assessment_folder_access` and `20261127230200_folder_shared_users` add `access_roles` to checklist and assessment folders, `visible_to_staff`, `access_roles` and `shared_user_ids` to library folders, and `shared_user_ids` to assessment folders. Existing assessment and library folders are set to visible to all staff, so no folder disappears for anyone; existing checklist folders keep their flag. Apply the migrations before starting the new API. On application rollback, leave the columns in place; the older version ignores them, but folders created while the new version ran as private would then show their old default.

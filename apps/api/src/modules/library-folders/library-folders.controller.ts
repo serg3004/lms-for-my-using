@@ -3,7 +3,7 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query
 import { AuthGuard, Roles, RolesGuard, rolePolicies } from '../auth/public.js';
 import type { AuthenticatedRequest } from '../auth/public.js';
 import { LibraryFoldersService, type LibraryActor } from './library-folders.service.js';
-import { bulkLibraryFolderSchema, createLibraryFolderSchema, listLibraryFoldersSchema, updateLibraryFolderSchema } from './library-folders.schemas.js';
+import { bulkLibraryFolderSchema, createLibraryFolderSchema, libraryFolderShareCandidatesSchema, listLibraryFoldersSchema, updateLibraryFolderSchema } from './library-folders.schemas.js';
 
 const actorOf = (request: AuthenticatedRequest): LibraryActor => {
   const user = request.currentUser!;
@@ -20,6 +20,13 @@ export class LibraryFoldersController {
   @Roles(...rolePolicies.assignmentsCreate)
   list(@Query() query: unknown, @Req() request: AuthenticatedRequest) {
     return this.folders.list(actorOf(request), listLibraryFoldersSchema.parse(query).scope);
+  }
+
+  @Get('share-candidates')
+  @Roles(...rolePolicies.assignmentsCreate)
+  shareCandidates(@Query() query: unknown, @Req() request: AuthenticatedRequest) {
+    const parsed = libraryFolderShareCandidatesSchema.extend({ scope: listLibraryFoldersSchema.shape.scope }).parse(query);
+    return this.folders.shareCandidates(actorOf(request), parsed.scope, parsed.search);
   }
 
   @Post()

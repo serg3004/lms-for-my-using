@@ -7,6 +7,8 @@ import {
   folderCycle,
   folderSkipReason,
 } from '../../common/folder-rules.js';
+import { canManageFolder, visibleFolderIds, type FolderActor } from '../../common/folder-access.js';
+import { assertFolderShareable, folderShareCandidates, folderSharedUsers } from '../../common/folder-share.js';
 import { folderDepth, indexFolders, subtreeHeight, subtreeIds } from '../../common/folder-tree.js';
 import { PrismaService } from '../../database/prisma.service.js';
 import { LIBRARY_ITEM_STORES } from './library-item-stores.js';
@@ -19,7 +21,7 @@ const MANAGER_ROLES: Record<LibraryFolderScope, readonly string[]> = {
   material: ['admin'],
 };
 
-const folderSelect = { id: true, scope: true, name: true, color: true, parentId: true, createdBy: true, createdAt: true, updatedAt: true } as const;
+const folderSelect = { id: true, scope: true, name: true, color: true, parentId: true, visibleToStaff: true, accessRoles: true, sharedUserIds: true, createdBy: true, createdAt: true, updatedAt: true } as const;
 type Folder = Prisma.LibraryFolderGetPayload<{ select: typeof folderSelect }>;
 type DeleteImpact = { folders: number; movedToRoot: Array<{ id: string; title: string }> };
 type BulkReason = 'not_found' | 'forbidden' | 'name_conflict' | 'too_deep' | 'cycle' | 'already_in_folder' | 'covered_by_parent';
@@ -39,13 +41,26 @@ export class LibraryFoldersService {
   async list(actor: LibraryActor, scope: LibraryFolderScope) {
     this.assertManager(actor, scope);
     const store = LIBRARY_ITEM_STORES[scope];
-    const [folders, counts] = await this.prisma.$transaction(async (tx) => [
+    const [allFolders, counts] = await this.prisma.$transaction(async (tx) => [
       await this.load(tx, actor.organizationId, scope),
       await store.counts(tx, actor.organizationId),
     ] as const, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead });
 
-    const direct = new Map(counts.map((row) => [row.folderId, row.count]));
-    const rows = folders.map((folder) => ({ ...folder, childFolderCount: 0, itemCount: direct.get(folder.id) ?? 0, totalItemCount: direct.get(folder.id) ?? 0 }));
+    // PR 576: a folder closed to the actor, and the items inside it, are neither listed nor counted.
+    const seen = visibleFolderIds(allFolders, actor);
+    const folders = allFolders.filter((folder) => seen.has(folder.id));
+    const shown = counts.filter((row) => row.folderId === null || seen.has(row.folderId));
+    const direct = new Map(shown.map((row) => [row.folderId, row.count]));
+    const names = new Map((await folderSharedUsers(this.prisma, actor.organizationId, [...new Set(folders.filter((folder) => canManageFolder(folder, actor)).flatMap((folder) => folder.sharedUserIds))])).map((user) => [user.id, user]));
+    const rows = folders.map((folder) => ({
+      ...folder,
+      sharedUserIds: canManageFolder(folder, actor) ? folder.sharedUserIds : [],
+      sharedUsers: canManageFolder(folder, actor) ? folder.sharedUserIds.flatMap((id) => names.get(id) ?? []) : [],
+      canManage: canManageFolder(folder, actor),
+      childFolderCount: 0,
+      itemCount: direct.get(folder.id) ?? 0,
+      totalItemCount: direct.get(folder.id) ?? 0,
+    }));
     const byId = indexFolders(rows);
     const depths = new Map(folders.map((folder) => [folder.id, folderDepth(folder.id, indexFolders(folders))]));
     // Deepest first, so a folder's total is complete before it is added to its parent.
@@ -56,7 +71,7 @@ export class LibraryFoldersService {
         parent.totalItemCount += row.totalItemCount;
       }
     }
-    return { folders: rows, itemCount: counts.reduce((sum, row) => sum + row.count, 0), rootItemCount: direct.get(null) ?? 0 };
+    return { folders: rows, itemCount: shown.reduce((sum, row) => sum + row.count, 0), rootItemCount: direct.get(null) ?? 0 };
   }
 
   async create(actor: LibraryActor, input: CreateLibraryFolderInput) {
@@ -65,20 +80,31 @@ export class LibraryFoldersService {
       const folders = await this.load(tx, actor.organizationId, input.scope);
       const parentId = input.parentId ?? null;
       if (parentId) {
-        this.require(folders, parentId);
+        this.require(folders, parentId, actor);
         assertFolderDepth(folderDepth(parentId, indexFolders(folders)) + 1);
       }
       assertFolderNameFree(folders, parentId, input.name);
-      return tx.libraryFolder.create({
-        data: { organizationId: actor.organizationId, scope: input.scope, createdBy: actor.id, parentId, name: input.name, ...(input.color ? { color: input.color } : {}) },
+      if (input.sharedUserIds?.length) await assertFolderShareable(tx, actor.organizationId, input.sharedUserIds);
+      const created = await tx.libraryFolder.create({
+        data: {
+          organizationId: actor.organizationId, scope: input.scope, createdBy: actor.id, parentId, name: input.name, ...(input.color ? { color: input.color } : {}),
+          visibleToStaff: input.visibleToStaff ?? false, accessRoles: input.visibleToStaff ? [] : input.accessRoles ?? [], sharedUserIds: input.sharedUserIds ?? [],
+        },
         select: folderSelect,
       });
+      return { ...created, sharedUsers: await folderSharedUsers(tx, actor.organizationId, created.sharedUserIds), canManage: true };
     });
   }
 
   async update(actor: LibraryActor, id: string, input: UpdateLibraryFolderInput) {
     const { folder } = await this.updateFolder(actor, id, input);
-    return folder;
+    return { ...folder, sharedUsers: await folderSharedUsers(this.prisma, actor.organizationId, folder.sharedUserIds), canManage: true };
+  }
+
+  /** PR 576: employees a folder can be opened to by name. */
+  shareCandidates(actor: LibraryActor, scope: LibraryFolderScope, search: string | undefined) {
+    this.assertManager(actor, scope);
+    return folderShareCandidates(this.prisma, actor.organizationId, search);
   }
 
   async deleteImpact(actor: LibraryActor, id: string) {
@@ -133,15 +159,21 @@ export class LibraryFoldersService {
       const parentId = input.parentId === undefined ? current.parentId : input.parentId;
       const name = input.name ?? current.name;
       if (parentId !== current.parentId && parentId !== null) {
-        this.require(folders, parentId);
+        this.require(folders, parentId, actor);
         if (subtreeIds(id, folders).includes(parentId)) throw folderCycle();
         assertFolderDepth(folderDepth(parentId, indexFolders(folders)) + subtreeHeight(id, folders));
       }
       const color = input.color ?? current.color;
+      // "All employees" and a list of roles exclude each other: choosing "all" empties the roles.
+      const visibleToStaff = input.visibleToStaff ?? current.visibleToStaff;
+      const accessRoles: string[] = visibleToStaff ? [] : (input.accessRoles ?? current.accessRoles);
+      const sharedUserIds: string[] = input.sharedUserIds ?? current.sharedUserIds;
+      const accessChanged = visibleToStaff !== current.visibleToStaff || accessRoles.join() !== current.accessRoles.join() || sharedUserIds.join() !== current.sharedUserIds.join();
       const locationChanged = parentId !== current.parentId || name !== current.name;
-      if (!locationChanged && color === current.color) return { folder: current, changed: false };
+      if (!locationChanged && color === current.color && !accessChanged) return { folder: current, changed: false };
       if (locationChanged) assertFolderNameFree(folders, parentId, name, id);
-      const folder = await tx.libraryFolder.update({ where: { id, organizationId: actor.organizationId }, data: { parentId, name, color }, select: folderSelect });
+      if (input.sharedUserIds?.length) await assertFolderShareable(tx, actor.organizationId, input.sharedUserIds, current.sharedUserIds);
+      const folder = await tx.libraryFolder.update({ where: { id, organizationId: actor.organizationId }, data: { parentId, name, color, visibleToStaff, accessRoles, sharedUserIds }, select: folderSelect });
       return { folder, changed: true };
     });
   }
@@ -151,7 +183,7 @@ export class LibraryFoldersService {
       const store = LIBRARY_ITEM_STORES[scope];
       const item = await store.find(tx, actor.organizationId, id);
       if (!item) throw new NotFoundException('Item not found');
-      if (folderId !== null) this.require(await this.load(tx, actor.organizationId, scope), folderId);
+      if (folderId !== null) this.require(await this.load(tx, actor.organizationId, scope), folderId, actor);
       if (item.folderId === folderId) return false;
       await store.setFolder(tx, actor.organizationId, id, folderId);
       return true;
@@ -182,6 +214,10 @@ export class LibraryFoldersService {
     const folder = await tx.libraryFolder.findFirst({ where: { id, organizationId: actor.organizationId, deletedAt: null }, select: folderSelect });
     if (!folder) throw new NotFoundException('Folder not found');
     this.assertManager(actor, folder.scope as LibraryFolderScope);
+    // PR 576: a folder closed to the actor looks missing; a visible one can be changed only by its creator or an administrator.
+    const all = await this.load(tx, actor.organizationId, folder.scope as LibraryFolderScope);
+    if (!visibleFolderIds(all, actor).has(id)) throw new NotFoundException('Folder not found');
+    if (!canManageFolder(folder, actor)) throw new ForbiddenException('Only the creator or an administrator can change this folder');
     return folder;
   }
 
@@ -200,9 +236,9 @@ export class LibraryFoldersService {
     return db.libraryFolder.findMany({ where: { organizationId, scope, deletedAt: null }, select: folderSelect, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] });
   }
 
-  private require(folders: readonly Folder[], id: string) {
+  private require(folders: readonly Folder[], id: string, actor: FolderActor) {
     const folder = folders.find((row) => row.id === id);
-    if (!folder) throw new NotFoundException('Folder not found');
+    if (!folder || !visibleFolderIds(folders, actor).has(id)) throw new NotFoundException('Folder not found');
     return folder;
   }
 }

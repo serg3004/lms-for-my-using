@@ -6,6 +6,7 @@ import { AuditLogService } from '../audit-log/public.js';
 import { markGuestPassesDisabled } from './checklist-public-access.js';
 import {
   canManageFolder,
+  folderAccessMode,
   folderDepth,
   indexFolders,
   isAdmin,
@@ -19,7 +20,7 @@ import type { BulkChecklistFolderInput, CreateChecklistFolderInput, UpdateCheckl
 /** Roles that can open the checklist library at all (`checklistsRead`); a grant to anyone else would show nothing. */
 const LIBRARY_ROLES = ['admin', 'manager', 'instructor', 'mentor'] as const;
 const ACTIVE_INSTANCE_STATUSES = ['assigned', 'in_progress', 'submitted'] as const;
-const folderSelect = { id: true, parentId: true, name: true, color: true, visibleToStaff: true, sharedUserIds: true, createdBy: true, createdAt: true, creator: { select: { id: true, firstName: true, lastName: true, deletedAt: true } } } as const;
+const folderSelect = { id: true, parentId: true, name: true, color: true, visibleToStaff: true, accessRoles: true, sharedUserIds: true, createdBy: true, createdAt: true, creator: { select: { id: true, firstName: true, lastName: true, deletedAt: true } } } as const;
 
 /** What deleting a folder removes; shown to the user before they confirm and returned after the deletion. */
 export type FolderDeleteImpact = {
@@ -81,7 +82,7 @@ export class ChecklistFoldersService {
     assertFolderNameFree(all, parentId, input.name);
     if (input.sharedUserIds?.length) await this.assertShareable(organizationId, input.sharedUserIds);
     const created = await this.prisma.checklistFolder.create({
-      data: { organizationId, parentId, name: input.name, visibleToStaff: input.visibleToStaff ?? false, ...(input.color ? { color: input.color } : {}), ...(input.sharedUserIds ? { sharedUserIds: input.sharedUserIds } : {}), createdBy: actor.id },
+      data: { organizationId, parentId, name: input.name, visibleToStaff: input.visibleToStaff ?? false, accessRoles: input.visibleToStaff ? [] : input.accessRoles ?? [], ...(input.color ? { color: input.color } : {}), ...(input.sharedUserIds ? { sharedUserIds: input.sharedUserIds } : {}), createdBy: actor.id },
       select: folderSelect,
     });
     await this.auditLog.record({ organizationId, actorId: actor.id, action: 'checklist.folder_created', targetType: 'checklist_folder', targetId: created.id, summary: `Created checklist folder ${created.name}` });
@@ -116,10 +117,12 @@ export class ChecklistFoldersService {
         ...(input.name !== undefined ? { name: input.name } : {}),
         ...(input.parentId !== undefined ? { parentId: input.parentId } : {}),
         ...(input.visibleToStaff !== undefined ? { visibleToStaff: input.visibleToStaff } : {}),
+        // "All employees" and a list of roles exclude each other: choosing "all" empties the roles.
+        ...(input.accessRoles !== undefined || input.visibleToStaff === true ? { accessRoles: (input.visibleToStaff ?? folder.visibleToStaff) ? [] : input.accessRoles ?? folder.accessRoles } : {}),
       },
       select: folderSelect,
     });
-    if (audit) await this.auditLog.record({ organizationId, actorId: actor.id, action: 'checklist.folder_updated', targetType: 'checklist_folder', targetId: folderId, summary: `Updated checklist folder ${updated.name}`, metadata: { fields: Object.keys(input), ...(input.sharedUserIds !== undefined ? { sharedUserCount: input.sharedUserIds.length } : {}), ...(input.color !== undefined ? { color: input.color } : {}) } });
+    if (audit) await this.auditLog.record({ organizationId, actorId: actor.id, action: 'checklist.folder_updated', targetType: 'checklist_folder', targetId: folderId, summary: `Updated checklist folder ${updated.name}`, metadata: { fields: Object.keys(input), ...(input.accessRoles !== undefined || input.visibleToStaff !== undefined ? { accessMode: folderAccessMode(updated), accessRoles: updated.accessRoles } : {}), ...(input.sharedUserIds !== undefined ? { sharedUserCount: input.sharedUserIds.length } : {}), ...(input.color !== undefined ? { color: input.color } : {}) } });
     return { ...updated, sharedUsers: await this.sharedUsers(organizationId, updated.sharedUserIds), creator: presentCreator(updated.creator), canManage: true };
   }
 

@@ -328,7 +328,7 @@ export class ChecklistScaleService {
     const [items, creators, folders] = await Promise.all([
       this.prisma.checklistItem.findMany({ where: { organizationId, scaleId: { in: ids } }, select: { scaleId: true, checklist: { select: { id: true, title: true, folderId: true, deletedAt: true } } }, distinct: ['scaleId', 'checklistId'] }),
       this.prisma.user.findMany({ where: { organizationId, id: { in: authors } }, select: { id: true, firstName: true, lastName: true } }),
-      actor && !actor.roles.includes('admin') ? this.prisma.checklistFolder.findMany({ where: { organizationId, deletedAt: null }, select: { id: true, parentId: true, createdBy: true, visibleToStaff: true, sharedUserIds: true } }) : [],
+      actor && !actor.roles.includes('admin') ? this.prisma.checklistFolder.findMany({ where: { organizationId, deletedAt: null }, select: { id: true, parentId: true, createdBy: true, visibleToStaff: true, accessRoles: true, sharedUserIds: true } }) : [],
     ]);
     const visible = actor ? visibleFolderIds(folders, actor) : new Set<string>();
     return scales.map((scale) => {

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { folderAccessRolesInput, folderSharedUserIdsSchema } from '../../common/folder-share.js';
 import { FOLDER_COLORS } from '@lms/shared/constants/folder-colors';
 
 export const LIBRARY_FOLDER_SCOPES = ['course', 'assignment', 'material'] as const;
@@ -14,7 +15,12 @@ export const createLibraryFolderSchema = z.object({
   name: z.string().trim().min(1).max(200),
   color: z.enum(FOLDER_COLORS).optional(),
   parentId: location.optional(),
+  /** PR 576: all employees, or the chosen roles, or neither (the creator and administrators), plus employees by name. */
+  visibleToStaff: z.boolean().optional(),
+  accessRoles: folderAccessRolesInput.optional(),
+  sharedUserIds: folderSharedUserIdsSchema.optional(),
 }).strict();
+export const libraryFolderShareCandidatesSchema = z.object({ search: z.string().trim().max(100).optional() }).strict();
 export const updateLibraryFolderSchema = createLibraryFolderSchema.omit({ scope: true }).partial();
 export const bulkLibraryFolderSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('move'), scope, kind: z.enum(['item', 'folder']), ids: z.array(z.guid()).min(1).max(100), parentId: location }).strict(),

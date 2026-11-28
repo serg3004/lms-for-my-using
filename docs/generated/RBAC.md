@@ -151,7 +151,7 @@ Owner: `packages/shared/src/permission-catalog.ts`; the route table is `apps/api
 | `longread.read` | longreads | `own`, `organization` | yes | - | `lessonsRead` | `admin`, `manager`, `instructor`, `learner` | 5 |
 | `longread.edit` | longreads | `own`, `organization` | yes | `longread.read` | `lessonsCreate` | `admin`, `instructor` | 20 |
 | `assessment.read` | tests | `own`, `organization` | yes | - | `assessmentsRead` | `admin`, `manager`, `instructor`, `learner` | 3 |
-| `assessment.author` | tests | `own`, `organization` | yes | `assessment.read` | `assessmentsCreate` | `admin`, `instructor` | 18 |
+| `assessment.author` | tests | `own`, `organization` | yes | `assessment.read` | `assessmentsCreate` | `admin`, `instructor` | 19 |
 | `assessment.question.read` | tests | `own`, `organization` | yes | - | `assessmentQuestionsRead` | `admin`, `manager`, `instructor` | 2 |
 | `assessment.question.edit` | tests | `own`, `organization` | yes | `assessment.question.read` | `assessmentQuestionsCreate` | `admin`, `instructor` | 13 |
 | `assessment.option.read` | tests | `own`, `organization` | yes | - | `assessmentAnswerOptionsRead` | `admin`, `manager`, `instructor` | 1 |

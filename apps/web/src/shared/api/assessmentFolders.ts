@@ -6,6 +6,11 @@ export type AssessmentFolder = {
   name: string;
   parentId: string | null;
   color?: FolderColor;
+  /** PR 576: who the folder is open to; filled only for those who manage it. */
+  visibleToStaff?: boolean;
+  accessRoles?: string[];
+  sharedUsers?: Array<{ id: string; name: string }>;
+  canManage?: boolean;
   childFolderCount: number;
   assessmentCount: number;
   totalAssessmentCount: number;
@@ -28,10 +33,15 @@ export function listAssessmentFolders(signal?: AbortSignal) {
   return apiRequest<{ folders: AssessmentFolder[]; rootAssessmentCount: number; assessmentCount: number }>(path, { signal });
 }
 
-export function saveAssessmentFolder(id: string | null, input: { name: string; color: FolderColor; parentId?: string | null }) {
+export function saveAssessmentFolder(id: string | null, input: { name: string; color: FolderColor; parentId?: string | null; visibleToStaff?: boolean; accessRoles?: string[]; sharedUserIds?: string[] }) {
   return apiRequest<AssessmentFolder>(id === null ? path : folderPath(id), {
     method: id === null ? 'POST' : 'PATCH', body: JSON.stringify(input),
   });
+}
+
+/** PR 576: staff a test folder can be opened to by name. */
+export function searchAssessmentFolderShareCandidates(search: string) {
+  return apiRequest<Array<{ id: string; name: string }>>(`${path}/share-candidates?search=${encodeURIComponent(search)}`);
 }
 
 export function getAssessmentFolderImpact(id: string) {

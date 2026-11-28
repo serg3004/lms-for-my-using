@@ -1,4 +1,4 @@
-import { MAX_FOLDER_DEPTH, canManageFolder, folderDepth, indexFolders, normalizeFolderName, subtreeHeight, subtreeIds, visibleFolderIds, type FolderNode } from './checklist-folder-tree.js';
+import { MAX_FOLDER_DEPTH, canManageFolder, folderAccessMode, folderDepth, indexFolders, normalizeFolderName, subtreeHeight, subtreeIds, visibleFolderIds, type FolderNode } from './checklist-folder-tree.js';
 
 const node = (id: string, parentId: string | null, createdBy: string | null = 'author', visibleToStaff = false): FolderNode => ({ id, parentId, createdBy, visibleToStaff });
 // a -> b -> c -> d -> e (five levels) and a second root x -> y
@@ -59,6 +59,19 @@ describe('checklist folder tree (PR 395)', () => {
     const folders = [named('shared', null, ['me']), named('other', null, ['someone']), named('under-closed', 'other', ['me']), named('shared-child', 'shared', ['me'])];
     expect([...visibleFolderIds(folders, { id: 'me', roles: ['manager'] })].sort()).toEqual(['shared', 'shared-child']);
     expect(visibleFolderIds(folders, { id: 'me', roles: ['learner'] }).size).toBe(0);
+  });
+
+  it('opens a folder to the chosen roles, with its parents, and names the access mode (PR 576)', () => {
+    const roles = (id: string, parentId: string | null, accessRoles: string[]): FolderNode => ({ id, parentId, createdBy: 'author', visibleToStaff: false, accessRoles });
+    const folders = [roles('for-managers', null, ['manager']), roles('inside', 'for-managers', ['manager', 'mentor']), roles('for-mentors', null, ['mentor']), roles('under-mentors', 'for-mentors', ['manager'])];
+    expect([...visibleFolderIds(folders, { id: 'me', roles: ['manager'] })].sort()).toEqual(['for-managers', 'inside']);
+    expect([...visibleFolderIds(folders, { id: 'me', roles: ['mentor'] })].sort()).toEqual(['for-mentors']);
+    expect([...visibleFolderIds(folders, { id: 'me', roles: ['instructor'] })]).toEqual([]);
+    expect(visibleFolderIds(folders, { id: 'me', roles: ['learner'] }).size).toBe(0);
+    expect(folderAccessMode({ visibleToStaff: true, accessRoles: ['manager'] })).toBe('all');
+    expect(folderAccessMode({ visibleToStaff: false, accessRoles: ['manager'] })).toBe('roles');
+    expect(folderAccessMode({ visibleToStaff: false, accessRoles: [] })).toBe('owner');
+    expect(folderAccessMode({ visibleToStaff: false })).toBe('owner');
   });
 
   it('treats names as equal regardless of case and surrounding spaces', () => {

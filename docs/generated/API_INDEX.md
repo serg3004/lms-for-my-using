@@ -11,6 +11,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/assessment-folders` | `AssessmentFolders` | `bearer` |
 | `POST` | `/api/v1/assessment-folders` | `AssessmentFolders` | `bearer` |
 | `POST` | `/api/v1/assessment-folders/bulk` | `AssessmentFolders` | `bearer` |
+| `GET` | `/api/v1/assessment-folders/share-candidates` | `AssessmentFolders` | `bearer` |
 | `PATCH` | `/api/v1/assessment-folders/{id}` | `AssessmentFolders` | `bearer` |
 | `DELETE` | `/api/v1/assessment-folders/{id}` | `AssessmentFolders` | `bearer` |
 | `GET` | `/api/v1/assessment-folders/{id}/delete-impact` | `AssessmentFolders` | `bearer` |
@@ -346,6 +347,7 @@ Runtime authority: `/api/v1/api-json`. This committed file is only a compact met
 | `GET` | `/api/v1/library-folders` | `LibraryFolders` | `bearer` |
 | `POST` | `/api/v1/library-folders` | `LibraryFolders` | `bearer` |
 | `POST` | `/api/v1/library-folders/bulk` | `LibraryFolders` | `bearer` |
+| `GET` | `/api/v1/library-folders/share-candidates` | `LibraryFolders` | `bearer` |
 | `PATCH` | `/api/v1/library-folders/{id}` | `LibraryFolders` | `bearer` |
 | `DELETE` | `/api/v1/library-folders/{id}` | `LibraryFolders` | `bearer` |
 | `GET` | `/api/v1/library-folders/{id}/delete-impact` | `LibraryFolders` | `bearer` |

@@ -16,6 +16,8 @@ describe('assessment folders (PostgreSQL)', () => {
   let organizationId: string;
   let foreignId: string;
   let actorId: string;
+  let admin: { id: string; roles: string[] };
+  let author: { id: string; roles: string[] };
 
   beforeAll(async () => {
     assertSafeTestDatabase(process.env.DATABASE_URL, { allowExternalHost: process.env.ALLOW_EXTERNAL_TEST_DATABASE === 'true' });
@@ -29,6 +31,8 @@ describe('assessment folders (PostgreSQL)', () => {
     actorId = (await prisma.user.create({
       data: { organizationId, email: `${randomUUID()}@example.test`, firstName: 'Test', lastName: 'Author', passwordHash: 'unused' },
     })).id;
+    admin = { id: actorId, roles: ['admin'] };
+    author = { id: actorId, roles: ['instructor'] };
   });
 
   afterAll(async () => {
@@ -48,11 +52,11 @@ describe('assessment folders (PostgreSQL)', () => {
   });
 
   it('moves tests and nests folders with scoped counts, then safely unfiles a deleted subtree', async () => {
-    const first = await folders.create(organizationId, actorId, { name: 'First' });
+    const first = await folders.create(organizationId, admin, { name: 'First' });
     expect(first.color).toBe('purple');
-    const second = await folders.create(organizationId, actorId, { name: 'Second', color: 'green' });
+    const second = await folders.create(organizationId, admin, { name: 'Second', color: 'green' });
     expect(second.color).toBe('green');
-    const child = await folders.create(organizationId, actorId, { name: 'Child', parentId: first.id });
+    const child = await folders.create(organizationId, admin, { name: 'Child', parentId: first.id });
     const course = await prisma.course.create({ data: { organizationId, title: 'Assigned course', slug: randomUUID() } });
     const test = await prisma.assessment.create({
       data: { organizationId, courseId: course.id, title: 'Course test', slug: randomUUID(), status: 'published' },
@@ -60,16 +64,16 @@ describe('assessment folders (PostgreSQL)', () => {
     const longread = await prisma.assessment.create({
       data: { organizationId, title: 'Longread test', slug: randomUUID(), isLongreadExercise: true },
     });
-    await expect(folders.bulk(organizationId, { action: 'move', kind: 'assessment', parentId: child.id, ids: [test.id, longread.id] }))
+    await expect(folders.bulk(organizationId, { action: 'move', kind: 'assessment', parentId: child.id, ids: [test.id, longread.id] }, admin))
       .resolves.toMatchObject({
         done: 1, skipped: 1,
         results: [{ id: test.id, result: 'done' }, { id: longread.id, result: 'skipped', reason: 'longread_exercise' }],
       });
 
-    await expect(folders.update(organizationId, child.id, { parentId: second.id, name: 'Renamed', color: 'blue' }))
+    await expect(folders.update(organizationId, child.id, admin, { parentId: second.id, name: 'Renamed', color: 'blue' }))
       .resolves.toMatchObject({ parentId: second.id, name: 'Renamed', color: 'blue' });
-    await expect(folders.update(organizationId, second.id, { parentId: child.id })).rejects.toBeInstanceOf(BadRequestException);
-    await expect(folders.list(organizationId)).resolves.toMatchObject({
+    await expect(folders.update(organizationId, second.id, admin, { parentId: child.id })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(folders.list(organizationId, admin)).resolves.toMatchObject({
       rootAssessmentCount: 1,
       assessmentCount: 2,
       folders: expect.arrayContaining([
@@ -78,17 +82,17 @@ describe('assessment folders (PostgreSQL)', () => {
         expect.objectContaining({ id: child.id, assessmentCount: 1, totalAssessmentCount: 1, color: 'blue' }),
       ]),
     });
-    await expect(folders.list(organizationId, actorId)).resolves.toMatchObject({ assessmentCount: 0 });
-    await expect(folders.deleteImpact(organizationId, second.id, actorId)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(folders.list(organizationId, author, actorId)).resolves.toMatchObject({ assessmentCount: 0 });
+    await expect(folders.deleteImpact(organizationId, second.id, author, actorId)).rejects.toBeInstanceOf(ForbiddenException);
     await prisma.courseInstructor.create({ data: { organizationId, courseId: course.id, instructorId: actorId } });
-    await expect(folders.list(organizationId, actorId)).resolves.toMatchObject({ assessmentCount: 1 });
-    await expect(folders.update(foreignId, child.id, { name: 'Foreign rename' })).rejects.toBeInstanceOf(NotFoundException);
-    await expect(folders.bulk(foreignId, { action: 'delete', kind: 'assessment', ids: [test.id] }))
+    await expect(folders.list(organizationId, author, actorId)).resolves.toMatchObject({ assessmentCount: 1 });
+    await expect(folders.update(foreignId, child.id, admin, { name: 'Foreign rename' })).rejects.toBeInstanceOf(NotFoundException);
+    await expect(folders.bulk(foreignId, { action: 'delete', kind: 'assessment', ids: [test.id] }, admin))
       .resolves.toMatchObject({ results: [{ id: test.id, result: 'skipped', reason: 'not_found' }] });
 
     const impact = { folders: 2, movedToRoot: [{ id: test.id, title: test.title }] };
-    await expect(folders.deleteImpact(organizationId, second.id, actorId)).resolves.toEqual(impact);
-    await expect(folders.bulk(organizationId, { action: 'delete', kind: 'folder', ids: [child.id, second.id] }))
+    await expect(folders.deleteImpact(organizationId, second.id, author, actorId)).resolves.toEqual(impact);
+    await expect(folders.bulk(organizationId, { action: 'delete', kind: 'folder', ids: [child.id, second.id] }, admin))
       .resolves.toMatchObject({
         done: 1, skipped: 1,
         results: [{ id: child.id, result: 'skipped', reason: 'covered_by_parent' }, { id: second.id, result: 'done', impact }],
@@ -97,13 +101,13 @@ describe('assessment folders (PostgreSQL)', () => {
     await expect(assessments.listAssessments(organizationId)).resolves.toContainEqual(
       expect.objectContaining({ id: longread.id, folderId: null, isLongreadExercise: true }),
     );
-    await expect(folders.bulk(organizationId, { action: 'delete', kind: 'assessment', ids: [test.id, randomUUID()] }))
+    await expect(folders.bulk(organizationId, { action: 'delete', kind: 'assessment', ids: [test.id, randomUUID()] }, admin))
       .resolves.toMatchObject({ done: 1, skipped: 1 });
     await expect(assessments.getAssessment(test.id, organizationId)).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('filters, sorts and pages measured assessments, and copies author content as a draft', async () => {
-    const folder = await folders.create(organizationId, actorId, { name: 'Catalog test' });
+    const folder = await folders.create(organizationId, admin, { name: 'Catalog test' });
     const course = await prisma.course.create({ data: { organizationId, title: 'Catalog course', slug: randomUUID() } });
     await prisma.courseInstructor.create({ data: { organizationId, courseId: course.id, instructorId: actorId } });
     const row = await prisma.assessment.create({ data: {
@@ -128,7 +132,7 @@ describe('assessment folders (PostgreSQL)', () => {
       { organizationId, assessmentId: row.id, userId: actorId, passed: true, completedAt: date, startedAt: date },
     ] });
     const query = { search: 'Catalog', courseId: course.id, folderId: folder.id, status: 'draft', mine: 'true', pageSize: '1', sort: 'questions' };
-    const list = (options = {}) => assessments.listLibrary(organizationId, actorId, true, assessmentLibrarySchema.parse({ ...query, ...options }));
+    const list = (options = {}) => assessments.listLibrary(organizationId, author, true, assessmentLibrarySchema.parse({ ...query, ...options }));
     const first = await list();
     expect(first).toMatchObject({ total: 2, items: [{ id: row.id, courseTitle: course.title, questionsCount: 1, attemptsCount: 3, passRate: 50 }] });
     expect(new Date((first.items[0] as { lastAttemptAt: string }).lastAttemptAt)).toEqual(date);
@@ -151,16 +155,43 @@ describe('assessment folders (PostgreSQL)', () => {
     const foreignUser = await prisma.user.create({
       data: { organizationId: foreignId, email: `${randomUUID()}@example.test`, firstName: 'Foreign', lastName: 'Author', passwordHash: 'unused' },
     });
-    const foreign = await folders.create(foreignId, foreignUser.id, { name: 'Foreign' });
-    const root = await folders.create(organizationId, actorId, { name: 'Depth root' });
-    await expect(folders.update(organizationId, root.id, { parentId: foreign.id })).rejects.toBeInstanceOf(NotFoundException);
+    const foreign = await folders.create(foreignId, { id: foreignUser.id, roles: ['admin'] }, { name: 'Foreign' });
+    const root = await folders.create(organizationId, admin, { name: 'Depth root' });
+    await expect(folders.update(organizationId, root.id, admin, { parentId: foreign.id })).rejects.toBeInstanceOf(NotFoundException);
     let leaf = root;
     for (let level = 2; level <= 5; level += 1) {
-      leaf = await folders.create(organizationId, actorId, { name: `Depth ${level}`, parentId: leaf.id });
+      leaf = await folders.create(organizationId, admin, { name: `Depth ${level}`, parentId: leaf.id });
     }
-    const target = await folders.create(organizationId, actorId, { name: 'Destination' });
-    await expect(folders.create(organizationId, actorId, { name: 'Too deep', parentId: leaf.id })).rejects.toBeInstanceOf(BadRequestException);
-    await expect(folders.bulk(organizationId, { action: 'move', kind: 'folder', ids: [root.id], parentId: target.id }))
+    const target = await folders.create(organizationId, admin, { name: 'Destination' });
+    await expect(folders.create(organizationId, admin, { name: 'Too deep', parentId: leaf.id })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(folders.bulk(organizationId, { action: 'move', kind: 'folder', ids: [root.id], parentId: target.id }, admin))
       .resolves.toMatchObject({ results: [{ id: root.id, result: 'skipped', reason: 'too_deep' }] });
+  });
+
+  it('hides a test folder from other instructors until it is opened to all employees or to the instructor role', async () => {
+    const other = { id: (await prisma.user.create({
+      data: { organizationId, email: `${randomUUID()}@example.test`, firstName: 'Other', lastName: 'Instructor', passwordHash: 'unused', memberships: { create: { organizationId, role: 'instructor' } } },
+    })).id, roles: ['instructor'] };
+    const owned = await folders.create(organizationId, author, { name: 'Private access' });
+    expect(owned).toMatchObject({ visibleToStaff: false, accessRoles: [] });
+    const visibleNames = async (actor: { id: string; roles: string[] }) => (await folders.list(organizationId, actor)).folders.map((row) => row.name);
+    await expect(visibleNames(other)).resolves.not.toContain('Private access');
+    await expect(visibleNames(admin)).resolves.toContain('Private access');
+    await expect(folders.update(organizationId, owned.id, other, { name: 'Hijack' })).rejects.toBeInstanceOf(NotFoundException);
+
+    await folders.update(organizationId, owned.id, author, { sharedUserIds: [other.id] });
+    await expect(visibleNames(other)).resolves.toContain('Private access');
+    await expect(folders.update(organizationId, owned.id, author, { sharedUserIds: [randomUUID()] })).rejects.toBeInstanceOf(BadRequestException);
+    await folders.update(organizationId, owned.id, author, { sharedUserIds: [] });
+    await expect(visibleNames(other)).resolves.not.toContain('Private access');
+
+    await folders.update(organizationId, owned.id, author, { accessRoles: ['instructor'] });
+    await expect(visibleNames(other)).resolves.toContain('Private access');
+    await expect(folders.update(organizationId, owned.id, other, { name: 'Hijack' })).rejects.toBeInstanceOf(ForbiddenException);
+
+    await folders.update(organizationId, owned.id, author, { visibleToStaff: true });
+    await expect(folders.list(organizationId, other)).resolves.toMatchObject({
+      folders: expect.arrayContaining([expect.objectContaining({ id: owned.id, accessRoles: [], canManage: false })]),
+    });
   });
 });
