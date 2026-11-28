@@ -25,7 +25,11 @@ export type GradedAnswer = {
   reviewPending?: boolean;
 };
 
-export function gradeAssessmentAnswers(questions: QuestionWithOptions[], answers: CreateAssessmentAttemptAnswerInput[]) {
+/**
+ * PR 540: with `survey` an answer is only validated and kept. Nothing is correct or wrong, so a survey answer scores 0, is never
+ * marked correct and never waits for a reviewer; only the answer shapes a survey offers are accepted.
+ */
+export function gradeAssessmentAnswers(questions: QuestionWithOptions[], answers: CreateAssessmentAttemptAnswerInput[], survey = false) {
   const answerByQuestionId = new Map(answers.map((answer) => [answer.questionId, answer]));
 
   if (answerByQuestionId.size !== answers.length) {
@@ -41,8 +45,29 @@ export function gradeAssessmentAnswers(questions: QuestionWithOptions[], answers
       throw new BadRequestException('All assessment questions must be answered');
     }
 
-    return gradeAnswer(question, answer);
+    return survey ? surveyAnswer(question, answer) : gradeAnswer(question, answer);
   });
+}
+
+function surveyAnswer(question: QuestionWithOptions, answer: CreateAssessmentAttemptAnswerInput): GradedAnswer {
+  const kept = { isCorrect: false, score: 0 };
+  if (question.type === 'short_answer') {
+    if (answer.response?.type !== 'short_answer' || answer.selectedOptionId || answer.selectedOptionIds) throw new BadRequestException('Survey text question requires a text response');
+    return { questionId: question.id, response: answer.response, ...kept };
+  }
+  if (question.type !== 'single_choice' && question.type !== 'multiple_choice') throw new BadRequestException('Question type is not available in a survey');
+  if (answer.response) throw new BadRequestException('Survey choice question requires option ids');
+  const optionIds = new Set(question.options.map((option) => option.id));
+  if (question.type === 'single_choice') {
+    if (!answer.selectedOptionId || answer.selectedOptionIds) throw new BadRequestException('Single choice answer requires selectedOptionId');
+    if (!optionIds.has(answer.selectedOptionId)) throw new BadRequestException('Selected option does not belong to question');
+    return { questionId: question.id, selectedOptionId: answer.selectedOptionId, ...kept };
+  }
+  if (!answer.selectedOptionIds || answer.selectedOptionId) throw new BadRequestException('Multiple choice answer requires selectedOptionIds');
+  const selected = [...new Set(answer.selectedOptionIds)];
+  if (selected.length !== answer.selectedOptionIds.length) throw new BadRequestException('Duplicate selected options are not allowed');
+  if (selected.some((optionId) => !optionIds.has(optionId))) throw new BadRequestException('Selected option does not belong to question');
+  return { questionId: question.id, selectedOptionIds: selected, ...kept };
 }
 
 function gradeAnswer(question: QuestionWithOptions, answer: CreateAssessmentAttemptAnswerInput): GradedAnswer {

@@ -367,6 +367,24 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
 
   if (submitState.status === 'done') {
     const { result, certificateId } = submitState;
+    // PR 540: a survey has no score and no verdict, so the employee only sees that the answers are in.
+    if (assessment.mode === 'survey') return <div className="learner-quiz" style={themeStyle}>
+      {!preview && <nav className="learner-breadcrumb">
+        <a href="/learn/assessments">{t('assessments.navLink')}</a>
+        <span>›</span>
+        <span>{assessment.title}</span>
+      </nav>}
+      <div className="learner-quiz__result-banner learner-quiz__result-banner--passed" role="status">
+        <span className="learner-quiz__result-label">{t('assessments.survey.thanks')}</span>
+      </div>
+      <div className="learner-quiz__result-actions">
+        {!preview && <a className="learner-btn learner-btn--primary" href="/learn/assessments">{t('assessments.survey.toList')}</a>}
+        {preview && <button className="learner-btn learner-btn--secondary" type="button"
+          onClick={() => { setSelected({}); setRecorded({}); setCurrentIndex(preview.startIndex); setSubmitState({ status: 'idle' }); }}>
+          {t('assessments.retryBtn')}
+        </button>}
+      </div>
+    </div>;
     if (result.status === 'pending_review') return <div className="learner-quiz" style={themeStyle}>
       <p role="status">{t('assessmentReview.pending')}</p>
       {result.id && <a href={`/learn/attempts/${result.id}`}>{t('assessments.attemptsHistoryReview')}</a>}
@@ -477,7 +495,9 @@ export function LearnerAssessmentTakingPage({ assessmentId, token, preview }: { 
             {assessment.title}
           </h1>
           <p style={{ margin: '8px 0 0', color: 'var(--color-text-muted)', fontSize: '14px' }}>
-            {t('assessments.subtitleTaking', { current: currentIndex + 1, total: questions.length, score: assessment.passingScore })}
+            {assessment.mode === 'survey'
+              ? t('assessments.survey.subtitleTaking', { current: currentIndex + 1, total: questions.length })
+              : t('assessments.subtitleTaking', { current: currentIndex + 1, total: questions.length, score: assessment.passingScore })}
           </p>
           {presentation?.titleScreen === undefined && <AssessmentMaterial value={assessment.material} />}
         </div>

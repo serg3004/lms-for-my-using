@@ -98,10 +98,10 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
   if (values && parsedPolicy.success && assessmentPresentationSchema.optional().safeParse(presentation).success
     && (values.maxAttempts == null || values.maxAttempts <= 10 || values.maxAttempts === previousLimits?.maxAttempts)
     && (values.timeLimitMinutes == null || values.timeLimitMinutes <= 600 || values.timeLimitMinutes === previousLimits?.timeLimitMinutes)) {
-    const { title, description, passingScore, maxAttempts, timeLimitMinutes, availableAfterCourseCompletion,
+    const { mode, title, description, passingScore, maxAttempts, timeLimitMinutes, availableAfterCourseCompletion,
       passMessage, failMessage, showCorrectAnswers, randomizeOrder } = values;
     content = {
-      settings: { title, description, material, presentation, passingScore, maxAttempts, timeLimitMinutes: timeLimitMinutes ?? null,
+      settings: { mode, title, description, material, presentation, passingScore, maxAttempts, timeLimitMinutes: timeLimitMinutes ?? null,
         availableAfterCourseCompletion, passMessage, failMessage, showCorrectAnswers, randomizeOrder,
         ...(Object.keys(parsedPolicy.data).length ? { policy: parsedPolicy.data } : {}) },
       questions,
@@ -138,6 +138,18 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
 
   function change(field: keyof typeof form, value: string | boolean) {
     dispatch({ type: 'change', field, value });
+  }
+  const survey = form.mode === 'survey';
+  // The mode is fixed once the test is in a course or anyone has answered it: the server refuses the change, so the field says so.
+  const modeLocked = Boolean(initial && (initial.hasAttempts || initial.assessment.courseId || initial.placements.length));
+  function changeMode(mode: 'graded' | 'survey') {
+    change('mode', mode);
+    if (mode !== 'survey') return;
+    // A survey keeps one answer per employee by default and has no timer, correct answers, feedback or pass window.
+    if (!form.maxAttempts.trim()) change('maxAttempts', '1');
+    change('timeLimitMinutes', '');
+    change('showCorrectAnswers', false);
+    setPolicy({});
   }
 
   const endpoint = initial ? `/assessments/${initial.assessment.id}/editor` : null;
@@ -254,6 +266,14 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
           navigate(`${listPath}/${id}/edit?${params}`, { replace: true });
         }} onError={setFeedback} /></div>}
       {tab === 'main' && <>
+        {/* PR 540: a test is graded; a survey only collects answers (no points, no verdict, no certificate). */}
+        <FormField id="assessment-editor-mode" label={t('admin.assessmentBuilder.survey.mode')} hint={t(`admin.assessmentBuilder.survey.${form.mode}Hint`)}>
+          <select id="assessment-editor-mode" value={form.mode} disabled={modeLocked} onChange={(event) => changeMode(event.target.value === 'survey' ? 'survey' : 'graded')}>
+            <option value="graded">{t('admin.assessmentBuilder.survey.graded')}</option>
+            <option value="survey">{t('admin.assessmentBuilder.survey.survey')}</option>
+          </select>
+          {modeLocked && <small>{t('admin.assessmentBuilder.survey.locked')}</small>}
+        </FormField>
         <FormField id="assessment-editor-title" label={t('admin.assessmentBuilder.assessmentTitle')} required>
           <input id="assessment-editor-title" value={form.title} maxLength={200} onChange={(event) => change('title', event.target.value)} />
         </FormField>
@@ -271,23 +291,23 @@ function Editor({ initial, initialTab, listLink }: { initial: EditorDocument | n
         setPresentation(value);
       }} />}
       {tab === 'settings' && <>
-        <AssessmentPolicyFields policy={policy} onChange={setPolicy} legacyReveal={form.showCorrectAnswers} />
+        {!survey && <AssessmentPolicyFields policy={policy} onChange={setPolicy} legacyReveal={form.showCorrectAnswers} />}
         {([
           ['passingScore', t('admin.assessmentBuilder.passingScore'), 0, 100],
           ['maxAttempts', t('admin.assessmentBuilder.maxAttempts'), 1, Math.max(10, previousLimits?.maxAttempts ?? 0)],
-        ] as const).map(([field, title, min, max]) => <FormField key={field} id={field} label={title}>
+        ] as const).filter(([field]) => !survey || field !== 'passingScore').map(([field, title, min, max]) => <FormField key={field} id={field} label={title}>
           <input id={field} type="number" min={min} max={max} value={form[field]} onChange={(event) => change(field, event.target.value)} />
         </FormField>)}
-        {(['availableAfterCourseCompletion', 'randomizeOrder'] as const).map((field) =>
+        {(survey ? ['randomizeOrder'] as const : ['availableAfterCourseCompletion', 'randomizeOrder'] as const).map((field) =>
           <label key={field} className="admin-checkbox-field">
             <input type="checkbox" checked={form[field]} onChange={(event) => change(field, event.target.checked)} />
             {t(`admin.assessmentBuilder.${field === 'availableAfterCourseCompletion' ? 'availableAfterCompletion' : field}`)}
           </label>)}
-        {(presentation?.finalScreen ?? 'results') === 'results' && (['passMessage', 'failMessage'] as const).map((field) => <RichTextField key={field} id={field}
+        {!survey && (presentation?.finalScreen ?? 'results') === 'results' && (['passMessage', 'failMessage'] as const).map((field) => <RichTextField key={field} id={field}
           label={t(`admin.assessmentBuilder.${field}`)} value={form[field]} maxLength={2000} onChange={(value) => change(field, value)} />)}
       </>}
       {tab === 'questions' && <>
-        <AssessmentEditorQuestions questions={questions} onChange={setQuestions} onPreview={startPreview} onEditBank={setBankEntryId}
+        <AssessmentEditorQuestions survey={survey} questions={questions} onChange={setQuestions} onPreview={startPreview} onEditBank={setBankEntryId}
           onOpenBank={initial ? () => setBankOpen((value) => !value) : undefined}
           onDetachBank={dirty || busy ? undefined : (id) => {
             setBankError(false);
@@ -333,7 +353,7 @@ function CreationPlacement({ onChange, form, policy, presentation, material, onC
   const [saving, setSaving] = useState(false);
   const courses = loadState.status === 'loaded' ? loadState.courses : [];
   const course = courses.find((item) => item.id === selectedCourseId);
-  const independent = standalone || !courses.length;
+  const independent = standalone || !courses.length || form.mode === 'survey';
   return <form id="assessment-editor-create" className="admin-form" onSubmit={async (event) => {
     event.preventDefault();
     if (saving || loadState.status !== 'loaded') return;
@@ -366,7 +386,7 @@ function CreationPlacement({ onChange, form, policy, presentation, material, onC
     {loadState.status !== 'loaded' ? <PageState variant={loadState.status === 'loading' ? 'loading' : 'error'}
       message={loadState.status === 'loading' ? t('admin.assessmentBuilder.loading') : loadState.message} /> : <>
       <label className="admin-checkbox-field">
-        <input type="checkbox" checked={independent} disabled={!courses.length || saving} onChange={(event) => {
+        <input type="checkbox" checked={independent} disabled={!courses.length || saving || form.mode === 'survey'} onChange={(event) => {
           setStandalone(event.target.checked);
           onChange();
         }} />{t('assessments.standalone.label')}

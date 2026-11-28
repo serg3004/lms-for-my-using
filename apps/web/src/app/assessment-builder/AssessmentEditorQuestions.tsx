@@ -1,11 +1,11 @@
 import { AssessmentMaterialField } from '../../features/assessment-materials/AssessmentMaterial.js';
-import { questionTypeSchema, scoringModeSchema, type QuestionType } from '@lms/shared/assessment-question-types';
+import { questionTypeSchema, scoringModeSchema, surveyQuestionTypes, type QuestionType } from '@lms/shared/assessment-question-types';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormField } from '../../shared/adminPage.js';
 import { Badge, Button } from '../../shared/ui.js';
 import { QuestionDefinitionFields } from '../../features/longread-exercises/QuestionAuthorFields.js';
-import { emptyQuestionDefinition } from '../../features/longread-exercises/question-author-model.js';
+import { emptyQuestionDefinition, surveyQuestionDefinition } from '../../features/longread-exercises/question-author-model.js';
 import { RichTextField } from '../../shared/RichTextField.js';
 import { copyEditorQuestion, moveEditorItem, newEditorQuestion, type EditorQuestion } from './editorModel.js';
 
@@ -55,11 +55,13 @@ function manualReview(question: EditorQuestion) {
   return question.type === 'short_answer' && Boolean((question.definition as { manualReview?: boolean } | null | undefined)?.manualReview);
 }
 
-export function AssessmentEditorQuestions({ questions, onChange, onPreview, single, onEditBank, onDetachBank, onOpenBank }: {
+export function AssessmentEditorQuestions({ questions, onChange, onPreview, single, survey = false, onEditBank, onDetachBank, onOpenBank }: {
   questions: EditorQuestion[];
   onChange: (questions: EditorQuestion[]) => void;
   onPreview: (index: number) => void;
   single?: boolean;
+  /** PR 540: an opinion survey: choice and text questions only, with no points, scoring, correct answers or feedback. */
+  survey?: boolean;
   onEditBank?: (id: string) => void;
   onDetachBank?: (id: string) => void;
   /** PR 584: shows "+ From the question bank" last in the add list. */
@@ -71,8 +73,17 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview, sing
     onChange(questions.map((question) => question.id === id ? { ...question, ...patch } : question));
   }
   const materialQuestion = questions.find((question) => question.id === expanded && !question.bankEntryId);
+  const types = survey ? surveyQuestionTypes : questionTypeSchema.options;
+  const makeDefinition = survey ? surveyQuestionDefinition : emptyQuestionDefinition;
   function addQuestion(type: QuestionType) {
-    const question = { ...newEditorQuestion(), type, definition: emptyQuestionDefinition(type) };
+    const question = { ...newEditorQuestion(), type, definition: makeDefinition(type) };
+    onChange([...questions, question]);
+    setExpanded(question.id);
+  }
+  // The five-step agreement scale, ready to use: one answer, options from "strongly disagree" to "strongly agree".
+  function addLikert() {
+    const question = { ...newEditorQuestion(), type: 'single_choice' as const,
+      options: [1, 2, 3, 4, 5].map((step) => ({ id: crypto.randomUUID(), text: t(`admin.assessmentBuilder.survey.likert${step}`), imageUrl: null, isCorrect: false })) };
     onChange([...questions, question]);
     setExpanded(question.id);
   }
@@ -83,10 +94,10 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview, sing
           <div className="admin-header-actions">
             {reorder}
             <div>
-              <small>{index + 1} · {t(`longreadExercises.types.${question.type}`)} · {t('admin.assessmentBuilder.points')} {question.points}</small>
+              <small>{index + 1} · {t(survey && question.type === 'short_answer' ? 'admin.assessmentBuilder.survey.text' : `longreadExercises.types.${question.type}`)}{!survey && <> · {t('admin.assessmentBuilder.points')} {question.points}</>}</small>
               <div>{question.bankEntryId && <span>↗ {t('questionBank.linked')} </span>}<strong>{question.title || t('admin.assessmentBuilder.questionTitle')}</strong></div>
-              {(manualReview(question) || question.material || question.imageUrl) && <small>
-                {manualReview(question) && <span>{t('admin.assessmentBuilder.editor.marker.manual')} </span>}
+              {(!survey && manualReview(question) || question.material || question.imageUrl) && <small>
+                {!survey && manualReview(question) && <span>{t('admin.assessmentBuilder.editor.marker.manual')} </span>}
                 {(question.material || question.imageUrl) && <span>{t('admin.assessmentBuilder.editor.marker.material')}</span>}
               </small>}
             </div>
@@ -117,13 +128,13 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview, sing
         <FormField id={`${question.id}-type`} label={t('admin.assessmentBuilder.questionType')}>
           <select id={`${question.id}-type`} value={question.type} onChange={(event) => {
             const type = questionTypeSchema.parse(event.target.value);
-            const definition = emptyQuestionDefinition(type);
+            const definition = makeDefinition(type);
             // PR 539: "one answer" and "several answers" switch without rebuilding the question; one answer keeps the first correct option.
             const options = definition ? [] : type === 'single_choice' ? question.options.map((option, index) => ({ ...option, isCorrect: option.isCorrect && index === question.options.findIndex((item) => item.isCorrect) })) : question.options;
             changeQuestion(question.id, { type, definition, options });
           }}>
-            {questionTypeSchema.options.map((type) =>
-              <option key={type} value={type}>{t(`longreadExercises.types.${type}`)}</option>)}
+            {types.map((type) =>
+              <option key={type} value={type}>{t(survey && type === 'short_answer' ? 'admin.assessmentBuilder.survey.text' : `longreadExercises.types.${type}`)}</option>)}
           </select>
         </FormField>
         <RichTextField id={`${question.id}-text`} label={t('longreadExercises.text')} value={question.text ?? ''}
@@ -133,21 +144,21 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview, sing
             onChange={(event) => changeQuestion(question.id, { imageUrl: event.target.value || null })} />
           {single && <AssessmentMaterialField value={question.material} onChange={(material) => changeQuestion(question.id, { material })} />}
         </FormField>
-        <FormField id={`${question.id}-scoring`} label={t('longreadExercises.scoringMode')}>
+        {!survey && <FormField id={`${question.id}-scoring`} label={t('longreadExercises.scoringMode')}>
           <select id={`${question.id}-scoring`} value={question.scoringMode} onChange={(event) =>
             changeQuestion(question.id, { scoringMode: scoringModeSchema.parse(event.target.value) })}>
             {scoringModeSchema.options.map((mode) => <option key={mode} value={mode}>{t(`longreadExercises.${scoringLabels[mode]}`)}</option>)}
           </select>
-        </FormField>
-        <FormField id={`${question.id}-points`} label={t('admin.assessmentBuilder.points')}>
+        </FormField>}
+        {!survey && <FormField id={`${question.id}-points`} label={t('admin.assessmentBuilder.points')}>
           <input id={`${question.id}-points`} type="number" min={1} value={question.points || ''}
             onChange={(event) => changeQuestion(question.id, { points: Number(event.target.value) })} />
-        </FormField>
-        {(['correctFeedback', 'incorrectFeedback'] as const).map((field) => <RichTextField key={field}
+        </FormField>}
+        {!survey && (['correctFeedback', 'incorrectFeedback'] as const).map((field) => <RichTextField key={field}
           id={`${question.id}-${field}`} label={t(`assessments.policy.${field}`)}
           value={question[field] ?? ''} maxLength={2000} onChange={(value) => changeQuestion(question.id, { [field]: value || null })} />)}
-        {question.definition ? <QuestionDefinitionFields definition={question.definition}
-          onChange={(definition) => changeQuestion(question.id, { definition })} /> : <>
+        {question.definition ? (survey ? null : <QuestionDefinitionFields definition={question.definition}
+          onChange={(definition) => changeQuestion(question.id, { definition })} />) : <>
           <ReorderList items={question.options} onChange={(options) => changeQuestion(question.id, { options })}>
             {(option, optionIndex, reorderOption) => <div className="admin-form">
               <div className="admin-header-actions">{reorderOption}<Badge variant="neutral">{optionIndex + 1}</Badge></div>
@@ -163,7 +174,7 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview, sing
               </FormField>
               <AssessmentMaterialField value={option.material} onChange={(material) => changeQuestion(question.id, { options: question.options.map((item) => item.id === option.id ? { ...item, material } : item) })} />
               {option.imageUrl && <img className="admin-preview__option-image" src={option.imageUrl} alt={option.text ?? ''} />}
-              <label className="admin-checkbox-field">
+              {!survey && <label className="admin-checkbox-field">
                 <input type={question.type === 'multiple_choice' ? 'checkbox' : 'radio'} name={`correct-${question.id}`}
                   checked={option.isCorrect} onChange={(event) => changeQuestion(question.id, {
                     options: question.options.map((item) => item.id === option.id
@@ -171,7 +182,7 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview, sing
                       : question.type === 'multiple_choice' ? item : { ...item, isCorrect: false }),
                   })} />
                 {t('admin.assessmentBuilder.correct')}
-              </label>
+              </label>}
               <Button type="button" size="sm" onClick={() => changeQuestion(question.id, {
                 options: question.options.filter((item) => item.id !== option.id),
               })}>{t('admin.assessmentBuilder.editor.deleteOption')}</Button>
@@ -187,10 +198,11 @@ export function AssessmentEditorQuestions({ questions, onChange, onPreview, sing
     {!single && <div className="assessment-editor-side">
       <section className="admin-card admin-form">
         <h2>{t('admin.assessmentBuilder.addQuestionBtn')}</h2>
-        {questionTypeSchema.options.map((type) =>
+        {types.map((type) =>
           <Button key={type} type="button" variant="secondary" onClick={() => addQuestion(type)}>
-            + {t(type in optionLabels ? `admin.assessmentBuilder.${optionLabels[type as keyof typeof optionLabels]}` : `longreadExercises.types.${type}`)}
+            + {t(survey && type === 'short_answer' ? 'admin.assessmentBuilder.survey.text' : type in optionLabels ? `admin.assessmentBuilder.${optionLabels[type as keyof typeof optionLabels]}` : `longreadExercises.types.${type}`)}
           </Button>)}
+        {survey && <Button type="button" variant="secondary" onClick={addLikert}>+ {t('admin.assessmentBuilder.survey.likertTemplate')}</Button>}
         {onOpenBank && <Button type="button" variant="secondary" onClick={onOpenBank}>+ {t('questionBank.fromBank')}</Button>}
       </section>
       {/* PR 584: the video or file of the question opened for editing, next to the list, as in the mockup. */}

@@ -8,6 +8,8 @@ import { richTextSchema } from '@lms/shared/rich-text';
 import { folderSharedUserIdsSchema } from '../../common/folder-share.js';
 
 export const assessmentStatusSchema = z.enum(['draft', 'published', 'archived']);
+/** PR 540: a graded test, or an opinion survey (no points and no verdict). */
+export const assessmentModeSchema = z.enum(['graded', 'survey']);
 
 export const createAssessmentSchema = z.object({
   organizationId: z.guid(),
@@ -17,6 +19,7 @@ export const createAssessmentSchema = z.object({
   slug: z.string().trim().min(1).max(120),
   description: richTextSchema(2000).optional(), material: assessmentMaterialSchema.nullable().optional(),
   status: assessmentStatusSchema.default('draft'),
+  mode: assessmentModeSchema.default('graded'),
   passingScore: z.number().int().min(0).max(100).default(70),
   maxAttempts: z.number().int().min(1).max(10).optional(),
   timeLimitMinutes: z.number().int().min(1).max(600).optional(),
@@ -41,6 +44,7 @@ export const updateAssessmentSchema = z
     title: z.string().trim().min(1).max(200),
     description: richTextSchema(2000).nullable(), material: assessmentMaterialSchema.nullable().optional(),
     status: assessmentStatusSchema,
+    mode: assessmentModeSchema,
     passingScore: z.number().int().min(0).max(100),
     maxAttempts: z.number().int().min(1).nullable(),
     timeLimitMinutes: z.number().int().min(1).nullable(),
@@ -122,6 +126,8 @@ const editorQuestionSchema = z.object({
 export const assessmentEditorContentSchema = z.object({
   settings: updateAssessmentSchema.omit({ status: true }).required().extend({
     material: assessmentMaterialSchema.nullable().optional(),
+    // Drafts saved before PR 540 have no mode: they stay what the assessment already is.
+    mode: assessmentModeSchema.optional(),
     policy: assessmentPolicySchema.optional(),
     // Legacy assessments have no presentation settings in their editor response.
     presentation: assessmentPresentationSchema.nullish().transform((value) => value ?? undefined),

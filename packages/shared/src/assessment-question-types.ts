@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { assessmentMaterialSchema, readAssessmentMaterial } from './longread-media.js';
 
 export const questionTypeSchema = z.enum(['single_choice', 'multiple_choice', 'true_false', 'matching', 'ordering', 'fill_blank', 'short_answer', 'image_drop', 'card_sort']);
+/** PR 540: a survey asks for opinions, so it offers choice and free-text questions only. */
+export const surveyQuestionTypes: readonly QuestionType[] = ['single_choice', 'multiple_choice', 'short_answer'];
 export const scoringModeSchema = z.enum(['all_or_nothing', 'proportional', 'proportional_with_penalty', 'per_option']);
 export type QuestionType = z.infer<typeof questionTypeSchema>;
 export type QuestionScoringMode = z.infer<typeof scoringModeSchema>;

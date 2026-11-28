@@ -53,9 +53,10 @@ export function AssessmentEditorPreview({ assessment, content, startIndex }: {
       },
       async submit(takingQuestions: QuestionWithOptions[], selected: SelectedAnswers) {
         const graded = await grade(takingQuestions, selected);
-        const maxScore = takingQuestions.reduce((sum, question) => sum + question.points, 0);
+        const maxScore = content.settings.mode === 'survey' ? 0 : takingQuestions.reduce((sum, question) => sum + question.points, 0);
         const score = graded.reduce((sum, answer) => sum + answer.score, 0);
-        const percentage = maxScore ? Math.round(score / maxScore * 100) : 0;
+        const survey = content.settings.mode === 'survey';
+        const percentage = !survey && maxScore ? Math.round(score / maxScore * 100) : 0;
         const answers: AssessmentAttemptResult['answers'] = graded.flatMap((answer) => {
           const question = questions.find((item) => item.id === answer.questionId);
           if (!question) return [];
@@ -74,7 +75,7 @@ export function AssessmentEditorPreview({ assessment, content, startIndex }: {
         });
         return {
           ...(graded.some((answer) => answer.reviewPending) ? { status: 'pending_review' } : {}),
-          answers, score, maxScore, percentage, passed: percentage >= content.settings.passingScore,
+          answers, score, maxScore, percentage, passed: !survey && percentage >= content.settings.passingScore,
           assessment: { ...assessment, ...content.settings },
         };
       },

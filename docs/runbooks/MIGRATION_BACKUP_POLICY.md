@@ -1035,3 +1035,7 @@ Migration `20261128120000_assessment_assign_grants` adds `assign_roles` (text ar
 ### Image drop and card sort questions (PR 539)
 
 Migration `20261128140000_assessment_image_drop_card_sort` adds the values `image_drop` and `card_sort` to the enum `AssessmentQuestionType` and extends the `assessment_attempt_answers_selection_check` constraint so a typed response may be of those two kinds. Both changes are additive: existing rows, definitions and answers are untouched, and nothing is rewritten. Apply the migration before starting the new API. On application rollback, leave the enum values in place; the older version does not create such questions, and a test that already contains one would fail to open for the older version, so do not roll back after authors have started to use them.
+
+### Survey mode of a test (PR 540)
+
+Migration `20261128160000_assessment_survey_mode` creates the enum `AssessmentMode` (`graded`, `survey`) and adds `assessments.mode`, `NOT NULL DEFAULT 'graded'`, so every existing test stays graded and no row is rewritten. Apply the migration before starting the new API. On application rollback, leave the type and the column in place; the older version ignores the column and would open a survey as an ordinary test (it would ask for correct answers and show a pass verdict), so do not roll back once authors have created surveys.

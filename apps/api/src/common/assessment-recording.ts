@@ -9,7 +9,7 @@ export function buildAttemptResultNotification(assessmentTitle: string, assessme
 /** The same persisted attempt/certificate/notification contract for standalone and longread tests. */
 export async function recordCompletedAssessment(tx: Prisma.TransactionClient, data: Prisma.AssessmentAttemptUncheckedCreateInput,
   answers: Omit<Prisma.AssessmentAttemptAnswerCreateManyInput, 'attemptId' | 'organizationId'>[], courseId: string | null, title: string, existingId?: string,
-  effective?: () => Promise<EffectiveAssessmentResult | undefined>) {
+  effective?: () => Promise<EffectiveAssessmentResult | undefined>, survey = false) {
   if (answers.some((answer) => answer.reviewPending)) {
     data = { ...data, status: 'pending_review', score: 0, percentage: 0, passed: false };
   }
@@ -24,7 +24,8 @@ export async function recordCompletedAssessment(tx: Prisma.TransactionClient, da
     ? await tx.assessmentAttempt.update({ where: { id: existingId, organizationId: data.organizationId }, data: { score: data.score, maxScore: data.maxScore, percentage: data.percentage, passed: data.passed, completedAt: data.completedAt, status: data.status, reviewPassingScore: data.reviewPassingScore }, select: { id: true } })
     : await tx.assessmentAttempt.create({ data: { ...data, courseId }, select: { id: true } });
   await tx.assessmentAttemptAnswer.createMany({ data: answers.map((answer) => ({ ...answer, organizationId: data.organizationId, attemptId: attempt.id })) });
-  if (data.status !== 'pending_review') await publishAssessmentResult(tx, data, attempt.id, courseId, title, effective);
+  // PR 540: a survey has no verdict, so there is no result notification and no certificate.
+  if (data.status !== 'pending_review' && !survey) await publishAssessmentResult(tx, data, attempt.id, courseId, title, effective);
   return attempt.id;
 }
 

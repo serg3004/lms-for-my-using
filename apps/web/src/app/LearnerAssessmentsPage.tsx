@@ -8,7 +8,7 @@ import { PageState } from '../shared/ui.js';
 import { useAsyncData } from '../shared/useAsyncData.js';
 
 type AssessmentRow = {
-  assessment: Pick<AssessmentSummary, 'id' | 'title' | 'courseId' | 'maxAttempts' | 'passingScore'>;
+  assessment: Pick<AssessmentSummary, 'id' | 'title' | 'courseId' | 'mode' | 'maxAttempts' | 'passingScore'>;
   dueAt?: string | null;
   courseTitle: string;
   questionCount: number;
@@ -220,6 +220,7 @@ export function LearnerAssessmentsPage() {
                 </div>
 
                 <h2 style={{ fontSize: '19px', margin: '0 0 6px', color: COLORS.text, fontWeight: 800 }}>{assessment.title}</h2>
+                {assessment.mode === 'survey' && <div style={{ color: COLORS.muted, fontSize: '13px' }}>{t('assessments.survey.label')}</div>}
                 {row.dueAt && <div>{t('assessments.standalone.dueLabel', { date: new Intl.DateTimeFormat(i18n.language, { dateStyle: 'short', timeStyle: 'short' }).format(new Date(row.dueAt)) })}</div>}
                 {row.courseTitle ? (
                   <div style={{ color: COLORS.muted, fontSize: '13px', marginBottom: '14px' }}>
@@ -234,7 +235,7 @@ export function LearnerAssessmentsPage() {
                         <span style={{ display: 'block', color: COLORS.muted, fontSize: '11px', marginBottom: '4px' }}>
                           {t('assessments.metaResult')}
                         </span>
-                        <strong style={{ fontSize: '14px', color: COLORS.text }}>{row.bestPercentage}%</strong>
+                        <strong style={{ fontSize: '14px', color: COLORS.text }}>{assessment.mode === 'survey' ? t('assessments.survey.answered') : `${row.bestPercentage}%`}</strong>
                       </div>
                       <div style={{ padding: '11px', background: COLORS.soft, borderRadius: '12px' }}>
                         <span style={{ display: 'block', color: COLORS.muted, fontSize: '11px', marginBottom: '4px' }}>
@@ -259,17 +260,17 @@ export function LearnerAssessmentsPage() {
                         </span>
                         <strong style={{ fontSize: '14px', color: COLORS.text }}>{attemptsRemaining ?? '∞'}</strong>
                       </div>
-                      <div style={{ padding: '11px', background: COLORS.soft, borderRadius: '12px' }}>
+                      {assessment.mode === 'survey' ? null : <div style={{ padding: '11px', background: COLORS.soft, borderRadius: '12px' }}>
                         <span style={{ display: 'block', color: COLORS.muted, fontSize: '11px', marginBottom: '4px' }}>
                           {t('assessments.metaPassingScore')}
                         </span>
                         <strong style={{ fontSize: '14px', color: COLORS.text }}>{assessment.passingScore}%</strong>
-                      </div>
+                      </div>}
                     </>
                   )}
                 </div>
 
-                {row.completed && row.bestPercentage !== null ? (
+                {row.completed && row.bestPercentage !== null && assessment.mode !== 'survey' ? (
                   <div style={{ height: '9px', background: 'var(--color-surface-muted)', borderRadius: '999px', overflow: 'hidden', marginBottom: '18px' }}>
                     <div style={{ width: `${row.bestPercentage}%`, height: '100%', background: COLORS.success, borderRadius: '999px' }} />
                   </div>

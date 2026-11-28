@@ -23,9 +23,12 @@ export function ManagerAssessmentsPage() {
   if (state.status !== 'loaded') return <ManagerPageLayout><PageState message={error} variant="error" /></ManagerPageLayout>;
 
   const columns: Column<AssessmentSummary>[] = [
-    { key: 'title', label: t('manager.assessments.columnTitle'), priority: 'primary', render: (item) => item.title },
-    { key: 'action', label: t('manager.assessments.columnAction'), priority: 'primary', render: (item) => <Button variant="secondary" size="sm" type="button"
-      onClick={() => { setSelected(item); dialog.current?.showModal(); }}>{t('manager.assessments.assign')}</Button> },
+    { key: 'title', label: t('manager.assessments.columnTitle'), priority: 'primary', render: (item) => item.mode === 'survey' ? `${item.title} · ${t('admin.assessmentBuilder.survey.survey')}` : item.title },
+    { key: 'action', label: t('manager.assessments.columnAction'), priority: 'primary', render: (item) => <div className="td-actions">
+      <Button variant="secondary" size="sm" type="button"
+        onClick={() => { setSelected(item); dialog.current?.showModal(); }}>{t('manager.assessments.assign')}</Button>
+      {item.mode === 'survey' && <a className="ds-button ds-button--secondary ds-button--sm" href={`/manager/reports/assessments/${encodeURIComponent(item.id)}`}>{t('surveyReport.open')}</a>}
+    </div> },
   ];
   return <ManagerPageLayout>
     <div style={{ marginBottom: '22px' }}>

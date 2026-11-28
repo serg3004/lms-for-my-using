@@ -107,7 +107,9 @@ export function AdminAssessmentBuilderPage() {
         <button type="button" role="menuitem" onClick={() => void copyAssessment(assessment)}>{t('admin.checklists.copy')}</button>
         {move && <button type="button" role="menuitem" onClick={move}>{t('admin.checklists.folders.moveOpen')}</button>}
         <button type="button" role="menuitem" onClick={() => openEditor(assessment, 'preview')}>{t('admin.assessmentBuilder.preview')}</button>
-        <button type="button" role="menuitem" onClick={() => setResultsAssessment(assessment)}>{t('admin.results.assessmentResultsTitle')}</button>
+        {assessment.mode === 'survey'
+          ? <button type="button" role="menuitem" onClick={() => window.location.assign(`/admin/assessments/analytics/${encodeURIComponent(assessment.id)}`)}>{t('surveyReport.open')}</button>
+          : <button type="button" role="menuitem" onClick={() => setResultsAssessment(assessment)}>{t('admin.results.assessmentResultsTitle')}</button>}
         {assessment.courseId === null && assessment.status === 'published' && <button type="button" role="menuitem" onClick={() => {
           setManagedAssessment(assessment);
           standaloneDialogRef.current?.showModal();
@@ -183,7 +185,7 @@ export function AdminAssessmentBuilderPage() {
 
     <AssessmentLibrary actionsRef={libraryActions} list={list} library={library} renderActions={renderActions} t={t}
       columns={[
-        { key: 'title', label: t('admin.assessmentBuilder.col.title'), priority: 'primary', sortable: true, render: (a) => a.title },
+        { key: 'title', label: t('admin.assessmentBuilder.col.title'), priority: 'primary', sortable: true, render: (a) => <>{a.title}{a.mode === 'survey' && <> <Badge variant="neutral">{t('admin.assessmentBuilder.survey.survey')}</Badge></>}</> },
         { key: 'course', label: t('admin.assessmentBuilder.list.usedIn'), priority: 'secondary', sortable: true, render: (a) => usedIn(a) },
         { key: 'status', label: t('admin.assessmentBuilder.col.status'), priority: 'primary', sortable: true, render: (a) => <div className="td-actions">
           <Badge variant={a.status === 'published' ? 'published' : a.status === 'draft' ? 'draft' : 'neutral'}>

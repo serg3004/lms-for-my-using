@@ -34,7 +34,7 @@ export function StandaloneAssessmentResults({ assessmentId }: { assessmentId?: s
       {id && results.status === 'loaded' && (results.data.length ? <ul>
         {results.data.map((row) => <li key={row.id}>
           {[row.user.firstName, row.user.lastName].filter(Boolean).join(' ') || row.user.email}
-          {' · '}{row.status === 'completed' ? `${row.percentage}%` : t('assessments.statusAvailable')}
+          {' · '}{row.status !== 'completed' ? t('assessments.statusAvailable') : row.assessment.mode === 'survey' ? t('assessments.survey.answered') : `${row.percentage}%`}
         </li>)}
       </ul> : <p>{t('assessments.standalone.noResults')}</p>)}
     </>}

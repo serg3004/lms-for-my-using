@@ -106,7 +106,7 @@ export class AssessmentsController {
     await this.assessmentsService.getAssessment(id, request.currentUser!.organizationId);
     const { content, answers, questionIds } = previewAssessmentEditorSchema.parse(body);
     const questions = content.questions.filter((question) => questionIds.includes(question.id));
-    return gradeAssessmentAnswers(questions, answers);
+    return gradeAssessmentAnswers(questions, answers, content.settings.mode === 'survey');
   }
 
   @Post(':id/copy')
