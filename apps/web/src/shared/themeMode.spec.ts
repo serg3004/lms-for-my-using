@@ -15,7 +15,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe('theme mode', () => {
   it('lists the modes in the order of the theme menu', () => {
-    expect(THEME_MODES).toEqual(['light', 'dark', 'system']);
+    expect(THEME_MODES).toEqual(['light', 'dark', 'contrast', 'system']);
   });
 
   it('reads the saved mode and falls back to system for anything else or without storage', () => {

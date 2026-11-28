@@ -966,6 +966,17 @@
   user-select: none;
 }
 
+/* PR 578: the avatar colour comes from an inline palette; the high-contrast theme replaces it with the one dark brand colour. */
+:root[data-theme='contrast'] .ds-avatar {
+  background: var(--color-primary) !important;
+}
+
+/* PR 578: the gradient banners (login, course page) become one dark solid colour, so their white text stays at AAA. */
+:root[data-theme='contrast'] .login-hero,
+:root[data-theme='contrast'] .lcd-hero {
+  background: var(--color-primary-hover);
+}
+
 .ds-avatar--sm {
   width: 2rem;
   height: 2rem;

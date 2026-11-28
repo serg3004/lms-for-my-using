@@ -10,7 +10,7 @@ vi.mock('react-i18next', () => ({
     i18n: { language: 'en' },
     t: (key: string, options?: Record<string, string>) => {
       const texts: Record<string, string> = {
-        'theme.light': 'Light', 'theme.dark': 'Dark', 'theme.system': 'Same as device', 'theme.menuLabel': 'Theme',
+        'theme.light': 'Light', 'theme.dark': 'Dark', 'theme.contrast': 'High contrast', 'theme.system': 'Same as device', 'theme.menuLabel': 'Theme',
         'theme.switchLabel': `Theme: ${options?.mode}`, 'theme.appliedNow': `now ${options?.theme}`,
       };
       return texts[key] ?? key;
@@ -57,8 +57,8 @@ describe('theme menu (PR 577)', () => {
     await render();
     expect(button().getAttribute('aria-label')).toBe('Theme: Dark');
     await act(async () => { button().click(); });
-    expect(items().map((item) => item.textContent?.replace('✓', '').trim())).toEqual(['Light', 'Dark', 'Same as devicenow light']);
-    expect(items().map((item) => item.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false']);
+    expect(items().map((item) => item.textContent?.replace('✓', '').trim())).toEqual(['Light', 'Dark', 'High contrast', 'Same as devicenow light']);
+    expect(items().map((item) => item.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false', 'false']);
   });
 
   it('says which theme the device gives when "same as device" is chosen', async () => {
@@ -66,8 +66,8 @@ describe('theme menu (PR 577)', () => {
     stubDevice(true);
     await render();
     await act(async () => { button().click(); });
-    expect(items()[2]!.getAttribute('aria-checked')).toBe('true');
-    expect(items()[2]!.textContent).toContain('now dark');
+    expect(items()[3]!.getAttribute('aria-checked')).toBe('true');
+    expect(items()[3]!.textContent).toContain('now dark');
   });
 
   it('applies and remembers a choice, then closes the menu', async () => {
@@ -80,5 +80,18 @@ describe('theme menu (PR 577)', () => {
     expect(localStorage.getItem('lms.themeMode')).toBe('dark');
     expect(items()).toHaveLength(0);
     expect(button().getAttribute('aria-label')).toBe('Theme: Dark');
+  });
+
+  it('applies the high-contrast theme, remembers it and drops organisation colours', async () => {
+    stubStorage();
+    stubDevice(false);
+    document.documentElement.style.setProperty('--color-primary', '#ff00ff');
+    await render();
+    await act(async () => { button().click(); });
+    await act(async () => { items()[2]!.click(); });
+    expect(document.documentElement.getAttribute('data-theme')).toBe('contrast');
+    expect(localStorage.getItem('lms.themeMode')).toBe('contrast');
+    expect(button().getAttribute('aria-label')).toBe('Theme: High contrast');
+    document.documentElement.style.removeProperty('--color-primary');
   });
 });

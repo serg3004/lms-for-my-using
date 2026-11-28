@@ -172,11 +172,13 @@ export function applyThemeSettings(settings: ThemeSettings) {
 
   const root = document.documentElement;
   const dark = root.dataset.theme === 'dark';
+  // PR 578: the high-contrast theme owns every colour; no organisation colour may weaken its contrast.
+  const contrast = root.dataset.theme === 'contrast';
 
   (Object.entries(themeVariables) as Array<[CssThemeKey, string]>).forEach(([key, variable]) => {
     const value = settings[key];
 
-    if (isDefaultValue(key, value) || (dark && lightOnlyKeys.has(key))) {
+    if (contrast || isDefaultValue(key, value) || (dark && lightOnlyKeys.has(key))) {
       root.style.removeProperty(variable);
     } else if (dark && key === 'colorPrimary') {
       root.style.setProperty(variable, `color-mix(in srgb, ${value} 60%, white)`);
@@ -188,7 +190,7 @@ export function applyThemeSettings(settings: ThemeSettings) {
   });
 }
 
-/** Re-applies the last organisation theme, e.g. after the light/dark mode changed. */
+/** Re-applies the last organisation theme, e.g. after the light/dark/contrast mode changed. */
 export function reapplyThemeSettings() {
   applyThemeSettings(appliedSettings);
 }

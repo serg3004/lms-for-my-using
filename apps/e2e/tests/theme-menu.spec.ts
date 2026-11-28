@@ -17,7 +17,7 @@ test('the menu names the themes, marks the chosen one and keeps it after a reloa
   await page.goto('/admin/checklists');
   await page.getByRole('button', { name: /^Тема оформления:/ }).click();
   const menu = page.getByRole('menu');
-  await expect(menu.getByRole('menuitemradio')).toHaveText([/Светлая/, /Тёмная/, /Как на устройстве.*сейчас светлая/]);
+  await expect(menu.getByRole('menuitemradio')).toHaveText([/Светлая/, /Тёмная/, /Контрастная/, /Как на устройстве.*сейчас светлая/]);
   await expect(menu.getByRole('menuitemradio', { name: /Как на устройстве/ })).toHaveAttribute('aria-checked', 'true');
 
   await menu.getByRole('menuitemradio', { name: 'Тёмная' }).click();
@@ -41,4 +41,18 @@ test('the menu opens and closes from the keyboard', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.getByRole('menu')).toBeHidden();
   await expect(button).toBeFocused();
+});
+
+// PR 578: the high-contrast theme is one more item of the same menu and is remembered like the others.
+test('the high-contrast theme is chosen from the menu and kept after a reload', async ({ page }) => {
+  await page.goto('/admin/checklists');
+  await page.getByRole('button', { name: /^Тема оформления:/ }).click();
+  await page.getByRole('menuitemradio', { name: 'Контрастная' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'contrast');
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).color)).toBe('rgb(0, 0, 0)');
+
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'contrast');
+  await page.getByRole('button', { name: 'Тема оформления: Контрастная' }).click();
+  await expect(page.getByRole('menuitemradio', { name: 'Контрастная' })).toHaveAttribute('aria-checked', 'true');
 });
